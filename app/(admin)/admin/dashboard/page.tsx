@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
