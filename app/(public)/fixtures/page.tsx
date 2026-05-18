@@ -47,7 +47,7 @@ export default async function FixturesPage({ searchParams }: PageProps) {
   const { data: tournaments } = await supabase
     .from('tournaments')
     .select('id, name, type, status')
-    .in('status', ['active', 'completed'])
+    .in('status', ['active', 'upcoming', 'completed'])
     .order('created_at', { ascending: true })
 
   // Determine which tournament to show

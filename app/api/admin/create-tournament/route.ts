@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       .insert({
         name: season_name,
         base_league: base_league ?? 'default',
-        status: 'upcoming',
+        status: 'active',
       })
       .select('id')
       .single()
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       season_id: resolvedSeasonId,
       name,
       type,
-      status: 'upcoming',
+      status: 'active',
       settings: { start_date, end_date },
     })
     .select('id')
