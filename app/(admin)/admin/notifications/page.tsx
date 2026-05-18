@@ -20,9 +20,9 @@ export default async function AdminNotificationsPage() {
       .from('team_change_requests')
       .select(`
         id, status, created_at,
-        requesting_user:profiles!requesting_user_id (username, avatar_url),
-        current_team:teams!current_team_id (name, logo_league_folder, logo_team_slug),
-        requested_team:teams!requested_team_id (name, logo_league_folder, logo_team_slug)
+        requesting_user:profiles!team_change_requests_requesting_user_id_fkey (username, avatar_url),
+        current_team:teams!team_change_requests_current_team_id_fkey (name, logo_league_folder, logo_team_slug),
+        requested_team:teams!team_change_requests_requested_team_id_fkey (name, logo_league_folder, logo_team_slug)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false }),

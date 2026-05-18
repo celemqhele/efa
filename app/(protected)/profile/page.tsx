@@ -88,7 +88,7 @@ export default async function ProfilePage() {
     .from('team_change_requests')
     .select(`
       id, status, created_at,
-      requested_team:teams!requested_team_id(id, name)
+      requested_team:teams!team_change_requests_requested_team_id_fkey(id, name)
     `)
     .eq('requesting_user_id', user.id)
     .order('created_at', { ascending: false })

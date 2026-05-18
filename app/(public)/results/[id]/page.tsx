@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { format, parseISO } from 'date-fns'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 interface Props {
   params: Promise<{ id: string }>
