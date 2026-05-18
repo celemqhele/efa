@@ -60,7 +60,7 @@ export default async function StandingsPage({ searchParams }: Props) {
 
   // Fetch based on type
   let standings: any[] | null = null
-  let groupStandings: Record<string, any[]> = {}
+  const groupStandings: Record<string, any[]> = {}
   let knockoutRounds: any[] | null = null
 
   if (selected.type === 'league') {
