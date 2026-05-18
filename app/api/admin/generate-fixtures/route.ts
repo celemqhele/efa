@@ -27,14 +27,14 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  let body: { tournament_id: string }
+  let body: any
   try {
     body = await request.json()
   } catch {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { tournament_id } = body
+  const tournament_id: string = body.tournament_id ?? body.tournamentId
 
   if (!tournament_id) {
     return Response.json({ error: 'tournament_id is required' }, { status: 400 })
