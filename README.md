@@ -288,4 +288,13 @@ Open http://localhost:3000
 
 ---
 
+---
+
+## Q&A Log
+
+**Q: Do I need to run the admin seed SQL again?**  
+No. The three admin accounts (`mubizamaan`, `celemqhele`, `wandile`) were already created successfully. The `WHERE NOT EXISTS` guard in the SQL means re-running it is safe but unnecessary. The SQL block in the README is purely for reference if a fresh Supabase project ever needs to be set up.
+
+---
+
 *Last updated: 2026-05-18*
