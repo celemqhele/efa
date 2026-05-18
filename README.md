@@ -1,7 +1,8 @@
 # EFA Platform — Project Log
 
 **Efootball Federal Association** — a league management platform for an online eFootball community.  
-Live URL: https://efa-umber.vercel.app  
+Live URL: https://efa-fxyk.vercel.app  
+Old URL: https://efa-umber.vercel.app (deprecated — old Vercel project had a corrupted config)  
 GitHub: https://github.com/celemqhele/efa  
 Supabase project: (managed via Supabase dashboard)
 
