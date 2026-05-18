@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 interface Props {
   tournamentId: string
@@ -11,12 +12,10 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName }:
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   async function handleGenerate() {
-    const confirmed = confirm(
-      `Generate fixtures for "${tournamentName}"? This will create a full fixture list.`
-    )
-    if (!confirmed) return
+    setDialogOpen(false)
     setLoading(true)
     setError('')
     setSuccess(false)
@@ -38,23 +37,34 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName }:
   }
 
   return (
-    <div className="flex items-center gap-3">
-      {error && <span className="text-red-400 text-xs">{error}</span>}
-      {success && <span className="text-green-400 text-xs">Fixtures generated!</span>}
-      <button
-        onClick={handleGenerate}
-        disabled={loading}
-        className="btn-outline disabled:opacity-50"
-      >
-        {loading ? (
-          <span className="flex items-center gap-2">
-            <span className="w-3 h-3 border border-slate-400/30 border-t-slate-400 rounded-full animate-spin" />
-            Generating...
-          </span>
-        ) : (
-          'Generate Fixtures'
-        )}
-      </button>
-    </div>
+    <>
+      <ConfirmDialog
+        open={dialogOpen}
+        title="Generate Fixtures"
+        message={`Create a full fixture list for "${tournamentName}"? This cannot be undone.`}
+        confirmLabel="Generate"
+        onConfirm={handleGenerate}
+        onCancel={() => setDialogOpen(false)}
+      />
+
+      <div className="flex items-center gap-3">
+        {error && <span className="text-red-400 text-xs">{error}</span>}
+        {success && <span className="text-green-400 text-xs">Fixtures generated!</span>}
+        <button
+          onClick={() => setDialogOpen(true)}
+          disabled={loading}
+          className="btn-outline disabled:opacity-50"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 border border-slate-400/30 border-t-slate-400 rounded-full animate-spin" />
+              Generating...
+            </span>
+          ) : (
+            'Generate Fixtures'
+          )}
+        </button>
+      </div>
+    </>
   )
 }

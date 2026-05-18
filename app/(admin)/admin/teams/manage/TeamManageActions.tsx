@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 interface Props {
   teamId: string
@@ -13,26 +14,20 @@ export default function TeamManageActions({ teamId, teamName, managerId, manager
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [mgr, setMgr] = useState(managerId)
-
-  async function post(endpoint: string, body: object) {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error ?? 'Action failed')
-    return data
-  }
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   async function handleRemoveManager() {
-    if (!mgr) return
-    const confirmed = confirm(`Remove "${managerName}" as manager of "${teamName}"?`)
-    if (!confirmed) return
+    setDialogOpen(false)
     setLoading('remove')
     setError('')
     try {
-      await post('/api/admin/sack', { teamId })
+      const res = await fetch('/api/admin/sack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Action failed')
       setMgr(null)
     } catch (e: any) {
       setError(e.message)
@@ -42,17 +37,29 @@ export default function TeamManageActions({ teamId, teamName, managerId, manager
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {mgr && (
-        <button
-          onClick={handleRemoveManager}
-          disabled={loading === 'remove'}
-          className="btn-danger text-xs py-1 px-2.5"
-        >
-          {loading === 'remove' ? '...' : 'Remove Manager'}
-        </button>
-      )}
-      {error && <span className="text-red-400 text-xs">{error}</span>}
-    </div>
+    <>
+      <ConfirmDialog
+        open={dialogOpen}
+        title="Remove Manager"
+        message={`Remove "${managerName}" as manager of "${teamName}"? Their stats will be sealed.`}
+        confirmLabel="Remove"
+        danger
+        onConfirm={handleRemoveManager}
+        onCancel={() => setDialogOpen(false)}
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        {mgr && (
+          <button
+            onClick={() => setDialogOpen(true)}
+            disabled={loading === 'remove'}
+            className="btn-danger text-xs py-1 px-2.5"
+          >
+            {loading === 'remove' ? '...' : 'Remove Manager'}
+          </button>
+        )}
+        {error && <span className="text-red-400 text-xs">{error}</span>}
+      </div>
+    </>
   )
 }

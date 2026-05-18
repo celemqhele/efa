@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 interface Props {
   profileId: string
@@ -14,7 +15,8 @@ export default function UserActionButtons({ profileId, username, currentRole, te
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [role, setRole] = useState(currentRole)
-  const [hasteam, setHasTeam] = useState(!!teamId)
+  const [hasTeam, setHasTeam] = useState(!!teamId)
+  const [dialog, setDialog] = useState<'sack' | 'role' | null>(null)
 
   async function postAction(endpoint: string, body: object) {
     setError('')
@@ -30,10 +32,7 @@ export default function UserActionButtons({ profileId, username, currentRole, te
 
   async function handleRoleToggle() {
     const newRole = role === 'admin' ? 'user' : 'admin'
-    const confirmed = confirm(
-      `${newRole === 'admin' ? 'Grant admin role to' : 'Remove admin from'} "${username}"?`
-    )
-    if (!confirmed) return
+    setDialog(null)
     setLoading('role')
     try {
       await postAction('/api/admin/role', { userId: profileId, role: newRole })
@@ -46,12 +45,10 @@ export default function UserActionButtons({ profileId, username, currentRole, te
   }
 
   async function handleSack() {
-    if (!teamId) return
-    const confirmed = confirm(`Remove "${username}" as manager of "${teamName}"?`)
-    if (!confirmed) return
+    setDialog(null)
     setLoading('sack')
     try {
-      await postAction('/api/admin/sack', { userId: profileId, teamId })
+      await postAction('/api/admin/sack', { teamId })
       setHasTeam(false)
     } catch (e: any) {
       setError(e.message)
@@ -60,29 +57,56 @@ export default function UserActionButtons({ profileId, username, currentRole, te
     }
   }
 
+  const newRole = role === 'admin' ? 'user' : 'admin'
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {hasteam && teamId && (
+    <>
+      <ConfirmDialog
+        open={dialog === 'sack'}
+        title="Sack Manager"
+        message={`Remove "${username}" as manager of "${teamName}"? Their stats will be sealed.`}
+        confirmLabel="Sack"
+        danger
+        onConfirm={handleSack}
+        onCancel={() => setDialog(null)}
+      />
+      <ConfirmDialog
+        open={dialog === 'role'}
+        title={newRole === 'admin' ? 'Grant Admin' : 'Remove Admin'}
+        message={
+          newRole === 'admin'
+            ? `Give "${username}" full admin access to the platform?`
+            : `Remove admin access from "${username}"?`
+        }
+        confirmLabel={newRole === 'admin' ? 'Grant' : 'Remove'}
+        danger={newRole !== 'admin'}
+        onConfirm={handleRoleToggle}
+        onCancel={() => setDialog(null)}
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        {hasTeam && teamId && (
+          <button
+            onClick={() => setDialog('sack')}
+            disabled={loading === 'sack'}
+            className="btn-danger text-xs py-1 px-2.5"
+          >
+            {loading === 'sack' ? '...' : 'Sack'}
+          </button>
+        )}
         <button
-          onClick={handleSack}
-          disabled={loading === 'sack'}
-          className="btn-danger text-xs py-1 px-2.5"
+          onClick={() => setDialog('role')}
+          disabled={loading === 'role'}
+          className={`text-xs py-1 px-2.5 rounded-lg border font-medium transition-colors ${
+            role === 'admin'
+              ? 'text-orange-400 border-orange-400/30 bg-orange-400/10 hover:bg-orange-400/20'
+              : 'text-blue-400 border-blue-400/30 bg-blue-400/10 hover:bg-blue-400/20'
+          }`}
         >
-          {loading === 'sack' ? '...' : 'Sack'}
+          {loading === 'role' ? '...' : role === 'admin' ? 'Remove Admin' : 'Make Admin'}
         </button>
-      )}
-      <button
-        onClick={handleRoleToggle}
-        disabled={loading === 'role'}
-        className={`text-xs py-1 px-2.5 rounded-lg border font-medium transition-colors ${
-          role === 'admin'
-            ? 'text-orange-400 border-orange-400/30 bg-orange-400/10 hover:bg-orange-400/20'
-            : 'text-blue-400 border-blue-400/30 bg-blue-400/10 hover:bg-blue-400/20'
-        }`}
-      >
-        {loading === 'role' ? '...' : role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-      </button>
-      {error && <span className="text-red-400 text-xs">{error}</span>}
-    </div>
+        {error && <span className="text-red-400 text-xs">{error}</span>}
+      </div>
+    </>
   )
 }
