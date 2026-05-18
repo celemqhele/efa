@@ -83,10 +83,10 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
       .insert({
         season_id: seasonId,
         team_id: teamId,
-        trophy_type: trophyType as 'league' | 'ucl' | 'europa' | 'super_cup',
-        tournament_id: tournamentId || undefined,
+        trophy_type: trophyType,
+        tournament_id: tournamentId || null,
         awarded_at: awardedAt,
-      })
+      } as any)
       .select(`
         id, trophy_type, awarded_at,
         team:teams(id, name, logo_league_folder, logo_team_slug),

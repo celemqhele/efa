@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   ): Promise<string | null> {
     const { data: t, error: tErr } = await adminSupabase
       .from('tournaments')
-      .insert({ season_id, name, type, status: 'active', settings: { start_date, end_date } })
+      .insert({ season_id, name, type: type as 'league' | 'ucl' | 'europa' | 'super_cup', status: 'active', settings: { start_date, end_date } })
       .select('id')
       .single()
     if (tErr || !t) { console.error(`Failed to create ${name}:`, tErr?.message); return null }

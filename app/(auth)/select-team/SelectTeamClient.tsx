@@ -43,7 +43,10 @@ export default function SelectTeamClient({ registry }: Props) {
 
   const nationalEntries = useMemo(() => registry.filter((e) => e.isNational), [registry])
   const clubEntries = useMemo(() => registry.filter((e) => !e.isNational), [registry])
-  const regions = useMemo(() => [...new Set(clubEntries.map((e) => e.region))].sort(), [clubEntries])
+  const regions = useMemo(
+    () => clubEntries.map((e) => e.region).filter((r, i, arr) => arr.indexOf(r) === i).sort(),
+    [clubEntries]
+  )
   const leaguesInRegion = useMemo(
     () => clubEntries.filter((e) => e.region === selectedRegion),
     [clubEntries, selectedRegion]

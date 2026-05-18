@@ -13,7 +13,7 @@ export default async function AdminHallOfFamePage() {
       supabase
         .from('tournaments')
         .select('id, name, type, season_id')
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false }) as any,
       supabase
         .from('trophies')
         .select(

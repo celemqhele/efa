@@ -7,13 +7,13 @@ export default async function SeasonsPage() {
   const supabase = await createClient()
 
   // All seasons ordered newest first
-  const { data: rawSeasons } = await supabase
+  const { data: rawSeasons } = await (supabase
     .from('seasons')
     .select(`
       id, name, status, start_date, end_date,
       tournaments(id, name, type, status)
     `)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }) as any)
 
   // Fixture counts per tournament
   const { data: fixtureCounts } = await supabase
