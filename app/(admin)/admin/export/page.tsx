@@ -1,0 +1,403 @@
+export const dynamic = 'force-dynamic'
+
+import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
+import { format } from 'date-fns'
+import ExportButton from './ExportButton'
+
+interface Props {
+  searchParams: Promise<{
+    type?: string
+    tournament_id?: string
+    matchday?: string
+  }>
+}
+
+const ACCENT: Record<string, string> = {
+  league: '#c9a84c',
+  ucl: '#3b82f6',
+  europa: '#f97316',
+  super_cup: '#a855f7',
+}
+
+export default async function ExportPage({ searchParams }: Props) {
+  const sp = await searchParams
+  const type = (sp.type ?? 'fixtures') as 'fixtures' | 'results' | 'standings'
+  const supabase = await createClient()
+
+  const { data: tournaments } = await supabase
+    .from('tournaments')
+    .select('id, name, type, status')
+    .in('status', ['active', 'completed'])
+    .order('created_at', { ascending: true })
+
+  const activeTournamentId = sp.tournament_id ?? tournaments?.[0]?.id ?? null
+  const selectedTournament = tournaments?.find((t) => t.id === activeTournamentId)
+  const accent = ACCENT[selectedTournament?.type ?? 'league'] ?? '#c9a84c'
+
+  // Matchday list for the selected tournament
+  const { data: mdRows } = activeTournamentId
+    ? await supabase
+        .from('fixtures')
+        .select('matchday')
+        .eq('tournament_id', activeTournamentId)
+        .order('matchday', { ascending: true })
+    : { data: null }
+
+  const matchdays = [...new Set((mdRows ?? []).map((r) => r.matchday))].sort(
+    (a, b) => a - b
+  )
+  const selectedMatchday = sp.matchday ? parseInt(sp.matchday) : (matchdays[0] ?? 1)
+
+  // ── Data fetching based on type ──────────────────────────────────────────────
+
+  let fixtures: any[] = []
+  let results: any[] = []
+  let standings: any[] = []
+  let groupStandings: Record<string, any[]> = {}
+
+  if (activeTournamentId) {
+    if (type === 'fixtures') {
+      const { data } = await supabase
+        .from('fixtures')
+        .select(`
+          id, matchday, scheduled_date,
+          home_team:teams!fixtures_home_team_id_fkey(name),
+          away_team:teams!fixtures_away_team_id_fkey(name)
+        `)
+        .eq('tournament_id', activeTournamentId)
+        .eq('matchday', selectedMatchday)
+        .order('scheduled_date', { ascending: true })
+      fixtures = data ?? []
+    }
+
+    if (type === 'results') {
+      const { data } = await supabase
+        .from('fixtures')
+        .select(`
+          id, matchday, scheduled_date,
+          home_team:teams!fixtures_home_team_id_fkey(name),
+          away_team:teams!fixtures_away_team_id_fkey(name),
+          results(home_score, away_score)
+        `)
+        .eq('tournament_id', activeTournamentId)
+        .eq('matchday', selectedMatchday)
+        .order('scheduled_date', { ascending: true })
+      results = (data ?? []).filter((f: any) => (f.results?.length ?? 0) > 0)
+    }
+
+    if (type === 'standings') {
+      const tType = selectedTournament?.type
+      if (tType === 'league') {
+        const { data } = await supabase
+          .from('standings')
+          .select('*, team:teams(name)')
+          .eq('tournament_id', activeTournamentId)
+          .order('points', { ascending: false })
+          .order('goals_for', { ascending: false })
+        standings = data ?? []
+      } else {
+        // UCL / Europa — show group standings
+        const { data } = await (supabase.from('group_standings') as any)
+          .select('*, team:teams(name)')
+          .eq('tournament_id', activeTournamentId)
+          .order('points', { ascending: false })
+          .order('goals_for', { ascending: false })
+        const rows: any[] = data ?? []
+        for (const row of rows) {
+          const g = row.group_name ?? 'A'
+          if (!groupStandings[g]) groupStandings[g] = []
+          groupStandings[g].push(row)
+        }
+      }
+    }
+  }
+
+  const fixtureDate =
+    fixtures[0]?.scheduled_date
+      ? format(new Date(fixtures[0].scheduled_date), 'EEEE d MMMM yyyy')
+      : null
+
+  const typeLabel =
+    type === 'fixtures'
+      ? `MATCHDAY ${selectedMatchday} FIXTURES`
+      : type === 'results'
+      ? `MATCHDAY ${selectedMatchday} RESULTS`
+      : selectedTournament?.type === 'league'
+      ? 'LEAGUE TABLE'
+      : 'GROUP STANDINGS'
+
+  const filename = `efa-${type}-${selectedTournament?.type ?? 'export'}-md${selectedMatchday}.png`
+
+  // ── Inline-style card helpers ────────────────────────────────────────────────
+
+  const card: React.CSSProperties = {
+    fontFamily: "'Segoe UI', system-ui, sans-serif",
+    width: '600px',
+    background: '#0a1128',
+    padding: '32px',
+    borderRadius: '12px',
+  }
+
+  const rowEven: React.CSSProperties = { background: '#0f1a3d', borderRadius: '8px' }
+  const rowOdd: React.CSSProperties = { background: 'transparent' }
+
+  function StandingsTable({ rows }: { rows: any[] }) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px 8px', color: '#64748b', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>
+          <div style={{ width: '24px', textAlign: 'center' }}>#</div>
+          <div style={{ flex: 1, marginLeft: '10px' }}>TEAM</div>
+          <div style={{ width: '28px', textAlign: 'center' }}>P</div>
+          <div style={{ width: '28px', textAlign: 'center' }}>W</div>
+          <div style={{ width: '28px', textAlign: 'center' }}>D</div>
+          <div style={{ width: '28px', textAlign: 'center' }}>L</div>
+          <div style={{ width: '36px', textAlign: 'center' }}>GD</div>
+          <div style={{ width: '36px', textAlign: 'center', color: accent }}>PTS</div>
+        </div>
+
+        {rows.map((s: any, i: number) => {
+          const gd = (s.goals_for ?? 0) - (s.goals_against ?? 0)
+          const isTop = i < 4
+          const isBottom = i >= rows.length - 3
+          return (
+            <div
+              key={s.id ?? i}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                ...(i % 2 === 0 ? rowEven : rowOdd),
+                padding: '10px 8px',
+                borderLeft: `3px solid ${isTop ? '#22c55e' : isBottom ? '#ef4444' : 'transparent'}`,
+              }}
+            >
+              <div style={{ width: '24px', textAlign: 'center', color: '#64748b', fontSize: '12px', fontWeight: 700 }}>{i + 1}</div>
+              <div style={{ flex: 1, color: '#ffffff', fontWeight: 600, fontSize: '13px', marginLeft: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.team?.name ?? '—'}
+              </div>
+              <div style={{ width: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>{s.played}</div>
+              <div style={{ width: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>{s.wins}</div>
+              <div style={{ width: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>{s.draws}</div>
+              <div style={{ width: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>{s.losses}</div>
+              <div style={{ width: '36px', textAlign: 'center', color: gd >= 0 ? '#4ade80' : '#f87171', fontSize: '12px', fontWeight: 600 }}>
+                {gd > 0 ? `+${gd}` : gd}
+              </div>
+              <div style={{ width: '36px', textAlign: 'center', color: accent, fontSize: '15px', fontWeight: 900 }}>{s.points}</div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Export</h1>
+          <p className="text-slate-400 text-sm mt-1">Generate shareable PNG cards for WhatsApp</p>
+        </div>
+        <ExportButton filename={filename} />
+      </div>
+
+      {/* Type tabs */}
+      <div className="flex gap-2">
+        {(['fixtures', 'results', 'standings'] as const).map((t) => (
+          <Link
+            key={t}
+            href={`/admin/export?type=${t}&tournament_id=${activeTournamentId ?? ''}&matchday=${selectedMatchday}`}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-colors border ${
+              type === t
+                ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
+                : 'text-slate-400 border-[#1e2d5a] hover:border-[#c9a84c]/50 hover:text-white'
+            }`}
+          >
+            {t}
+          </Link>
+        ))}
+      </div>
+
+      {/* Tournament selector */}
+      {(tournaments ?? []).length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {(tournaments ?? []).map((t) => (
+            <Link
+              key={t.id}
+              href={`/admin/export?type=${type}&tournament_id=${t.id}&matchday=${selectedMatchday}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                t.id === activeTournamentId
+                  ? 'bg-[#1e2d5a] text-white border-[#c9a84c]/60'
+                  : 'text-slate-500 border-[#1e2d5a] hover:text-white'
+              }`}
+            >
+              {t.name}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Matchday selector (fixtures + results only) */}
+      {type !== 'standings' && matchdays.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {matchdays.map((md) => (
+            <Link
+              key={md}
+              href={`/admin/export?type=${type}&tournament_id=${activeTournamentId ?? ''}&matchday=${md}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                md === selectedMatchday
+                  ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
+                  : 'text-slate-500 border-[#1e2d5a] hover:border-[#c9a84c]/50 hover:text-white'
+              }`}
+            >
+              MD {md}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* ── Card preview (this div is what gets exported) ────────────────── */}
+      <div className="overflow-x-auto pb-4">
+        <div id="export-card" style={card}>
+
+          {/* Header */}
+          <div style={{ borderBottom: `3px solid ${accent}`, paddingBottom: '16px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '50%',
+                background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 900, fontSize: '13px', color: '#0a1128', letterSpacing: '0.02em', flexShrink: 0,
+              }}>
+                EFA
+              </div>
+              <div>
+                <div style={{ color: accent, fontWeight: 700, fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>
+                  {selectedTournament?.name ?? 'EFA'}
+                </div>
+                <div style={{ color: '#ffffff', fontWeight: 900, fontSize: '20px', lineHeight: 1, letterSpacing: '-0.01em' }}>
+                  {typeLabel}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── FIXTURES ──────────────────────────────────────────────────── */}
+          {type === 'fixtures' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {fixtures.length === 0 ? (
+                <div style={{ color: '#64748b', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
+                  No fixtures found for Matchday {selectedMatchday}
+                </div>
+              ) : (
+                fixtures.map((f: any, i: number) => (
+                  <div
+                    key={f.id}
+                    style={{
+                      display: 'flex', alignItems: 'center',
+                      ...(i % 2 === 0 ? rowEven : rowOdd),
+                      padding: '13px 16px',
+                    }}
+                  >
+                    <div style={{ flex: 1, color: '#ffffff', fontWeight: 600, fontSize: '14px', textAlign: 'right', paddingRight: '12px' }}>
+                      {(f.home_team as any)?.name ?? '—'}
+                    </div>
+                    <div style={{ color: accent, fontWeight: 900, fontSize: '12px', minWidth: '36px', textAlign: 'center' }}>
+                      VS
+                    </div>
+                    <div style={{ flex: 1, color: '#ffffff', fontWeight: 600, fontSize: '14px', paddingLeft: '12px' }}>
+                      {(f.away_team as any)?.name ?? '—'}
+                    </div>
+                  </div>
+                ))
+              )}
+              {fixtureDate && (
+                <div style={{ color: '#64748b', fontSize: '11px', textAlign: 'center', marginTop: '10px', letterSpacing: '0.04em' }}>
+                  {fixtureDate}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── RESULTS ───────────────────────────────────────────────────── */}
+          {type === 'results' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {results.length === 0 ? (
+                <div style={{ color: '#64748b', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
+                  No results yet for Matchday {selectedMatchday}
+                </div>
+              ) : (
+                results.map((f: any, i: number) => {
+                  const r = f.results?.[0]
+                  const homeWon = r && r.home_score > r.away_score
+                  const awayWon = r && r.away_score > r.home_score
+                  return (
+                    <div
+                      key={f.id}
+                      style={{
+                        display: 'flex', alignItems: 'center',
+                        ...(i % 2 === 0 ? rowEven : rowOdd),
+                        padding: '13px 16px',
+                      }}
+                    >
+                      <div style={{ flex: 1, textAlign: 'right', paddingRight: '12px' }}>
+                        <span style={{ color: homeWon ? '#ffffff' : '#64748b', fontWeight: homeWon ? 700 : 400, fontSize: '14px' }}>
+                          {(f.home_team as any)?.name ?? '—'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '80px', justifyContent: 'center' }}>
+                        <span style={{ color: homeWon ? accent : '#ffffff', fontWeight: 900, fontSize: '22px', lineHeight: 1 }}>{r?.home_score ?? '?'}</span>
+                        <span style={{ color: '#334155', fontWeight: 700, fontSize: '14px' }}>–</span>
+                        <span style={{ color: awayWon ? accent : '#ffffff', fontWeight: 900, fontSize: '22px', lineHeight: 1 }}>{r?.away_score ?? '?'}</span>
+                      </div>
+                      <div style={{ flex: 1, paddingLeft: '12px' }}>
+                        <span style={{ color: awayWon ? '#ffffff' : '#64748b', fontWeight: awayWon ? 700 : 400, fontSize: '14px' }}>
+                          {(f.away_team as any)?.name ?? '—'}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )}
+
+          {/* ── STANDINGS (league) ────────────────────────────────────────── */}
+          {type === 'standings' && selectedTournament?.type === 'league' && (
+            <StandingsTable rows={standings} />
+          )}
+
+          {/* ── STANDINGS (UCL / Europa — grouped) ───────────────────────── */}
+          {type === 'standings' && selectedTournament?.type !== 'league' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {Object.keys(groupStandings).length === 0 ? (
+                <div style={{ color: '#64748b', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
+                  No standings data available
+                </div>
+              ) : (
+                Object.entries(groupStandings).sort().map(([group, rows]) => (
+                  <div key={group}>
+                    <div style={{ color: accent, fontWeight: 700, fontSize: '11px', letterSpacing: '0.1em', marginBottom: '10px' }}>
+                      GROUP {group}
+                    </div>
+                    <StandingsTable rows={rows} />
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Footer */}
+          <div style={{ borderTop: '1px solid #1e2d5a', marginTop: '24px', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ color: '#475569', fontSize: '10px', letterSpacing: '0.06em' }}>
+              EFA — EFOOTBALL FEDERAL ASSOCIATION
+            </div>
+            <div style={{ color: '#475569', fontSize: '10px' }}>
+              efa-fxyk.vercel.app
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
