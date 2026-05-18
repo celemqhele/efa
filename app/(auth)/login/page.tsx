@@ -22,13 +22,19 @@ function LoginForm() {
 
     const email = `${form.username.toLowerCase().trim()}@efa.local`
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password: form.password,
     })
 
     if (authError) {
-      setError('Invalid username or password.')
+      setError(authError.message)
+      setLoading(false)
+      return
+    }
+
+    if (!data.session) {
+      setError('Login failed — email may need confirmation. Check Supabase Auth settings.')
       setLoading(false)
       return
     }
