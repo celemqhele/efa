@@ -33,10 +33,8 @@ export default async function ResultSubmitPage({
     confirmationsByFixture[c.fixture_id]!.push(c)
   }
 
-  // Only keep fixtures that are awaiting_confirmation OR have at least one confirmation
-  const relevantFixtures = (pendingFixtures ?? []).filter(
-    (fx) => fx.status === 'awaiting_confirmation' || (confirmationsByFixture[fx.id]?.length ?? 0) > 0
-  )
+  // Show all scheduled and awaiting_confirmation fixtures (admin can submit for any)
+  const relevantFixtures = pendingFixtures ?? []
 
   // Team name mappings for OCR
   const { data: teamNameMappings } = await supabase

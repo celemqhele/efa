@@ -1,3 +1,5 @@
+'use client'
+
 import Image from 'next/image'
 import { getTeamLogo, type LogoContext } from '@/lib/logo-resolver'
 

@@ -31,11 +31,12 @@ export async function DELETE(request: Request) {
 
   const adminSupabase = await createAdminClient()
 
-  // Delete in dependency order (fixtures → standings → participants → tournament)
+  // Delete in dependency order
   await adminSupabase.from('fixtures').delete().eq('tournament_id', tournament_id)
   await adminSupabase.from('standings').delete().eq('tournament_id', tournament_id)
   await (adminSupabase.from('group_standings') as any).delete().eq('tournament_id', tournament_id)
   await adminSupabase.from('tournament_participants').delete().eq('tournament_id', tournament_id)
+  await adminSupabase.from('trophies').delete().eq('tournament_id', tournament_id)
 
   const { error } = await adminSupabase
     .from('tournaments')

@@ -59,29 +59,62 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
 
   const lines = text.split('\n').map((l: string) => l.trim()).filter(Boolean)
 
-  // Parse header line: "TeamA X - Y TeamB" or "TeamA X Y TeamB"
   let homeTeamOcr = ''
   let awayTeamOcr = ''
   let homeScore = 0
   let awayScore = 0
 
-  const headerPattern = /^(.+?)\s+(\d+)\s*[-–]\s*(\d+)\s+(.+)$/
+  // Strategy 1: standard "Team A X - Y Team B" format
+  const standardHeader = /^(.+?)\s+(\d+)\s*[-–]\s*(\d+)\s+(.+)$/
+  // Strategy 2: eFootball style — team name then score, no dash, scores separated by non-alphanumeric
+  // e.g. "BE HUMBLE 8 [icon] 0 [noise]" → find line with exactly two digit groups separated by non-word chars
+  const efootballHeader = /^(.+?)\s+(\d+)\s+[^0-9a-zA-Z]+\s*(\d+)/
+
   for (const line of lines) {
-    const m = line.match(headerPattern)
-    if (m) {
-      homeTeamOcr = m[1].trim()
-      homeScore = parseInt(m[2])
-      awayScore = parseInt(m[3])
-      awayTeamOcr = m[4].trim()
+    // Skip the "Full Time" line itself
+    if (/full\s*time/i.test(line)) continue
+
+    const m1 = line.match(standardHeader)
+    if (m1) {
+      homeTeamOcr = m1[1].trim()
+      homeScore = parseInt(m1[2])
+      awayScore = parseInt(m1[3])
+      awayTeamOcr = m1[4].trim()
       break
+    }
+
+    const m2 = line.match(efootballHeader)
+    if (m2 && !homeTeamOcr) {
+      homeTeamOcr = m2[1].trim()
+      homeScore = parseInt(m2[2])
+      awayScore = parseInt(m2[3])
+      // Away team name not reliably parseable in eFootball format — leave blank for manual matching
+      awayTeamOcr = ''
+    }
+  }
+
+  // If still no scores found, try extracting the two numbers closest to "Full Time" header
+  if (!homeTeamOcr) {
+    const fullTimeIdx = lines.findIndex((l) => /full\s*time/i.test(l))
+    if (fullTimeIdx > 0) {
+      const headerLine = lines[fullTimeIdx - 1]
+      const digits = headerLine.match(/(\d+)/g)
+      if (digits && digits.length >= 2) {
+        homeScore = parseInt(digits[digits.length - 2])
+        awayScore = parseInt(digits[digits.length - 1])
+        // Extract team name as everything before the first digit group
+        const nameMatch = headerLine.match(/^([A-Za-z\s]+?)\s+\d/)
+        homeTeamOcr = nameMatch ? nameMatch[1].trim() : ''
+      }
     }
   }
 
   const stats: Partial<ParsedMatchStats> = {}
 
-  // Parse stat table rows: "HomeValue | Label | AwayValue" or "HomeValue Label AwayValue"
+  // Parse stat table rows — handles both pipe-delimited and space-delimited formats:
+  // "51% | Possession | 49%"  or  "51% Possession 49%"  or  "19 Shots 3"
   const statPattern = /^(\d+%?)\s*[|]\s*(.+?)\s*[|]\s*(\d+%?)$/
-  const statPatternAlt = /^(\d+%?)\s+(.+?)\s+(\d+%?)$/
+  const statPatternAlt = /^(\d+%?)\s+([A-Za-z][A-Za-z\s]+?)\s+(\d+%?)$/
 
   for (const line of lines) {
     const m = line.match(statPattern) || line.match(statPatternAlt)

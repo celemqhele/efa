@@ -33,6 +33,9 @@ export async function POST(request: Request) {
     // Delete participants
     await adminSupabase.from('tournament_participants').delete().in('tournament_id', tournamentIds)
 
+    // Delete trophies linked to these tournaments
+    await adminSupabase.from('trophies').delete().in('tournament_id', tournamentIds)
+
     // Delete the tournaments themselves
     await adminSupabase.from('tournaments').delete().in('id', tournamentIds)
   }
