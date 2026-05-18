@@ -223,6 +223,54 @@ function SeasonCard({
   )
 }
 
+// ─── Team picker button ───────────────────────────────────────────────────────
+
+function TeamPickerButton({
+  team,
+  selected,
+  disabled,
+  badgeText,
+  accentClass,
+  onClick,
+}: {
+  team: Team
+  selected: boolean
+  disabled: boolean
+  badgeText?: string
+  accentClass: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled && !selected}
+      className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-colors ${
+        selected
+          ? `${accentClass} text-white`
+          : disabled
+          ? 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-600 cursor-not-allowed'
+          : 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-300 hover:border-slate-500/50'
+      }`}
+    >
+      {team.logo_league_folder ? (
+        <Image
+          src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+          alt={team.name}
+          width={20}
+          height={20}
+          className="object-contain shrink-0"
+        />
+      ) : (
+        <div className="w-5 h-5 rounded bg-[#1e2d5a] shrink-0" />
+      )}
+      <span className="truncate flex-1">{team.name}</span>
+      {selected && !badgeText && <span className="ml-auto text-current shrink-0">✓</span>}
+      {badgeText && <span className="ml-auto shrink-0 text-[9px] text-slate-500">{badgeText}</span>}
+    </button>
+  )
+}
+
 // ─── Start Phase Dialog ───────────────────────────────────────────────────────
 
 function StartPhaseDialog({
@@ -243,19 +291,31 @@ function StartPhaseDialog({
   const [seasonName, setSeasonName] = useState('')
   const [startDate, setStartDate] = useState(today)
 
-  // Auto-compute end date: start + 45 days (display only)
   const endDate = (() => {
     const d = new Date(startDate)
     d.setDate(d.getDate() + 45)
     return d.toISOString().split('T')[0]
   })()
 
-  // Pre-populate UCL/Europa from previous season standings
+  // League: default all teams selected
+  const [leagueTeamIds, setLeagueTeamIds] = useState<string[]>(allTeams.map((t) => t.id))
+
+  // UCL/Europa: pre-populate from previous season standings
   const prevTeamIds = prevSeasonStandings?.map((s) => s.team_id) ?? []
   const [uclTeamIds, setUclTeamIds] = useState<string[]>(prevTeamIds.slice(0, 12))
   const [europaTeamIds, setEuropaTeamIds] = useState<string[]>(prevTeamIds.slice(12, 20))
 
-  const isFirstPhase = prevTeamIds.length === 0
+  const leagueTeamObjects = allTeams.filter((t) => leagueTeamIds.includes(t.id))
+
+  function toggleLeague(id: string) {
+    if (leagueTeamIds.includes(id)) {
+      setLeagueTeamIds((prev) => prev.filter((x) => x !== id))
+      setUclTeamIds((prev) => prev.filter((x) => x !== id))
+      setEuropaTeamIds((prev) => prev.filter((x) => x !== id))
+    } else if (leagueTeamIds.length < 20) {
+      setLeagueTeamIds((prev) => [...prev, id])
+    }
+  }
 
   function toggleUcl(id: string) {
     setUclTeamIds((prev) =>
@@ -279,6 +339,7 @@ function StartPhaseDialog({
         body: JSON.stringify({
           season_name: seasonName,
           start_date: startDate,
+          league_team_ids: leagueTeamIds,
           ucl_team_ids: uclTeamIds,
           europa_team_ids: europaTeamIds,
         }),
@@ -301,14 +362,19 @@ function StartPhaseDialog({
       if (!startDate) { setError('Start date is required.'); return }
     }
     if (step === 2) {
+      if (leagueTeamIds.length !== 20) {
+        setError(`Select exactly 20 teams for the league. (${leagueTeamIds.length}/20 selected)`)
+        return
+      }
+    }
+    if (step === 3) {
       if (uclTeamIds.length !== 12) { setError('Select exactly 12 teams for UCL.'); return }
       if (europaTeamIds.length !== 8) { setError('Select exactly 8 teams for Europa.'); return }
     }
     setStep((s) => s + 1)
   }
 
-  const managedCount = allTeams.filter((t) => t.manager_id !== null).length
-  const totalTeams = allTeams.length
+  const STEP_LABELS = ['Phase Details', 'League Teams', 'UCL & Europa Draw', 'Confirm & Launch']
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-4 overflow-y-auto">
@@ -318,8 +384,7 @@ function StartPhaseDialog({
           <div>
             <h2 className="text-white font-bold text-lg">Start New Phase</h2>
             <p className="text-slate-500 text-xs mt-0.5">
-              Step {step} of 3:{' '}
-              {step === 1 ? 'Phase Details' : step === 2 ? 'UCL & Europa Draw' : 'Confirm & Launch'}
+              Step {step} of 4: {STEP_LABELS[step - 1]}
             </p>
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white text-xl leading-none">
@@ -331,7 +396,7 @@ function StartPhaseDialog({
         <div className="h-0.5 bg-[#1e2d5a]">
           <div
             className="h-full bg-[#c9a84c] transition-all"
-            style={{ width: `${(step / 3) * 100}%` }}
+            style={{ width: `${(step / 4) * 100}%` }}
           />
         </div>
 
@@ -369,26 +434,54 @@ function StartPhaseDialog({
                   />
                 </div>
               </div>
-              <div className="bg-[#0f1a3d] rounded-xl p-4 text-xs text-slate-400 space-y-2">
-                <p className="font-medium text-slate-300">What gets generated automatically:</p>
+              <div className="bg-[#0f1a3d] rounded-xl p-4 text-xs text-slate-400 space-y-1">
+                <p className="font-medium text-slate-300">What gets generated:</p>
                 <ul className="list-disc list-inside space-y-1 mt-1">
-                  <li>
-                    EFA Premier League — all {totalTeams} teams ({managedCount} managed, {totalTeams - managedCount} ghost), 380 fixtures over 38 matchdays
-                  </li>
+                  <li>EFA Premier League — 20 teams you choose, 380 fixtures (38 matchdays)</li>
                   <li>EFA Champions League — 12 teams, 2 groups of 6, 60 group fixtures</li>
                   <li>EFA Europa League — 8 teams, 2 groups of 4, 24 group fixtures</li>
-                  <li>2 rounds per weekday, 3 rounds per weekend / public holiday</li>
-                  <li>UCL & Europa spread throughout the 45-day phase</li>
+                  <li>2 rounds per weekday, 3 per weekend / public holiday</li>
                 </ul>
               </div>
             </div>
           )}
 
-          {/* ── Step 2: UCL & Europa draw ── */}
+          {/* ── Step 2: League teams (exactly 20) ── */}
           {step === 2 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-semibold text-sm">EFA Premier League</h3>
+                <span className={`text-xs font-bold ${leagueTeamIds.length === 20 ? 'text-green-400' : 'text-[#c9a84c]'}`}>
+                  {leagueTeamIds.length}/20
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Select exactly 20 teams. UCL/Europa teams must be in this list.
+              </p>
+              <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+                {allTeams.map((team) => {
+                  const sel = leagueTeamIds.includes(team.id)
+                  const atMax = !sel && leagueTeamIds.length >= 20
+                  return (
+                    <TeamPickerButton
+                      key={team.id}
+                      team={team}
+                      selected={sel}
+                      disabled={atMax}
+                      accentClass="bg-blue-500/10 border-blue-500/40"
+                      onClick={() => toggleLeague(team.id)}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 3: UCL & Europa draw (from league teams) ── */}
+          {step === 3 && (
             <div className="space-y-6">
-              {!isFirstPhase && (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-sm text-blue-300">
+              {prevTeamIds.length > 0 && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-300">
                   Pre-populated from previous phase standings. Adjust as needed.
                 </div>
               )}
@@ -397,49 +490,24 @@ function StartPhaseDialog({
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-white font-semibold text-sm">EFA Champions League</h3>
-                  <span
-                    className={`text-xs font-bold ${
-                      uclTeamIds.length === 12 ? 'text-green-400' : 'text-[#c9a84c]'
-                    }`}
-                  >
+                  <span className={`text-xs font-bold ${uclTeamIds.length === 12 ? 'text-green-400' : 'text-[#c9a84c]'}`}>
                     {uclTeamIds.length}/12
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
-                  {allTeams.map((team) => {
+                  {leagueTeamObjects.map((team) => {
                     const sel = uclTeamIds.includes(team.id)
                     const inEuropa = europaTeamIds.includes(team.id)
-                    const disabled = (!sel && uclTeamIds.length >= 12) || inEuropa
                     return (
-                      <button
+                      <TeamPickerButton
                         key={team.id}
-                        type="button"
-                        onClick={() => !disabled && toggleUcl(team.id)}
-                        className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-colors ${
-                          sel
-                            ? 'bg-[#c9a84c]/10 border-[#c9a84c]/40 text-white'
-                            : inEuropa
-                            ? 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-600 cursor-not-allowed'
-                            : disabled
-                            ? 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-600 cursor-not-allowed'
-                            : 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-300 hover:border-[#c9a84c]/30'
-                        }`}
-                      >
-                        {team.logo_league_folder ? (
-                          <Image
-                            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                            alt={team.name}
-                            width={20}
-                            height={20}
-                            className="object-contain shrink-0"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 rounded bg-[#1e2d5a] shrink-0" />
-                        )}
-                        <span className="truncate">{team.name}</span>
-                        {sel && <span className="ml-auto text-[#c9a84c] shrink-0">✓</span>}
-                        {inEuropa && <span className="ml-auto text-orange-500 shrink-0 text-[9px]">EL</span>}
-                      </button>
+                        team={team}
+                        selected={sel}
+                        disabled={(!sel && uclTeamIds.length >= 12) || inEuropa}
+                        badgeText={inEuropa ? 'EL' : undefined}
+                        accentClass="bg-[#c9a84c]/10 border-[#c9a84c]/40"
+                        onClick={() => !inEuropa && toggleUcl(team.id)}
+                      />
                     )
                   })}
                 </div>
@@ -449,49 +517,24 @@ function StartPhaseDialog({
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-white font-semibold text-sm">EFA Europa League</h3>
-                  <span
-                    className={`text-xs font-bold ${
-                      europaTeamIds.length === 8 ? 'text-green-400' : 'text-orange-400'
-                    }`}
-                  >
+                  <span className={`text-xs font-bold ${europaTeamIds.length === 8 ? 'text-green-400' : 'text-orange-400'}`}>
                     {europaTeamIds.length}/8
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
-                  {allTeams.map((team) => {
+                  {leagueTeamObjects.map((team) => {
                     const sel = europaTeamIds.includes(team.id)
                     const inUcl = uclTeamIds.includes(team.id)
-                    const disabled = (!sel && europaTeamIds.length >= 8) || inUcl
                     return (
-                      <button
+                      <TeamPickerButton
                         key={team.id}
-                        type="button"
-                        onClick={() => !disabled && toggleEuropa(team.id)}
-                        className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-colors ${
-                          sel
-                            ? 'bg-orange-500/10 border-orange-500/40 text-white'
-                            : inUcl
-                            ? 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-600 cursor-not-allowed'
-                            : disabled
-                            ? 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-600 cursor-not-allowed'
-                            : 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-300 hover:border-orange-400/20'
-                        }`}
-                      >
-                        {team.logo_league_folder ? (
-                          <Image
-                            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                            alt={team.name}
-                            width={20}
-                            height={20}
-                            className="object-contain shrink-0"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 rounded bg-[#1e2d5a] shrink-0" />
-                        )}
-                        <span className="truncate">{team.name}</span>
-                        {sel && <span className="ml-auto text-orange-400 shrink-0">✓</span>}
-                        {inUcl && <span className="ml-auto text-[#c9a84c] shrink-0 text-[9px]">UCL</span>}
-                      </button>
+                        team={team}
+                        selected={sel}
+                        disabled={(!sel && europaTeamIds.length >= 8) || inUcl}
+                        badgeText={inUcl ? 'UCL' : undefined}
+                        accentClass="bg-orange-500/10 border-orange-500/40"
+                        onClick={() => !inUcl && toggleEuropa(team.id)}
+                      />
                     )
                   })}
                 </div>
@@ -499,8 +542,8 @@ function StartPhaseDialog({
             </div>
           )}
 
-          {/* ── Step 3: Confirm ── */}
-          {step === 3 && (
+          {/* ── Step 4: Confirm ── */}
+          {step === 4 && (
             <div className="space-y-4">
               <h3 className="text-white font-semibold">Ready to launch</h3>
               <div className="bg-[#0f1a3d] rounded-xl p-4 space-y-3 text-sm">
@@ -510,30 +553,20 @@ function StartPhaseDialog({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Duration</span>
-                  <span className="text-white">
-                    {startDate} → {endDate} (45 days)
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">League teams</span>
-                  <span className="text-white">{allTeams.length} teams</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">League fixtures</span>
-                  <span className="text-white font-medium">380</span>
+                  <span className="text-white">{startDate} → {endDate} (45 days)</span>
                 </div>
                 <div className="border-t border-[#1e2d5a] pt-3 space-y-2">
                   <div className="flex justify-between">
+                    <span className="text-blue-400">League teams</span>
+                    <span className="text-blue-400 font-medium">{leagueTeamIds.length} teams · 380 fixtures</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-[#c9a84c]">UCL teams</span>
-                    <span className="text-[#c9a84c] font-medium">
-                      {uclTeamIds.length} teams · 60 group fixtures
-                    </span>
+                    <span className="text-[#c9a84c] font-medium">{uclTeamIds.length} teams · 60 group fixtures</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-orange-400">Europa teams</span>
-                    <span className="text-orange-400 font-medium">
-                      {europaTeamIds.length} teams · 24 group fixtures
-                    </span>
+                    <span className="text-orange-400 font-medium">{europaTeamIds.length} teams · 24 group fixtures</span>
                   </div>
                 </div>
                 <div className="border-t border-[#1e2d5a] pt-3 flex justify-between font-semibold">
@@ -561,7 +594,7 @@ function StartPhaseDialog({
             {step === 1 ? 'Cancel' : 'Back'}
           </button>
 
-          {step < 3 ? (
+          {step < 4 ? (
             <button onClick={nextStep} className="btn-gold text-sm px-8">
               Next
             </button>

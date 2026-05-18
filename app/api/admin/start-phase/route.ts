@@ -22,6 +22,7 @@ export async function POST(request: Request) {
   let body: {
     season_name: string
     start_date: string
+    league_team_ids: string[]
     ucl_team_ids: string[]
     europa_team_ids: string[]
     ucl_groups?: { A: string[]; B: string[] }
@@ -34,10 +35,13 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { season_name, start_date, ucl_team_ids, europa_team_ids, ucl_groups, europa_groups } = body
+  const { season_name, start_date, league_team_ids, ucl_team_ids, europa_team_ids, ucl_groups, europa_groups } = body
 
   if (!season_name?.trim() || !start_date) {
     return Response.json({ error: 'season_name and start_date are required' }, { status: 400 })
+  }
+  if (!league_team_ids || league_team_ids.length !== 20) {
+    return Response.json({ error: 'Exactly 20 league team IDs required' }, { status: 400 })
   }
   if (!ucl_team_ids || ucl_team_ids.length !== 12) {
     return Response.json({ error: 'Exactly 12 UCL team IDs required' }, { status: 400 })
@@ -45,23 +49,27 @@ export async function POST(request: Request) {
   if (!europa_team_ids || europa_team_ids.length !== 8) {
     return Response.json({ error: 'Exactly 8 Europa team IDs required' }, { status: 400 })
   }
+  if (!ucl_team_ids.every((id) => league_team_ids.includes(id))) {
+    return Response.json({ error: 'UCL teams must all be in the league' }, { status: 400 })
+  }
+  if (!europa_team_ids.every((id) => league_team_ids.includes(id))) {
+    return Response.json({ error: 'Europa teams must all be in the league' }, { status: 400 })
+  }
 
   const adminSupabase = await createAdminClient()
 
   // End date = start + 45 days (server-authoritative)
   const end_date = format(addDays(new Date(start_date), 45), 'yyyy-MM-dd')
 
-  // All teams (managed + ghost) — the full 20-team league
+  // Load only teams in the league (for manager notification lookups)
   const { data: allTeams, error: teamsErr } = await adminSupabase
     .from('teams')
     .select('id, name, manager_id')
-    .order('name')
+    .in('id', league_team_ids)
 
   if (teamsErr || !allTeams || allTeams.length < 2) {
     return Response.json({ error: 'Could not load teams' }, { status: 500 })
   }
-
-  const league_team_ids = allTeams.map((t) => t.id)
 
   // Split UCL/Europa into groups if not explicitly provided
   const resolvedUclGroups = ucl_groups ?? {

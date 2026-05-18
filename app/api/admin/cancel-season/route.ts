@@ -14,25 +14,38 @@ export async function POST(request: Request) {
 
   const adminSupabase = await createAdminClient()
 
-  // Mark all tournaments in this season as cancelled/upcoming
-  await adminSupabase
+  // Get all tournaments in this season
+  const { data: tournaments } = await adminSupabase
     .from('tournaments')
-    .update({ status: 'upcoming' })
+    .select('id')
     .eq('season_id', season_id)
-    .eq('status', 'active')
 
-  // Mark season as cancelled (store as 'upcoming' so it can be restarted, or use a cancelled state)
-  await adminSupabase
-    .from('seasons')
-    .update({ status: 'upcoming' })
-    .eq('id', season_id)
+  const tournamentIds = (tournaments ?? []).map((t) => t.id)
+
+  if (tournamentIds.length > 0) {
+    // Delete all fixtures for every tournament in this season
+    await adminSupabase.from('fixtures').delete().in('tournament_id', tournamentIds)
+
+    // Delete standings + group standings
+    await adminSupabase.from('standings').delete().in('tournament_id', tournamentIds)
+    await (adminSupabase.from('group_standings') as any).delete().in('tournament_id', tournamentIds)
+
+    // Delete participants
+    await adminSupabase.from('tournament_participants').delete().in('tournament_id', tournamentIds)
+
+    // Delete the tournaments themselves
+    await adminSupabase.from('tournaments').delete().in('id', tournamentIds)
+  }
+
+  // Delete the season
+  await adminSupabase.from('seasons').delete().eq('id', season_id)
 
   await adminSupabase.from('audit_log').insert({
     admin_id: user.id,
     action: 'cancel_season',
     target_type: 'season',
     target_id: season_id,
-    details: {},
+    details: { tournaments_deleted: tournamentIds.length },
   })
 
   return Response.json({ success: true })
