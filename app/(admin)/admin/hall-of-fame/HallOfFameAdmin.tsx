@@ -84,7 +84,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
         season_id: seasonId,
         team_id: teamId,
         trophy_type: trophyType as 'league' | 'ucl' | 'europa' | 'super_cup',
-        tournament_id: tournamentId || null,
+        tournament_id: tournamentId || undefined,
         awarded_at: awardedAt,
       })
       .select(`
