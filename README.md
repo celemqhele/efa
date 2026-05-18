@@ -289,8 +289,8 @@ Open http://localhost:3000
 - [ ] Test admin login and dashboard
 - [ ] Schedule Supabase Edge Function crons (abandonment + notification)
 - [ ] Set up web push VAPID (notifications to mobile)
-- [ ] Season setup: create first tournament via admin panel
-- [ ] Fixture generation via admin
+- [x] Season setup: use `/admin/seasons` to start first season
+- [x] Fixture generation: automatic on season start
 
 ---
 
@@ -302,5 +302,39 @@ Open http://localhost:3000
 No. The three admin accounts (`mubizamaan`, `celemqhele`, `wandile`) were already created successfully. The `WHERE NOT EXISTS` guard in the SQL means re-running it is safe but unnecessary. The SQL block in the README is purely for reference if a fresh Supabase project ever needs to be set up.
 
 ---
+
+---
+
+## Changes — 2026-05-18 (session 2)
+
+### Standings page overhaul
+- Fixed UCL qualification band: **1–12** (was 1–4)
+- Fixed Europa band: **13–20** (was 5–8), removed relegation zone
+- Added **competition dropdown** — lets users switch between League, UCL, Europa, Super Cup, and any custom competitions
+- League shows full table; UCL shows group tables (4 groups of 3) + knockout bracket; Europa/Super Cup show knockout bracket
+
+### Tournament creator updates
+- UCL auto-population now correctly selects **top 12** teams (was 4)
+- Europa auto-population now correctly selects **bottom 8** teams (was 4)
+- Added **Custom Competition** type option — admin sets a slug and a display name, picks any teams
+
+### Admin Seasons system (new)
+New page: `/admin/seasons`
+
+- **Season timeline** — shows all seasons with status, league progress bar, UCL/Europa/Super Cup status
+- **Start Season wizard** (multi-step modal):
+  1. Season name + date range
+  2. Pick 20 league teams
+  3. Review/edit UCL qualifiers (top 12 from previous season, auto-populated) — skipped for first season
+  4. Review/edit Europa qualifiers (bottom 8 from previous season, auto-populated) — skipped for first season
+  5. Confirm → system creates league + UCL + Europa tournaments, generates all league fixtures, notifies all participants
+- **End Season** button — available only when all league fixtures are done; locks results, sends qualification notifications
+- **Cancel Season** button — with double-confirm guard; resets season to `upcoming`
+- Next season shown as a greyed-out "Locked" card while a season is active
+
+New API routes:
+- `POST /api/admin/start-season` — creates season record, league + UCL + Europa tournaments, generates fixtures, sends notifications
+- `POST /api/admin/end-season` — completes season, sends UCL/Europa qualification notifications
+- `POST /api/admin/cancel-season` — resets active season back to upcoming
 
 *Last updated: 2026-05-18*

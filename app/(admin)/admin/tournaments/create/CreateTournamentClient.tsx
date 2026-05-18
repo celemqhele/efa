@@ -39,8 +39,8 @@ const TOURNAMENT_NAMES: Record<string, string> = {
   super_cup: 'EFA Super Cup',
 }
 
-const UCL_SPOTS = 4
-const EUROPA_SPOTS = 4
+const UCL_SPOTS = 12
+const EUROPA_SPOTS = 8
 
 export default function CreateTournamentClient({ seasons, allTeams, activeLeagueName, leagueStandings }: Props) {
   const router = useRouter()
@@ -54,7 +54,8 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   const [newSeasonLeague, setNewSeasonLeague] = useState('')
 
   // Tournament
-  const [type, setType] = useState<'league' | 'ucl' | 'europa' | 'super_cup'>('league')
+  const [type, setType] = useState<'league' | 'ucl' | 'europa' | 'super_cup' | 'custom'>('league')
+  const [customTypeName, setCustomTypeName] = useState('')
   const [name, setName] = useState(TOURNAMENT_NAMES.league)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -68,15 +69,16 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   const europaTeamIds = leagueStandings.slice(UCL_SPOTS, UCL_SPOTS + EUROPA_SPOTS).map((s) => s.team_id)
 
   useEffect(() => {
-    setName(TOURNAMENT_NAMES[type] ?? type)
+    if (type !== 'custom') setName(TOURNAMENT_NAMES[type] ?? type)
     if (type === 'ucl') {
       setSelectedTeamIds(topTeamIds)
     } else if (type === 'europa') {
       setSelectedTeamIds(europaTeamIds)
     } else if (type === 'super_cup') {
       setSelectedTeamIds([])
-    } else {
-      // Keep current for league
+    } else if (type === 'custom') {
+      setSelectedTeamIds([])
+      setName('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
@@ -100,7 +102,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
     setError('')
 
     if (!name.trim()) return setError('Tournament name is required.')
-    if (type === 'league' && selectedTeamIds.length < 2) return setError('Select at least 2 teams for a league.')
+    if ((type === 'league' || type === 'custom') && selectedTeamIds.length < 2) return setError('Select at least 2 teams.')
     if (!startDate || !endDate) return setError('Start and end dates are required.')
 
     setLoading(true)
@@ -118,13 +120,14 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         seasonId = sData.id
       }
 
+      const resolvedType = type === 'custom' ? (customTypeName.trim() || 'custom') : type
       const res = await fetch('/api/admin/create-tournament', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           season_id: seasonId || null,
           name,
-          type,
+          type: resolvedType,
           start_date: startDate,
           end_date: endDate,
           team_ids: selectedTeamIds,
@@ -223,19 +226,34 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
               onChange={(e) => setType(e.target.value as any)}
               className="input-field"
             >
-              <option value="league">League</option>
-              <option value="ucl">UCL (Champions League)</option>
+              <option value="league">League (EFA Premier League)</option>
+              <option value="ucl">UCL – Champions League</option>
               <option value="europa">Europa League</option>
               <option value="super_cup">Super Cup</option>
+              <option value="custom">Custom Competition</option>
             </select>
           </div>
 
-          <div className="md:col-span-1 lg:col-span-1">
+          {type === 'custom' && (
+            <div>
+              <label className="form-label">Competition Type Slug</label>
+              <input
+                type="text"
+                value={customTypeName}
+                onChange={(e) => setCustomTypeName(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                placeholder="e.g. world_cup, fa_cup"
+                className="input-field"
+              />
+            </div>
+          )}
+
+          <div className={type === 'custom' ? '' : 'md:col-span-1 lg:col-span-1'}>
             <label className="form-label">Tournament Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder={type === 'custom' ? 'e.g. EFA World Cup 2026' : ''}
               className="input-field"
               required
             />
