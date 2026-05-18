@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #0a1128;
+  --navy-light: #0f1a3d;
+  --navy-card: #111c3d;
+  --navy-border: #1e2d5a;
+  --gold: #c9a84c;
+  --gold-light: #e0c06a;
+  --gold-dark: #a07830;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--navy);
+  color: #e2e8f0;
+  font-family: 'Poppins', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--navy-light);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--navy-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-dark);
+}
+
+@layer components {
+  .card {
+    @apply bg-navy-card border border-navy-border rounded-xl;
+  }
+
+  .btn-gold {
+    @apply bg-gold text-navy font-semibold px-4 py-2.5 rounded-lg
+           hover:bg-gold-light transition-colors duration-200 text-sm;
+  }
+
+  .btn-outline {
+    @apply border border-navy-border text-slate-300 font-medium px-4 py-2.5 rounded-lg
+           hover:border-gold/50 hover:text-gold transition-colors duration-200 text-sm;
+  }
+
+  .btn-danger {
+    @apply bg-red-600/20 border border-red-500/30 text-red-400 font-medium px-4 py-2.5 rounded-lg
+           hover:bg-red-600/30 transition-colors duration-200 text-sm;
+  }
+
+  .input-field {
+    @apply w-full bg-navy-light border border-navy-border rounded-lg px-4 py-3 text-white
+           placeholder-slate-500 focus:outline-none focus:border-gold/60 focus:ring-1 focus:ring-gold/30
+           transition-all duration-200 text-sm;
+  }
+
+  .form-label {
+    @apply block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider;
+  }
+
+  .badge-win {
+    @apply inline-flex items-center justify-center w-5 h-5 rounded bg-green-500/20
+           text-green-400 text-xs font-bold;
+  }
+
+  .badge-draw {
+    @apply inline-flex items-center justify-center w-5 h-5 rounded bg-yellow-500/20
+           text-yellow-400 text-xs font-bold;
+  }
+
+  .badge-loss {
+    @apply inline-flex items-center justify-center w-5 h-5 rounded bg-red-500/20
+           text-red-400 text-xs font-bold;
+  }
+
+  .section-header {
+    @apply text-lg font-bold text-white mb-4 flex items-center gap-2;
+  }
+
+  .mobile-tap {
+    @apply min-h-[44px] flex items-center;
+  }
+}
+
+@layer utilities {
+  .text-gold {
+    color: var(--gold);
+  }
+  .border-gold {
+    border-color: var(--gold);
+  }
+  .bg-navy {
+    background-color: var(--navy);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}

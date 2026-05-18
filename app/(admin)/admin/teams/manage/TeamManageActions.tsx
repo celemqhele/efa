@@ -1,0 +1,58 @@
+'use client'
+
+import { useState } from 'react'
+
+interface Props {
+  teamId: string
+  teamName: string
+  managerId: string | null
+  managerName: string | null
+}
+
+export default function TeamManageActions({ teamId, teamName, managerId, managerName }: Props) {
+  const [loading, setLoading] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [mgr, setMgr] = useState(managerId)
+
+  async function post(endpoint: string, body: object) {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? 'Action failed')
+    return data
+  }
+
+  async function handleRemoveManager() {
+    if (!mgr) return
+    const confirmed = confirm(`Remove "${managerName}" as manager of "${teamName}"?`)
+    if (!confirmed) return
+    setLoading('remove')
+    setError('')
+    try {
+      await post('/api/admin/sack', { teamId })
+      setMgr(null)
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {mgr && (
+        <button
+          onClick={handleRemoveManager}
+          disabled={loading === 'remove'}
+          className="btn-danger text-xs py-1 px-2.5"
+        >
+          {loading === 'remove' ? '...' : 'Remove Manager'}
+        </button>
+      )}
+      {error && <span className="text-red-400 text-xs">{error}</span>}
+    </div>
+  )
+}
