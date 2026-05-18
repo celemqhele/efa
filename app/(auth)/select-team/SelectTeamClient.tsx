@@ -39,6 +39,8 @@ export default function SelectTeamClient({ registry }: Props) {
       .from('teams')
       .select('id, logo_league_folder, logo_team_slug, manager_id')
       .then(({ data }) => setDbTeams(data ?? []))
+  // supabase ref is stable — intentional empty-ish dep array
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const nationalEntries = useMemo(() => registry.filter((e) => e.isNational), [registry])
@@ -83,52 +85,18 @@ export default function SelectTeamClient({ registry }: Props) {
     setLoading(true)
     setError('')
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
+    const { entry, team } = selectedTeam
+    const res = await fetch('/api/team/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder: entry.folder, slug: team.slug, name: team.name }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error ?? 'Failed to claim team.')
+      setLoading(false)
       return
     }
-
-    const { entry, team } = selectedTeam
-    const db = dbTeams.find(
-      (t) => t.logo_league_folder === entry.folder && t.logo_team_slug === team.slug
-    )
-
-    if (db) {
-      if (db.manager_id) {
-        setError('This team already has a manager. Pick another.')
-        setLoading(false)
-        return
-      }
-      const { error: e } = await supabase
-        .from('teams')
-        .update({ manager_id: user.id })
-        .eq('id', db.id)
-      if (e) {
-        setError(e.message)
-        setLoading(false)
-        return
-      }
-    } else {
-      const { error: e } = await supabase.from('teams').insert({
-        name: team.name,
-        logo_league_folder: entry.folder,
-        logo_team_slug: team.slug,
-        manager_id: user.id,
-      })
-      if (e) {
-        setError(e.message)
-        setLoading(false)
-        return
-      }
-    }
-
-    await supabase
-      .from('profiles')
-      .update({ avatar_url: logoSrc(entry.folder, team.slug) })
-      .eq('id', user.id)
 
     window.location.href = '/'
   }

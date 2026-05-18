@@ -87,6 +87,13 @@ export default async function TeamProfilePage({ params }: PageProps) {
   const currentForm = (primaryStanding?.form ?? '').slice(-6)
   const unbeatenRun = primaryStanding?.unbeaten_run ?? 0
 
+  // Manager tenure history
+  const { data: tenures } = await supabase
+    .from('manager_tenures' as any)
+    .select('id, manager_id, manager_username, started_at, ended_at, wins, draws, losses, goals_for, goals_against')
+    .eq('team_id', id)
+    .order('started_at', { ascending: false }) as any
+
   // H2H records vs all opponents
   const { data: allFixtures } = await supabase
     .from('fixtures')
@@ -318,6 +325,75 @@ export default async function TeamProfilePage({ params }: PageProps) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Manager History ──────────────────────────────────────────────── */}
+      {(tenures ?? []).length > 0 && (
+        <div className="card p-5">
+          <h2 className="section-header">
+            <span className="text-gold">👔</span> Manager History
+          </h2>
+          <div className="space-y-3">
+            {(tenures as any[]).map((tenure: any) => {
+              const isCurrent = !tenure.ended_at
+              const played = tenure.wins + tenure.draws + tenure.losses
+              return (
+                <div
+                  key={tenure.id}
+                  className={`rounded-xl border p-4 ${
+                    isCurrent
+                      ? 'border-[#c9a84c]/30 bg-[#c9a84c]/5'
+                      : 'border-navy-border bg-navy-light/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
+                      isCurrent ? 'bg-[#c9a84c]/20 text-[#c9a84c]' : 'bg-navy-border text-slate-400'
+                    }`}>
+                      {(tenure.manager_username?.[0] ?? '?').toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-white">@{tenure.manager_username}</p>
+                        {isCurrent && (
+                          <span className="text-xs bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 px-1.5 py-0.5 rounded-full font-semibold">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {new Date(tenure.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {tenure.ended_at
+                          ? ` → ${new Date(tenure.ended_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                          : ' → Present'}
+                      </p>
+                    </div>
+                    <div className="flex gap-4 shrink-0 text-center">
+                      <div>
+                        <p className="text-base font-black text-green-400">{tenure.wins}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">W</p>
+                      </div>
+                      <div>
+                        <p className="text-base font-black text-yellow-400">{tenure.draws}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">D</p>
+                      </div>
+                      <div>
+                        <p className="text-base font-black text-red-400">{tenure.losses}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">L</p>
+                      </div>
+                      {played > 0 && (
+                        <div>
+                          <p className="text-base font-black text-slate-300">{played}</p>
+                          <p className="text-[10px] text-slate-500 font-medium">P</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
