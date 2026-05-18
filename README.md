@@ -237,7 +237,8 @@ ON CONFLICT (id) DO UPDATE SET role = 'admin';
 
 ### `MIDDLEWARE_INVOCATION_FAILED` — 500 on every page
 **Problem:** Middleware imported `@supabase/ssr` which on Vercel's Linux build environment caused webpack to generate `__dirname` references in the Edge Runtime CJS wrapper. `__dirname` does not exist in V8 isolate (Edge) and the entire middleware crashed before any code ran. The error didn't appear in local Windows builds because webpack's CJS wrapping differs between platforms.  
-**Fix:** Removed `@supabase/ssr` from middleware entirely. Replaced with a lightweight cookie presence check (`request.cookies.getAll().some(c => c.name.includes('-auth-token'))`). Actual auth verification and role checks happen inside each protected server component, not in middleware.
+**Fix (attempt 1):** Removed `@supabase/ssr` from middleware. Replaced with cookie presence check — no network calls, no external imports.  
+**Fix (attempt 2, final):** Even after removing `@supabase/ssr`, the error persisted. Root cause confirmed: something in Next.js's own Edge Runtime webpack bundle references `__dirname`. Added `webpack.DefinePlugin({ __dirname: JSON.stringify('/') })` in `next.config.mjs` for `nextRuntime === 'edge'` to polyfill it. Middleware bundle dropped from 81.8 kB → 26.7 kB after the combined changes.
 
 ### `group_letter` column doesn't exist (BroadcastPanel)
 **Problem:** DB column is `group_name`, code referenced `group_letter`. Also referenced non-existent `position` column.  
