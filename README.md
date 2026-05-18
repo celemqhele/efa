@@ -236,8 +236,8 @@ ON CONFLICT (id) DO UPDATE SET role = 'admin';
 **Fix:** Didn't need to disable the trigger — just made it resilient and inserted users directly.
 
 ### `MIDDLEWARE_INVOCATION_FAILED` — 500 on every page
-**Problem:** Middleware's `supabase.auth.getUser()` makes a live network call; any failure (bad env var, timeout) threw an unhandled exception crashing the entire middleware.  
-**Fix:** Added env var guard (`if (!supabaseUrl || !supabaseKey) return next()`) and wrapped auth logic in `try/catch` with safe fallback.
+**Problem:** Middleware imported `@supabase/ssr` which on Vercel's Linux build environment caused webpack to generate `__dirname` references in the Edge Runtime CJS wrapper. `__dirname` does not exist in V8 isolate (Edge) and the entire middleware crashed before any code ran. The error didn't appear in local Windows builds because webpack's CJS wrapping differs between platforms.  
+**Fix:** Removed `@supabase/ssr` from middleware entirely. Replaced with a lightweight cookie presence check (`request.cookies.getAll().some(c => c.name.includes('-auth-token'))`). Actual auth verification and role checks happen inside each protected server component, not in middleware.
 
 ### `group_letter` column doesn't exist (BroadcastPanel)
 **Problem:** DB column is `group_name`, code referenced `group_letter`. Also referenced non-existent `position` column.  
