@@ -39,8 +39,8 @@ function LoginForm() {
       return
     }
 
-    router.push(redirect)
-    router.refresh()
+    // Hard navigation so the browser sends the fresh session cookies with the new request
+    window.location.href = redirect
   }
 
   return (

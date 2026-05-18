@@ -236,6 +236,10 @@ ON CONFLICT (id) DO UPDATE SET role = 'admin';
 **Problem:** `auth.users` is owned by `supabase_auth_admin`, the SQL editor user can't alter it.  
 **Fix:** Didn't need to disable the trigger — just made it resilient and inserted users directly.
 
+### Login succeeds but user appears not logged in
+**Problem:** `signInWithPassword` returned status 200 (Supabase logs confirmed). `router.push()` + `router.refresh()` has a race condition — Next.js server renders the new page before the session cookies are propagated to the browser cookie jar.  
+**Fix:** Replaced `router.push(redirect)` + `router.refresh()` with `window.location.href = redirect`. Hard navigation forces a full browser request which includes the freshly-set cookies, so the server component sees the session immediately.
+
 ### `MIDDLEWARE_INVOCATION_FAILED` — 500 on every page
 **Problem:** Middleware imported `@supabase/ssr` which on Vercel's Linux build environment caused webpack to generate `__dirname` references in the Edge Runtime CJS wrapper. `__dirname` does not exist in V8 isolate (Edge) and the entire middleware crashed before any code ran. The error didn't appear in local Windows builds because webpack's CJS wrapping differs between platforms.  
 **Fix (attempt 1):** Removed `@supabase/ssr` from middleware. Replaced with cookie presence check — no network calls, no external imports.  
