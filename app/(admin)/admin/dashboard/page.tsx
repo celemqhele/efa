@@ -152,6 +152,7 @@ export default async function AdminDashboardPage() {
         </div>
         <div className="flex gap-3">
           <Link href="/admin/seasons" className="btn-outline">Seasons</Link>
+          <Link href="/admin/hall-of-fame" className="btn-outline">Hall of Fame</Link>
           <Link href="/admin/results/submit" className="btn-gold">Submit Result</Link>
           <Link href="/admin/fixtures/manage" className="btn-outline">Manage Fixtures</Link>
         </div>
