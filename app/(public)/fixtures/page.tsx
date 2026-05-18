@@ -3,7 +3,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   searchParams: Promise<{ tournament?: string }>

@@ -74,9 +74,9 @@ export default async function NotificationsPage() {
         .from('team_change_requests')
         .select(`
           id, created_at,
-          requesting_user:profiles!requesting_user_id(username),
-          current_team:teams!current_team_id(name),
-          requested_team:teams!requested_team_id(name)
+          requesting_user:profiles!team_change_requests_requesting_user_id_fkey(username),
+          current_team:teams!team_change_requests_current_team_id_fkey(name),
+          requested_team:teams!team_change_requests_requested_team_id_fkey(name)
         `)
         .eq('status', 'pending')
         .order('created_at', { ascending: true })

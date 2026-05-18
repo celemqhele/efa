@@ -79,7 +79,25 @@ export default async function StandingsPage({ searchParams }: Props) {
       .order('goal_difference', { ascending: false })
       .order('goals_for', { ascending: false })
     standings = data
-  } else if (selected.type === 'ucl') {
+
+    // Fallback: if no standings rows yet, show all participants with 0 stats
+    if (!standings || standings.length === 0) {
+      const { data: parts } = await supabase
+        .from('tournament_participants')
+        .select(`
+          team_id,
+          teams(id, name, logo_league_folder, logo_team_slug, profiles!manager_id(username))
+        `)
+        .eq('tournament_id', selected.id)
+      standings = (parts ?? []).map((p: any, idx) => ({
+        id: `fallback-${idx}`,
+        played: 0, wins: 0, draws: 0, losses: 0,
+        goals_for: 0, goals_against: 0, goal_difference: 0, points: 0,
+        form: '', unbeaten_run: 0,
+        teams: p.teams,
+      }))
+    }
+  } else if (selected.type === 'ucl' || selected.type === 'europa') {
     const { data: gs } = await supabase
       .from('group_standings')
       .select(`
@@ -96,6 +114,26 @@ export default async function StandingsPage({ searchParams }: Props) {
       if (!groupStandings[g]) groupStandings[g] = []
       groupStandings[g].push(row)
     }
+
+    // Fallback: if no group_standings rows yet, build from participants
+    if (Object.keys(groupStandings).length === 0) {
+      const { data: parts } = await supabase
+        .from('tournament_participants')
+        .select(`team_id, group_name, teams(id, name, logo_league_folder, logo_team_slug)`)
+        .eq('tournament_id', selected.id)
+      for (const p of parts ?? []) {
+        const g = (p as any).group_name ?? 'A'
+        if (!groupStandings[g]) groupStandings[g] = []
+        groupStandings[g].push({
+          id: `fallback-${(p as any).team_id}`,
+          group_name: g,
+          played: 0, wins: 0, draws: 0, losses: 0,
+          goals_for: 0, goals_against: 0, goal_difference: 0, points: 0,
+          teams: (p as any).teams,
+        })
+      }
+    }
+
     const { data: kr } = await supabase
       .from('knockout_rounds')
       .select(`
@@ -106,7 +144,7 @@ export default async function StandingsPage({ searchParams }: Props) {
       .eq('tournament_id', selected.id)
     knockoutRounds = kr
   } else {
-    // Europa, Super Cup, custom
+    // Super Cup, custom
     const { data: kr } = await supabase
       .from('knockout_rounds')
       .select(`
@@ -116,7 +154,6 @@ export default async function StandingsPage({ searchParams }: Props) {
       `)
       .eq('tournament_id', selected.id)
     knockoutRounds = kr
-    // Also try generic standings (for custom league-format competitions)
     const { data: s } = await supabase
       .from('standings')
       .select(`
@@ -283,8 +320,8 @@ export default async function StandingsPage({ searchParams }: Props) {
         </>
       )}
 
-      {/* UCL VIEW — groups + knockout */}
-      {selected.type === 'ucl' && (
+      {/* UCL / EUROPA VIEW — groups + knockout */}
+      {(selected.type === 'ucl' || selected.type === 'europa') && (
         <div className="space-y-8">
           {Object.keys(groupStandings).length > 0 && (
             <div>
@@ -305,8 +342,8 @@ export default async function StandingsPage({ searchParams }: Props) {
         </div>
       )}
 
-      {/* EUROPA / SUPER CUP / CUSTOM */}
-      {selected.type !== 'league' && selected.type !== 'ucl' && (
+      {/* SUPER CUP / CUSTOM */}
+      {selected.type !== 'league' && selected.type !== 'ucl' && selected.type !== 'europa' && (
         <div className="space-y-6">
           {knockoutRounds && knockoutRounds.length > 0 && (
             <KnockoutBracket rounds={knockoutRounds} />

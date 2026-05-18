@@ -5,7 +5,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import { differenceInDays, format, parseISO } from 'date-fns'
 import CalendarGrid from './CalendarGrid'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 // ─── Month navigation helpers ────────────────────────────────────────────────
 
@@ -61,19 +61,20 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // User's team (if logged in)
+  // User's team + role (if logged in)
   let userTeam: { id: string; name: string } | null = null
+  let isAdmin = false
   if (user) {
-    const { data: teamRaw } = await supabase
-      .from('teams')
-      .select('id, name')
-      .eq('manager_id', user.id)
-      .maybeSingle()
+    const [{ data: teamRaw }, { data: profileRaw }] = await Promise.all([
+      supabase.from('teams').select('id, name').eq('manager_id', user.id).maybeSingle(),
+      supabase.from('profiles').select('role').eq('id', user.id).single(),
+    ])
     userTeam = (teamRaw as any) ?? null
+    isAdmin = (profileRaw as any)?.role === 'admin'
   }
 
   // Fixtures for this month
-  // If user has a team: show their fixtures; otherwise show all
+  // Admins see all fixtures; regular users with a team see only their team's fixtures
   let fixtureQuery = supabase
     .from('fixtures')
     .select(`
@@ -86,13 +87,13 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     .lte('scheduled_date', monthEnd + 'T23:59:59')
     .order('scheduled_date', { ascending: true })
 
-  if (userTeam) {
+  if (userTeam && !isAdmin) {
     fixtureQuery = fixtureQuery.or(
       `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
     )
   }
 
-  const { data: fixtures } = await fixtureQuery.limit(200)
+  const { data: fixtures } = await fixtureQuery.limit(500)
 
   // Season breaks that overlap this month
   const { data: breaksRaw } = await supabase
@@ -118,7 +119,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     .order('scheduled_date', { ascending: true })
     .limit(1)
 
-  if (userTeam) {
+  if (userTeam && !isAdmin) {
     nextQuery = nextQuery.or(
       `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
     )

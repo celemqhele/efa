@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import DeleteTournamentButton from './DeleteTournamentButton'
 
 export const revalidate = 0
 
@@ -220,6 +221,7 @@ function TournamentCard({
         >
           View
         </Link>
+        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
       </div>
     </div>
   )
