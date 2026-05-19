@@ -62,8 +62,8 @@ export default async function ExportPage({ searchParams }: Props) {
         .from('fixtures')
         .select(`
           id, matchday, scheduled_date,
-          home_team:teams!fixtures_home_team_id_fkey(name),
-          away_team:teams!fixtures_away_team_id_fkey(name)
+          home_team:teams!fixtures_home_team_id_fkey(name, logo_league_folder, logo_team_slug),
+          away_team:teams!fixtures_away_team_id_fkey(name, logo_league_folder, logo_team_slug)
         `)
         .eq('tournament_id', activeTournamentId)
         .eq('matchday', selectedMatchday)
@@ -163,6 +163,27 @@ export default async function ExportPage({ searchParams }: Props) {
 
   const rowEven: React.CSSProperties = { background: '#0f1a3d', borderRadius: '8px' }
   const rowOdd: React.CSSProperties = { background: 'transparent' }
+
+  function TeamLogoInline({ folder, slug, size = 38 }: { folder?: string | null; slug?: string | null; size?: number }) {
+    if (!folder || !slug) return null
+    return (
+      <div style={{
+        width: `${size}px`, height: `${size}px`, borderRadius: '50%',
+        background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, overflow: 'hidden',
+        boxShadow: '0 0 0 2px rgba(255,255,255,0.12)',
+      }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`/logos/${folder}/128x128/${slug}.png`}
+          alt=""
+          width={size - 10}
+          height={size - 10}
+          style={{ objectFit: 'contain', display: 'block' }}
+        />
+      </div>
+    )
+  }
 
   function StandingsTable({ rows }: { rows: any[] }) {
     return (
@@ -318,17 +339,27 @@ export default async function ExportPage({ searchParams }: Props) {
                     style={{
                       display: 'flex', alignItems: 'center',
                       ...(i % 2 === 0 ? rowEven : rowOdd),
-                      padding: '13px 16px',
+                      padding: '10px 16px',
                     }}
                   >
-                    <div style={{ flex: 1, color: '#ffffff', fontWeight: 600, fontSize: '14px', textAlign: 'right', paddingRight: '12px' }}>
-                      {(f.home_team as any)?.name ?? '—'}
+                    {/* Home side — name right-aligned, logo nearest center */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingRight: '10px' }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {(f.home_team as any)?.name ?? '—'}
+                      </span>
+                      <TeamLogoInline folder={(f.home_team as any)?.logo_league_folder} slug={(f.home_team as any)?.logo_team_slug} />
                     </div>
-                    <div style={{ color: accent, fontWeight: 900, fontSize: '12px', minWidth: '36px', textAlign: 'center' }}>
+
+                    <div style={{ color: accent, fontWeight: 900, fontSize: '11px', minWidth: '32px', textAlign: 'center', letterSpacing: '0.05em' }}>
                       VS
                     </div>
-                    <div style={{ flex: 1, color: '#ffffff', fontWeight: 600, fontSize: '14px', paddingLeft: '12px' }}>
-                      {(f.away_team as any)?.name ?? '—'}
+
+                    {/* Away side — logo nearest center, name left-aligned */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '10px' }}>
+                      <TeamLogoInline folder={(f.away_team as any)?.logo_league_folder} slug={(f.away_team as any)?.logo_team_slug} />
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {(f.away_team as any)?.name ?? '—'}
+                      </span>
                     </div>
                   </div>
                 ))
