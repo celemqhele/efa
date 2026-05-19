@@ -6,10 +6,10 @@ export async function POST(request: Request) {
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { folder, slug, name } = body
+  const { team_id } = body
 
-  if (!folder || !slug || !name) {
-    return Response.json({ error: 'folder, slug and name are required' }, { status: 400 })
+  if (!team_id) {
+    return Response.json({ error: 'team_id is required' }, { status: 400 })
   }
 
   const adminSupabase = await createAdminClient()
@@ -23,60 +23,49 @@ export async function POST(request: Request) {
 
   if (!profile) return Response.json({ error: 'Profile not found' }, { status: 404 })
 
-  // Find existing team record for this logo slot
-  const { data: existing } = await adminSupabase
+  // Find the team
+  const { data: team } = await adminSupabase
     .from('teams')
-    .select('id, manager_id')
-    .eq('logo_league_folder', folder)
-    .eq('logo_team_slug', slug)
-    .maybeSingle()
+    .select('id, name, logo_league_folder, logo_team_slug, manager_id')
+    .eq('id', team_id)
+    .single()
 
-  if (existing?.manager_id) {
+  if (!team) return Response.json({ error: 'Team not found' }, { status: 404 })
+
+  if (team.manager_id) {
     return Response.json({ error: 'This team already has a manager.' }, { status: 409 })
   }
 
-  const avatarUrl = `/logos/${folder}/128x128/${slug}.png`
+  // Assign manager
+  const { error: updateErr } = await adminSupabase
+    .from('teams')
+    .update({ manager_id: user.id })
+    .eq('id', team_id)
 
-  let teamId: string
+  if (updateErr) return Response.json({ error: updateErr.message }, { status: 500 })
 
-  if (existing) {
-    // Update existing team record
-    const { error: e } = await adminSupabase
-      .from('teams')
-      .update({ manager_id: user.id })
-      .eq('id', existing.id)
-    if (e) return Response.json({ error: e.message }, { status: 500 })
-    teamId = existing.id
-  } else {
-    // Create new team record
-    const { data: created, error: e } = await adminSupabase
-      .from('teams')
-      .insert({ name, logo_league_folder: folder, logo_team_slug: slug, manager_id: user.id })
-      .select('id')
-      .single()
-    if (e || !created) return Response.json({ error: e?.message ?? 'Failed to create team' }, { status: 500 })
-    teamId = created.id
+  // Update profile avatar if team has logo
+  if (team.logo_league_folder && team.logo_team_slug) {
+    const avatarUrl = `/logos/${team.logo_league_folder}/128x128/${team.logo_team_slug}.png`
+    await adminSupabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id)
   }
-
-  // Update profile avatar
-  await adminSupabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id)
 
   // Close any existing open tenure for this team (safety guard)
   await adminSupabase
     .from('manager_tenures' as any)
     .update({ ended_at: new Date().toISOString() })
-    .eq('team_id', teamId)
+    .eq('team_id', team_id)
     .is('ended_at', null)
 
   // Open new tenure
   await adminSupabase
     .from('manager_tenures' as any)
     .insert({
-      team_id: teamId,
+      team_id: team_id,
       manager_id: user.id,
       manager_username: profile.username,
       started_at: new Date().toISOString(),
     })
 
-  return Response.json({ success: true, team_id: teamId })
+  return Response.json({ success: true, team_id })
 }
