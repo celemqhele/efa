@@ -6,10 +6,22 @@ import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { format, parseISO } from 'date-fns'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
   const supabase = await createClient()
+
+  // Current user + their team
+  const { data: { user } } = await supabase.auth.getUser()
+  let userTeam: { id: string; name: string } | null = null
+  if (user) {
+    const { data: teamRaw } = await supabase
+      .from('teams')
+      .select('id, name')
+      .eq('manager_id', user.id)
+      .maybeSingle()
+    userTeam = (teamRaw as any) ?? null
+  }
 
   // Get active tournament (Premier League)
   const { data: tournament } = await supabase
@@ -31,20 +43,49 @@ export default async function HomePage() {
         .limit(6)
     : { data: null }
 
-  // Today's fixtures
+  // Upcoming fixtures — find next date batch for user's team (or all if no team)
   const today = new Date().toISOString().split('T')[0]
-  const { data: todayFixtures } = await supabase
+  let upcomingQuery = supabase
     .from('fixtures')
-    .select(`
-      id, matchday, scheduled_date, status, deadline,
-      home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug, profiles!manager_id(username)),
-      away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug, profiles!manager_id(username)),
-      results(home_score, away_score)
-    `)
-    .eq('scheduled_date', today)
-    .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
-    .order('deadline')
-    .limit(8)
+    .select('scheduled_date')
+    .gte('scheduled_date', today)
+    .in('status', ['scheduled', 'awaiting_confirmation'])
+    .order('scheduled_date', { ascending: true })
+    .limit(1)
+
+  if (userTeam) {
+    upcomingQuery = upcomingQuery.or(
+      `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
+    )
+  }
+
+  const { data: nextDateRow } = await upcomingQuery
+  const nextDate: string | null = (nextDateRow?.[0] as any)?.scheduled_date?.slice(0, 10) ?? null
+
+  // Fetch all fixtures on that next date
+  let upcomingFixtures: any[] = []
+  if (nextDate) {
+    let batchQuery = supabase
+      .from('fixtures')
+      .select(`
+        id, matchday, scheduled_date, status, deadline,
+        home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+        away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
+        results(home_score, away_score)
+      `)
+      .eq('scheduled_date', nextDate)
+      .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
+      .order('deadline')
+
+    if (userTeam) {
+      batchQuery = batchQuery.or(
+        `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
+      )
+    }
+
+    const { data } = await batchQuery
+    upcomingFixtures = (data ?? []) as any[]
+  }
 
   // Latest results
   const { data: latestResults } = await supabase
@@ -96,18 +137,26 @@ export default async function HomePage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Today's Fixtures */}
+          {/* Upcoming Fixtures */}
           <section className="card p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="section-header mb-0">Today's Fixtures</h2>
+              <div>
+                <h2 className="section-header mb-0">Upcoming Fixtures</h2>
+                {nextDate && (
+                  <p className="text-xs text-[#c9a84c] mt-0.5">
+                    {format(parseISO(nextDate), 'EEEE, d MMMM yyyy')}
+                    {userTeam && <span className="text-slate-500 ml-1">· {userTeam.name}</span>}
+                  </p>
+                )}
+              </div>
               <Link href="/fixtures" className="text-xs text-[#c9a84c] hover:text-[#e0c06a]">View all →</Link>
             </div>
 
-            {!todayFixtures?.length ? (
-              <p className="text-sm text-slate-500 py-4 text-center">No fixtures today</p>
+            {!upcomingFixtures.length ? (
+              <p className="text-sm text-slate-500 py-4 text-center">No upcoming fixtures</p>
             ) : (
               <div className="divide-y divide-[#1e2d5a]">
-                {todayFixtures.map((f: any) => (
+                {upcomingFixtures.map((f: any) => (
                   <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-3 gap-3 hover:bg-white/5 -mx-4 px-4 transition-colors">
                     <div className="flex-1 flex items-center gap-2">
                       {f.home_team?.logo_league_folder && (
@@ -115,7 +164,7 @@ export default async function HomePage() {
                           src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')}
                           alt={f.home_team.name}
                           width={28} height={28}
-                          className="object-contain"
+                          className="object-contain bg-white"
                         />
                       )}
                       <span className="text-sm font-medium text-white truncate">{f.home_team?.name}</span>
@@ -146,7 +195,7 @@ export default async function HomePage() {
                           src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')}
                           alt={f.away_team.name}
                           width={28} height={28}
-                          className="object-contain"
+                          className="object-contain bg-white"
                         />
                       )}
                     </div>
