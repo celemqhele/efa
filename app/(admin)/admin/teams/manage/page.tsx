@@ -37,10 +37,68 @@ export default async function TeamsManagePage() {
       {/* Add Team */}
       <AddTeamForm />
 
-      {/* Teams Table */}
+      {/* Teams List */}
       <div className="card p-5">
         <h2 className="section-header">All Teams</h2>
-        <div className="overflow-x-auto">
+
+        {/* Mobile cards (hidden on sm+) */}
+        <div className="sm:hidden space-y-3">
+          {(teams ?? []).map((team) => {
+            const manager = team.manager_id ? managerMap[team.manager_id] : null
+            return (
+              <div key={team.id} className="bg-[#0f1a3d] rounded-lg p-3 space-y-2 border border-[#1e2d5a]">
+                <div className="flex items-center gap-3">
+                  {team.logo_league_folder ? (
+                    <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/10">
+                      <Image
+                        src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                        alt={team.name}
+                        width={48} height={48}
+                        className="object-contain w-[85%] h-[85%]"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-[#1e2d5a] flex items-center justify-center text-slate-500 text-xs shrink-0">?</div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-white font-semibold text-sm truncate">{team.name}</p>
+                    <p className="text-slate-500 text-xs truncate">{team.logo_league_folder?.split('.')[0] ?? '—'}</p>
+                  </div>
+                  {team.abandon_count >= 3 && (
+                    <span className="ml-auto text-red-400 font-bold text-xs shrink-0">⚠ {team.abandon_count}</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    {manager ? (
+                      <>
+                        {manager.avatar_url ? (
+                          <Image src={manager.avatar_url} alt="" width={20} height={20} className="rounded-full" />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full bg-[#1e2d5a] flex items-center justify-center text-xs text-slate-400">
+                            {manager.username?.[0]?.toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-slate-300 text-xs">{manager.username}</span>
+                      </>
+                    ) : (
+                      <span className="text-green-400 text-xs">(Available)</span>
+                    )}
+                  </div>
+                  <TeamManageActions
+                    teamId={team.id}
+                    teamName={team.name}
+                    managerId={team.manager_id}
+                    managerName={manager?.username ?? null}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Desktop table (hidden on mobile) */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-navy-border">
@@ -58,16 +116,16 @@ export default async function TeamsManagePage() {
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-3">
                         {team.logo_league_folder ? (
-                          <Image
-                            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                            alt={team.name}
-                            width={48} height={48}
-                            className="object-contain shrink-0"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded bg-navy-border flex items-center justify-center text-slate-500 text-xs">
-                            ?
+                          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/10">
+                            <Image
+                              src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                              alt={team.name}
+                              width={48} height={48}
+                              className="object-contain w-[85%] h-[85%]"
+                            />
                           </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-[#1e2d5a] flex items-center justify-center text-slate-500 text-xs">?</div>
                         )}
                         <div>
                           <p className="text-white font-semibold">{team.name}</p>

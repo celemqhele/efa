@@ -185,7 +185,7 @@ export default async function ExportPage({ searchParams }: Props) {
     )
   }
 
-  function StandingsTable({ rows }: { rows: any[] }) {
+  function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {/* Header */}
@@ -197,13 +197,17 @@ export default async function ExportPage({ searchParams }: Props) {
           <div style={{ width: '28px', textAlign: 'center' }}>D</div>
           <div style={{ width: '28px', textAlign: 'center' }}>L</div>
           <div style={{ width: '36px', textAlign: 'center' }}>GD</div>
-          <div style={{ width: '36px', textAlign: 'center', color: accent }}>PTS</div>
+          <div style={{ width: mode === 'group' ? '28px' : '36px', textAlign: 'center', color: accent }}>{mode === 'group' ? 'PTS' : 'PTS'}</div>
+          {mode === 'group' && <div style={{ width: '20px' }} />}
         </div>
 
         {rows.map((s: any, i: number) => {
           const gd = (s.goals_for ?? 0) - (s.goals_against ?? 0)
-          const isTop = i < 4
-          const isBottom = i >= rows.length - 3
+          // League: UCL = top 12 (gold), Europa = 13-20 (blue)
+          // Group:  qualify = top 2 (gold)
+          const borderColor = mode === 'league'
+            ? i < 12 ? '#c9a84c' : '#3b82f6'
+            : i < 2 ? '#c9a84c' : 'transparent'
           return (
             <div
               key={s.id ?? i}
@@ -212,7 +216,7 @@ export default async function ExportPage({ searchParams }: Props) {
                 alignItems: 'center',
                 ...(i % 2 === 0 ? rowEven : rowOdd),
                 padding: '10px 8px',
-                borderLeft: `3px solid ${isTop ? '#22c55e' : isBottom ? '#ef4444' : 'transparent'}`,
+                borderLeft: `3px solid ${borderColor}`,
               }}
             >
               <div style={{ width: '24px', textAlign: 'center', color: '#64748b', fontSize: '12px', fontWeight: 700 }}>{i + 1}</div>
@@ -227,7 +231,12 @@ export default async function ExportPage({ searchParams }: Props) {
               <div style={{ width: '36px', textAlign: 'center', color: gd >= 0 ? '#4ade80' : '#f87171', fontSize: '12px', fontWeight: 600 }}>
                 {gd > 0 ? `+${gd}` : gd}
               </div>
-              <div style={{ width: '36px', textAlign: 'center', color: accent, fontSize: '15px', fontWeight: 900 }}>{s.points}</div>
+              <div style={{ width: mode === 'group' ? '28px' : '36px', textAlign: 'center', color: accent, fontSize: '15px', fontWeight: 900 }}>{s.points}</div>
+              {mode === 'group' && (
+                <div style={{ width: '20px', textAlign: 'center' }}>
+                  {i < 2 && <span style={{ fontSize: '10px', color: '#c9a84c', fontWeight: 700 }}>Q</span>}
+                </div>
+              )}
             </div>
           )
         })}
@@ -422,7 +431,20 @@ export default async function ExportPage({ searchParams }: Props) {
 
           {/* ── STANDINGS (league) ────────────────────────────────────────── */}
           {type === 'standings' && selectedTournament?.type === 'league' && (
-            <StandingsTable rows={standings} />
+            <>
+              <StandingsTable rows={standings} mode="league" />
+              {/* Legend */}
+              <div style={{ display: 'flex', gap: '16px', marginTop: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#c9a84c' }} />
+                  <span style={{ color: '#64748b', fontSize: '10px' }}>UCL (1–12)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
+                  <span style={{ color: '#64748b', fontSize: '10px' }}>Europa (13–20)</span>
+                </div>
+              </div>
+            </>
           )}
 
           {/* ── STANDINGS (UCL / Europa — grouped) ───────────────────────── */}
@@ -433,14 +455,21 @@ export default async function ExportPage({ searchParams }: Props) {
                   No standings data available
                 </div>
               ) : (
-                Object.entries(groupStandings).sort().map(([group, rows]) => (
-                  <div key={group}>
-                    <div style={{ color: accent, fontWeight: 700, fontSize: '11px', letterSpacing: '0.1em', marginBottom: '10px' }}>
-                      GROUP {group}
+                <>
+                  {Object.entries(groupStandings).sort().map(([group, rows]) => (
+                    <div key={group}>
+                      <div style={{ color: accent, fontWeight: 700, fontSize: '11px', letterSpacing: '0.1em', marginBottom: '10px' }}>
+                        GROUP {group}
+                      </div>
+                      <StandingsTable rows={rows} mode="group" />
                     </div>
-                    <StandingsTable rows={rows} />
+                  ))}
+                  {/* Legend */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#c9a84c' }} />
+                    <span style={{ color: '#64748b', fontSize: '10px' }}>Top 2 from each group qualify</span>
                   </div>
-                ))
+                </>
               )}
             </div>
           )}

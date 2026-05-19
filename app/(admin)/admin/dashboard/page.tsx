@@ -150,12 +150,12 @@ export default async function AdminDashboardPage() {
             {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/admin/seasons" className="btn-outline">Seasons</Link>
-          <Link href="/admin/hall-of-fame" className="btn-outline">Hall of Fame</Link>
-          <Link href="/admin/export" className="btn-outline">Export</Link>
-          <Link href="/admin/results/submit" className="btn-gold">Submit Result</Link>
-          <Link href="/admin/fixtures/manage" className="btn-outline">Manage Fixtures</Link>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <Link href="/admin/seasons" className="btn-outline text-xs px-3 py-1.5">Seasons</Link>
+          <Link href="/admin/hall-of-fame" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Hall of Fame</Link>
+          <Link href="/admin/export" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Export</Link>
+          <Link href="/admin/results/submit" className="btn-gold text-xs px-3 py-1.5">Submit Result</Link>
+          <Link href="/admin/fixtures/manage" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Fixtures</Link>
         </div>
       </div>
 
@@ -253,23 +253,17 @@ export default async function AdminDashboardPage() {
                       <span className="text-slate-500 text-xs w-8 shrink-0">MD{fx.matchday}</span>
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         {fx.home_team?.logo_league_folder && (
-                          <Image
-                            src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')}
-                            alt={fx.home_team.name}
-                            width={24} height={24}
-                            className="object-contain shrink-0"
-                          />
+                          <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/10">
+                            <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain w-[85%] h-[85%]" />
+                          </div>
                         )}
                         <span className="text-white text-sm font-medium truncate">{fx.home_team?.name}</span>
                         <span className="text-slate-500 text-xs mx-1">vs</span>
                         <span className="text-white text-sm font-medium truncate">{fx.away_team?.name}</span>
                         {fx.away_team?.logo_league_folder && (
-                          <Image
-                            src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')}
-                            alt={fx.away_team.name}
-                            width={24} height={24}
-                            className="object-contain shrink-0"
-                          />
+                          <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/10">
+                            <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={24} height={24} className="object-contain w-[85%] h-[85%]" />
+                          </div>
                         )}
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded border shrink-0 ${statusCls}`}>
@@ -357,12 +351,9 @@ export default async function AdminDashboardPage() {
                       </div>
                     </div>
                     {req.requested_team?.logo_league_folder && (
-                      <Image
-                        src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')}
-                        alt={req.requested_team.name}
-                        width={32} height={32}
-                        className="object-contain ml-auto shrink-0"
-                      />
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden ml-auto shrink-0 ring-1 ring-white/10">
+                        <Image src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')} alt={req.requested_team.name} width={32} height={32} className="object-contain w-[85%] h-[85%]" />
+                      </div>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -397,12 +388,9 @@ export default async function AdminDashboardPage() {
               {flaggedTeams!.map((team) => (
                 <div key={team.id} className="flex items-center gap-3 bg-navy-light rounded-lg px-3 py-2.5 border border-red-500/20">
                   {team.logo_league_folder && (
-                    <Image
-                      src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                      alt={team.name}
-                      width={32} height={32}
-                      className="object-contain shrink-0"
-                    />
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/10">
+                      <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={32} height={32} className="object-contain w-[85%] h-[85%]" />
+                    </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{team.name}</p>

@@ -143,6 +143,41 @@ export default async function StandingsPage({ searchParams }: Props) {
       `)
       .eq('tournament_id', selected.id)
     knockoutRounds = kr
+
+    // Fallback: if no knockout_rounds yet, read sf/final from fixtures table
+    if (!knockoutRounds?.length) {
+      const { data: kfx } = await supabase
+        .from('fixtures')
+        .select(`
+          id, round_type, status, matchday,
+          home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+          away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+          results(home_score, away_score)
+        `)
+        .eq('tournament_id', selected.id)
+        .in('round_type', ['sf', 'final'])
+        .order('matchday', { ascending: true })
+      if (kfx?.length) {
+        knockoutRounds = (kfx as any[]).map((fx) => {
+          const r = (fx.results as any[])?.[0]
+          const homeScore = r?.home_score ?? null
+          const awayScore = r?.away_score ?? null
+          let winnerId: string | null = null
+          if (fx.status === 'confirmed' && homeScore != null && awayScore != null) {
+            winnerId = homeScore >= awayScore ? fx.home_team?.id ?? null : fx.away_team?.id ?? null
+          }
+          return {
+            id: fx.id,
+            round_name: fx.round_type === 'sf' ? 'Semi Final' : 'Final',
+            home_agg: homeScore,
+            away_agg: awayScore,
+            winner_id: winnerId,
+            home_team: fx.home_team,
+            away_team: fx.away_team,
+          }
+        })
+      }
+    }
   } else {
     // Super Cup, custom
     const { data: kr } = await supabase
@@ -331,6 +366,10 @@ export default async function StandingsPage({ searchParams }: Props) {
                   <GroupTable key={group} groupName={group} rows={rows} />
                 ))}
               </div>
+              <p className="text-xs text-slate-500 mt-3 flex items-center gap-1.5">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#c9a84c] shrink-0" />
+                Top 2 from each group advance to the Semi Finals
+              </p>
             </div>
           )}
           {knockoutRounds && knockoutRounds.length > 0 && (
