@@ -50,9 +50,9 @@ export default async function ResultsPage({ searchParams }: PageProps) {
         .eq('status', 'confirmed')
     : { data: null }
 
-  const matchdaysWithResults = [
-    ...new Set((confirmedRows ?? []).map((f) => f.matchday ?? 0).filter((md) => md > 0)),
-  ].sort((a, b) => a - b)
+  const matchdaysWithResults = Array.from(
+    new Set((confirmedRows ?? []).map((f) => f.matchday ?? 0).filter((md) => md > 0))
+  ).sort((a, b) => a - b)
 
   // Default = most recent (highest) matchday with results
   const defaultMatchday = matchdaysWithResults[matchdaysWithResults.length - 1] ?? 1
