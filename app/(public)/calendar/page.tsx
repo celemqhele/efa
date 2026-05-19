@@ -87,7 +87,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     .lte('scheduled_date', monthEnd + 'T23:59:59')
     .order('scheduled_date', { ascending: true })
 
-  if (userTeam && !isAdmin) {
+  if (userTeam) {
     fixtureQuery = fixtureQuery.or(
       `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
     )
@@ -105,7 +105,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   const allFixtures = (fixtures ?? []) as any[]
   const allBreaks = (breaksRaw ?? []) as any[]
 
-  // Next upcoming fixture (all future, user's team or global)
+  // Next upcoming fixture for this user's team
   const today = new Date().toISOString().slice(0, 10)
   let nextQuery = supabase
     .from('fixtures')
@@ -119,7 +119,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     .order('scheduled_date', { ascending: true })
     .limit(1)
 
-  if (userTeam && !isAdmin) {
+  if (userTeam) {
     nextQuery = nextQuery.or(
       `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
     )
