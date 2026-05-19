@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import TeamLogo from '@/components/ui/TeamLogo'
 import StandingsSwitcher from './StandingsSwitcher'
+import Link from 'next/link'
 
 interface Props {
   searchParams: { t?: string }
@@ -276,7 +277,7 @@ export default async function StandingsPage({ searchParams }: Props) {
                             <span className={`text-sm ${positionStyle(pos)}`}>{pos}</span>
                           </td>
                           <td className="py-2 px-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
+                            <Link href={`/teams/${team?.id}`} className="flex items-center gap-2.5 min-w-0 group">
                               {team?.logo_league_folder && (
                                 <div className="flex-shrink-0">
                                   <TeamLogo
@@ -290,7 +291,7 @@ export default async function StandingsPage({ searchParams }: Props) {
                               )}
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-slate-900 font-semibold text-sm truncate leading-tight">
+                                  <span className="text-slate-900 font-semibold text-sm truncate leading-tight group-hover:text-gold transition-colors">
                                     {team?.name ?? 'Unknown'}
                                   </span>
                                   {onFire && <span className="text-base leading-none" title="Win streak">🔥</span>}
@@ -304,7 +305,7 @@ export default async function StandingsPage({ searchParams }: Props) {
                                   {managerUsername ? `(${managerUsername})` : '(NO MANAGER)'}
                                 </div>
                               </div>
-                            </div>
+                            </Link>
                           </td>
                           <td className="py-3 px-2 text-center text-slate-700">{s.played}</td>
                           <td className="py-3 px-2 text-center text-slate-700">{s.wins}</td>
@@ -423,7 +424,7 @@ function GroupTable({ groupName, rows }: { groupName: string; rows: any[] }) {
           {rows.map((r: any, idx: number) => (
             <tr key={r.id} className={`border-b border-slate-200/40 ${idx < 2 ? 'border-l-2 border-[#c9a84c]' : 'border-l-2 border-transparent'}`}>
               <td className="py-2 px-3">
-                <div className="flex items-center gap-2">
+                <Link href={`/teams/${r.teams?.id}`} className="flex items-center gap-2 group">
                   {r.teams?.logo_league_folder && (
                     <TeamLogo
                       leagueFolder={r.teams.logo_league_folder}
@@ -433,11 +434,11 @@ function GroupTable({ groupName, rows }: { groupName: string; rows: any[] }) {
                       className="w-5 h-5"
                     />
                   )}
-                  <span className="text-slate-900 text-xs font-medium truncate">{r.teams?.name ?? '—'}</span>
+                  <span className="text-slate-900 text-xs font-medium truncate group-hover:text-gold transition-colors">{r.teams?.name ?? '—'}</span>
                   {idx < 2 && (
                     <span className="text-[10px] text-[#c9a84c] font-bold ml-auto shrink-0">Q</span>
                   )}
-                </div>
+                </Link>
               </td>
               <td className="text-center text-xs text-slate-700 py-2 px-1">{r.played}</td>
               <td className="text-center text-xs text-slate-700 py-2 px-1">{r.wins}</td>

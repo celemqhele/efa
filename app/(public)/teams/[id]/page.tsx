@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
+import TeamManagerAdmin from './TeamManagerAdmin'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: { id: string }
@@ -40,6 +41,32 @@ export default async function TeamProfilePage({ params }: PageProps) {
   if (!team) notFound()
 
   const manager = (team as any).manager
+
+  // Check if current user is admin (for manager controls)
+  const { data: { user: currentUser } } = await supabase.auth.getUser()
+  let isAdmin = false
+  let allProfiles: { id: string; username: string; avatar_url: string | null }[] = []
+  let managedTeamByUser: Record<string, string> = {}
+
+  if (currentUser) {
+    const { data: currentProfile } = await supabase
+      .from('profiles').select('role').eq('id', currentUser.id).single()
+    isAdmin = currentProfile?.role === 'admin'
+
+    if (isAdmin) {
+      const [{ data: profiles }, { data: allTeams }] = await Promise.all([
+        supabase.from('profiles').select('id, username, avatar_url').order('username'),
+        supabase.from('teams').select('name, manager_id').not('manager_id', 'is', null),
+      ])
+      allProfiles = profiles ?? []
+      // Build userId → team name map (deduplicated: first occurrence wins)
+      for (const t of allTeams ?? []) {
+        if (t.manager_id && !managedTeamByUser[t.manager_id]) {
+          managedTeamByUser[t.manager_id] = t.name
+        }
+      }
+    }
+  }
 
   // Trophies with tournament + season
   const { data: trophies } = await supabase
@@ -208,6 +235,18 @@ export default async function TeamProfilePage({ params }: PageProps) {
           )}
         </div>
       </div>
+
+      {/* ── Admin Manager Controls ───────────────────────────────────────── */}
+      {isAdmin && (
+        <TeamManagerAdmin
+          teamId={id}
+          currentManagerId={team.manager_id ?? null}
+          currentManagerUsername={manager?.username ?? null}
+          currentManagerAvatar={manager?.avatar_url ?? null}
+          allProfiles={allProfiles}
+          managedTeamByUser={managedTeamByUser}
+        />
+      )}
 
       {/* ── Season Stats ─────────────────────────────────────────────────── */}
       <div className="card p-5">

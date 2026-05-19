@@ -216,7 +216,7 @@ function TournamentCard({
           Fixtures
         </Link>
         <Link
-          href={`/tournaments/${tournament.id}`}
+          href={`/standings?t=${tournament.id}`}
           className="btn-outline text-xs flex-1 text-center"
         >
           View
