@@ -26,18 +26,16 @@ export default function TeamLogo({ leagueFolder, teamSlug, context, alt, classNa
   const size = SIZE_PX[context]
 
   return (
-    <div className={`rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/10 ${className}`}>
-      <Image
-        src={src}
-        alt={alt}
-        width={size}
-        height={size}
-        className="w-[85%] h-[85%] object-contain"
-        onError={(e) => {
-          const target = e.target as HTMLImageElement
-          target.parentElement!.style.display = 'none'
-        }}
-      />
-    </div>
+    <Image
+      src={src}
+      alt={alt}
+      width={size}
+      height={size}
+      className={`object-contain bg-white ${className}`}
+      onError={(e) => {
+        const target = e.target as HTMLImageElement
+        target.style.display = 'none'
+      }}
+    />
   )
 }

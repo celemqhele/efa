@@ -272,15 +272,13 @@ function TeamPickerButton({
       }`}
     >
       {team.logo_league_folder ? (
-        <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/10">
-          <Image
-            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-            alt={team.name}
-            width={20}
-            height={20}
-            className="object-contain w-[85%] h-[85%]"
-          />
-        </div>
+        <Image
+          src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+          alt={team.name}
+          width={20}
+          height={20}
+          className="object-contain bg-white shrink-0"
+        />
       ) : (
         <div className="w-5 h-5 rounded bg-[#1e2d5a] shrink-0" />
       )}

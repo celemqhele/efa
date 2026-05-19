@@ -167,21 +167,14 @@ export default async function ExportPage({ searchParams }: Props) {
   function TeamLogoInline({ folder, slug, size = 38 }: { folder?: string | null; slug?: string | null; size?: number }) {
     if (!folder || !slug) return null
     return (
-      <div style={{
-        width: `${size}px`, height: `${size}px`, borderRadius: '50%',
-        background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0, overflow: 'hidden',
-        boxShadow: '0 0 0 2px rgba(255,255,255,0.12)',
-      }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`/logos/${folder}/128x128/${slug}.png`}
-          alt=""
-          width={size - 10}
-          height={size - 10}
-          style={{ objectFit: 'contain', display: 'block' }}
-        />
-      </div>
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={`/logos/${folder}/128x128/${slug}.png`}
+        alt=""
+        width={size}
+        height={size}
+        style={{ objectFit: 'contain', display: 'block', background: '#ffffff', flexShrink: 0 }}
+      />
     )
   }
 

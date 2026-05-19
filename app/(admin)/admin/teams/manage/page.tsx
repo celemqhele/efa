@@ -49,16 +49,14 @@ export default async function TeamsManagePage() {
               <div key={team.id} className="bg-[#0f1a3d] rounded-lg p-3 space-y-2 border border-[#1e2d5a]">
                 <div className="flex items-center gap-3">
                   {team.logo_league_folder ? (
-                    <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/10">
-                      <Image
-                        src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                        alt={team.name}
-                        width={48} height={48}
-                        className="object-contain w-[85%] h-[85%]"
-                      />
-                    </div>
+                    <Image
+                      src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                      alt={team.name}
+                      width={44} height={44}
+                      className="object-contain bg-white shrink-0"
+                    />
                   ) : (
-                    <div className="w-11 h-11 rounded-full bg-[#1e2d5a] flex items-center justify-center text-slate-500 text-xs shrink-0">?</div>
+                    <div className="w-11 h-11 rounded bg-[#1e2d5a] flex items-center justify-center text-slate-500 text-xs shrink-0">?</div>
                   )}
                   <div className="min-w-0">
                     <p className="text-white font-semibold text-sm truncate">{team.name}</p>
@@ -116,16 +114,14 @@ export default async function TeamsManagePage() {
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-3">
                         {team.logo_league_folder ? (
-                          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 ring-1 ring-white/10">
-                            <Image
-                              src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                              alt={team.name}
-                              width={48} height={48}
-                              className="object-contain w-[85%] h-[85%]"
-                            />
-                          </div>
+                          <Image
+                            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                            alt={team.name}
+                            width={48} height={48}
+                            className="object-contain bg-white shrink-0"
+                          />
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-[#1e2d5a] flex items-center justify-center text-slate-500 text-xs">?</div>
+                          <div className="w-12 h-12 rounded bg-[#1e2d5a] flex items-center justify-center text-slate-500 text-xs">?</div>
                         )}
                         <div>
                           <p className="text-white font-semibold">{team.name}</p>
