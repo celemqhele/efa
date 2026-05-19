@@ -54,7 +54,7 @@ export default async function ExportPage({ searchParams }: Props) {
   let fixtures: any[] = []
   let results: any[] = []
   let standings: any[] = []
-  let groupStandings: Record<string, any[]> = {}
+  const groupStandings: Record<string, any[]> = {}
 
   if (activeTournamentId) {
     if (type === 'fixtures') {
