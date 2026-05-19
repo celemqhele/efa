@@ -117,7 +117,7 @@ export default async function HomePage() {
   return (
     <PageWrapper>
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-white border border-slate-200 p-6 mb-6">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-white dark:from-[#0f1a3d] dark:to-[#0a1128] border border-slate-200 dark:border-navy-border p-6 mb-6">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(201,168,76,0.08),transparent_70%)]" />
         <div className="relative">
           <div className="flex items-center gap-3 mb-2">
