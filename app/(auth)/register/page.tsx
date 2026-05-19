@@ -62,7 +62,7 @@ export default function RegisterPage() {
       return
     }
 
-    router.push('/select-team')
+    window.location.href = '/select-team'
   }
 
   return (

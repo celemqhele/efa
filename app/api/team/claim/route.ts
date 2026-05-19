@@ -14,14 +14,21 @@ export async function POST(request: Request) {
 
   const adminSupabase = await createAdminClient()
 
-  // Get manager username
-  const { data: profile } = await adminSupabase
+  // Get or create the profile row (trigger may not have fired yet on fresh signup)
+  let { data: profile } = await adminSupabase
     .from('profiles')
     .select('username')
     .eq('id', user.id)
     .single()
 
-  if (!profile) return Response.json({ error: 'Profile not found' }, { status: 404 })
+  if (!profile) {
+    const username = (user.user_metadata?.username as string | undefined) ?? user.email?.split('@')[0] ?? 'manager'
+    const { error: createErr } = await adminSupabase
+      .from('profiles')
+      .insert({ id: user.id, username, role: 'manager' })
+    if (createErr) return Response.json({ error: 'Failed to create profile: ' + createErr.message }, { status: 500 })
+    profile = { username }
+  }
 
   // Find the team
   const { data: team } = await adminSupabase
@@ -44,7 +51,7 @@ export async function POST(request: Request) {
 
   if (updateErr) return Response.json({ error: updateErr.message }, { status: 500 })
 
-  // Update profile avatar if team has logo
+  // Update profile avatar if team has a logo
   if (team.logo_league_folder && team.logo_team_slug) {
     const avatarUrl = `/logos/${team.logo_league_folder}/128x128/${team.logo_team_slug}.png`
     await adminSupabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id)
