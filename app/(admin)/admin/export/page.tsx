@@ -44,7 +44,7 @@ export default async function ExportPage({ searchParams }: Props) {
         .order('matchday', { ascending: true })
     : { data: null }
 
-  const matchdays = [...new Set((mdRows ?? []).map((r) => r.matchday))].sort(
+  const matchdays = Array.from(new Set((mdRows ?? []).map((r) => r.matchday))).sort(
     (a, b) => a - b
   )
   const selectedMatchday = sp.matchday ? parseInt(sp.matchday) : (matchdays[0] ?? 1)
