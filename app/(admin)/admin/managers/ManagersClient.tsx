@@ -137,7 +137,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                 }`}
               >
                 {/* Logo */}
-                <div className="w-10 h-10 shrink-0 flex items-center justify-center bg-slate-50 rounded-lg">
+                <div className="w-10 h-10 shrink-0 flex items-center justify-center rounded-lg">
                   {team.logo_league_folder && team.logo_team_slug ? (
                     <Image
                       src={logoSrc(team.logo_league_folder, team.logo_team_slug)}
@@ -180,7 +180,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
           <div className="card p-5 space-y-5">
             {/* Team header */}
             <div className="flex items-center gap-4 pb-4 border-b border-slate-200">
-              <div className="w-14 h-14 shrink-0 flex items-center justify-center bg-slate-50 rounded-xl">
+              <div className="w-14 h-14 shrink-0 flex items-center justify-center rounded-xl">
                 {selectedTeam.logo_league_folder && selectedTeam.logo_team_slug ? (
                   <Image
                     src={logoSrc(selectedTeam.logo_league_folder, selectedTeam.logo_team_slug)}
@@ -211,7 +211,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
             {selectedTeam.manager_id && managerProfile ? (
               <div>
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-3">Current Manager</p>
-                <div className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-3 border border-slate-200">
+                <div className="flex items-center gap-3 rounded-xl px-4 py-3 border border-slate-200">
                   {managerProfile.avatar_url ? (
                     <Image
                       src={managerProfile.avatar_url}

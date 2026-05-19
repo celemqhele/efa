@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+﻿import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import UserActionButtons from './UserActionButtons'
@@ -39,8 +39,9 @@ export default async function UsersManagePage() {
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
-  // Pending manager applications
-  const { data: managerApplications } = await supabase
+  // Pending manager applications — use admin client to bypass RLS and see all
+  const adminSupabase = await createAdminClient()
+  const { data: managerApplications } = await adminSupabase
     .from('manager_applications' as any)
     .select(`
       id, created_at,
