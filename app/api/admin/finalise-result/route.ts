@@ -335,8 +335,8 @@ export async function POST(request: Request) {
   // Increment abandon_count for each absent team, then check for auto-sack
   try {
     const absentTeamIds: string[] = []
-    if (home_absent && fixtureRaw.home_team_id) absentTeamIds.push(fixtureRaw.home_team_id)
-    if (away_absent && fixtureRaw.away_team_id) absentTeamIds.push(fixtureRaw.away_team_id)
+    if (home_absent && fixture.home_team_id) absentTeamIds.push(fixture.home_team_id)
+    if (away_absent && fixture.away_team_id) absentTeamIds.push(fixture.away_team_id)
 
     for (const tid of absentTeamIds) {
       const { data: teamRow } = await adminSupabase
