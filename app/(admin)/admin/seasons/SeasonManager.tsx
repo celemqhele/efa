@@ -277,7 +277,7 @@ function TeamPickerButton({
           alt={team.name}
           width={20}
           height={20}
-          className="object-contain bg-white shrink-0"
+          className="object-contain shrink-0"
         />
       ) : (
         <div className="w-5 h-5 rounded bg-slate-200 shrink-0" />

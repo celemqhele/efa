@@ -53,7 +53,7 @@ export default async function TeamsManagePage() {
                       src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
                       alt={team.name}
                       width={44} height={44}
-                      className="object-contain bg-white shrink-0"
+                      className="object-contain shrink-0"
                     />
                   ) : (
                     <div className="w-11 h-11 rounded bg-slate-200 flex items-center justify-center text-slate-500 text-xs shrink-0">?</div>
@@ -118,7 +118,7 @@ export default async function TeamsManagePage() {
                             src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
                             alt={team.name}
                             width={48} height={48}
-                            className="object-contain bg-white shrink-0"
+                            className="object-contain shrink-0"
                           />
                         ) : (
                           <div className="w-12 h-12 rounded bg-slate-200 flex items-center justify-center text-slate-500 text-xs">?</div>

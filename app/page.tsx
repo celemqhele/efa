@@ -166,7 +166,7 @@ export default async function HomePage() {
                           src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')}
                           alt={f.home_team.name}
                           width={28} height={28}
-                          className="object-contain bg-white"
+                          className="object-contain"
                         />
                       )}
                       <span className="text-sm font-medium text-slate-900 truncate">{f.home_team?.name}</span>
@@ -197,7 +197,7 @@ export default async function HomePage() {
                           src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')}
                           alt={f.away_team.name}
                           width={28} height={28}
-                          className="object-contain bg-white"
+                          className="object-contain"
                         />
                       )}
                     </div>

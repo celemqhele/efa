@@ -3,45 +3,49 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 
-interface Team {
-  id: string
+interface Club {
+  id: string | null
   name: string
-  logo_league_folder: string | null
-  logo_team_slug: string | null
+  slug: string
+  logoFolder: string
   manager_id: string | null
 }
 
 interface Props {
-  teams: Team[]
+  clubs: Club[]
 }
 
 function logoSrc(folder: string, slug: string) {
   return `/logos/${folder}/128x128/${slug}.png`
 }
 
-export default function SelectTeamClient({ teams }: Props) {
-  const [selected, setSelected] = useState<Team | null>(null)
+export default function SelectTeamClient({ clubs }: Props) {
+  const [selected, setSelected] = useState<Club | null>(null)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
-    return teams.filter((t) => !q || t.name.toLowerCase().includes(q))
-  }, [teams, search])
+    return clubs.filter((c) => !q || c.name.toLowerCase().includes(q))
+  }, [clubs, search])
 
-  const available = filtered.filter((t) => !t.manager_id)
-  const taken = filtered.filter((t) => t.manager_id)
+  const available = filtered.filter((c) => !c.manager_id)
+  const taken = filtered.filter((c) => !!c.manager_id)
 
   async function handleConfirm() {
     if (!selected) return
     setLoading(true)
     setError('')
 
+    const body = selected.id
+      ? { team_id: selected.id }
+      : { logo_folder: selected.logoFolder, logo_team_slug: selected.slug, team_name: selected.name }
+
     const res = await fetch('/api/team/claim', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ team_id: selected.id }),
+      body: JSON.stringify(body),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -86,13 +90,13 @@ export default function SelectTeamClient({ teams }: Props) {
             <div>
               <p className="form-label">Available</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-80 overflow-y-auto pr-1">
-                {available.map((team) => (
+                {available.map((club) => (
                   <TeamCard
-                    key={team.id}
-                    team={team}
-                    isSelected={selected?.id === team.id}
+                    key={`${club.logoFolder}|${club.slug}`}
+                    club={club}
+                    isSelected={selected?.slug === club.slug}
                     taken={false}
-                    onSelect={() => setSelected(team)}
+                    onSelect={() => setSelected(club)}
                   />
                 ))}
               </div>
@@ -104,10 +108,10 @@ export default function SelectTeamClient({ teams }: Props) {
             <div>
               <p className="form-label">Taken</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1 opacity-60">
-                {taken.map((team) => (
+                {taken.map((club) => (
                   <TeamCard
-                    key={team.id}
-                    team={team}
+                    key={`${club.logoFolder}|${club.slug}`}
+                    club={club}
                     isSelected={false}
                     taken={true}
                     onSelect={() => {}}
@@ -120,13 +124,13 @@ export default function SelectTeamClient({ teams }: Props) {
           {/* Selected preview */}
           {selected && (
             <div className="bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl p-4 flex items-center gap-4">
-              {selected.logo_league_folder && selected.logo_team_slug ? (
+              {selected.logoFolder && selected.slug ? (
                 <Image
-                  src={logoSrc(selected.logo_league_folder, selected.logo_team_slug)}
+                  src={logoSrc(selected.logoFolder, selected.slug)}
                   alt={selected.name}
                   width={56}
                   height={56}
-                  className="object-contain bg-white rounded"
+                  className="object-contain rounded"
                   onError={(e) => {
                     ;(e.target as HTMLImageElement).style.opacity = '0.3'
                   }}
@@ -167,12 +171,12 @@ export default function SelectTeamClient({ teams }: Props) {
 }
 
 function TeamCard({
-  team,
+  club,
   isSelected,
   taken,
   onSelect,
 }: {
-  team: Team
+  club: Club
   isSelected: boolean
   taken: boolean
   onSelect: () => void
@@ -193,13 +197,13 @@ function TeamCard({
       `}
     >
       <div className="w-12 h-12 flex items-center justify-center">
-        {team.logo_league_folder && team.logo_team_slug ? (
+        {club.logoFolder && club.slug ? (
           <Image
-            src={logoSrc(team.logo_league_folder, team.logo_team_slug)}
-            alt={team.name}
+            src={logoSrc(club.logoFolder, club.slug)}
+            alt={club.name}
             width={48}
             height={48}
-            className="object-contain w-full h-full bg-white"
+            className="object-contain w-full h-full"
             onError={(e) => {
               ;(e.target as HTMLImageElement).style.opacity = '0.3'
             }}
@@ -211,7 +215,7 @@ function TeamCard({
         )}
       </div>
       <span className="text-[10px] text-center leading-tight text-slate-700 font-medium line-clamp-2 w-full">
-        {team.name}
+        {club.name}
       </span>
       {taken && <span className="text-[9px] text-red-400 font-medium">Taken</span>}
     </button>

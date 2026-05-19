@@ -31,7 +31,7 @@ export default function TeamLogo({ leagueFolder, teamSlug, context, alt, classNa
       alt={alt}
       width={size}
       height={size}
-      className={`object-contain bg-white ${className}`}
+      className={`object-contain ${className}`}
       onError={(e) => {
         const target = e.target as HTMLImageElement
         target.style.display = 'none'

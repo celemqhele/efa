@@ -117,3 +117,75 @@ body {
     padding-top: env(safe-area-inset-top, 0px);
   }
 }
+
+/* ── Dark Mode ─────────────────────────────────────────────────────────────── */
+.dark {
+  --navy: #0a1128;
+  --navy-light: #0f1a3d;
+  --navy-card: #0d1635;
+  --navy-border: #1e2d5a;
+}
+
+.dark body {
+  color: #e2e8f0;
+  background-color: var(--navy);
+}
+
+/* Structural */
+.dark .card {
+  background-color: var(--navy-card) !important;
+  border-color: var(--navy-border) !important;
+}
+
+.dark .section-header {
+  color: #e2e8f0 !important;
+}
+
+/* Nav */
+.dark nav {
+  background-color: rgba(10, 17, 40, 0.95) !important;
+  border-bottom-color: var(--navy-border) !important;
+}
+
+/* Text */
+.dark .text-slate-900 { color: #e2e8f0 !important; }
+.dark .text-slate-800 { color: #e2e8f0 !important; }
+.dark .text-slate-700 { color: #cbd5e1 !important; }
+.dark .text-slate-600 { color: #94a3b8 !important; }
+.dark .text-slate-500 { color: #64748b !important; }
+
+/* Backgrounds */
+.dark .bg-white { background-color: var(--navy-card) !important; }
+.dark .bg-slate-50 { background-color: var(--navy-light) !important; }
+.dark .bg-slate-100 { background-color: #1a2845 !important; }
+.dark .bg-slate-200 { background-color: var(--navy-border) !important; }
+
+/* Borders */
+.dark .border-slate-200 { border-color: var(--navy-border) !important; }
+.dark .border-slate-100 { border-color: rgba(30, 45, 90, 0.8) !important; }
+
+/* Inputs */
+.dark .input-field {
+  background-color: var(--navy-light) !important;
+  border-color: var(--navy-border) !important;
+  color: #e2e8f0 !important;
+}
+.dark .input-field::placeholder { color: #475569 !important; }
+
+/* Buttons */
+.dark .btn-outline {
+  border-color: var(--navy-border) !important;
+  color: #94a3b8 !important;
+}
+.dark .btn-outline:hover {
+  border-color: rgba(201, 168, 76, 0.5) !important;
+  color: #c9a84c !important;
+}
+
+/* Divide */
+.dark [class*="divide-slate"] > * + * { border-color: var(--navy-border) !important; }
+.dark [class*="divide-navy"] > * + * { border-color: var(--navy-border) !important; }
+
+/* Scrollbar */
+.dark ::-webkit-scrollbar-track { background: var(--navy-light); }
+.dark ::-webkit-scrollbar-thumb { background: var(--navy-border); }

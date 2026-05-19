@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/supabase/types'
+import ThemeToggle from './ThemeToggle'
 
 interface NavProps {
   profile?: Profile | null
@@ -69,7 +70,8 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
             {profile ? (
               <>
                 {/* Notifications bell */}

@@ -173,7 +173,7 @@ export default async function ExportPage({ searchParams }: Props) {
         alt=""
         width={size}
         height={size}
-        style={{ objectFit: 'contain', display: 'block', background: '#ffffff', flexShrink: 0 }}
+        style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }}
       />
     )
   }
