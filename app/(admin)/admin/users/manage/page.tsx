@@ -1,8 +1,8 @@
 ﻿import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
-import Link from 'next/link'
 import UserActionButtons from './UserActionButtons'
+import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
 
 export const revalidate = 0
 
@@ -100,18 +100,7 @@ export default async function UsersManagePage() {
                       {new Date(req.created_at).toLocaleDateString('en-GB')}
                     </td>
                     <td className="py-3">
-                      <div className="flex gap-2">
-                        <form action="/api/admin/team-request" method="POST">
-                          <input type="hidden" name="requestId" value={req.id} />
-                          <input type="hidden" name="action" value="approve" />
-                          <button type="submit" className="btn-gold text-xs py-1 px-3">Approve</button>
-                        </form>
-                        <form action="/api/admin/team-request" method="POST">
-                          <input type="hidden" name="requestId" value={req.id} />
-                          <input type="hidden" name="action" value="deny" />
-                          <button type="submit" className="btn-danger text-xs py-1 px-3">Deny</button>
-                        </form>
-                      </div>
+                      <TeamRequestButtons requestId={req.id} />
                     </td>
                   </tr>
                 ))}

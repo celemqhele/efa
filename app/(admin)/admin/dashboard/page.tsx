@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import Link from 'next/link'
+import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
 
 export const revalidate = 0
 
@@ -351,18 +352,7 @@ export default async function AdminDashboardPage() {
                       <Image src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')} alt={req.requested_team.name} width={32} height={32} className="object-contain bg-white ml-auto shrink-0" />
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <form action="/api/admin/team-request" method="POST" className="flex-1">
-                      <input type="hidden" name="requestId" value={req.id} />
-                      <input type="hidden" name="action" value="approve" />
-                      <button type="submit" className="btn-gold w-full text-xs py-1.5">Approve</button>
-                    </form>
-                    <form action="/api/admin/team-request" method="POST" className="flex-1">
-                      <input type="hidden" name="requestId" value={req.id} />
-                      <input type="hidden" name="action" value="deny" />
-                      <button type="submit" className="btn-danger w-full text-xs py-1.5">Deny</button>
-                    </form>
-                  </div>
+                  <TeamRequestButtons requestId={req.id} />
                 </div>
               ))}
             </div>
