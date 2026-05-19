@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { format, parseISO, differenceInDays, isPast } from 'date-fns'
 import TeamChangeModal from './TeamChangeModal'
+import ProfileActions from './ProfileActions'
 
 export const revalidate = 0
 
@@ -322,6 +323,9 @@ export default async function ProfilePage() {
           )}
         </div>
       )}
+
+      {/* ── Account Security ─────────────────────────────────────────────── */}
+      <ProfileActions userEmail={user.email ?? ''} />
 
       {/* ── Prediction History ───────────────────────────────────────────── */}
       <div className="card p-5 space-y-4">

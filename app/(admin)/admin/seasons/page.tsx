@@ -6,7 +6,6 @@ import SeasonManager from './SeasonManager'
 export default async function SeasonsPage() {
   const supabase = await createClient()
 
-  // All seasons ordered newest first
   const { data: rawSeasons } = await (supabase
     .from('seasons')
     .select(`
@@ -15,19 +14,29 @@ export default async function SeasonsPage() {
     `)
     .order('created_at', { ascending: false }) as any)
 
-  // Fixture counts per tournament
+  // Fixture counts + round breakdown per tournament
   const { data: fixtureCounts } = await supabase
     .from('fixtures')
-    .select('tournament_id, status')
+    .select('tournament_id, status, round_type')
 
   const totalMap: Record<string, number> = {}
   const doneMap: Record<string, number> = {}
+  const groupTotalMap: Record<string, number> = {}
+  const groupDoneMap: Record<string, number> = {}
+  const sfCountMap: Record<string, number> = {}
+
   const doneSts = new Set(['confirmed', 'abandoned_home', 'abandoned_away', 'abandoned_both'])
+
   for (const f of fixtureCounts ?? []) {
-    totalMap[f.tournament_id] = (totalMap[f.tournament_id] ?? 0) + 1
-    if (doneSts.has(f.status)) {
-      doneMap[f.tournament_id] = (doneMap[f.tournament_id] ?? 0) + 1
+    const tid = f.tournament_id
+    totalMap[tid] = (totalMap[tid] ?? 0) + 1
+    if (doneSts.has(f.status)) doneMap[tid] = (doneMap[tid] ?? 0) + 1
+
+    if (f.round_type === 'group') {
+      groupTotalMap[tid] = (groupTotalMap[tid] ?? 0) + 1
+      if (doneSts.has(f.status)) groupDoneMap[tid] = (groupDoneMap[tid] ?? 0) + 1
     }
+    if (f.round_type === 'sf') sfCountMap[tid] = (sfCountMap[tid] ?? 0) + 1
   }
 
   const seasons = (rawSeasons ?? []).map((s: any) => {
@@ -45,19 +54,23 @@ export default async function SeasonsPage() {
         status: t.status,
         fixture_count: totalMap[t.id] ?? 0,
         completed_count: doneMap[t.id] ?? 0,
+        // For UCL/Europa: whether groups are done but SF not yet generated
+        knockout_ready:
+          (t.type === 'ucl' || t.type === 'europa') &&
+          (groupTotalMap[t.id] ?? 0) > 0 &&
+          (groupDoneMap[t.id] ?? 0) === (groupTotalMap[t.id] ?? 0) &&
+          (sfCountMap[t.id] ?? 0) === 0,
       })),
       league_total_fixtures: leagueT ? (totalMap[leagueT.id] ?? 0) : 0,
       league_completed_fixtures: leagueT ? (doneMap[leagueT.id] ?? 0) : 0,
     }
   })
 
-  // All teams (for wizard team selection)
   const { data: allTeams } = await supabase
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug, manager_id')
     .order('name')
 
-  // Previous completed season's final standings (for UCL/Europa auto-population)
   const completedSeason = (rawSeasons ?? []).find((s: any) => s.status === 'completed')
   let prevSeasonStandings: { team_id: string; team_name: string }[] | null = null
 

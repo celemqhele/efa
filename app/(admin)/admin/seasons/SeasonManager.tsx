@@ -23,6 +23,7 @@ interface Tournament {
   status: string
   fixture_count: number
   completed_count: number
+  knockout_ready: boolean
 }
 
 interface Season {
@@ -49,11 +50,13 @@ function SeasonCard({
   isFirst,
   onEndSeason,
   onCancelSeason,
+  onGenerateKnockouts,
 }: {
   season: Season
   isFirst: boolean
   onEndSeason: (id: string) => Promise<void>
   onCancelSeason: (id: string) => Promise<void>
+  onGenerateKnockouts: (tournamentId: string) => Promise<void>
 }) {
   const [cancelDialog, setCancelDialog] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
@@ -81,6 +84,12 @@ function SeasonCard({
     setCancelDialog(false)
     setLoading('cancel')
     await onCancelSeason(season.id)
+    setLoading(null)
+  }
+
+  async function handleGenerateKO(tournamentId: string) {
+    setLoading(`ko-${tournamentId}`)
+    await onGenerateKnockouts(tournamentId)
     setLoading(null)
   }
 
@@ -162,12 +171,12 @@ function SeasonCard({
           <div className="grid grid-cols-3 gap-2">
             {[uclT, europaT, superCupT].map((t, idx) =>
               t ? (
-                <div key={t.id} className="bg-[#0f1a3d] rounded-lg px-3 py-2 text-center">
+                <div key={t.id} className="bg-[#0f1a3d] rounded-lg px-3 py-2 text-center space-y-1">
                   <p className="text-xs font-bold text-white truncate">
                     {t.type === 'ucl' ? 'UCL' : t.type === 'europa' ? 'Europa' : 'Super Cup'}
                   </p>
                   <p
-                    className={`text-[10px] mt-0.5 ${
+                    className={`text-[10px] ${
                       t.status === 'active'
                         ? 'text-green-400'
                         : t.status === 'completed'
@@ -177,9 +186,18 @@ function SeasonCard({
                   >
                     {t.status === 'active' ? 'Active' : t.status === 'completed' ? 'Done' : 'Upcoming'}
                   </p>
-                  <p className="text-[10px] text-slate-600 mt-0.5">
+                  <p className="text-[10px] text-slate-600">
                     {t.completed_count}/{t.fixture_count}
                   </p>
+                  {t.knockout_ready && isActive && (
+                    <button
+                      onClick={() => handleGenerateKO(t.id)}
+                      disabled={loading === `ko-${t.id}`}
+                      className="w-full text-[9px] py-0.5 px-1 rounded bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 hover:bg-[#c9a84c]/30 transition-colors font-bold disabled:opacity-40"
+                    >
+                      {loading === `ko-${t.id}` ? '...' : 'Generate KOs'}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div
@@ -653,6 +671,21 @@ export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }
     router.refresh()
   }
 
+  async function handleGenerateKnockouts(tournamentId: string) {
+    setActionError('')
+    const res = await fetch('/api/admin/generate-knockouts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tournament_id: tournamentId }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setActionError(data.error ?? 'Failed to generate knockouts')
+      return
+    }
+    router.refresh()
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -699,6 +732,7 @@ export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }
               isFirst={idx === 0}
               onEndSeason={handleEndSeason}
               onCancelSeason={handleCancelSeason}
+              onGenerateKnockouts={handleGenerateKnockouts}
             />
           ))}
 

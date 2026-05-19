@@ -35,12 +35,16 @@ const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   },
 }
 
+const ROUND_LABELS: Record<string, string> = {
+  sf: 'Semi-Final',
+  final: 'Final',
+}
+
 export default async function FixturesPage({ searchParams }: PageProps) {
   const supabase = await createClient()
   const params = await searchParams
   const selectedTournamentId = params.tournament ?? null
 
-  // Fetch all active/completed tournaments
   const { data: tournaments } = await supabase
     .from('tournaments')
     .select('id, name, type, status')
@@ -55,8 +59,7 @@ export default async function FixturesPage({ searchParams }: PageProps) {
 
   const activeTournament = tournaments?.find((t) => t.id === activeTournamentId)
 
-  // ── Determine current matchday ───────────────────────────────────────────────
-  // Fetch matchday completion summary for the tournament
+  // Build matchday completion map
   const { data: allMdRows } = activeTournamentId
     ? await supabase
         .from('fixtures')
@@ -64,7 +67,6 @@ export default async function FixturesPage({ searchParams }: PageProps) {
         .eq('tournament_id', activeTournamentId)
     : { data: null }
 
-  // Build per-matchday completion map
   const mdMap: Record<number, { total: number; done: number }> = {}
   for (const f of allMdRows ?? []) {
     const md = f.matchday ?? 0
@@ -73,44 +75,29 @@ export default async function FixturesPage({ searchParams }: PageProps) {
     if (f.status === 'confirmed') mdMap[md].done++
   }
 
-  const sortedMatchdays = Object.keys(mdMap)
-    .map(Number)
-    .sort((a, b) => a - b)
+  const sortedMatchdays = Object.keys(mdMap).map(Number).sort((a, b) => a - b)
 
-  // Current matchday = lowest MD where not all fixtures are confirmed
+  // Default = next upcoming matchday (lowest MD where not all confirmed)
   const currentMatchday =
     sortedMatchdays.find((md) => mdMap[md].done < mdMap[md].total) ??
     sortedMatchdays[sortedMatchdays.length - 1] ??
     1
 
-  const selectedMatchday = params.matchday
-    ? parseInt(params.matchday)
-    : currentMatchday
+  const selectedMatchday = params.matchday ? parseInt(params.matchday) : currentMatchday
 
-  const isCurrentMd = selectedMatchday === currentMatchday
-
-  // ── Fetch fixtures for the selected matchday ─────────────────────────────────
-  // On current matchday: only show unresolved (scheduled/awaiting) fixtures
-  // On past matchdays: show everything
-  let fixtureQuery = supabase
-    .from('fixtures')
-    .select(`
-      id, matchday, scheduled_date, status, round_type, leg,
-      home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
-      away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
-      results(home_score, away_score)
-    `)
-    .eq('tournament_id', activeTournamentId ?? '')
-    .eq('matchday', selectedMatchday)
-    .order('scheduled_date', { ascending: true })
-
-  if (isCurrentMd) {
-    // Hide fully confirmed fixtures — they belong in Results
-    fixtureQuery = fixtureQuery.neq('status', 'confirmed')
-  }
-
+  // Fetch ALL fixtures for the selected matchday (no status filter)
   const { data: fixtures } = activeTournamentId
-    ? await fixtureQuery
+    ? await supabase
+        .from('fixtures')
+        .select(`
+          id, matchday, scheduled_date, status, round_type, leg,
+          home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+          away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
+          results(home_score, away_score)
+        `)
+        .eq('tournament_id', activeTournamentId)
+        .eq('matchday', selectedMatchday)
+        .order('scheduled_date', { ascending: true })
     : { data: null }
 
   function formatDate(dateStr: string | null): string {
@@ -122,15 +109,14 @@ export default async function FixturesPage({ searchParams }: PageProps) {
     }
   }
 
-  const prevMd = sortedMatchdays
-    .filter((md) => md < selectedMatchday)
-    .at(-1) ?? null
-  const nextMd = sortedMatchdays
-    .filter((md) => md > selectedMatchday)[0] ?? null
+  const prevMd = sortedMatchdays.filter((md) => md < selectedMatchday).at(-1) ?? null
+  const nextMd = sortedMatchdays.filter((md) => md > selectedMatchday)[0] ?? null
 
   const mdComplete =
     mdMap[selectedMatchday]?.total > 0 &&
     mdMap[selectedMatchday]?.done === mdMap[selectedMatchday]?.total
+
+  const isCurrentMd = selectedMatchday === currentMatchday
 
   return (
     <div className="space-y-6">
@@ -179,8 +165,10 @@ export default async function FixturesPage({ searchParams }: PageProps) {
           )}
 
           <div className="flex-1 text-center">
-            <span className="text-sm font-bold text-white">Matchday {selectedMatchday}</span>
-            {isCurrentMd && (
+            <span className="text-sm font-bold text-white">
+              {ROUND_LABELS[(fixtures?.[0] as any)?.round_type ?? ''] ?? `Matchday ${selectedMatchday}`}
+            </span>
+            {isCurrentMd && !mdComplete && (
               <span className="ml-2 text-[10px] bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                 Current
               </span>
@@ -210,21 +198,6 @@ export default async function FixturesPage({ searchParams }: PageProps) {
         <div className="card p-12 text-center">
           <p className="text-slate-500 text-sm">No active tournaments.</p>
         </div>
-      ) : mdComplete && isCurrentMd ? (
-        <div className="card p-10 text-center space-y-2">
-          <p className="text-2xl">✅</p>
-          <p className="text-white font-semibold">All results submitted for Matchday {selectedMatchday}</p>
-          {nextMd !== null ? (
-            <Link
-              href={`/fixtures?${activeTournamentId ? `tournament=${activeTournamentId}&` : ''}matchday=${nextMd}`}
-              className="inline-block mt-3 px-5 py-2 bg-[#c9a84c] text-[#0a1128] font-bold rounded-lg text-sm"
-            >
-              View Matchday {nextMd} →
-            </Link>
-          ) : (
-            <p className="text-slate-500 text-sm">All matchdays complete.</p>
-          )}
-        </div>
       ) : (fixtures ?? []).length === 0 ? (
         <div className="card p-12 text-center">
           <p className="text-slate-500 text-sm">No fixtures for Matchday {selectedMatchday}.</p>
@@ -234,6 +207,8 @@ export default async function FixturesPage({ searchParams }: PageProps) {
           {(fixtures ?? []).map((f: any) => {
             const result = f.results?.[0] ?? null
             const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
+            const homeWin = result && result.home_score > result.away_score
+            const awayWin = result && result.away_score > result.home_score
 
             return (
               <Link
@@ -243,8 +218,10 @@ export default async function FixturesPage({ searchParams }: PageProps) {
               >
                 {/* Home team */}
                 <div className="flex-1 flex items-center gap-2.5 min-w-0 justify-end flex-row-reverse sm:flex-row">
-                  <span className="text-white font-semibold text-sm truncate text-right sm:text-left">
-                    {f.home_team?.name ?? 'TBD'}
+                  <span className={`text-sm font-semibold truncate text-right sm:text-left ${
+                    homeWin ? 'text-white' : awayWin ? 'text-slate-500' : 'text-white'
+                  }`}>
+                    {f.home_team?.name ?? 'TBC'}
                   </span>
                   {f.home_team?.logo_league_folder && (
                     <div className="flex-shrink-0">
@@ -253,7 +230,7 @@ export default async function FixturesPage({ searchParams }: PageProps) {
                         teamSlug={f.home_team.logo_team_slug}
                         context="standings_row"
                         alt={f.home_team.name}
-                        className="w-8 h-8"
+                        className={`w-8 h-8 ${awayWin ? 'opacity-40' : ''}`}
                       />
                     </div>
                   )}
@@ -287,12 +264,14 @@ export default async function FixturesPage({ searchParams }: PageProps) {
                         teamSlug={f.away_team.logo_team_slug}
                         context="standings_row"
                         alt={f.away_team.name}
-                        className="w-8 h-8"
+                        className={`w-8 h-8 ${homeWin ? 'opacity-40' : ''}`}
                       />
                     </div>
                   )}
-                  <span className="text-white font-semibold text-sm truncate">
-                    {f.away_team?.name ?? 'TBD'}
+                  <span className={`text-sm font-semibold truncate ${
+                    awayWin ? 'text-white' : homeWin ? 'text-slate-500' : 'text-white'
+                  }`}>
+                    {f.away_team?.name ?? 'TBC'}
                   </span>
                 </div>
               </Link>
