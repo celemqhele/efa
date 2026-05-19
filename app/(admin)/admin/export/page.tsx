@@ -96,6 +96,28 @@ export default async function ExportPage({ searchParams }: Props) {
           .order('points', { ascending: false })
           .order('goals_for', { ascending: false })
         standings = data ?? []
+
+        // If no matches played yet, build zero-rows from fixture team list
+        if (standings.length === 0) {
+          const { data: fxTeams } = await supabase
+            .from('fixtures')
+            .select('home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name), away_team:teams!fixtures_away_team_id_fkey(id, name)')
+            .eq('tournament_id', activeTournamentId)
+          const seen = new Set<string>()
+          const zeroRows: any[] = []
+          for (const fx of fxTeams ?? []) {
+            for (const [tid, tobj] of [
+              [fx.home_team_id, fx.home_team],
+              [fx.away_team_id, fx.away_team],
+            ] as [string | null, any][]) {
+              if (tid && !seen.has(tid)) {
+                seen.add(tid)
+                zeroRows.push({ team_id: tid, team: tobj, played: 0, wins: 0, draws: 0, losses: 0, goals_for: 0, goals_against: 0, points: 0 })
+              }
+            }
+          }
+          standings = zeroRows.sort((a, b) => (a.team?.name ?? '').localeCompare(b.team?.name ?? ''))
+        }
       } else {
         // UCL / Europa — show group standings
         const { data } = await (supabase.from('group_standings') as any)
