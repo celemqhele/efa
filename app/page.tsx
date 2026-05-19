@@ -11,16 +11,17 @@ export const dynamic = 'force-dynamic'
 export default async function HomePage() {
   const supabase = await createClient()
 
-  // Current user + their team
+  // Current user + all their team rows (same club can exist in multiple phases)
   const { data: { user } } = await supabase.auth.getUser()
   let userTeam: { id: string; name: string } | null = null
+  let userTeamIds: string[] = []
   if (user) {
-    const { data: teamRaw } = await supabase
+    const { data: teamRows } = await supabase
       .from('teams')
       .select('id, name')
       .eq('manager_id', user.id)
-      .maybeSingle()
-    userTeam = (teamRaw as any) ?? null
+    userTeam = (teamRows?.[0] as any) ?? null
+    userTeamIds = (teamRows ?? []).map((t: any) => t.id)
   }
 
   // Get active tournament (Premier League)
@@ -44,6 +45,11 @@ export default async function HomePage() {
     : { data: null }
 
   // Upcoming fixtures — find next date batch for user's team (or all if no team)
+  // Build OR filter covering all of the user's team rows across phases
+  const teamOrFilter = userTeamIds.length > 0
+    ? userTeamIds.flatMap(id => [`home_team_id.eq.${id}`, `away_team_id.eq.${id}`]).join(',')
+    : null
+
   const today = new Date().toISOString().split('T')[0]
   let upcomingQuery = supabase
     .from('fixtures')
@@ -53,10 +59,8 @@ export default async function HomePage() {
     .order('scheduled_date', { ascending: true })
     .limit(1)
 
-  if (userTeam) {
-    upcomingQuery = upcomingQuery.or(
-      `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
-    )
+  if (teamOrFilter) {
+    upcomingQuery = upcomingQuery.or(teamOrFilter)
   }
 
   const { data: nextDateRow } = await upcomingQuery
@@ -77,10 +81,8 @@ export default async function HomePage() {
       .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
       .order('deadline')
 
-    if (userTeam) {
-      batchQuery = batchQuery.or(
-        `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
-      )
+    if (teamOrFilter) {
+      batchQuery = batchQuery.or(teamOrFilter)
     }
 
     const { data } = await batchQuery

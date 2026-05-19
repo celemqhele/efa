@@ -156,15 +156,120 @@ A full account of everything built and iterated on, from first commit to present
 
 ---
 
+## Phase 9 — Admin-Assign Not Syncing to Profile/Home
+
+**Problem:** After an admin assigned a manager via the admin UI, the assigned user's profile still showed "Select Club" and their home page showed all fixtures (not just their team's), as if they had no team at all.
+
+**Root cause:** Both `app/page.tsx` and `app/(protected)/profile/page.tsx` used Supabase's `.maybeSingle()` to find the user's team. This silently returns `null` whenever **more than one row** matches — which happens when the unique constraint on `manager_id` is dropped and the same user has `manager_id` set on multiple sibling team rows (same club across different phases). The result: profile shows "No team selected" and home page shows all fixtures.
+
+**Secondary cause:** The fixture queries used a single team row's `id` for filtering. If a user manages multiple sibling rows (e.g., Fulham in Phase 1 and Phase 2), only one row's fixtures were shown — missing the active tournament's fixtures if they were on the other row.
+
+**Tertiary cause:** The assign API blocked assigning a user who already manages a sibling of the same club (e.g., User manages Phase 2 Fulham, admin tries to assign to Phase 1 Fulham) with "already manages that team — sack first."
+
+**Fixes:**
+
+**`app/page.tsx`:**
+- Changed `.eq('manager_id', user.id).maybeSingle()` → fetch all matching rows (no limit), take first for display
+- Built `userTeamIds` array of all the user's team row IDs
+- Fixture queries now use an OR filter covering all team IDs across phases, not just one
+
+**`app/(protected)/profile/page.tsx`:**
+- Same `.maybeSingle()` → fetch-all-limit-none fix
+- `teamOrFilter` OR-filter built from all `teamIds` for the upcoming fixtures query
+- "Is home game?" check changed from `f.home_team?.id === team.id` to `teamIds.includes(f.home_team?.id)` to correctly identify home vs away across all phase rows
+
+**`app/api/admin/managers/assign/route.ts`:**
+- Changed `existingTeam` check from single-row `.single()` to fetching all rows the user manages
+- If all existing rows are siblings of the target team (same `logo_league_folder` + `logo_team_slug`), allow the assignment — propagation will fill the remaining sibling rows
+- Only blocks if user manages a completely different club
+
+**DB prerequisite (still required if not done):**
+```sql
+ALTER TABLE teams DROP CONSTRAINT teams_manager_id_key;
+```
+Without this, the assign API cannot set the same `manager_id` on multiple sibling rows (blocked by the unique constraint).
+
+---
+
+## Phase 10 — Constraint Clarification + Auto-Sack Tracker
+
+**Problem 1:** Attempted to drop `teams_manager_id_key` unique constraint, but it didn't exist — so this was never the blocker. The assign-sync issue was purely the `maybeSingle()` bug (Phase 9 fix).
+
+**Problem 2:** No automated consequence for teams that repeatedly no-show — admins had to manually monitor and sack.
+
+**Feature: Auto-sack on 4 consecutive absences**
+
+**How it works:**
+- Every time a result is finalised with `home_absent` or `away_absent`, the absent team's `abandon_count` is incremented in the DB
+- Immediately after, `checkAndAutoSack()` runs for each absent team
+- It queries the team's last 4 confirmed results (via `scheduled_date DESC`) and checks if EVERY result was an absence for that team:
+  - "Both absent" results count for both teams
+  - Single-absent is detected by the forfeit score pattern (0–3 for home, 3–0 for away) combined with `override_reason` containing "absent"
+- If all 4 were absences → auto-sack fires:
+  1. Clears `manager_id` on all sibling rows (same club across phases)
+  2. Closes all open `manager_tenures`
+  3. Sends an in-app notification to the sacked manager
+  4. Writes an `auto_sack_manager` entry to `audit_log`
+- If the team has fewer than 4 confirmed results total, no check fires (can't trigger prematurely)
+
+**Files changed:**
+- `app/api/admin/finalise-result/route.ts`: Added `checkAndAutoSack()` helper before standings helpers; added absence tracking block after result insert that increments `abandon_count` and calls `checkAndAutoSack()` inside a non-fatal try/catch
+
+---
+
+## Phase 11 — Manager Application Feature
+
+**Feature:** Any logged-in user can apply to manage any club in the league — including clubs that already have a manager. If an admin approves, the current manager is sacked and the applicant is appointed.
+
+**DB migration required:**
+```sql
+CREATE TABLE manager_applications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  applicant_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  team_id UUID REFERENCES teams(id) ON DELETE CASCADE NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'denied')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by UUID REFERENCES profiles(id)
+);
+```
+
+**User flow:**
+- User visits any team profile page (`/teams/[id]`)
+- If logged in and not already the manager of that club, they see a "Management Application" card
+- If the club already has a manager, the card says so and explains the current manager will be replaced on approval
+- Clicking "Apply to Manage" submits the application (one pending application per user at a time)
+- Button state changes to "Application pending — awaiting admin review"
+
+**Admin flow:**
+- `/admin/users/manage` shows a new "Manager Applications" section (above team change requests)
+- Columns: Applicant, Wants to Manage (with logo), Current Manager (or Vacant), Date, Approve/Deny
+- Approve: sacks any current manager of the club (clears manager_id on all sibling rows, closes tenures, notifies the sacked manager); if applicant already manages a different club, sacks them from that first; assigns applicant to all sibling rows; opens tenures; notifies applicant; denies other pending applications for the same club
+- Deny: marks as denied, notifies applicant
+- Both actions use `router.refresh()` to update the list in place
+
+**New files:**
+- `app/api/teams/apply-manager/route.ts`
+- `app/api/admin/manager-applications/approve/route.ts`
+- `app/api/admin/manager-applications/deny/route.ts`
+- `components/ui/ApplyManagerButton.tsx`
+- `components/ui/ManagerApplicationButtons.tsx`
+
+**Modified files:**
+- `app/(public)/teams/[id]/page.tsx` — added `hasPendingApplication` check + `ApplyManagerButton` section
+- `app/(admin)/admin/users/manage/page.tsx` — added manager applications table
+
+---
+
 ## Summary Stats
 
 | Category | Count |
 |---|---|
 | Pages created or rewritten | 8 |
-| API routes created or updated | 7 |
-| Components created | 5 |
-| Bug fixes | 9 |
-| Features shipped | 6 |
+| API routes created or updated | 11 |
+| Components created | 7 |
+| Bug fixes | 13 |
+| Features shipped | 8 |
 
 ---
 

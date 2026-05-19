@@ -6,6 +6,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
 import TeamManagerAdmin from './TeamManagerAdmin'
+import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +46,8 @@ export default async function TeamProfilePage({ params }: PageProps) {
   // Check if current user is admin (for manager controls)
   const { data: { user: currentUser } } = await supabase.auth.getUser()
   let isAdmin = false
+  let isCurrentManager = false
+  let hasPendingApplication = false
   let allProfiles: { id: string; username: string; avatar_url: string | null }[] = []
   const managedTeamByUser: Record<string, string> = {}
 
@@ -52,6 +55,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
     const { data: currentProfile } = await supabase
       .from('profiles').select('role').eq('id', currentUser.id).single()
     isAdmin = currentProfile?.role === 'admin'
+    isCurrentManager = (team as any).manager_id === currentUser.id
 
     if (isAdmin) {
       const [{ data: profiles }, { data: allTeams }] = await Promise.all([
@@ -59,12 +63,21 @@ export default async function TeamProfilePage({ params }: PageProps) {
         supabase.from('teams').select('name, manager_id').not('manager_id', 'is', null),
       ])
       allProfiles = profiles ?? []
-      // Build userId → team name map (deduplicated: first occurrence wins)
       for (const t of allTeams ?? []) {
         if (t.manager_id && !managedTeamByUser[t.manager_id]) {
           managedTeamByUser[t.manager_id] = t.name
         }
       }
+    } else if (!isCurrentManager) {
+      // Check if user has a pending application for this team
+      const { data: pendingApp } = await supabase
+        .from('manager_applications')
+        .select('id')
+        .eq('applicant_id', currentUser.id)
+        .eq('team_id', id)
+        .eq('status', 'pending')
+        .maybeSingle()
+      hasPendingApplication = !!pendingApp
     }
   }
 
@@ -246,6 +259,25 @@ export default async function TeamProfilePage({ params }: PageProps) {
           allProfiles={allProfiles}
           managedTeamByUser={managedTeamByUser}
         />
+      )}
+
+      {/* ── Apply to Manage ──────────────────────────────────────────────── */}
+      {currentUser && !isAdmin && !isCurrentManager && (
+        <div className="card p-5 space-y-2">
+          <h2 className="section-header mb-1">
+            <span className="text-[#c9a84c]">🏟️</span> Management Application
+          </h2>
+          <p className="text-sm text-slate-500">
+            {(team as any).manager_id
+              ? 'This club currently has a manager. You can still apply — if approved, the current manager will be replaced.'
+              : 'This club has no manager. Apply to take charge.'}
+          </p>
+          <ApplyManagerButton
+            teamId={id}
+            teamName={team.name}
+            hasPending={hasPendingApplication}
+          />
+        </div>
       )}
 
       {/* ── Season Stats ─────────────────────────────────────────────────── */}

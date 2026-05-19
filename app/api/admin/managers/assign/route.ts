@@ -31,19 +31,26 @@ export async function POST(request: Request) {
   if (!team) return Response.json({ error: 'Team not found' }, { status: 404 })
   if (!targetProfile) return Response.json({ error: 'User not found' }, { status: 404 })
 
-  // Check the target user isn't already managing a team
-  const { data: existingTeam } = await adminSupabase
+  // Check the target user isn't already managing a different club
+  const { data: existingTeams } = await adminSupabase
     .from('teams')
-    .select('id, name')
+    .select('id, name, logo_league_folder, logo_team_slug')
     .eq('manager_id', user_id)
-    .limit(1)
-    .single()
 
-  if (existingTeam) {
-    return Response.json(
-      { error: `${targetProfile.username} already manages ${existingTeam.name}. Sack them first.` },
-      { status: 409 }
+  if (existingTeams && existingTeams.length > 0) {
+    // Allow if all existing rows are siblings of the requested team (same real-world club)
+    const isSameClub = existingTeams.every(
+      (t) =>
+        t.logo_league_folder === team.logo_league_folder &&
+        t.logo_team_slug === team.logo_team_slug
     )
+    if (!isSameClub) {
+      return Response.json(
+        { error: `${targetProfile.username} already manages ${existingTeams[0].name}. Sack them first.` },
+        { status: 409 }
+      )
+    }
+    // Same club across phases — fall through and propagate to remaining sibling rows
   }
 
   // Find all sibling rows for this club

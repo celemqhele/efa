@@ -8,6 +8,97 @@ import type { Database } from '@/lib/supabase/types'
 
 type MatchStatsInsert = Database['public']['Tables']['match_stats']['Insert']
 
+// ─── Auto-sack helper ─────────────────────────────────────────────────────────
+
+async function checkAndAutoSack(
+  db: any,
+  teamId: string,
+  adminUserId: string,
+  threshold = 4
+): Promise<void> {
+  // Fetch last `threshold` confirmed results for this team
+  const { data: recent } = await db
+    .from('fixtures')
+    .select(`
+      id, home_team_id, away_team_id,
+      results(home_score, away_score, override_reason)
+    `)
+    .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+    .eq('status', 'confirmed')
+    .order('scheduled_date', { ascending: false })
+    .limit(threshold)
+
+  if (!recent || recent.length < threshold) return
+
+  // Check every result was an absence for this specific team
+  const allAbsent = (recent as any[]).every((f) => {
+    const result = Array.isArray(f.results) ? f.results[0] : f.results
+    if (!result?.override_reason) return false
+    const reason: string = (result.override_reason as string).toLowerCase()
+    if (!reason.includes('absent')) return false
+    // Both absent — counts for both teams
+    if (reason.includes('both')) return true
+    // Single absent — check which team via forfeit score (0-3 or 3-0)
+    const isHome = f.home_team_id === teamId
+    return isHome
+      ? result.home_score === 0 && result.away_score === 3
+      : result.home_score === 3 && result.away_score === 0
+  })
+
+  if (!allAbsent) return
+
+  // Fetch team to get manager and sibling rows
+  const { data: team } = await db
+    .from('teams')
+    .select('id, name, logo_league_folder, logo_team_slug, manager_id')
+    .eq('id', teamId)
+    .single()
+
+  if (!team?.manager_id) return
+
+  const sackUserId = team.manager_id
+
+  // Find all sibling rows (same club across phases)
+  let allClubIds: string[] = [teamId]
+  if (team.logo_league_folder && team.logo_team_slug) {
+    const { data: siblings } = await db
+      .from('teams')
+      .select('id')
+      .eq('logo_league_folder', team.logo_league_folder)
+      .eq('logo_team_slug', team.logo_team_slug)
+      .neq('id', teamId)
+    allClubIds = [teamId, ...(siblings ?? []).map((s: any) => s.id)]
+  }
+
+  await db.from('teams').update({ manager_id: null }).in('id', allClubIds)
+
+  await db
+    .from('manager_tenures' as any)
+    .update({ ended_at: new Date().toISOString() })
+    .in('team_id', allClubIds)
+    .is('ended_at', null)
+
+  await db.from('notifications').insert({
+    user_id: sackUserId,
+    type: 'manager_sacked',
+    title: 'Automatically Removed as Manager',
+    body: `You have been removed as manager of ${team.name} after ${threshold} consecutive absences.`,
+    data: { team_id: teamId, team_name: team.name, reason: 'consecutive_absences' },
+  })
+
+  await db.from('audit_log').insert({
+    admin_id: adminUserId,
+    action: 'auto_sack_manager',
+    target_type: 'team',
+    target_id: teamId,
+    details: {
+      team_name: team.name,
+      sacked_user_id: sackUserId,
+      reason: `${threshold} consecutive absences`,
+    },
+  })
+}
+
 // ─── Standings helpers ────────────────────────────────────────────────────────
 
 async function updateLeagueStandings(
@@ -239,6 +330,27 @@ export async function POST(request: Request) {
     .from('fixtures')
     .update({ status: 'confirmed' })
     .eq('id', fixture_id)
+
+  // ── Absent team tracking ──────────────────────────────────────────────────
+  // Increment abandon_count for each absent team, then check for auto-sack
+  try {
+    const absentTeamIds: string[] = []
+    if (home_absent && fixtureRaw.home_team_id) absentTeamIds.push(fixtureRaw.home_team_id)
+    if (away_absent && fixtureRaw.away_team_id) absentTeamIds.push(fixtureRaw.away_team_id)
+
+    for (const tid of absentTeamIds) {
+      const { data: teamRow } = await adminSupabase
+        .from('teams').select('abandon_count').eq('id', tid).single()
+      await adminSupabase
+        .from('teams')
+        .update({ abandon_count: (teamRow?.abandon_count ?? 0) + 1 })
+        .eq('id', tid)
+
+      await checkAndAutoSack(adminSupabase, tid, user.id)
+    }
+  } catch (err) {
+    console.error('[finalise-result] absence tracking error:', err)
+  }
 
   // ── Standings + tournament progression (non-fatal) ────────────────────────
   try {

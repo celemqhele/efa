@@ -76,13 +76,16 @@ export default async function ProfilePage() {
     .single()
   const profile = profileRaw as any
 
-  // User's team
-  const { data: teamRaw } = await supabase
+  // Fetch all team rows for the user — same club can appear across multiple phases
+  const { data: allTeamRows } = await supabase
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug')
     .eq('manager_id', user.id)
-    .maybeSingle()
-  const team = teamRaw as any
+  const team = (allTeamRows?.[0] as any) ?? null
+  const teamIds: string[] = (allTeamRows ?? []).map((t: any) => t.id)
+  const teamOrFilter = teamIds.length > 0
+    ? teamIds.flatMap(id => [`home_team_id.eq.${id}`, `away_team_id.eq.${id}`]).join(',')
+    : null
 
   // Team change requests for this user (most recent pending or last reviewed)
   const { data: changeRequestsRaw } = await supabase
@@ -98,8 +101,8 @@ export default async function ProfilePage() {
 
   const pendingRequest = changeRequests.find((r: any) => r.status === 'pending') ?? null
 
-  // Upcoming fixtures (next 5 for user's team)
-  const { data: upcomingFixtures } = team
+  // Upcoming fixtures (next 5 for user's team — covers all phase rows)
+  const { data: upcomingFixtures } = teamOrFilter
     ? await supabase
         .from('fixtures')
         .select(`
@@ -108,7 +111,7 @@ export default async function ProfilePage() {
           away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
           tournament:tournaments(name, type)
         `)
-        .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
+        .or(teamOrFilter)
         .eq('status', 'scheduled')
         .order('scheduled_date', { ascending: true })
         .limit(5)
@@ -270,7 +273,7 @@ export default async function ProfilePage() {
           ) : (
             <div className="space-y-3">
               {next3.map((f: any) => {
-                const isHome = f.home_team?.id === team.id
+                const isHome = teamIds.includes(f.home_team?.id)
                 const opponent = isHome ? f.away_team : f.home_team
                 const days = daysUntil(f.scheduled_date)
                 const dateStr = f.scheduled_date
