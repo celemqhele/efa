@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -91,17 +91,17 @@ export function NotificationRow({
         !notification.read
           ? 'border-l-[3px] border-l-[#c9a84c] bg-[#c9a84c]/[0.04]'
           : 'border-l-[3px] border-l-transparent'
-      } ${hasLink ? 'cursor-pointer hover:bg-white/[0.03]' : ''}`}
+      } ${hasLink ? 'cursor-pointer hover:bg-black/[0.03]' : ''}`}
     >
       {/* Icon */}
-      <div className="shrink-0 w-8 h-8 rounded-full bg-[#1e2d5a] flex items-center justify-center text-base mt-0.5">
+      <div className="shrink-0 w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-base mt-0.5">
         {icon}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className={`text-sm leading-snug ${notification.read ? 'text-slate-300 font-medium' : 'text-white font-semibold'}`}>
+          <p className={`text-sm leading-snug ${notification.read ? 'text-slate-500' : 'text-slate-900 font-semibold'}`}>
             {notification.title}
           </p>
           <span className="text-[10px] text-slate-500 shrink-0 mt-0.5 whitespace-nowrap">
@@ -163,21 +163,21 @@ export function TeamChangeRequestRow({
 
   if (done) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[#1e2d5a] bg-[#0f1a3d]">
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50">
         <span className="text-lg">{result === 'approved' ? '✅' : '❌'}</span>
         <p className="text-sm text-slate-400">
           Request {result} for{' '}
-          <span className="text-white font-medium">@{request.requesting_user?.username}</span>
+          <span className="text-slate-900 font-medium">@{request.requesting_user?.username}</span>
         </p>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-4 px-4 py-4 rounded-xl border border-[#1e2d5a] hover:border-[#c9a84c]/30 transition-colors bg-[#0f1a3d]">
+    <div className="flex items-center gap-4 px-4 py-4 rounded-xl border border-slate-200 hover:border-[#c9a84c]/30 transition-colors bg-slate-50">
       <div className="text-xl shrink-0">🔄</div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white">
+        <p className="text-sm font-semibold text-slate-900">
           @{request.requesting_user?.username ?? 'Unknown'} wants to manage{' '}
           <span className="text-[#c9a84c]">{request.requested_team?.name ?? '?'}</span>
         </p>

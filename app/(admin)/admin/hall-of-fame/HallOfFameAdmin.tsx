@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Image from 'next/image'
@@ -129,7 +129,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
     <div className="space-y-8">
       {/* Add trophy form */}
       <div className="card p-6 space-y-5">
-        <h2 className="text-lg font-bold text-white">Award a Trophy</h2>
+        <h2 className="text-lg font-bold text-slate-900">Award a Trophy</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -226,7 +226,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
             {bySeason.map(([seasonName, entries]) => (
               <div key={seasonName} className="card overflow-hidden">
                 <div className="px-5 py-3 bg-gradient-to-r from-[#c9a84c]/10 to-transparent border-b border-navy-border">
-                  <h3 className="font-bold text-white">{seasonName}</h3>
+                  <h3 className="font-bold text-slate-900">{seasonName}</h3>
                 </div>
                 <div className="divide-y divide-navy-border/40">
                   {entries.map((trophy) => (
@@ -245,7 +245,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-white text-sm truncate">{trophy.team?.name}</p>
+                        <p className="font-semibold text-slate-900 text-sm truncate">{trophy.team?.name}</p>
                         <p className="text-xs text-slate-500">
                           {TROPHY_LABEL[trophy.trophy_type] ?? trophy.trophy_type}
                           {trophy.tournament && ` · ${trophy.tournament.name}`}

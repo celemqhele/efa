@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -37,7 +37,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
   ]
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#0a1128]/95 backdrop-blur border-b border-[#1e2d5a]">
+    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
@@ -45,10 +45,10 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#a07830] flex items-center justify-center">
               <span className="text-[#0a1128] font-black text-xs">EFA</span>
             </div>
-            <span className="font-bold text-white hidden sm:block text-sm">
+            <span className="font-bold text-slate-900 hidden sm:block text-sm">
               Efootball Federal Association
             </span>
-            <span className="font-bold text-white sm:hidden text-sm">EFA</span>
+            <span className="font-bold text-slate-900 sm:hidden text-sm">EFA</span>
           </Link>
 
           {/* Desktop Nav */}
@@ -60,7 +60,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   pathname === link.href
                     ? 'bg-[#c9a84c]/20 text-[#c9a84c]'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    : 'text-slate-400 hover:text-slate-900 hover:bg-black/5'
                 }`}
               >
                 {link.label}
@@ -75,7 +75,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
                 {/* Notifications bell */}
                 <Link
                   href="/notifications"
-                  className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                  className="relative p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -103,18 +103,18 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
                 {/* Profile */}
                 <Link
                   href="/profile"
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-black/5 transition-colors"
                 >
                   {profile.avatar_url ? (
                     <img src={profile.avatar_url} alt="" className="w-7 h-7 rounded-full object-contain bg-navy-light" />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-[#1e2d5a] flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center">
                       <span className="text-[#c9a84c] text-xs font-bold">
                         {profile.username[0].toUpperCase()}
                       </span>
                     </div>
                   )}
-                  <span className="hidden md:block text-xs font-medium text-slate-300">{profile.username}</span>
+                  <span className="hidden md:block text-xs font-medium text-slate-700">{profile.username}</span>
                 </Link>
 
                 <button
@@ -126,7 +126,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link href="/login" className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5">
+                <Link href="/login" className="text-xs text-slate-400 hover:text-slate-900 transition-colors px-3 py-1.5">
                   Login
                 </Link>
                 <Link href="/register" className="btn-gold text-xs px-3 py-1.5">
@@ -138,7 +138,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
             {/* Mobile menu toggle */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {menuOpen
@@ -152,7 +152,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="lg:hidden border-t border-[#1e2d5a] py-3 animate-fade-in">
+          <div className="lg:hidden border-t border-slate-200 py-3 animate-fade-in">
             <div className="grid grid-cols-2 gap-1">
               {navLinks.map((link) => (
                 <Link
@@ -162,7 +162,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
                   className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     pathname === link.href
                       ? 'bg-[#c9a84c]/20 text-[#c9a84c]'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      : 'text-slate-400 hover:text-slate-900 hover:bg-black/5'
                   }`}
                 >
                   {link.label}

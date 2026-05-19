@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect } from 'react'
 
@@ -36,8 +36,8 @@ export default function ConfirmDialog({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onCancel}
       />
-      <div className="relative bg-[#0f1a3d] border border-navy-border rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-        <h3 className="text-white font-bold text-lg mb-2">{title}</h3>
+      <div className="relative bg-slate-50 border border-navy-border rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <h3 className="text-slate-900 font-bold text-lg mb-2">{title}</h3>
         <p className="text-slate-400 text-sm mb-6 leading-relaxed">{message}</p>
         <div className="flex gap-3 justify-end">
           <button

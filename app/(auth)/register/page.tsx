@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,13 +66,13 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a1128] flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#a07830] flex items-center justify-center mb-3">
             <span className="text-[#0a1128] font-black text-xl">EFA</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">Create account</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Create account</h1>
           <p className="text-slate-400 text-sm mt-1">Join the EFA</p>
         </div>
 

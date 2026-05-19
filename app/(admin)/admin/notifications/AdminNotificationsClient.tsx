@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Image from 'next/image'
@@ -59,7 +59,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-white">Admin Notifications</h1>
+      <h1 className="text-xl font-bold text-slate-900">Admin Notifications</h1>
 
       {/* Pending Team Change Requests */}
       <section className="card p-4">
@@ -77,15 +77,15 @@ export default function AdminNotificationsClient({ pendingRequests, notification
         ) : (
           <div className="space-y-3">
             {pendingRequests.map((req) => (
-              <div key={req.id} className="bg-[#0a1128] border border-[#1e2d5a] rounded-xl p-4">
+              <div key={req.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   {/* User */}
                   <div className="flex items-center gap-2 flex-1">
-                    <div className="w-8 h-8 rounded-full bg-[#1e2d5a] flex items-center justify-center text-[#c9a84c] font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-[#c9a84c] font-bold text-xs">
                       {req.requesting_user?.username?.[0]?.toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">{req.requesting_user?.username}</p>
+                      <p className="text-sm font-semibold text-slate-900">{req.requesting_user?.username}</p>
                       <p className="text-xs text-slate-500">
                         {formatDistanceToNow(parseISO(req.created_at), { addSuffix: true })}
                       </p>
@@ -115,7 +115,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                           className="object-contain mx-auto"
                         />
                       )}
-                      <p className="text-xs text-white font-medium mt-1">{req.requested_team?.name}</p>
+                      <p className="text-xs text-slate-900 font-medium mt-1">{req.requested_team?.name}</p>
                     </div>
                   </div>
 
@@ -188,11 +188,11 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                 key={n.id}
                 className={`px-4 py-3 rounded-xl border transition-colors ${
                   n.read
-                    ? 'border-[#1e2d5a] bg-transparent'
+                    ? 'border-slate-200 bg-transparent'
                     : 'border-[#c9a84c]/30 bg-[#c9a84c]/5 border-l-2 border-l-[#c9a84c]'
                 }`}
               >
-                <p className="text-sm font-medium text-white">{n.title}</p>
+                <p className="text-sm font-medium text-slate-900">{n.title}</p>
                 <p className="text-xs text-slate-400 mt-0.5">{n.body}</p>
                 <p className="text-xs text-slate-600 mt-1">
                   {formatDistanceToNow(parseISO(n.created_at), { addSuffix: true })}

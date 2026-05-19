@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
@@ -26,12 +26,12 @@ interface Props {
 function FormPill({ result }: { result: string }) {
   const color =
     result === 'W'
-      ? 'bg-green-500 text-white'
+      ? 'bg-green-500 text-slate-900'
       : result === 'D'
       ? 'bg-yellow-500 text-black'
       : result === 'L'
-      ? 'bg-red-500 text-white'
-      : 'bg-[#1e2d5a] text-slate-400'
+      ? 'bg-red-500 text-slate-900'
+      : 'bg-slate-200 text-slate-400'
 
   return (
     <span

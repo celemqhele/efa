@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -108,7 +108,7 @@ function SeasonCard({
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-white font-bold text-lg">{season.name}</h3>
+          <h3 className="text-slate-900 font-bold text-lg">{season.name}</h3>
           {season.start_date && season.end_date && (
             <p className="text-slate-500 text-xs mt-0.5">
               {new Date(season.start_date).toLocaleDateString('en-GB', {
@@ -155,7 +155,7 @@ function SeasonCard({
                   {done}/{total} fixtures
                 </span>
               </div>
-              <div className="w-full h-2 bg-[#1e2d5a] rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${allDone ? 'bg-green-500' : 'bg-[#c9a84c]'}`}
                   style={{ width: `${progress}%` }}
@@ -171,8 +171,8 @@ function SeasonCard({
           <div className="grid grid-cols-3 gap-2">
             {[uclT, europaT, superCupT].map((t, idx) =>
               t ? (
-                <div key={t.id} className="bg-[#0f1a3d] rounded-lg px-3 py-2 text-center space-y-1">
-                  <p className="text-xs font-bold text-white truncate">
+                <div key={t.id} className="bg-slate-50 rounded-lg px-3 py-2 text-center space-y-1">
+                  <p className="text-xs font-bold text-slate-900 truncate">
                     {t.type === 'ucl' ? 'UCL' : t.type === 'europa' ? 'Europa' : 'Super Cup'}
                   </p>
                   <p
@@ -202,7 +202,7 @@ function SeasonCard({
               ) : (
                 <div
                   key={idx}
-                  className="bg-[#0f1a3d] rounded-lg px-3 py-2 text-center opacity-30"
+                  className="bg-slate-50 rounded-lg px-3 py-2 text-center opacity-30"
                 >
                   <p className="text-xs text-slate-500">—</p>
                 </div>
@@ -265,10 +265,10 @@ function TeamPickerButton({
       disabled={disabled && !selected}
       className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-colors ${
         selected
-          ? `${accentClass} text-white`
+          ? `${accentClass} text-slate-900`
           : disabled
-          ? 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-600 cursor-not-allowed'
-          : 'bg-[#0f1a3d] border-[#1e2d5a] text-slate-300 hover:border-slate-500/50'
+          ? 'bg-slate-50 border-slate-200 text-slate-600 cursor-not-allowed'
+          : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-500/50'
       }`}
     >
       {team.logo_league_folder ? (
@@ -280,7 +280,7 @@ function TeamPickerButton({
           className="object-contain bg-white shrink-0"
         />
       ) : (
-        <div className="w-5 h-5 rounded bg-[#1e2d5a] shrink-0" />
+        <div className="w-5 h-5 rounded bg-slate-200 shrink-0" />
       )}
       <span className="truncate flex-1">{team.name}</span>
       {selected && !badgeText && <span className="ml-auto text-current shrink-0">✓</span>}
@@ -396,22 +396,22 @@ function StartPhaseDialog({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-2xl bg-[#0a1128] border border-[#1e2d5a] rounded-2xl overflow-hidden my-8">
+      <div className="w-full max-w-2xl bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden my-8">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#1e2d5a] flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <div>
-            <h2 className="text-white font-bold text-lg">Start New Phase</h2>
+            <h2 className="text-slate-900 font-bold text-lg">Start New Phase</h2>
             <p className="text-slate-500 text-xs mt-0.5">
               Step {step} of 4: {STEP_LABELS[step - 1]}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white text-xl leading-none">
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-900 text-xl leading-none">
             ×
           </button>
         </div>
 
         {/* Progress bar */}
-        <div className="h-0.5 bg-[#1e2d5a]">
+        <div className="h-0.5 bg-slate-200">
           <div
             className="h-full bg-[#c9a84c] transition-all"
             style={{ width: `${(step / 4) * 100}%` }}
@@ -452,8 +452,8 @@ function StartPhaseDialog({
                   />
                 </div>
               </div>
-              <div className="bg-[#0f1a3d] rounded-xl p-4 text-xs text-slate-400 space-y-1">
-                <p className="font-medium text-slate-300">What gets generated:</p>
+              <div className="bg-slate-50 rounded-xl p-4 text-xs text-slate-400 space-y-1">
+                <p className="font-medium text-slate-700">What gets generated:</p>
                 <ul className="list-disc list-inside space-y-1 mt-1">
                   <li>EFA Premier League — 20 teams you choose, 380 fixtures (38 matchdays)</li>
                   <li>EFA Champions League — 12 teams, 2 groups of 6, 60 group fixtures</li>
@@ -468,7 +468,7 @@ function StartPhaseDialog({
           {step === 2 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-white font-semibold text-sm">EFA Premier League</h3>
+                <h3 className="text-slate-900 font-semibold text-sm">EFA Premier League</h3>
                 <span className={`text-xs font-bold ${leagueTeamIds.length === 20 ? 'text-green-400' : 'text-[#c9a84c]'}`}>
                   {leagueTeamIds.length}/20
                 </span>
@@ -507,7 +507,7 @@ function StartPhaseDialog({
               {/* UCL */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-white font-semibold text-sm">EFA Champions League</h3>
+                  <h3 className="text-slate-900 font-semibold text-sm">EFA Champions League</h3>
                   <span className={`text-xs font-bold ${uclTeamIds.length === 12 ? 'text-green-400' : 'text-[#c9a84c]'}`}>
                     {uclTeamIds.length}/12
                   </span>
@@ -534,7 +534,7 @@ function StartPhaseDialog({
               {/* Europa */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-white font-semibold text-sm">EFA Europa League</h3>
+                  <h3 className="text-slate-900 font-semibold text-sm">EFA Europa League</h3>
                   <span className={`text-xs font-bold ${europaTeamIds.length === 8 ? 'text-green-400' : 'text-orange-400'}`}>
                     {europaTeamIds.length}/8
                   </span>
@@ -563,17 +563,17 @@ function StartPhaseDialog({
           {/* ── Step 4: Confirm ── */}
           {step === 4 && (
             <div className="space-y-4">
-              <h3 className="text-white font-semibold">Ready to launch</h3>
-              <div className="bg-[#0f1a3d] rounded-xl p-4 space-y-3 text-sm">
+              <h3 className="text-slate-900 font-semibold">Ready to launch</h3>
+              <div className="bg-slate-50 rounded-xl p-4 space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Phase name</span>
-                  <span className="text-white font-medium">{seasonName}</span>
+                  <span className="text-slate-900 font-medium">{seasonName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Duration</span>
-                  <span className="text-white">{startDate} → {endDate} (45 days)</span>
+                  <span className="text-slate-900">{startDate} → {endDate} (45 days)</span>
                 </div>
-                <div className="border-t border-[#1e2d5a] pt-3 space-y-2">
+                <div className="border-t border-slate-200 pt-3 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-blue-400">League teams</span>
                     <span className="text-blue-400 font-medium">{leagueTeamIds.length} teams · 380 fixtures</span>
@@ -587,9 +587,9 @@ function StartPhaseDialog({
                     <span className="text-orange-400 font-medium">{europaTeamIds.length} teams · 24 group fixtures</span>
                   </div>
                 </div>
-                <div className="border-t border-[#1e2d5a] pt-3 flex justify-between font-semibold">
-                  <span className="text-slate-300">Total fixtures</span>
-                  <span className="text-white">464</span>
+                <div className="border-t border-slate-200 pt-3 flex justify-between font-semibold">
+                  <span className="text-slate-700">Total fixtures</span>
+                  <span className="text-slate-900">464</span>
                 </div>
               </div>
             </div>
@@ -691,7 +691,7 @@ export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Phases</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Phases</h1>
           <p className="text-slate-400 text-sm mt-1">Manage the EFA competition lifecycle</p>
         </div>
         {canStartNew ? (
@@ -699,7 +699,7 @@ export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }
             + Start Phase
           </button>
         ) : (
-          <span className="text-xs text-slate-500 bg-[#0f1a3d] border border-[#1e2d5a] rounded-lg px-3 py-1.5">
+          <span className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
             End the active phase first
           </span>
         )}
@@ -715,7 +715,7 @@ export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }
       {seasons.length === 0 ? (
         <div className="card p-16 text-center">
           <p className="text-4xl mb-4">🏆</p>
-          <p className="text-lg font-medium text-white mb-2">No phases yet</p>
+          <p className="text-lg font-medium text-slate-900 mb-2">No phases yet</p>
           <p className="text-sm text-slate-500 mb-6">
             Start the first phase to generate all fixtures automatically.
           </p>

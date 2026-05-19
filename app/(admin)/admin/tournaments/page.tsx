@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+﻿export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
@@ -66,7 +66,7 @@ export default async function TournamentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Tournaments</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Tournaments</h1>
           <p className="text-slate-400 text-sm mt-1">{(tournaments?.length ?? 0)} total tournaments</p>
         </div>
         <Link href="/admin/tournaments/create" className="btn-gold">
@@ -139,7 +139,7 @@ export default async function TournamentsPage() {
       {(tournaments?.length ?? 0) === 0 && (
         <div className="card p-16 text-center text-slate-500">
           <p className="text-4xl mb-4">🏆</p>
-          <p className="text-lg font-medium text-white mb-2">No tournaments yet</p>
+          <p className="text-lg font-medium text-slate-900 mb-2">No tournaments yet</p>
           <p className="text-sm mb-6">Create your first tournament to get started.</p>
           <Link href="/admin/tournaments/create" className="btn-gold">Create Tournament</Link>
         </div>
@@ -167,7 +167,7 @@ function TournamentCard({
     <div className="card p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-white font-bold text-base truncate">{tournament.name}</h3>
+          <h3 className="text-slate-900 font-bold text-base truncate">{tournament.name}</h3>
           {tournament.season && (
             <p className="text-slate-500 text-xs mt-0.5">{tournament.season.name}</p>
           )}
@@ -184,7 +184,7 @@ function TournamentCard({
           <p className="text-slate-500 text-xs">Teams</p>
         </div>
         <div className="bg-navy-light rounded-lg py-2">
-          <p className="text-white font-bold text-lg">{fixtureCount}</p>
+          <p className="text-slate-900 font-bold text-lg">{fixtureCount}</p>
           <p className="text-slate-500 text-xs">Fixtures</p>
         </div>
         <div className="bg-navy-light rounded-lg py-2">

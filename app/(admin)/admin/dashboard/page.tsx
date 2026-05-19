@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+﻿export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
@@ -145,7 +145,7 @@ export default async function AdminDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
           <p className="text-slate-400 text-sm mt-1">
             {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
@@ -173,7 +173,7 @@ export default async function AdminDashboardPage() {
                 <div key={fx.id} className="flex items-center justify-between bg-navy-light rounded-lg px-4 py-3 border border-red-500/20">
                   <div className="flex items-center gap-3">
                     <span className="text-slate-400 text-xs">MD{fx.matchday}</span>
-                    <span className="text-white font-medium text-sm">
+                    <span className="text-slate-900 font-medium text-sm">
                       {(fx.home_team as any)?.name} vs {(fx.away_team as any)?.name}
                     </span>
                     <div className="flex gap-2 ml-2">
@@ -213,7 +213,7 @@ export default async function AdminDashboardPage() {
                 return (
                   <div key={t.id} className="flex items-center justify-between bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
                     <div className="min-w-0">
-                      <p className="text-white text-sm font-medium truncate">{t.name}</p>
+                      <p className="text-slate-900 text-sm font-medium truncate">{t.name}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className={`text-xs px-1.5 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
                         <span className={`text-xs px-1.5 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
@@ -255,9 +255,9 @@ export default async function AdminDashboardPage() {
                         {fx.home_team?.logo_league_folder && (
                           <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain bg-white shrink-0" />
                         )}
-                        <span className="text-white text-sm font-medium truncate">{fx.home_team?.name}</span>
+                        <span className="text-slate-900 text-sm font-medium truncate">{fx.home_team?.name}</span>
                         <span className="text-slate-500 text-xs mx-1">vs</span>
-                        <span className="text-white text-sm font-medium truncate">{fx.away_team?.name}</span>
+                        <span className="text-slate-900 text-sm font-medium truncate">{fx.away_team?.name}</span>
                         {fx.away_team?.logo_league_folder && (
                           <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={24} height={24} className="object-contain bg-white shrink-0" />
                         )}
@@ -297,7 +297,7 @@ export default async function AdminDashboardPage() {
               {pendingConfirmations!.map((fx: any) => (
                 <div key={fx.id} className="flex items-center justify-between bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
                   <div>
-                    <p className="text-white text-sm font-medium">
+                    <p className="text-slate-900 text-sm font-medium">
                       {fx.home_team?.name} vs {fx.away_team?.name}
                     </p>
                     <p className="text-slate-500 text-xs mt-0.5">
@@ -339,7 +339,7 @@ export default async function AdminDashboardPage() {
                       </div>
                     )}
                     <div className="min-w-0">
-                      <span className="text-white text-sm font-medium">{req.requesting_user?.username}</span>
+                      <span className="text-slate-900 text-sm font-medium">{req.requesting_user?.username}</span>
                       <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
                         <span>{req.current_team?.name ?? 'No team'}</span>
                         <span>→</span>
@@ -385,7 +385,7 @@ export default async function AdminDashboardPage() {
                     <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={32} height={32} className="object-contain bg-white shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{team.name}</p>
+                    <p className="text-slate-900 text-sm font-medium truncate">{team.name}</p>
                     <p className="text-slate-500 text-xs">
                       Manager: {team.manager_id ? (managerMap[team.manager_id] ?? 'Unknown') : 'None'}
                     </p>
@@ -413,7 +413,7 @@ export default async function AdminDashboardPage() {
                 <div key={entry.id} className="flex items-start gap-3 text-xs py-2 border-b border-navy-border last:border-0">
                   <div className="shrink-0 w-1.5 h-1.5 rounded-full bg-gold mt-1.5" />
                   <div className="flex-1 min-w-0">
-                    <span className="text-white font-medium">{entry.action}</span>
+                    <span className="text-slate-900 font-medium">{entry.action}</span>
                     {entry.target_type && (
                       <span className="text-slate-500 ml-1">on {entry.target_type}</span>
                     )}

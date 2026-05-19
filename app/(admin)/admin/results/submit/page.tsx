@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import ResultSubmitClient from './ResultSubmitClient'
 
 export const revalidate = 0
@@ -50,7 +50,7 @@ export default async function ResultSubmitPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Submit Result</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Submit Result</h1>
         <p className="text-slate-400 text-sm mt-1">
           Finalise fixture results via screenshot OCR or manual entry.
         </p>

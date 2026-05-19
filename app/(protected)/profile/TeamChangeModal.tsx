@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback } from 'react'
 import Image from 'next/image'
@@ -93,7 +93,7 @@ export default function TeamChangeModal({
           <p className="text-sm font-semibold text-yellow-400">Team change request pending</p>
           {pendingRequestedTeamName && (
             <p className="text-xs text-slate-400 mt-0.5">
-              Requested: <span className="text-white font-medium">{pendingRequestedTeamName}</span>
+              Requested: <span className="text-slate-900 font-medium">{pendingRequestedTeamName}</span>
             </p>
           )}
         </div>
@@ -120,12 +120,12 @@ export default function TeamChangeModal({
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
 
           {/* Modal */}
-          <div className="relative z-10 w-full max-w-md bg-[#111c3d] border border-[#1e2d5a] rounded-2xl p-6 shadow-2xl">
+          <div className="relative z-10 w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-white">Request a Team</h2>
+              <h2 className="text-lg font-bold text-slate-900">Request a Team</h2>
               <button
                 onClick={() => setOpen(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-black/10 transition-colors"
               >
                 ✕
               </button>
@@ -134,7 +134,7 @@ export default function TeamChangeModal({
             {submitted ? (
               <div className="text-center py-8">
                 <div className="text-4xl mb-3">✅</div>
-                <p className="text-white font-semibold">Request submitted!</p>
+                <p className="text-slate-900 font-semibold">Request submitted!</p>
                 <p className="text-slate-400 text-sm mt-1">Awaiting admin review.</p>
               </div>
             ) : (
@@ -174,7 +174,7 @@ export default function TeamChangeModal({
                     {results.map((team) => (
                       <div
                         key={team.id}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-[#1e2d5a] hover:border-[#c9a84c]/40 hover:bg-white/[0.03] transition-all group"
+                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-[#c9a84c]/40 hover:bg-black/[0.03] transition-all group"
                       >
                         {team.logo_league_folder ? (
                           <Image
@@ -185,11 +185,11 @@ export default function TeamChangeModal({
                             className="object-contain shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-[#1e2d5a] flex items-center justify-center text-[#c9a84c] font-bold text-sm shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-[#c9a84c] font-bold text-sm shrink-0">
                             {team.name.charAt(0)}
                           </div>
                         )}
-                        <span className="flex-1 text-sm font-semibold text-white truncate">
+                        <span className="flex-1 text-sm font-semibold text-slate-900 truncate">
                           {team.name}
                         </span>
                         <button

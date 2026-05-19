@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef } from 'react'
 import Image from 'next/image'
@@ -241,7 +241,7 @@ export default function ResultSubmitClient({
     return (
       <div className="card p-12 text-center">
         <div className="text-6xl mb-4">✅</div>
-        <h2 className="text-2xl font-bold text-white mb-2">Result Finalised</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Result Finalised</h2>
         <p className="text-slate-400 mb-6">The result has been saved and standings updated.</p>
         <div className="flex gap-3 justify-center">
           <button onClick={() => { setSubmitSuccess(false); resetOcr(); setSelectedFixtureId('') }} className="btn-outline">
@@ -282,8 +282,8 @@ export default function ResultSubmitClient({
                   onClick={() => { setSelectedFixtureId(fx.id); resetOcr() }}
                   className={`w-full text-left rounded-lg px-3 py-2.5 border transition-colors text-sm ${
                     isSelected
-                      ? 'bg-gold/10 border-gold/40 text-white'
-                      : 'bg-navy-light border-navy-border text-slate-300 hover:border-gold/20'
+                      ? 'bg-gold/10 border-gold/40 text-slate-900'
+                      : 'bg-navy-light border-navy-border text-slate-700 hover:border-gold/20'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -312,12 +312,12 @@ export default function ResultSubmitClient({
         {/* Existing Confirmations */}
         {selectedFixture && existingConfs.length > 0 && (
           <div className="card p-4">
-            <h2 className="text-sm font-bold text-white mb-3">Submitted Scores</h2>
+            <h2 className="text-sm font-bold text-slate-900 mb-3">Submitted Scores</h2>
             <div className="space-y-2">
               {existingConfs.map((c, i) => (
                 <div key={i} className="flex items-center justify-between bg-navy-light rounded px-3 py-2 border border-navy-border">
                   <span className="text-slate-400 text-xs">Submission {i + 1}</span>
-                  <span className="font-bold text-white">{c.home_score} – {c.away_score}</span>
+                  <span className="font-bold text-slate-900">{c.home_score} – {c.away_score}</span>
                 </div>
               ))}
             </div>
@@ -347,7 +347,7 @@ export default function ResultSubmitClient({
                         className="object-contain mx-auto"
                       />
                     )}
-                    <p className="text-white text-sm font-bold mt-1">{selectedFixture.home_team?.name}</p>
+                    <p className="text-slate-900 text-sm font-bold mt-1">{selectedFixture.home_team?.name}</p>
                   </div>
                   <div className="text-center px-4">
                     <p className="text-slate-500 text-xs">MD{selectedFixture.matchday}</p>
@@ -363,7 +363,7 @@ export default function ResultSubmitClient({
                         className="object-contain mx-auto"
                       />
                     )}
-                    <p className="text-white text-sm font-bold mt-1">{selectedFixture.away_team?.name}</p>
+                    <p className="text-slate-900 text-sm font-bold mt-1">{selectedFixture.away_team?.name}</p>
                   </div>
                 </div>
                 {/* Mode toggle */}
@@ -371,7 +371,7 @@ export default function ResultSubmitClient({
                   <button
                     onClick={() => setMode('screenshot')}
                     className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                      mode === 'screenshot' ? 'bg-gold text-navy' : 'bg-navy-light text-slate-400 hover:text-white'
+                      mode === 'screenshot' ? 'bg-gold text-navy' : 'bg-navy-light text-slate-400 hover:text-slate-900'
                     }`}
                   >
                     Screenshot
@@ -379,7 +379,7 @@ export default function ResultSubmitClient({
                   <button
                     onClick={() => setMode('manual')}
                     className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                      mode === 'manual' ? 'bg-gold text-navy' : 'bg-navy-light text-slate-400 hover:text-white'
+                      mode === 'manual' ? 'bg-gold text-navy' : 'bg-navy-light text-slate-400 hover:text-slate-900'
                     }`}
                   >
                     Manual
@@ -404,7 +404,7 @@ export default function ResultSubmitClient({
                   />
                   <label htmlFor="screenshot-upload" className="cursor-pointer block">
                     <div className="text-4xl mb-2">📸</div>
-                    <p className="text-slate-300 text-sm font-medium">Click to upload screenshot</p>
+                    <p className="text-slate-700 text-sm font-medium">Click to upload screenshot</p>
                     <p className="text-slate-500 text-xs mt-1">PNG, JPG up to 10MB</p>
                   </label>
                   {uploading && (
@@ -425,7 +425,7 @@ export default function ResultSubmitClient({
                 {ocrResult && (
                   <div className="space-y-4">
                     <div className="bg-navy-light rounded-lg p-4 border border-navy-border">
-                      <h3 className="text-sm font-bold text-white mb-3">Team Verification</h3>
+                      <h3 className="text-sm font-bold text-slate-900 mb-3">Team Verification</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="form-label">OCR: &ldquo;{ocrResult.home_team_name}&rdquo;</label>
@@ -576,9 +576,9 @@ export default function ResultSubmitClient({
                         className="object-contain mx-auto"
                       />
                     )}
-                    <p className="text-white font-bold mt-1">{selectedFixture.home_team?.name}</p>
+                    <p className="text-slate-900 font-bold mt-1">{selectedFixture.home_team?.name}</p>
                   </div>
-                  <div className="text-5xl font-black text-white">
+                  <div className="text-5xl font-black text-slate-900">
                     {homeScore} – {awayScore}
                   </div>
                   <div className="text-center">
@@ -590,7 +590,7 @@ export default function ResultSubmitClient({
                         className="object-contain mx-auto"
                       />
                     )}
-                    <p className="text-white font-bold mt-1">{selectedFixture.away_team?.name}</p>
+                    <p className="text-slate-900 font-bold mt-1">{selectedFixture.away_team?.name}</p>
                   </div>
                 </div>
                 {isOverride && overrideReason && (

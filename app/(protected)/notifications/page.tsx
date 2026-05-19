@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+﻿export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -88,7 +88,7 @@ export default async function NotificationsPage() {
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Notifications</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
           {hasUnread && (
             <p className="text-sm text-[#c9a84c] mt-0.5">
               {unread.length} unread
@@ -101,10 +101,10 @@ export default async function NotificationsPage() {
       {/* ── Admin: Pending Team Change Requests ──────────────────────────── */}
       {isAdmin && pendingRequests && pendingRequests.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2 border-b border-[#1e2d5a]">
+          <div className="px-4 pt-4 pb-2 border-b border-slate-200">
             <h2 className="section-header mb-0">
               <span>🔄</span> Pending Team Requests
-              <span className="ml-auto text-xs font-normal text-slate-500 bg-[#1e2d5a] px-2 py-0.5 rounded-full">
+              <span className="ml-auto text-xs font-normal text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">
                 {pendingRequests.length}
               </span>
             </h2>
@@ -131,13 +131,13 @@ export default async function NotificationsPage() {
       {/* ── Unread notifications ──────────────────────────────────────────── */}
       {unread.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2 border-b border-[#1e2d5a] flex items-center gap-2">
+          <div className="px-4 pt-4 pb-2 border-b border-slate-200 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#c9a84c] animate-pulse" />
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
               Unread ({unread.length})
             </h2>
           </div>
-          <div className="divide-y divide-[#1e2d5a]/60">
+          <div className="divide-y divide-slate-200/60">
             {unread.map((n) => (
               <NotificationRow key={n.id} notification={n} icon={getIcon(n.type)} />
             ))}
@@ -148,12 +148,12 @@ export default async function NotificationsPage() {
       {/* ── Read notifications ────────────────────────────────────────────── */}
       {read.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2 border-b border-[#1e2d5a]">
+          <div className="px-4 pt-4 pb-2 border-b border-slate-200">
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
               Earlier ({read.length})
             </h2>
           </div>
-          <div className="divide-y divide-[#1e2d5a]/60 opacity-80">
+          <div className="divide-y divide-slate-200/60 opacity-80">
             {read.map((n) => (
               <NotificationRow key={n.id} notification={n} icon={getIcon(n.type)} />
             ))}

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import FixtureActions from './FixtureActions'
@@ -52,7 +52,7 @@ export default async function FixturesManagePage({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Fixture Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Fixture Management</h1>
           <p className="text-slate-400 text-sm mt-1">{fixtures?.length ?? 0} fixtures in selected tournament</p>
         </div>
         {activeTournamentId && (
@@ -69,7 +69,7 @@ export default async function FixturesManagePage({
             className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
               t.id === activeTournamentId
                 ? 'bg-gold text-navy border-gold'
-                : 'bg-navy-light text-slate-300 border-navy-border hover:border-gold/30'
+                : 'bg-navy-light text-slate-700 border-navy-border hover:border-gold/30'
             }`}
           >
             {t.name}
@@ -114,7 +114,7 @@ export default async function FixturesManagePage({
                     <tr key={fx.id} className="hover:bg-navy-light/40 transition-colors">
                       <td className="py-3 px-4">
                         <div className="text-center">
-                          <span className="text-white font-bold">{fx.matchday}</span>
+                          <span className="text-slate-900 font-bold">{fx.matchday}</span>
                           {fx.leg > 1 && <span className="text-slate-500 text-xs block">Leg {fx.leg}</span>}
                           {fx.round_type !== 'league' && (
                             <span className="text-slate-500 text-xs block uppercase">{fx.round_type}</span>
@@ -131,12 +131,12 @@ export default async function FixturesManagePage({
                               className="object-contain shrink-0"
                             />
                           )}
-                          <span className="text-white font-medium">{fx.home_team?.name}</span>
+                          <span className="text-slate-900 font-medium">{fx.home_team?.name}</span>
                         </div>
                       </td>
                       <td className="py-3 px-2 text-center">
                         {result ? (
-                          <span className="text-white font-bold text-base">
+                          <span className="text-slate-900 font-bold text-base">
                             {result.home_score} – {result.away_score}
                           </span>
                         ) : (
@@ -153,13 +153,13 @@ export default async function FixturesManagePage({
                               className="object-contain shrink-0"
                             />
                           )}
-                          <span className="text-white font-medium">{fx.away_team?.name}</span>
+                          <span className="text-slate-900 font-medium">{fx.away_team?.name}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
                         {fx.scheduled_date ? (
                           <div>
-                            <p className="text-slate-300 text-xs">
+                            <p className="text-slate-700 text-xs">
                               {new Date(fx.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                             </p>
                             <p className="text-slate-500 text-xs">

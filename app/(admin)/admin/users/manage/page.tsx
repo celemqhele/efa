@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -43,7 +43,7 @@ export default async function UsersManagePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">User Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
           <p className="text-slate-400 text-sm mt-1">{(profiles?.length ?? 0)} registered users</p>
         </div>
       </div>
@@ -81,7 +81,7 @@ export default async function UsersManagePage() {
                             {req.requesting_user?.username?.[0]?.toUpperCase()}
                           </div>
                         )}
-                        <span className="text-white font-medium">{req.requesting_user?.username}</span>
+                        <span className="text-slate-900 font-medium">{req.requesting_user?.username}</span>
                       </div>
                     </td>
                     <td className="py-3 pr-4 text-slate-400">{req.current_team?.name ?? 'No team'}</td>
@@ -93,7 +93,7 @@ export default async function UsersManagePage() {
                             alt="" width={24} height={24} className="object-contain"
                           />
                         )}
-                        <span className="text-white">{req.requested_team?.name}</span>
+                        <span className="text-slate-900">{req.requested_team?.name}</span>
                       </div>
                     </td>
                     <td className="py-3 pr-4 text-slate-500 text-xs">
@@ -150,7 +150,7 @@ export default async function UsersManagePage() {
                           </div>
                         )}
                         <div>
-                          <p className="text-white font-medium">{profile.username}</p>
+                          <p className="text-slate-900 font-medium">{profile.username}</p>
                           <p className="text-slate-500 text-xs">
                             Joined {new Date(profile.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
                           </p>
@@ -177,7 +177,7 @@ export default async function UsersManagePage() {
                               className="object-contain"
                             />
                           )}
-                          <span className="text-white text-sm">{team.name}</span>
+                          <span className="text-slate-900 text-sm">{team.name}</span>
                         </div>
                       ) : (
                         <span className="text-slate-500 text-xs italic">No team</span>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
@@ -157,7 +157,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             type="button"
             onClick={() => setSeasonMode('existing')}
             className={`px-4 py-2 rounded-lg text-sm border transition-colors ${
-              seasonMode === 'existing' ? 'bg-gold text-navy border-gold' : 'bg-navy-light text-slate-300 border-navy-border'
+              seasonMode === 'existing' ? 'bg-gold text-navy border-gold' : 'bg-navy-light text-slate-700 border-navy-border'
             }`}
           >
             Existing Season
@@ -166,7 +166,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             type="button"
             onClick={() => setSeasonMode('new')}
             className={`px-4 py-2 rounded-lg text-sm border transition-colors ${
-              seasonMode === 'new' ? 'bg-gold text-navy border-gold' : 'bg-navy-light text-slate-300 border-navy-border'
+              seasonMode === 'new' ? 'bg-gold text-navy border-gold' : 'bg-navy-light text-slate-700 border-navy-border'
             }`}
           >
             Create New Season
@@ -321,8 +321,8 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                   onClick={() => toggleTeam(team.id)}
                   className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${
                     isSelected
-                      ? 'bg-gold/10 border-gold/40 text-white'
-                      : 'bg-navy-light border-navy-border text-slate-300 hover:border-gold/20'
+                      ? 'bg-gold/10 border-gold/40 text-slate-900'
+                      : 'bg-navy-light border-navy-border text-slate-700 hover:border-gold/20'
                   }`}
                 >
                   {team.logo_league_folder ? (
@@ -362,11 +362,11 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                           alt={team.name} width={18} height={18} className="object-contain"
                         />
                       )}
-                      <span className="text-xs text-white">{team.name}</span>
+                      <span className="text-xs text-slate-900">{team.name}</span>
                       <button
                         type="button"
                         onClick={() => toggleTeam(id)}
-                        className="text-slate-400 hover:text-white text-xs ml-0.5"
+                        className="text-slate-400 hover:text-slate-900 text-xs ml-0.5"
                       >
                         ×
                       </button>
@@ -400,10 +400,10 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                   disabled={!isSelected && selectedTeamIds.length >= 2}
                   className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${
                     isSelected
-                      ? 'bg-gold/10 border-gold/40 text-white'
+                      ? 'bg-gold/10 border-gold/40 text-slate-900'
                       : selectedTeamIds.length >= 2
                         ? 'bg-navy-light border-navy-border text-slate-600 cursor-not-allowed'
-                        : 'bg-navy-light border-navy-border text-slate-300 hover:border-gold/20'
+                        : 'bg-navy-light border-navy-border text-slate-700 hover:border-gold/20'
                   }`}
                 >
                   {team.logo_league_folder ? (

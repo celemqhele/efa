@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from 'next'
+﻿import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#0a1128',
+  themeColor: '#c9a84c',
 }
 
 export default function RootLayout({
@@ -30,7 +30,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="font-sans antialiased bg-[#0a1128] text-slate-100 min-h-screen">
+      <body className="font-sans antialiased bg-slate-50 text-slate-100 min-h-screen">
         {children}
       </body>
     </html>

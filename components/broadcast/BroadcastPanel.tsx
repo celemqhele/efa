@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -324,7 +324,7 @@ export default function BroadcastPanel({ tournamentId }: Props) {
   return (
     <div className="space-y-6">
       {/* Tab navigation */}
-      <div className="flex gap-1 p-1 bg-[#111c3d] rounded-xl border border-[#1e2d5a] overflow-x-auto">
+      <div className="flex gap-1 p-1 bg-white rounded-xl border border-slate-200 overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -332,7 +332,7 @@ export default function BroadcastPanel({ tournamentId }: Props) {
             className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
               activeTab === tab.id
                 ? 'bg-[#c9a84c] text-[#0a1128]'
-                : 'text-slate-400 hover:text-white hover:bg-[#1e2d5a]'
+                : 'text-slate-400 hover:text-slate-900 hover:bg-slate-200'
             }`}
           >
             {tab.label}
@@ -368,7 +368,7 @@ export default function BroadcastPanel({ tournamentId }: Props) {
                     <select
                       value={selectedFixtureIdx}
                       onChange={(e) => setSelectedFixtureIdx(Number(e.target.value))}
-                      className="w-full bg-[#0a1128] border border-[#1e2d5a] text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
                     >
                       {data.fixtures.map((f: any, i: number) => (
                         <option key={f.id} value={i}>
@@ -407,7 +407,7 @@ export default function BroadcastPanel({ tournamentId }: Props) {
                     <select
                       value={selectedResultIdx}
                       onChange={(e) => setSelectedResultIdx(Number(e.target.value))}
-                      className="w-full bg-[#0a1128] border border-[#1e2d5a] text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
                     >
                       {data.results.map((r: any, i: number) => (
                         <option key={i} value={i}>

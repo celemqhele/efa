@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+﻿import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -168,8 +168,8 @@ export default async function TeamProfilePage({ params }: PageProps) {
     <div className="space-y-6">
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="card overflow-hidden">
-        <div className="bg-gradient-to-br from-navy-card via-[#0f1a3d] to-navy h-24 relative">
-          <div className="absolute inset-0 bg-gradient-to-t from-navy-card to-transparent" />
+        <div className="bg-gradient-to-br from-slate-50 via-[#c9a84c]/10 to-white h-24 relative">
+          <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
         </div>
         <div className="px-6 pb-6 -mt-12 relative">
           <div className="flex items-end gap-5">
@@ -183,7 +183,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
               />
             </div>
             <div className="pb-1">
-              <h1 className="text-2xl font-black text-white">{team.name}</h1>
+              <h1 className="text-2xl font-black text-slate-900">{team.name}</h1>
               <p className="text-slate-400 text-sm">
                 Manager:{' '}
                 <span className="text-gold font-semibold">
@@ -226,7 +226,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
             { label: 'PTS', value: totalPoints },
           ].map(({ label, value }) => (
             <div key={label} className="text-center p-3 rounded-lg bg-navy-border/30">
-              <p className="text-xl font-black text-white">{value}</p>
+              <p className="text-xl font-black text-slate-900">{value}</p>
               <p className="text-xs text-slate-500 font-medium mt-0.5">{label}</p>
             </div>
           ))}
@@ -235,7 +235,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
         <div className="mt-4 flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
             <span className="text-slate-400">Clean Sheets:</span>
-            <span className="font-bold text-white">{totalCleanSheets}</span>
+            <span className="font-bold text-slate-900">{totalCleanSheets}</span>
           </div>
           {biggestWin?.biggest_win_score && (
             <div className="flex items-center gap-2">
@@ -318,7 +318,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                     { label: 'PTS', val: s.points },
                   ].map(({ label, val }) => (
                     <div key={label}>
-                      <p className="font-bold text-white">{val}</p>
+                      <p className="font-bold text-slate-900">{val}</p>
                       <p className="text-slate-500">{label}</p>
                     </div>
                   ))}
@@ -356,7 +356,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-bold text-white">@{tenure.manager_username}</p>
+                        <p className="font-bold text-slate-900">@{tenure.manager_username}</p>
                         {isCurrent && (
                           <span className="text-xs bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 px-1.5 py-0.5 rounded-full font-semibold">
                             Current
@@ -385,7 +385,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                       </div>
                       {played > 0 && (
                         <div>
-                          <p className="text-base font-black text-slate-300">{played}</p>
+                          <p className="text-base font-black text-slate-700">{played}</p>
                           <p className="text-[10px] text-slate-500 font-medium">P</p>
                         </div>
                       )}
@@ -427,7 +427,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
               </thead>
               <tbody className="divide-y divide-navy-border/40">
                 {h2hEntries.map(([oppId, rec]) => (
-                  <tr key={oppId} className="text-slate-300 hover:bg-navy-border/20 transition-colors">
+                  <tr key={oppId} className="text-slate-700 hover:bg-navy-border/20 transition-colors">
                     <td className="py-2 pr-3 font-medium">
                       <Link
                         href={`/teams/${oppId}`}

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import PageWrapper from '@/components/ui/PageWrapper'
@@ -115,7 +115,7 @@ export default async function HomePage() {
   return (
     <PageWrapper>
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f1a3d] to-[#0a1128] border border-[#1e2d5a] p-6 mb-6">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-white border border-slate-200 p-6 mb-6">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(201,168,76,0.08),transparent_70%)]" />
         <div className="relative">
           <div className="flex items-center gap-3 mb-2">
@@ -123,7 +123,7 @@ export default async function HomePage() {
               <span className="text-[#0a1128] font-black text-sm">EFA</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Efootball Federal Association</h1>
+              <h1 className="text-xl font-bold text-slate-900">Efootball Federal Association</h1>
               <p className="text-xs text-[#c9a84c]">Season 2025/26 — Live</p>
             </div>
           </div>
@@ -155,9 +155,9 @@ export default async function HomePage() {
             {!upcomingFixtures.length ? (
               <p className="text-sm text-slate-500 py-4 text-center">No upcoming fixtures</p>
             ) : (
-              <div className="divide-y divide-[#1e2d5a]">
+              <div className="divide-y divide-slate-200">
                 {upcomingFixtures.map((f: any) => (
-                  <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-3 gap-3 hover:bg-white/5 -mx-4 px-4 transition-colors">
+                  <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-3 gap-3 hover:bg-black/5 -mx-4 px-4 transition-colors">
                     <div className="flex-1 flex items-center gap-2">
                       {f.home_team?.logo_league_folder && (
                         <Image
@@ -167,12 +167,12 @@ export default async function HomePage() {
                           className="object-contain bg-white"
                         />
                       )}
-                      <span className="text-sm font-medium text-white truncate">{f.home_team?.name}</span>
+                      <span className="text-sm font-medium text-slate-900 truncate">{f.home_team?.name}</span>
                     </div>
 
                     <div className="text-center min-w-[60px]">
                       {f.results?.[0] ? (
-                        <span className="text-white font-bold text-sm">
+                        <span className="text-slate-900 font-bold text-sm">
                           {f.results[0].home_score} – {f.results[0].away_score}
                         </span>
                       ) : (
@@ -189,7 +189,7 @@ export default async function HomePage() {
                     </div>
 
                     <div className="flex-1 flex items-center justify-end gap-2">
-                      <span className="text-sm font-medium text-white truncate text-right">{f.away_team?.name}</span>
+                      <span className="text-sm font-medium text-slate-900 truncate text-right">{f.away_team?.name}</span>
                       {f.away_team?.logo_league_folder && (
                         <Image
                           src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')}
@@ -220,18 +220,18 @@ export default async function HomePage() {
                   const f = r.fixtures
                   if (!f) return null
                   return (
-                    <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-[#1e2d5a]">
+                    <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-black/5 transition-colors border border-transparent hover:border-slate-200">
                       <div className="flex items-center gap-2 flex-1">
                         {f.home_team?.logo_league_folder && (
                           <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
                         )}
-                        <span className="text-sm text-white font-medium truncate">{f.home_team?.name}</span>
+                        <span className="text-sm text-slate-900 font-medium truncate">{f.home_team?.name}</span>
                       </div>
                       <div className="mx-3 text-center">
-                        <span className="text-white font-bold">{r.home_score}–{r.away_score}</span>
+                        <span className="text-slate-900 font-bold">{r.home_score}–{r.away_score}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className="text-sm text-white font-medium truncate text-right">{f.away_team?.name}</span>
+                        <span className="text-sm text-slate-900 font-medium truncate text-right">{f.away_team?.name}</span>
                         {f.away_team?.logo_league_folder && (
                           <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
                         )}
@@ -260,7 +260,7 @@ export default async function HomePage() {
                   const team = s.teams
                   const isTop4 = idx < 4
                   return (
-                    <Link key={s.id} href={`/teams/${team?.id}`} className="flex items-center gap-2 py-1.5 hover:bg-white/5 rounded-lg px-1 transition-colors">
+                    <Link key={s.id} href={`/teams/${team?.id}`} className="flex items-center gap-2 py-1.5 hover:bg-black/5 rounded-lg px-1 transition-colors">
                       <span className={`w-5 text-center text-xs font-bold ${isTop4 ? 'text-[#c9a84c]' : 'text-slate-500'}`}>
                         {idx + 1}
                       </span>
@@ -272,9 +272,9 @@ export default async function HomePage() {
                           className="object-contain"
                         />
                       )}
-                      <span className="flex-1 text-xs text-white truncate font-medium">{team?.name}</span>
+                      <span className="flex-1 text-xs text-slate-900 truncate font-medium">{team?.name}</span>
                       {s.unbeaten_run >= 3 && <span className="text-xs">🔥</span>}
-                      <span className="text-xs font-bold text-white w-5 text-right">{s.points}</span>
+                      <span className="text-xs font-bold text-slate-900 w-5 text-right">{s.points}</span>
                     </Link>
                   )
                 })}
@@ -292,7 +292,7 @@ export default async function HomePage() {
                     {u.teams?.logo_league_folder && (
                       <Image src={getTeamLogo(u.teams.logo_league_folder, u.teams.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
                     )}
-                    <span className="flex-1 text-sm text-white truncate">{u.teams?.name}</span>
+                    <span className="flex-1 text-sm text-slate-900 truncate">{u.teams?.name}</span>
                     <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">
                       {u.unbeaten_run} unbeaten
                     </span>

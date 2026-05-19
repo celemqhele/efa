@@ -24,7 +24,7 @@ export default async function PageWrapper({ children, fullWidth = false }: PageW
   }
 
   return (
-    <div className="min-h-screen bg-[#0a1128]">
+    <div className="min-h-screen bg-[#f8f9fc]">
       <Nav profile={profile} unreadCount={unreadCount} />
       <main className={fullWidth ? '' : 'max-w-7xl mx-auto px-4 py-6'}>
         {children}

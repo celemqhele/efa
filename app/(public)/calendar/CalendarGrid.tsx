@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Image from 'next/image'
 import Link from 'next/link'
@@ -96,7 +96,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
           {DAY_NAMES.map((d) => (
             <div
               key={d}
-              className="bg-[#0f1a3d] py-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider"
+              className="bg-slate-50 py-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider"
             >
               {d}
             </div>
@@ -104,9 +104,9 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
         </div>
 
         {/* Grid body */}
-        <div className="grid grid-cols-7 gap-px bg-[#1e2d5a]">
+        <div className="grid grid-cols-7 gap-px bg-slate-200">
           {blanks.map((i) => (
-            <div key={`blank-${i}`} className="bg-[#0a1128] min-h-[100px]" />
+            <div key={`blank-${i}`} className="bg-slate-50 min-h-[100px]" />
           ))}
 
           {days.map((day) => {
@@ -119,7 +119,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
             return (
               <div
                 key={ds}
-                className={`relative bg-[#0a1128] min-h-[100px] p-2 flex flex-col gap-1.5 transition-colors ${
+                className={`relative bg-slate-50 min-h-[100px] p-2 flex flex-col gap-1.5 transition-colors ${
                   isToday ? 'ring-1 ring-inset ring-[#c9a84c]/60 bg-[#c9a84c]/[0.04]' : ''
                 } ${isPastDay && !dayFixtures.length ? 'opacity-50' : ''}`}
               >
@@ -148,7 +148,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                     <Link
                       key={f.id}
                       href={`/fixtures/${f.id}`}
-                      className="group block rounded-lg border border-[#1e2d5a] hover:border-[#c9a84c]/50 bg-[#111c3d] px-2 py-1.5 transition-all"
+                      className="group block rounded-lg border border-slate-200 hover:border-[#c9a84c]/50 bg-white px-2 py-1.5 transition-all"
                     >
                       <div className="flex items-center gap-1 min-w-0">
                         {f.home_team?.logo_league_folder && (
@@ -161,7 +161,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                           />
                         )}
                         {hasResult ? (
-                          <span className="text-[10px] font-bold text-white tabular-nums mx-0.5">
+                          <span className="text-[10px] font-bold text-slate-900 tabular-nums mx-0.5">
                             {f.result!.home_score}–{f.result!.away_score}
                           </span>
                         ) : (
@@ -211,13 +211,13 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
               className={`card overflow-hidden ${isToday ? 'ring-1 ring-[#c9a84c]/50' : ''}`}
             >
               <div
-                className={`px-4 py-2 border-b border-[#1e2d5a] flex items-center justify-between ${
-                  isToday ? 'bg-[#c9a84c]/10' : 'bg-[#0f1a3d]'
+                className={`px-4 py-2 border-b border-slate-200 flex items-center justify-between ${
+                  isToday ? 'bg-[#c9a84c]/10' : 'bg-slate-50'
                 }`}
               >
                 <span
                   className={`text-sm font-bold ${
-                    isToday ? 'text-[#c9a84c]' : 'text-slate-300'
+                    isToday ? 'text-[#c9a84c]' : 'text-slate-700'
                   }`}
                 >
                   {day.toLocaleDateString('en-GB', {
@@ -244,7 +244,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                   <Link
                     key={f.id}
                     href={`/fixtures/${f.id}`}
-                    className="flex items-center gap-3 px-4 py-3 border-b border-[#1e2d5a]/60 last:border-b-0 hover:bg-white/[0.03] transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 border-b border-slate-200/60 last:border-b-0 hover:bg-black/[0.03] transition-colors"
                   >
                     {/* Home */}
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -257,7 +257,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                           className="object-contain shrink-0"
                         />
                       )}
-                      <span className="text-sm font-semibold text-white truncate">
+                      <span className="text-sm font-semibold text-slate-900 truncate">
                         {f.home_team?.name ?? 'TBD'}
                       </span>
                     </div>
@@ -265,7 +265,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                     {/* Score / vs */}
                     <div className="shrink-0 text-center min-w-[48px]">
                       {hasResult ? (
-                        <span className="text-base font-black text-white tabular-nums">
+                        <span className="text-base font-black text-slate-900 tabular-nums">
                           {f.result!.home_score}–{f.result!.away_score}
                         </span>
                       ) : (
@@ -282,7 +282,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
 
                     {/* Away */}
                     <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                      <span className="text-sm font-semibold text-white truncate text-right">
+                      <span className="text-sm font-semibold text-slate-900 truncate text-right">
                         {f.away_team?.name ?? 'TBD'}
                       </span>
                       {f.away_team?.logo_league_folder && (

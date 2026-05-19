@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
@@ -179,7 +179,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
                       className="object-contain shrink-0"
                     />
                   )}
-                  <span className="text-sm font-bold text-white truncate">
+                  <span className="text-sm font-bold text-slate-900 truncate">
                     {nextFixture.home_team?.name ?? 'TBD'}
                   </span>
                 </div>
@@ -188,7 +188,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
 
                 {/* Away */}
                 <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                  <span className="text-sm font-bold text-white truncate text-right">
+                  <span className="text-sm font-bold text-slate-900 truncate text-right">
                     {nextFixture.away_team?.name ?? 'TBD'}
                   </span>
                   {nextFixture.away_team?.logo_league_folder && (
@@ -219,7 +219,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
       {/* ── Month Navigation ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-slate-900">
             {MONTH_NAMES[month - 1]} {year}
           </h1>
           {userTeam && (
@@ -230,20 +230,20 @@ export default async function CalendarPage({ searchParams }: PageProps) {
         <div className="flex items-center gap-2">
           <Link
             href={`/calendar?month=${monthParam(prev.year, prev.month)}`}
-            className="w-9 h-9 rounded-lg flex items-center justify-center border border-[#1e2d5a] text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors font-bold"
+            className="w-9 h-9 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors font-bold"
             aria-label="Previous month"
           >
             ‹
           </Link>
           <Link
             href="/calendar"
-            className="px-3 py-1.5 rounded-lg border border-[#1e2d5a] text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors text-xs font-semibold"
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors text-xs font-semibold"
           >
             Today
           </Link>
           <Link
             href={`/calendar?month=${monthParam(next.year, next.month)}`}
-            className="w-9 h-9 rounded-lg flex items-center justify-center border border-[#1e2d5a] text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors font-bold"
+            className="w-9 h-9 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors font-bold"
             aria-label="Next month"
           >
             ›
@@ -281,7 +281,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
       {!user && (
         <div className="card p-5 flex items-center gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">See your team&apos;s fixtures</p>
+            <p className="text-sm font-semibold text-slate-900">See your team&apos;s fixtures</p>
             <p className="text-xs text-slate-400 mt-0.5">
               Sign in to filter the calendar to your team&apos;s schedule.
             </p>

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -57,11 +57,11 @@ export default async function ResultDetailPage({ params }: Props) {
     return (
       <div className="space-y-1">
         <div className="flex justify-between text-xs text-slate-400">
-          <span className="font-semibold text-white">{homeVal}</span>
+          <span className="font-semibold text-slate-900">{homeVal}</span>
           <span>{label}</span>
-          <span className="font-semibold text-white">{awayVal}</span>
+          <span className="font-semibold text-slate-900">{awayVal}</span>
         </div>
-        <div className="flex h-1.5 rounded-full overflow-hidden bg-[#1e2d5a]">
+        <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-200">
           <div className="bg-[#c9a84c] transition-all" style={{ width: `${homePct}%` }} />
           <div className="bg-blue-500 transition-all" style={{ width: `${awayPct}%` }} />
         </div>
@@ -72,7 +72,7 @@ export default async function ResultDetailPage({ params }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       {/* Back */}
-      <Link href="/results" className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">
+      <Link href="/results" className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
         ← Results
       </Link>
 
@@ -108,15 +108,15 @@ export default async function ResultDetailPage({ params }: Props) {
                   className="object-contain"
                 />
               )}
-              <span className="text-sm font-bold text-white text-center leading-tight">{home?.name}</span>
+              <span className="text-sm font-bold text-slate-900 text-center leading-tight">{home?.name}</span>
               <span className="text-xs text-slate-500">{home?.manager?.username ?? 'NO MANAGER'}</span>
             </Link>
 
             {/* Score */}
             <div className="text-center">
-              <div className="text-5xl font-black text-white tabular-nums">
+              <div className="text-5xl font-black text-slate-900 tabular-nums">
                 {result.home_score}
-                <span className="text-[#1e2d5a] mx-2">–</span>
+                <span className="text-slate-400 mx-2">–</span>
                 {result.away_score}
               </div>
               {fixture?.scheduled_date && (
@@ -137,7 +137,7 @@ export default async function ResultDetailPage({ params }: Props) {
                   className="object-contain"
                 />
               )}
-              <span className="text-sm font-bold text-white text-center leading-tight">{away?.name}</span>
+              <span className="text-sm font-bold text-slate-900 text-center leading-tight">{away?.name}</span>
               <span className="text-xs text-slate-500">{away?.manager?.username ?? 'NO MANAGER'}</span>
             </Link>
           </div>
@@ -182,7 +182,7 @@ export default async function ResultDetailPage({ params }: Props) {
           </div>
 
           {/* Key: home=gold, away=blue */}
-          <div className="flex justify-between mt-4 pt-3 border-t border-[#1e2d5a]">
+          <div className="flex justify-between mt-4 pt-3 border-t border-slate-200">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-1.5 rounded-full bg-[#c9a84c]" />
               <span className="text-xs text-slate-400">{home?.name}</span>
@@ -202,7 +202,7 @@ export default async function ResultDetailPage({ params }: Props) {
           <img
             src={result.screenshot_url}
             alt="Match screenshot"
-            className="w-full rounded-lg border border-[#1e2d5a]"
+            className="w-full rounded-lg border border-slate-200"
           />
         </div>
       )}

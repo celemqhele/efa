@@ -242,7 +242,7 @@ export default async function ExportPage({ searchParams }: Props) {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Export</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Export</h1>
           <p className="text-slate-400 text-sm mt-1">Generate shareable PNG cards for WhatsApp</p>
         </div>
         <ExportButton filename={filename} />
@@ -257,7 +257,7 @@ export default async function ExportPage({ searchParams }: Props) {
             className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-colors border ${
               type === t
                 ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
-                : 'text-slate-400 border-[#1e2d5a] hover:border-[#c9a84c]/50 hover:text-white'
+                : 'text-slate-500 border-slate-200 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
             }`}
           >
             {t}
@@ -274,8 +274,8 @@ export default async function ExportPage({ searchParams }: Props) {
               href={`/admin/export?type=${type}&tournament_id=${t.id}&matchday=${selectedMatchday}`}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
                 t.id === activeTournamentId
-                  ? 'bg-[#1e2d5a] text-white border-[#c9a84c]/60'
-                  : 'text-slate-500 border-[#1e2d5a] hover:text-white'
+                  ? 'bg-[#c9a84c]/20 text-[#c9a84c] border-[#c9a84c]/60'
+                  : 'text-slate-500 border-slate-200 hover:text-[#c9a84c]'
               }`}
             >
               {t.name}
@@ -294,7 +294,7 @@ export default async function ExportPage({ searchParams }: Props) {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
                 md === selectedMatchday
                   ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
-                  : 'text-slate-500 border-[#1e2d5a] hover:border-[#c9a84c]/50 hover:text-white'
+                  : 'text-slate-500 border-slate-200 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
               }`}
             >
               MD {md}

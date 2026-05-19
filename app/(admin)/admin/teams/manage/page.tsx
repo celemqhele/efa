@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import TeamManageActions from './TeamManageActions'
@@ -29,7 +29,7 @@ export default async function TeamsManagePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Team Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Team Management</h1>
           <p className="text-slate-400 text-sm mt-1">{(teams?.length ?? 0)} teams registered</p>
         </div>
       </div>
@@ -46,7 +46,7 @@ export default async function TeamsManagePage() {
           {(teams ?? []).map((team) => {
             const manager = team.manager_id ? managerMap[team.manager_id] : null
             return (
-              <div key={team.id} className="bg-[#0f1a3d] rounded-lg p-3 space-y-2 border border-[#1e2d5a]">
+              <div key={team.id} className="bg-slate-50 rounded-lg p-3 space-y-2 border border-slate-200">
                 <div className="flex items-center gap-3">
                   {team.logo_league_folder ? (
                     <Image
@@ -56,10 +56,10 @@ export default async function TeamsManagePage() {
                       className="object-contain bg-white shrink-0"
                     />
                   ) : (
-                    <div className="w-11 h-11 rounded bg-[#1e2d5a] flex items-center justify-center text-slate-500 text-xs shrink-0">?</div>
+                    <div className="w-11 h-11 rounded bg-slate-200 flex items-center justify-center text-slate-500 text-xs shrink-0">?</div>
                   )}
                   <div className="min-w-0">
-                    <p className="text-white font-semibold text-sm truncate">{team.name}</p>
+                    <p className="text-slate-900 font-semibold text-sm truncate">{team.name}</p>
                     <p className="text-slate-500 text-xs truncate">{team.logo_league_folder?.split('.')[0] ?? '—'}</p>
                   </div>
                   {team.abandon_count >= 3 && (
@@ -73,11 +73,11 @@ export default async function TeamsManagePage() {
                         {manager.avatar_url ? (
                           <Image src={manager.avatar_url} alt="" width={20} height={20} className="rounded-full" />
                         ) : (
-                          <div className="w-5 h-5 rounded-full bg-[#1e2d5a] flex items-center justify-center text-xs text-slate-400">
+                          <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-400">
                             {manager.username?.[0]?.toUpperCase()}
                           </div>
                         )}
-                        <span className="text-slate-300 text-xs">{manager.username}</span>
+                        <span className="text-slate-700 text-xs">{manager.username}</span>
                       </>
                     ) : (
                       <span className="text-green-400 text-xs">(Available)</span>
@@ -121,10 +121,10 @@ export default async function TeamsManagePage() {
                             className="object-contain bg-white shrink-0"
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded bg-[#1e2d5a] flex items-center justify-center text-slate-500 text-xs">?</div>
+                          <div className="w-12 h-12 rounded bg-slate-200 flex items-center justify-center text-slate-500 text-xs">?</div>
                         )}
                         <div>
-                          <p className="text-white font-semibold">{team.name}</p>
+                          <p className="text-slate-900 font-semibold">{team.name}</p>
                           <p className="text-slate-500 text-xs">{team.logo_league_folder?.split('.')[0] ?? '—'}</p>
                         </div>
                       </div>
@@ -139,7 +139,7 @@ export default async function TeamsManagePage() {
                               {manager.username?.[0]?.toUpperCase()}
                             </div>
                           )}
-                          <span className="text-white">{manager.username}</span>
+                          <span className="text-slate-900">{manager.username}</span>
                         </div>
                       ) : (
                         <span className="text-green-400 text-xs font-medium">(Available)</span>

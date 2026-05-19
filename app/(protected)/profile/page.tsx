@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+﻿export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -159,7 +159,7 @@ export default async function ProfilePage() {
               className="w-24 h-24 rounded-full object-cover ring-2 ring-[#c9a84c]/60"
             />
           ) : team?.logo_league_folder ? (
-            <div className="w-24 h-24 rounded-full bg-[#1e2d5a] flex items-center justify-center ring-2 ring-[#c9a84c]/40 overflow-hidden p-2">
+            <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center ring-2 ring-[#c9a84c]/40 overflow-hidden p-2">
               <Image
                 src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'profile_avatar')}
                 alt={team.name}
@@ -169,7 +169,7 @@ export default async function ProfilePage() {
               />
             </div>
           ) : (
-            <div className="w-24 h-24 rounded-full bg-[#1e2d5a] flex items-center justify-center ring-2 ring-[#c9a84c]/40">
+            <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center ring-2 ring-[#c9a84c]/40">
               <span className="text-3xl font-black text-[#c9a84c]">{initials}</span>
             </div>
           )}
@@ -178,7 +178,7 @@ export default async function ProfilePage() {
         {/* Info */}
         <div className="flex-1 text-center sm:text-left space-y-2 min-w-0">
           <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-            <h1 className="text-2xl font-black text-white">
+            <h1 className="text-2xl font-black text-slate-900">
               @{profile?.username ?? user.email}
             </h1>
             {profile?.role === 'admin' && (
@@ -191,7 +191,7 @@ export default async function ProfilePage() {
           {team ? (
             <Link
               href={`/teams/${team.id}`}
-              className="inline-flex items-center gap-2 text-slate-300 hover:text-[#c9a84c] transition-colors group"
+              className="inline-flex items-center gap-2 text-slate-700 hover:text-[#c9a84c] transition-colors group"
             >
               {team.logo_league_folder && (
                 <Image
@@ -243,7 +243,7 @@ export default async function ProfilePage() {
               return (
                 <div
                   key={req.id}
-                  className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-[#1e2d5a] bg-[#0f1a3d]"
+                  className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-slate-200 bg-slate-50"
                 >
                   <span className="text-slate-400">
                     {req.requested_team?.name ?? 'Unknown team'}
@@ -281,7 +281,7 @@ export default async function ProfilePage() {
                   <Link
                     key={f.id}
                     href={`/fixtures/${f.id}`}
-                    className="flex items-center gap-4 p-4 rounded-xl border border-[#1e2d5a] hover:border-[#c9a84c]/40 hover:bg-white/[0.02] transition-all group"
+                    className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-[#c9a84c]/40 hover:bg-black/[0.03] transition-all group"
                   >
                     {opponent?.logo_league_folder && (
                       <Image
@@ -293,7 +293,7 @@ export default async function ProfilePage() {
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
+                      <p className="text-sm font-semibold text-slate-900 truncate">
                         {isHome ? 'vs' : '@'}{' '}
                         <span>{opponent?.name ?? 'TBD'}</span>
                       </p>
@@ -309,7 +309,7 @@ export default async function ProfilePage() {
                           </span>
                         ) : (
                           <span className="text-xs text-slate-400">
-                            in <span className="font-bold text-white">{days}d</span>
+                            in <span className="font-bold text-slate-900">{days}d</span>
                           </span>
                         )
                       ) : (
@@ -345,7 +345,7 @@ export default async function ProfilePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1e2d5a]">
+                <tr className="border-b border-slate-200">
                   <th className="text-left py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Fixture
                   </th>
@@ -371,7 +371,7 @@ export default async function ProfilePage() {
                   return (
                     <tr
                       key={pred.id}
-                      className="border-b border-[#1e2d5a]/60 hover:bg-white/[0.02] transition-colors"
+                      className="border-b border-slate-200/60 hover:bg-black/[0.03] transition-colors"
                     >
                       <td className="py-3 px-2">
                         <Link href={`/fixtures/${fixture.id}`} className="hover:text-[#c9a84c] transition-colors">
@@ -385,11 +385,11 @@ export default async function ProfilePage() {
                                 className="object-contain shrink-0"
                               />
                             )}
-                            <span className="text-white text-xs font-medium truncate max-w-[80px]">
+                            <span className="text-slate-900 text-xs font-medium truncate max-w-[80px]">
                               {fixture.home_team?.name}
                             </span>
                             <span className="text-slate-600 text-xs">v</span>
-                            <span className="text-white text-xs font-medium truncate max-w-[80px]">
+                            <span className="text-slate-900 text-xs font-medium truncate max-w-[80px]">
                               {fixture.away_team?.name}
                             </span>
                             {fixture.away_team?.logo_league_folder && (
@@ -408,13 +408,13 @@ export default async function ProfilePage() {
                         </Link>
                       </td>
                       <td className="py-3 px-2 text-center">
-                        <span className="font-mono font-bold text-white tabular-nums">
+                        <span className="font-mono font-bold text-slate-900 tabular-nums">
                           {pred.predicted_home_score ?? '?'}–{pred.predicted_away_score ?? '?'}
                         </span>
                       </td>
                       <td className="py-3 px-2 text-center">
                         {fixture.result ? (
-                          <span className="font-mono font-bold text-slate-300 tabular-nums">
+                          <span className="font-mono font-bold text-slate-700 tabular-nums">
                             {fixture.result.home_score}–{fixture.result.away_score}
                           </span>
                         ) : (
@@ -436,7 +436,7 @@ export default async function ProfilePage() {
                 })}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-[#1e2d5a]">
+                <tr className="border-t-2 border-slate-200">
                   <td colSpan={4} className="py-3 px-2 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Total Points
                   </td>

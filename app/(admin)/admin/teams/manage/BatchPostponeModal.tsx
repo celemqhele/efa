@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -60,13 +60,13 @@ export default function BatchPostponeModal({ teamId, teamName, onClose }: Props)
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#0a1128] border border-[#1e2d5a] rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#1e2d5a] flex items-center justify-between">
+      <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <div>
-            <h2 className="text-white font-bold">Batch Postpone</h2>
+            <h2 className="text-slate-900 font-bold">Batch Postpone</h2>
             <p className="text-slate-500 text-xs mt-0.5">{teamName}</p>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-900 text-xl leading-none">×</button>
         </div>
 
         {result ? (
@@ -74,7 +74,7 @@ export default function BatchPostponeModal({ teamId, teamName, onClose }: Props)
             {result.postponed > 0 ? (
               <>
                 <p className="text-2xl">✅</p>
-                <p className="text-white font-semibold">
+                <p className="text-slate-900 font-semibold">
                   {result.postponed} fixture{result.postponed !== 1 ? 's' : ''} rescheduled
                 </p>
                 <p className="text-slate-400 text-sm">

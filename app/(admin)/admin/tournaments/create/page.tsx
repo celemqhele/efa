@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import CreateTournamentClient from './CreateTournamentClient'
 
 export const revalidate = 0
@@ -40,7 +40,7 @@ export default async function CreateTournamentPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Create Tournament</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Create Tournament</h1>
         <p className="text-slate-400 text-sm mt-1">Set up a new season tournament.</p>
       </div>
 

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -43,7 +43,7 @@ export default function DeleteTournamentButton({ tournamentId, tournamentName }:
         </button>
         <button
           onClick={() => setConfirming(false)}
-          className="text-xs px-2 py-1.5 rounded border border-[#1e2d5a] text-slate-400 hover:border-[#c9a84c]/30 transition-colors"
+          className="text-xs px-2 py-1.5 rounded border border-slate-200 text-slate-400 hover:border-[#c9a84c]/30 transition-colors"
         >
           Cancel
         </button>

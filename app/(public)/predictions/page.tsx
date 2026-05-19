@@ -1,4 +1,4 @@
-import Image from 'next/image'
+﻿import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
@@ -105,7 +105,7 @@ export default async function PredictionsPage() {
     <div className="space-y-8">
       {/* ── Page Header ──────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-3xl font-black text-white">Predictions</h1>
+        <h1 className="text-3xl font-black text-slate-900">Predictions</h1>
         <p className="text-slate-400 text-sm mt-1">
           Predict match scores to earn points. Predictions open at any time —
           locked when the result is submitted.
@@ -141,13 +141,13 @@ export default async function PredictionsPage() {
                     height={32}
                     className="object-contain shrink-0"
                   />
-                  <span className="text-sm font-semibold text-white truncate">
+                  <span className="text-sm font-semibold text-slate-900 truncate">
                     {f.home_team.name}
                   </span>
                 </div>
                 <span className="text-xs font-bold text-slate-500 shrink-0">VS</span>
                 <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                  <span className="text-sm font-semibold text-white truncate text-right">
+                  <span className="text-sm font-semibold text-slate-900 truncate text-right">
                     {f.away_team.name}
                   </span>
                   <Image
@@ -193,7 +193,7 @@ export default async function PredictionsPage() {
                       {rankMedal(idx + 1)}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
+                      <p className="text-sm font-semibold text-slate-900 truncate">
                         @{data.username}
                       </p>
                       <p className="text-xs text-slate-500">
@@ -261,11 +261,11 @@ export default async function PredictionsPage() {
                           height={20}
                           className="object-contain shrink-0"
                         />
-                        <span className="text-sm text-white font-medium truncate">
+                        <span className="text-sm text-slate-900 font-medium truncate">
                           {fixture.home_team.name}
                         </span>
                         <span className="text-slate-500 text-xs">vs</span>
-                        <span className="text-sm text-white font-medium truncate">
+                        <span className="text-sm text-slate-900 font-medium truncate">
                           {fixture.away_team.name}
                         </span>
                         <Image
@@ -287,7 +287,7 @@ export default async function PredictionsPage() {
 
                     {/* Prediction */}
                     <div className="text-center shrink-0">
-                      <p className="text-lg font-black text-white tabular-nums">
+                      <p className="text-lg font-black text-slate-900 tabular-nums">
                         {pred.predicted_home_score ?? '?'} – {pred.predicted_away_score ?? '?'}
                       </p>
                       {fixture.result && (

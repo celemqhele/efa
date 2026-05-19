@@ -10,10 +10,10 @@ const config: Config = {
     extend: {
       colors: {
         navy: {
-          DEFAULT: '#0a1128',
-          light: '#0f1a3d',
-          card: '#111c3d',
-          border: '#1e2d5a',
+          DEFAULT: '#f8f9fc',
+          light: '#f1f4fb',
+          card: '#ffffff',
+          border: '#e2e8f0',
         },
         gold: {
           DEFAULT: '#c9a84c',
@@ -27,7 +27,7 @@ const config: Config = {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'navy-gradient': 'linear-gradient(135deg, #0a1128 0%, #0f1a3d 100%)',
+        'navy-gradient': 'linear-gradient(135deg, #f8f9fc 0%, #f1f4fb 100%)',
         'gold-gradient': 'linear-gradient(135deg, #c9a84c 0%, #e0c06a 100%)',
       },
       animation: {

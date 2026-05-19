@@ -5,10 +5,10 @@
 @tailwind utilities;
 
 :root {
-  --navy: #0a1128;
-  --navy-light: #0f1a3d;
-  --navy-card: #111c3d;
-  --navy-border: #1e2d5a;
+  --navy: #f8f9fc;
+  --navy-light: #f1f4fb;
+  --navy-card: #ffffff;
+  --navy-border: #e2e8f0;
   --gold: #c9a84c;
   --gold-light: #e0c06a;
   --gold-dark: #a07830;
@@ -24,7 +24,7 @@ html {
 
 body {
   background-color: var(--navy);
-  color: #e2e8f0;
+  color: #1e293b;
   font-family: 'Poppins', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -36,10 +36,10 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--navy-light);
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--navy-border);
+  background: #cbd5e1;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -48,51 +48,51 @@ body {
 
 @layer components {
   .card {
-    @apply bg-navy-card border border-navy-border rounded-xl;
+    @apply bg-white border border-slate-200 rounded-xl shadow-sm;
   }
 
   .btn-gold {
-    @apply bg-gold text-navy font-semibold px-4 py-2.5 rounded-lg
+    @apply bg-gold text-[#0a1128] font-semibold px-4 py-2.5 rounded-lg
            hover:bg-gold-light transition-colors duration-200 text-sm;
   }
 
   .btn-outline {
-    @apply border border-navy-border text-slate-300 font-medium px-4 py-2.5 rounded-lg
+    @apply border border-slate-200 text-slate-700 font-medium px-4 py-2.5 rounded-lg
            hover:border-gold/50 hover:text-gold transition-colors duration-200 text-sm;
   }
 
   .btn-danger {
-    @apply bg-red-600/20 border border-red-500/30 text-red-400 font-medium px-4 py-2.5 rounded-lg
-           hover:bg-red-600/30 transition-colors duration-200 text-sm;
+    @apply bg-red-500/10 border border-red-400/30 text-red-500 font-medium px-4 py-2.5 rounded-lg
+           hover:bg-red-500/20 transition-colors duration-200 text-sm;
   }
 
   .input-field {
-    @apply w-full bg-navy-light border border-navy-border rounded-lg px-4 py-3 text-white
-           placeholder-slate-500 focus:outline-none focus:border-gold/60 focus:ring-1 focus:ring-gold/30
+    @apply w-full bg-white border border-slate-200 rounded-lg px-4 py-3 text-slate-900
+           placeholder-slate-400 focus:outline-none focus:border-gold/60 focus:ring-1 focus:ring-gold/30
            transition-all duration-200 text-sm;
   }
 
   .form-label {
-    @apply block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider;
+    @apply block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider;
   }
 
   .badge-win {
     @apply inline-flex items-center justify-center w-5 h-5 rounded bg-green-500/20
-           text-green-400 text-xs font-bold;
+           text-green-600 text-xs font-bold;
   }
 
   .badge-draw {
     @apply inline-flex items-center justify-center w-5 h-5 rounded bg-yellow-500/20
-           text-yellow-400 text-xs font-bold;
+           text-yellow-600 text-xs font-bold;
   }
 
   .badge-loss {
     @apply inline-flex items-center justify-center w-5 h-5 rounded bg-red-500/20
-           text-red-400 text-xs font-bold;
+           text-red-500 text-xs font-bold;
   }
 
   .section-header {
-    @apply text-lg font-bold text-white mb-4 flex items-center gap-2;
+    @apply text-lg font-bold text-slate-900 mb-4 flex items-center gap-2;
   }
 
   .mobile-tap {

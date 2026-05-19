@@ -1,4 +1,4 @@
-import Image from 'next/image'
+﻿import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
@@ -117,7 +117,7 @@ export default async function HallOfFamePage() {
         <p className="text-gold text-sm font-semibold uppercase tracking-widest mb-2">
           EFA Official Records
         </p>
-        <h1 className="text-4xl font-black text-white">Hall of Fame</h1>
+        <h1 className="text-4xl font-black text-slate-900">Hall of Fame</h1>
         <p className="text-slate-400 text-sm mt-2">
           Champions, records, and legends of the EFA
         </p>
@@ -146,7 +146,7 @@ export default async function HallOfFamePage() {
                 height={64}
                 className="object-contain mx-auto mb-2"
               />
-              <p className="font-bold text-white">{mostTotal[1].team.name}</p>
+              <p className="font-bold text-slate-900">{mostTotal[1].team.name}</p>
               <p className="text-3xl font-black text-gold mt-1">
                 {mostTotal[1].total}
               </p>
@@ -171,7 +171,7 @@ export default async function HallOfFamePage() {
                 height={64}
                 className="object-contain mx-auto mb-2"
               />
-              <p className="font-bold text-white">{mostPL[1].team.name}</p>
+              <p className="font-bold text-slate-900">{mostPL[1].team.name}</p>
               <p className="text-3xl font-black text-gold mt-1">
                 {mostPL[1].byType['league']}
               </p>
@@ -196,7 +196,7 @@ export default async function HallOfFamePage() {
                 height={64}
                 className="object-contain mx-auto mb-2"
               />
-              <p className="font-bold text-white">{mostUCL[1].team.name}</p>
+              <p className="font-bold text-slate-900">{mostUCL[1].team.name}</p>
               <p className="text-3xl font-black text-blue-400 mt-1">
                 {mostUCL[1].byType['ucl']}
               </p>
@@ -208,7 +208,7 @@ export default async function HallOfFamePage() {
         {/* Full all-time table */}
         {allTimeRecords.length > 0 && (
           <details className="mt-4 card p-5 group">
-            <summary className="cursor-pointer list-none flex items-center justify-between text-sm font-semibold text-slate-300 group-open:text-white">
+            <summary className="cursor-pointer list-none flex items-center justify-between text-sm font-semibold text-slate-700 group-open:text-slate-900">
               <span>Full Trophy Cabinet Rankings</span>
               <span className="text-slate-500 text-xs group-open:hidden">Tap to expand</span>
               <span className="text-slate-500 text-xs hidden group-open:inline">Collapse</span>
@@ -229,7 +229,7 @@ export default async function HallOfFamePage() {
                   {allTimeRecords.map(([tid, data], idx) => (
                     <tr
                       key={tid}
-                      className="text-slate-300 hover:bg-navy-border/20 transition-colors"
+                      className="text-slate-700 hover:bg-navy-border/20 transition-colors"
                     >
                       <td className="py-2.5 pr-4">
                         <Link
@@ -300,7 +300,7 @@ export default async function HallOfFamePage() {
                 <div key={seasonName} className="card overflow-hidden">
                   {/* Season Header */}
                   <div className="px-5 py-3 bg-gradient-to-r from-gold/10 to-transparent border-b border-navy-border flex items-center justify-between">
-                    <h3 className="font-black text-white text-lg">{seasonName}</h3>
+                    <h3 className="font-black text-slate-900 text-lg">{seasonName}</h3>
                     <span className="text-xs text-slate-500">
                       {seasonTrophies.length} title{seasonTrophies.length !== 1 ? 's' : ''}
                     </span>
@@ -338,7 +338,7 @@ export default async function HallOfFamePage() {
                                   height={64}
                                   className="object-contain mx-auto mb-2"
                                 />
-                                <p className="font-bold text-white text-sm leading-snug">
+                                <p className="font-bold text-slate-900 text-sm leading-snug">
                                   {winner.team.name}
                                 </p>
                                 <p className="text-xs text-slate-500 mt-0.5">

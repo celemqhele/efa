@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+﻿export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
@@ -76,7 +76,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">{monthLabel}</h1>
+        <h1 className="text-xl font-bold text-slate-900">{monthLabel}</h1>
         <div className="flex items-center gap-2">
           <Link href={`?month=${prevMonth}`} className="btn-outline text-xs px-3 py-2">← Prev</Link>
           <Link href={`?month=${format(now, 'yyyy-MM')}`} className="text-xs text-[#c9a84c] px-3 py-2">Today</Link>
@@ -91,7 +91,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
             {c.label}
           </span>
         ))}
-        <span className="text-xs px-2 py-0.5 rounded bg-[#1e2d5a] text-slate-500 font-bold">Break</span>
+        <span className="text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-500 font-bold">Break</span>
       </div>
 
       {/* Calendar grid */}
@@ -103,10 +103,10 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-px bg-[#1e2d5a]">
+        <div className="grid grid-cols-7 gap-px bg-slate-200">
           {/* Padding */}
           {Array.from({ length: startPad }).map((_, i) => (
-            <div key={`pad-${i}`} className="bg-[#0a1128] min-h-[80px]" />
+            <div key={`pad-${i}`} className="bg-slate-50 min-h-[80px]" />
           ))}
 
           {days.map((day) => {
@@ -118,7 +118,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
             return (
               <div
                 key={dateStr}
-                className={`bg-[#0a1128] min-h-[80px] p-1.5 ${
+                className={`bg-slate-50 min-h-[80px] p-1.5 ${
                   isBreak ? 'opacity-40' : ''
                 } ${isToday ? 'ring-1 ring-[#c9a84c] ring-inset' : ''}`}
               >
@@ -129,7 +129,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
                 </div>
 
                 {isBreak && (
-                  <div className="text-[9px] text-slate-600 bg-[#1e2d5a] rounded px-1 py-0.5">
+                  <div className="text-[9px] text-slate-600 bg-slate-200 rounded px-1 py-0.5">
                     Break
                   </div>
                 )}
@@ -189,21 +189,21 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
           <h2 className="section-header">Today's Fixtures</h2>
           <div className="space-y-2">
             {(byDate[format(now, 'yyyy-MM-dd')] ?? []).map((f: any) => (
-              <div key={f.id} className="flex items-center justify-between py-2 border-b border-[#1e2d5a] last:border-0">
+              <div key={f.id} className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0">
                 <div className="flex items-center gap-2">
                   {f.home_team?.logo_league_folder && (
                     <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
                   )}
-                  <span className="text-sm text-white">{f.home_team?.name}</span>
+                  <span className="text-sm text-slate-900">{f.home_team?.name}</span>
                 </div>
                 <div className="text-center px-3">
                   {f.results?.[0]
-                    ? <span className="text-white font-bold">{f.results[0].home_score}–{f.results[0].away_score}</span>
+                    ? <span className="text-slate-900 font-bold">{f.results[0].home_score}–{f.results[0].away_score}</span>
                     : <span className="text-xs text-[#c9a84c]">vs</span>
                   }
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-white">{f.away_team?.name}</span>
+                  <span className="text-sm text-slate-900">{f.away_team?.name}</span>
                   {f.away_team?.logo_league_folder && (
                     <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
                   )}

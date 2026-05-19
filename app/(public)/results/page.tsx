@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
@@ -87,7 +87,7 @@ export default async function ResultsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Results</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Results</h1>
         {activeTournament && (
           <p className="text-sm text-[#c9a84c] mt-0.5">{activeTournament.name}</p>
         )}
@@ -105,7 +105,7 @@ export default async function ResultsPage({ searchParams }: PageProps) {
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
                   isActive
                     ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
-                    : 'bg-transparent text-slate-400 border-[#1e2d5a] hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
+                    : 'bg-transparent text-slate-400 border-slate-200 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
                 }`}
               >
                 {TOURNAMENT_TYPE_LABELS[t.type] ?? t.name}
@@ -121,7 +121,7 @@ export default async function ResultsPage({ searchParams }: PageProps) {
           {prevMd !== null ? (
             <Link
               href={`/results?${activeTournamentId ? `tournament=${activeTournamentId}&` : ''}matchday=${prevMd}`}
-              className="px-3 py-1.5 rounded-lg text-sm border border-[#1e2d5a] text-slate-400 hover:border-[#c9a84c]/50 hover:text-white transition-colors"
+              className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-slate-900 transition-colors"
             >
               ← MD {prevMd}
             </Link>
@@ -130,7 +130,7 @@ export default async function ResultsPage({ searchParams }: PageProps) {
           )}
 
           <div className="flex-1 text-center">
-            <span className="text-sm font-bold text-white">
+            <span className="text-sm font-bold text-slate-900">
               {ROUND_LABELS[(fixtures?.[0] as any)?.round_type ?? ''] ?? `Matchday ${selectedMatchday}`}
             </span>
           </div>
@@ -138,7 +138,7 @@ export default async function ResultsPage({ searchParams }: PageProps) {
           {nextMd !== null ? (
             <Link
               href={`/results?${activeTournamentId ? `tournament=${activeTournamentId}&` : ''}matchday=${nextMd}`}
-              className="px-3 py-1.5 rounded-lg text-sm border border-[#1e2d5a] text-slate-400 hover:border-[#c9a84c]/50 hover:text-white transition-colors"
+              className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-slate-900 transition-colors"
             >
               MD {nextMd} →
             </Link>
@@ -169,12 +169,12 @@ export default async function ResultsPage({ searchParams }: PageProps) {
               <Link
                 key={f.id}
                 href={`/results/${result.id}`}
-                className="card flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-white/[0.02] transition-all group"
+                className="card flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-black/[0.03] transition-all group"
               >
                 {/* Home team */}
                 <div className="flex-1 flex items-center gap-2.5 min-w-0 justify-end flex-row-reverse sm:flex-row">
                   <span className={`text-sm font-semibold truncate text-right sm:text-left ${
-                    homeWin ? 'text-white' : awayWin ? 'text-slate-500' : 'text-white'
+                    homeWin ? 'text-slate-900' : awayWin ? 'text-slate-400' : 'text-slate-900'
                   }`}>
                     {f.home_team?.name ?? 'TBC'}
                   </span>
@@ -193,7 +193,7 @@ export default async function ResultsPage({ searchParams }: PageProps) {
 
                 {/* Score */}
                 <div className="flex flex-col items-center gap-0.5 min-w-[80px]">
-                  <span className="text-white font-bold text-xl leading-none">
+                  <span className="text-slate-900 font-bold text-xl leading-none">
                     {result.home_score}
                     <span className="text-slate-500 mx-1.5">–</span>
                     {result.away_score}
@@ -222,7 +222,7 @@ export default async function ResultsPage({ searchParams }: PageProps) {
                     </div>
                   )}
                   <span className={`text-sm font-semibold truncate ${
-                    awayWin ? 'text-white' : homeWin ? 'text-slate-500' : 'text-white'
+                    awayWin ? 'text-slate-900' : homeWin ? 'text-slate-400' : 'text-slate-900'
                   }`}>
                     {f.away_team?.name ?? 'TBC'}
                   </span>
