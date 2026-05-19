@@ -46,7 +46,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
   const { data: { user: currentUser } } = await supabase.auth.getUser()
   let isAdmin = false
   let allProfiles: { id: string; username: string; avatar_url: string | null }[] = []
-  let managedTeamByUser: Record<string, string> = {}
+  const managedTeamByUser: Record<string, string> = {}
 
   if (currentUser) {
     const { data: currentProfile } = await supabase
