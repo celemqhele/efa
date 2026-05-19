@@ -41,7 +41,7 @@ export default async function UsersManagePage() {
 
   // Pending manager applications
   const { data: managerApplications } = await supabase
-    .from('manager_applications')
+    .from('manager_applications' as any)
     .select(`
       id, created_at,
       applicant:profiles!manager_applications_applicant_id_fkey(id, username, avatar_url),

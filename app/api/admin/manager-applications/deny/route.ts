@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const adminSupabase = await createAdminClient()
 
   const { data: app } = await adminSupabase
-    .from('manager_applications')
+    .from('manager_applications' as any)
     .select(`
       id, applicant_id, team_id, status,
       applicant:profiles!manager_applications_applicant_id_fkey(id, username),
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const applicantId: string = (app as any).applicant_id
   const now = new Date().toISOString()
 
-  await adminSupabase.from('manager_applications')
+  await adminSupabase.from('manager_applications' as any)
     .update({ status: 'denied', reviewed_at: now, reviewed_by: user.id })
     .eq('id', application_id)
 

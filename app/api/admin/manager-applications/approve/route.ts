@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const adminSupabase = await createAdminClient()
 
   const { data: app } = await adminSupabase
-    .from('manager_applications')
+    .from('manager_applications' as any)
     .select(`
       id, applicant_id, team_id, status,
       applicant:profiles!manager_applications_applicant_id_fkey(id, username),
@@ -87,12 +87,12 @@ export async function POST(request: Request) {
   )
 
   // Mark this application approved
-  await adminSupabase.from('manager_applications')
+  await adminSupabase.from('manager_applications' as any)
     .update({ status: 'approved', reviewed_at: now, reviewed_by: user.id })
     .eq('id', application_id)
 
   // Deny all other pending applications for the same team
-  await adminSupabase.from('manager_applications')
+  await adminSupabase.from('manager_applications' as any)
     .update({ status: 'denied', reviewed_at: now, reviewed_by: user.id })
     .eq('team_id', teamId)
     .eq('status', 'pending')

@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
   // One pending application per user at a time
   const { data: existing } = await adminSupabase
-    .from('manager_applications')
+    .from('manager_applications' as any)
     .select('id')
     .eq('applicant_id', user.id)
     .eq('status', 'pending')
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   }
 
   const { error: insertErr } = await adminSupabase
-    .from('manager_applications')
+    .from('manager_applications' as any)
     .insert({ applicant_id: user.id, team_id })
 
   if (insertErr) return Response.json({ error: insertErr.message }, { status: 500 })

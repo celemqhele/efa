@@ -71,7 +71,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
     } else if (!isCurrentManager) {
       // Check if user has a pending application for this team
       const { data: pendingApp } = await supabase
-        .from('manager_applications')
+        .from('manager_applications' as any)
         .select('id')
         .eq('applicant_id', currentUser.id)
         .eq('team_id', id)
