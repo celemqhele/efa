@@ -76,8 +76,8 @@ export default async function ExportPage({ searchParams }: Props) {
         .from('fixtures')
         .select(`
           id, matchday, scheduled_date,
-          home_team:teams!fixtures_home_team_id_fkey(name),
-          away_team:teams!fixtures_away_team_id_fkey(name),
+          home_team:teams!fixtures_home_team_id_fkey(name, logo_league_folder, logo_team_slug),
+          away_team:teams!fixtures_away_team_id_fkey(name, logo_league_folder, logo_team_slug),
           results(home_score, away_score)
         `)
         .eq('tournament_id', activeTournamentId)
@@ -91,7 +91,7 @@ export default async function ExportPage({ searchParams }: Props) {
       if (tType === 'league') {
         const { data } = await supabase
           .from('standings')
-          .select('*, team:teams(name)')
+          .select('*, team:teams(name, logo_league_folder, logo_team_slug)')
           .eq('tournament_id', activeTournamentId)
           .order('points', { ascending: false })
           .order('goals_for', { ascending: false })
@@ -101,7 +101,7 @@ export default async function ExportPage({ searchParams }: Props) {
         if (standings.length === 0) {
           const { data: fxTeams } = await supabase
             .from('fixtures')
-            .select('home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name), away_team:teams!fixtures_away_team_id_fkey(id, name)')
+            .select('home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug), away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug)')
             .eq('tournament_id', activeTournamentId)
           const seen = new Set<string>()
           const zeroRows: any[] = []
@@ -121,7 +121,7 @@ export default async function ExportPage({ searchParams }: Props) {
       } else {
         // UCL / Europa — show group standings
         const { data } = await (supabase.from('group_standings') as any)
-          .select('*, team:teams(name)')
+          .select('*, team:teams(name, logo_league_folder, logo_team_slug)')
           .eq('tournament_id', activeTournamentId)
           .order('points', { ascending: false })
           .order('goals_for', { ascending: false })
@@ -216,7 +216,8 @@ export default async function ExportPage({ searchParams }: Props) {
               }}
             >
               <div style={{ width: '24px', textAlign: 'center', color: '#64748b', fontSize: '12px', fontWeight: 700 }}>{i + 1}</div>
-              <div style={{ flex: 1, color: '#ffffff', fontWeight: 600, fontSize: '13px', marginLeft: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <TeamLogoInline folder={s.team?.logo_league_folder} slug={s.team?.logo_team_slug} size={28} />
+              <div style={{ flex: 1, color: '#ffffff', fontWeight: 600, fontSize: '13px', marginLeft: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {s.team?.name ?? '—'}
               </div>
               <div style={{ width: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>{s.played}</div>
@@ -390,21 +391,25 @@ export default async function ExportPage({ searchParams }: Props) {
                       style={{
                         display: 'flex', alignItems: 'center',
                         ...(i % 2 === 0 ? rowEven : rowOdd),
-                        padding: '13px 16px',
+                        padding: '10px 16px',
                       }}
                     >
-                      <div style={{ flex: 1, textAlign: 'right', paddingRight: '12px' }}>
-                        <span style={{ color: homeWon ? '#ffffff' : '#64748b', fontWeight: homeWon ? 700 : 400, fontSize: '14px' }}>
+                      {/* Home — name right-aligned, logo nearest center */}
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingRight: '10px' }}>
+                        <span style={{ color: homeWon ? '#ffffff' : '#64748b', fontWeight: homeWon ? 700 : 400, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {(f.home_team as any)?.name ?? '—'}
                         </span>
+                        <TeamLogoInline folder={(f.home_team as any)?.logo_league_folder} slug={(f.home_team as any)?.logo_team_slug} />
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '80px', justifyContent: 'center' }}>
-                        <span style={{ color: homeWon ? accent : '#ffffff', fontWeight: 900, fontSize: '22px', lineHeight: 1 }}>{r?.home_score ?? '?'}</span>
-                        <span style={{ color: '#334155', fontWeight: 700, fontSize: '14px' }}>–</span>
-                        <span style={{ color: awayWon ? accent : '#ffffff', fontWeight: 900, fontSize: '22px', lineHeight: 1 }}>{r?.away_score ?? '?'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '72px', justifyContent: 'center' }}>
+                        <span style={{ color: homeWon ? accent : '#ffffff', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.home_score ?? '?'}</span>
+                        <span style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>–</span>
+                        <span style={{ color: awayWon ? accent : '#ffffff', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.away_score ?? '?'}</span>
                       </div>
-                      <div style={{ flex: 1, paddingLeft: '12px' }}>
-                        <span style={{ color: awayWon ? '#ffffff' : '#64748b', fontWeight: awayWon ? 700 : 400, fontSize: '14px' }}>
+                      {/* Away — logo nearest center, name left-aligned */}
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '10px' }}>
+                        <TeamLogoInline folder={(f.away_team as any)?.logo_league_folder} slug={(f.away_team as any)?.logo_team_slug} />
+                        <span style={{ color: awayWon ? '#ffffff' : '#64748b', fontWeight: awayWon ? 700 : 400, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {(f.away_team as any)?.name ?? '—'}
                         </span>
                       </div>
