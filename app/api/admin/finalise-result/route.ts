@@ -124,6 +124,8 @@ export async function POST(request: Request) {
     fixture_id: string
     home_score: number
     away_score: number
+    home_absent?: boolean
+    away_absent?: boolean
     override_reason?: string
     screenshot_url?: string
     stats?: Partial<Omit<MatchStatsInsert, 'id' | 'result_id'>>
@@ -134,7 +136,27 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { fixture_id, home_score, away_score, override_reason, screenshot_url, stats } = body
+  const { fixture_id, override_reason, screenshot_url, stats } = body
+  const home_absent = body.home_absent ?? false
+  const away_absent = body.away_absent ?? false
+  const bothAbsent = home_absent && away_absent
+
+  // Enforce forfeit scores server-side regardless of what the client sent
+  let home_score: number
+  let away_score: number
+  if (bothAbsent) {
+    home_score = 0
+    away_score = 0
+  } else if (home_absent) {
+    home_score = 0
+    away_score = 3
+  } else if (away_absent) {
+    home_score = 3
+    away_score = 0
+  } else {
+    home_score = body.home_score
+    away_score = body.away_score
+  }
 
   if (!fixture_id || home_score == null || away_score == null) {
     return Response.json(
@@ -177,6 +199,15 @@ export async function POST(request: Request) {
     )
   }
 
+  // Build override_reason: absent takes priority over manual override
+  const effectiveOverrideReason = bothAbsent
+    ? 'Both teams absent — result void (0–0, no points)'
+    : home_absent
+    ? `${(homeTeam as any)?.name ?? 'Home team'} absent — forfeit (0–3)`
+    : away_absent
+    ? `${(awayTeam as any)?.name ?? 'Away team'} absent — forfeit (3–0)`
+    : (override_reason ?? null)
+
   // Insert result
   const { data: result, error: resultError } = await adminSupabase
     .from('results')
@@ -186,7 +217,7 @@ export async function POST(request: Request) {
       away_score,
       finalised_by: user.id,
       screenshot_url: screenshot_url ?? null,
-      override_reason: override_reason ?? null,
+      override_reason: effectiveOverrideReason,
     })
     .select('id')
     .single()
@@ -224,11 +255,13 @@ export async function POST(request: Request) {
 
     const tType: string = (tournament as any)?.type ?? ''
 
-    // Update standings
-    if (roundType === 'league' && homeTeamId && awayTeamId) {
-      await updateLeagueStandings(adminSupabase, tournamentId, homeTeamId, awayTeamId, home_score, away_score)
-    } else if (roundType === 'group' && homeTeamId && awayTeamId) {
-      await updateGroupStandings(adminSupabase, tournamentId, homeTeamId, awayTeamId, home_score, away_score)
+    // Update standings — skip entirely when both teams are absent (0-0, no points)
+    if (!bothAbsent) {
+      if (roundType === 'league' && homeTeamId && awayTeamId) {
+        await updateLeagueStandings(adminSupabase, tournamentId, homeTeamId, awayTeamId, home_score, away_score)
+      } else if (roundType === 'group' && homeTeamId && awayTeamId) {
+        await updateGroupStandings(adminSupabase, tournamentId, homeTeamId, awayTeamId, home_score, away_score)
+      }
     }
 
     // Tournament progression
@@ -244,17 +277,53 @@ export async function POST(request: Request) {
         await generateTBCKnockouts(adminSupabase, tournamentId)
       }
     } else if (roundType === 'sf') {
-      await fillFinalSlot(
-        adminSupabase,
-        tournamentId,
-        fixture_id,
-        home_score,
-        away_score,
-        homeTeamId,
-        awayTeamId
-      )
+      if (bothAbsent) {
+        // Both SF teams absent: best previously-eliminated team takes the bracket slot
+        const { data: allSFs } = await adminSupabase
+          .from('fixtures')
+          .select('home_team_id, away_team_id')
+          .eq('tournament_id', tournamentId)
+          .eq('round_type', 'sf')
+
+        const sfTeamIds = new Set<string>(
+          (allSFs ?? []).flatMap((f: any) => [f.home_team_id, f.away_team_id]).filter(Boolean)
+        )
+
+        const { data: groupStandings } = await adminSupabase
+          .from('group_standings')
+          .select('team_id, points, goals_for, goals_against')
+          .eq('tournament_id', tournamentId)
+
+        // Eliminated = had a group standing but did not advance to SF
+        const eliminated = (groupStandings ?? []).filter((s: any) => !sfTeamIds.has(s.team_id))
+        const sortedElim = [...eliminated].sort((a: any, b: any) => {
+          if (b.points !== a.points) return b.points - a.points
+          const gdA = (a.goals_for ?? 0) - (a.goals_against ?? 0)
+          const gdB = (b.goals_for ?? 0) - (b.goals_against ?? 0)
+          if (gdB !== gdA) return gdB - gdA
+          return (b.goals_for ?? 0) - (a.goals_for ?? 0)
+        })
+        const bestEliminated = sortedElim[0]
+
+        if (bestEliminated) {
+          // Treat best eliminated team as "home winner" so fillFinalSlot assigns them
+          await fillFinalSlot(adminSupabase, tournamentId, fixture_id, 1, 0, bestEliminated.team_id, null)
+        }
+      } else {
+        await fillFinalSlot(
+          adminSupabase,
+          tournamentId,
+          fixture_id,
+          home_score,
+          away_score,
+          homeTeamId,
+          awayTeamId
+        )
+      }
     } else if (roundType === 'final') {
-      await awardTrophy(adminSupabase, tournamentId, home_score, away_score, homeTeamId, awayTeamId)
+      if (!bothAbsent) {
+        await awardTrophy(adminSupabase, tournamentId, home_score, away_score, homeTeamId, awayTeamId)
+      }
     }
   } catch (err) {
     console.error('[finalise-result] progression error:', err)
@@ -266,12 +335,17 @@ export async function POST(request: Request) {
 
   const notifications: Database['public']['Tables']['notifications']['Insert'][] = []
 
+  const notifTitle = bothAbsent ? 'Match Voided' : (home_absent || away_absent) ? 'Forfeit Recorded' : 'Result Confirmed'
+  const notifBody = `${homeTeamObj?.name ?? 'Home'} ${home_score}–${away_score} ${awayTeamObj?.name ?? 'Away'}${
+    bothAbsent ? ' (both absent — no points)' : home_absent ? ` (${homeTeamObj?.name ?? 'Home'} absent)` : away_absent ? ` (${awayTeamObj?.name ?? 'Away'} absent)` : ''
+  }`
+
   if (homeTeamObj?.manager_id) {
     notifications.push({
       user_id: homeTeamObj.manager_id,
       type: 'result_confirmed',
-      title: 'Result Confirmed',
-      body: `${homeTeamObj.name ?? 'Home'} ${home_score}–${away_score} ${awayTeamObj?.name ?? 'Away'}`,
+      title: notifTitle,
+      body: notifBody,
       data: { fixture_id, home_score: String(home_score), away_score: String(away_score) },
     })
   }
@@ -280,8 +354,8 @@ export async function POST(request: Request) {
     notifications.push({
       user_id: awayTeamObj.manager_id,
       type: 'result_confirmed',
-      title: 'Result Confirmed',
-      body: `${homeTeamObj?.name ?? 'Home'} ${home_score}–${away_score} ${awayTeamObj.name ?? 'Away'}`,
+      title: notifTitle,
+      body: notifBody,
       data: { fixture_id, home_score: String(home_score), away_score: String(away_score) },
     })
   }
@@ -299,7 +373,9 @@ export async function POST(request: Request) {
       home_score,
       away_score,
       result_id: result.id,
-      override_reason: override_reason ?? null,
+      override_reason: effectiveOverrideReason,
+      home_absent,
+      away_absent,
     },
   })
 

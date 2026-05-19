@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const username = (user.user_metadata?.username as string | undefined) ?? user.email?.split('@')[0] ?? 'manager'
     const { error: createErr } = await adminSupabase
       .from('profiles')
-      .insert({ id: user.id, username, role: 'manager' })
+      .insert({ id: user.id, username, role: 'user' })
     if (createErr) return Response.json({ error: 'Failed to create profile: ' + createErr.message }, { status: 500 })
     profile = { username }
   }

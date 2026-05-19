@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 
@@ -111,6 +111,10 @@ export default function ResultSubmitClient({
     Object.fromEntries(STAT_FIELDS.map((f) => [f.key, { home: '', away: '' }]))
   )
 
+  // Absent state
+  const [homeAbsent, setHomeAbsent] = useState(false)
+  const [awayAbsent, setAwayAbsent] = useState(false)
+
   // Score state
   const [homeScore, setHomeScore] = useState('')
   const [awayScore, setAwayScore] = useState('')
@@ -135,6 +139,20 @@ export default function ResultSubmitClient({
     )
   })
 
+  // Auto-set scores when absent flags change
+  useEffect(() => {
+    if (homeAbsent && awayAbsent) {
+      setHomeScore('0')
+      setAwayScore('0')
+    } else if (homeAbsent) {
+      setHomeScore('0')
+      setAwayScore('3')
+    } else if (awayAbsent) {
+      setHomeScore('3')
+      setAwayScore('0')
+    }
+  }, [homeAbsent, awayAbsent])
+
   function resetOcr() {
     setOcrResult(null)
     setOcrError('')
@@ -143,6 +161,8 @@ export default function ResultSubmitClient({
     setStats(Object.fromEntries(STAT_FIELDS.map((f) => [f.key, { home: '', away: '' }])))
     setHomeScore('')
     setAwayScore('')
+    setHomeAbsent(false)
+    setAwayAbsent(false)
   }
 
   async function handleScreenshotUpload() {
@@ -198,8 +218,8 @@ export default function ResultSubmitClient({
 
   async function handleSubmit() {
     if (!selectedFixtureId) return setSubmitError('Select a fixture first.')
-    if (!homeScore || !awayScore) return setSubmitError('Score is required.')
-    if (isOverride && !overrideReason.trim()) return setSubmitError('Override reason is required.')
+    if (!(homeAbsent || awayAbsent) && (!homeScore || !awayScore)) return setSubmitError('Score is required.')
+    if (isOverride && !overrideReason.trim() && !(homeAbsent || awayAbsent)) return setSubmitError('Override reason is required.')
 
     setSubmitting(true)
     setSubmitError('')
@@ -208,6 +228,8 @@ export default function ResultSubmitClient({
       fixture_id: selectedFixtureId,
       home_score: parseInt(homeScore),
       away_score: parseInt(awayScore),
+      home_absent: homeAbsent,
+      away_absent: awayAbsent,
       override_reason: isOverride ? overrideReason : null,
       home_team_id: mappedHomeTeamId || selectedFixture?.home_team?.id,
       away_team_id: mappedAwayTeamId || selectedFixture?.away_team?.id,
@@ -487,6 +509,51 @@ export default function ResultSubmitClient({
             {/* Score Input */}
             <div className="card p-5">
               <h2 className="section-header">Score</h2>
+
+              {/* Absent toggles */}
+              <div className="flex gap-4 mb-4">
+                <label className={`flex items-center gap-2 cursor-pointer flex-1 rounded-lg px-3 py-2 border transition-colors ${
+                  homeAbsent ? 'border-red-400/50 bg-red-50' : 'border-slate-200 bg-slate-50'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={homeAbsent}
+                    onChange={(e) => setHomeAbsent(e.target.checked)}
+                    className="accent-red-500 w-4 h-4"
+                  />
+                  <span className="text-sm font-medium text-slate-700">
+                    {selectedFixture.home_team?.name} absent
+                  </span>
+                </label>
+                <label className={`flex items-center gap-2 cursor-pointer flex-1 rounded-lg px-3 py-2 border transition-colors ${
+                  awayAbsent ? 'border-red-400/50 bg-red-50' : 'border-slate-200 bg-slate-50'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={awayAbsent}
+                    onChange={(e) => setAwayAbsent(e.target.checked)}
+                    className="accent-red-500 w-4 h-4"
+                  />
+                  <span className="text-sm font-medium text-slate-700">
+                    {selectedFixture.away_team?.name} absent
+                  </span>
+                </label>
+              </div>
+
+              {(homeAbsent || awayAbsent) && (
+                <div className={`mb-4 rounded-lg px-3 py-2 text-sm ${
+                  homeAbsent && awayAbsent
+                    ? 'bg-orange-50 border border-orange-200 text-orange-700'
+                    : 'bg-red-50 border border-red-200 text-red-700'
+                }`}>
+                  {homeAbsent && awayAbsent
+                    ? 'Both absent — result is 0–0, no points awarded to either side.'
+                    : homeAbsent
+                    ? `${selectedFixture.home_team?.name} forfeits — result recorded as 0–3.`
+                    : `${selectedFixture.away_team?.name} forfeits — result recorded as 3–0.`}
+                </div>
+              )}
+
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <label className="form-label">{selectedFixture.home_team?.name}</label>
@@ -494,8 +561,9 @@ export default function ResultSubmitClient({
                     type="number"
                     min="0"
                     value={homeScore}
+                    disabled={homeAbsent || awayAbsent}
                     onChange={(e) => { setHomeScore(e.target.value); setIsOverride(ocrResult ? e.target.value !== String(ocrResult.home_score) : false) }}
-                    className="input-field text-center text-2xl font-bold"
+                    className="input-field text-center text-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed"
                     placeholder="0"
                   />
                 </div>
@@ -506,14 +574,15 @@ export default function ResultSubmitClient({
                     type="number"
                     min="0"
                     value={awayScore}
+                    disabled={homeAbsent || awayAbsent}
                     onChange={(e) => { setAwayScore(e.target.value); setIsOverride(ocrResult ? e.target.value !== String(ocrResult.away_score) : false) }}
-                    className="input-field text-center text-2xl font-bold"
+                    className="input-field text-center text-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed"
                     placeholder="0"
                   />
                 </div>
               </div>
 
-              {isOverride && (
+              {isOverride && !(homeAbsent || awayAbsent) && (
                 <div className="mt-4">
                   <label className="form-label text-yellow-400">Override Reason (required)</label>
                   <textarea
@@ -608,7 +677,7 @@ export default function ResultSubmitClient({
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || !homeScore || !awayScore}
+              disabled={submitting || (!(homeAbsent || awayAbsent) && (!homeScore || !awayScore))}
               className="btn-gold w-full py-3 text-base font-bold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Submitting...' : 'Finalise Result'}
