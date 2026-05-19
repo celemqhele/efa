@@ -19,8 +19,19 @@ export default async function PageWrapper({ children, fullWidth = false }: PageW
       supabase.from('notifications').select('*', { count: 'exact', head: true })
         .eq('user_id', user.id).eq('read', false),
     ])
-    profile = p
     unreadCount = count ?? 0
+
+    // If the profile row doesn't exist yet (DB trigger timing / pre-team-selection),
+    // synthesize a minimal stub from session metadata so the nav shows logged-in state.
+    profile = p ?? {
+      id: user.id,
+      username: (user.user_metadata?.username as string | undefined)
+        ?? user.email?.split('@')[0]
+        ?? 'user',
+      role: 'user' as const,
+      avatar_url: null,
+      created_at: user.created_at ?? new Date().toISOString(),
+    }
   }
 
   return (
