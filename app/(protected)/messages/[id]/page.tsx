@@ -56,12 +56,13 @@ export default async function ConversationPage({ params }: PageProps) {
     .is('read_at', null)
 
   return (
-    <div className="max-w-2xl mx-auto flex flex-col h-[calc(100vh-7rem)]">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="card p-3.5 mb-3 flex items-center gap-3 shrink-0">
+      <div className="shrink-0 px-4 py-3 border-b border-slate-200 bg-white flex items-center gap-3">
+        {/* Back button — visible on mobile only (desktop shows sidebar) */}
         <Link
           href="/messages"
-          className="p-1.5 rounded-lg text-slate-400 hover:text-gold hover:bg-gold/10 transition-colors"
+          className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-gold hover:bg-gold/10 transition-colors shrink-0"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -71,13 +72,13 @@ export default async function ConversationPage({ params }: PageProps) {
           {otherProfile?.username?.[0]?.toUpperCase() ?? '?'}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-slate-900 text-sm leading-none">@{otherProfile?.username ?? 'Unknown'}</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">EFA Direct Message</p>
+          <p className="font-bold text-slate-900 text-sm leading-tight">@{otherProfile?.username ?? 'Unknown'}</p>
+          <p className="text-[10px] text-slate-400">EFA Direct Message</p>
         </div>
       </div>
 
       {/* Chat area */}
-      <div className="card flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden bg-navy-light">
         <ChatWindow
           conversationId={params.id}
           currentUserId={user.id}
