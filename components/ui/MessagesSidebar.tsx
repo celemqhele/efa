@@ -41,6 +41,7 @@ export default function MessagesSidebar({ currentUserId, conversations }: Props)
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [starting, setStarting] = useState<string | null>(null)
+  const [startError, setStartError] = useState<string | null>(null)
 
   // Debounced profile search
   useEffect(() => {
@@ -65,15 +66,22 @@ export default function MessagesSidebar({ currentUserId, conversations }: Props)
 
   async function startConversation(userId: string) {
     setStarting(userId)
-    const res = await fetch('/api/conversations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ other_user_id: userId }),
-    })
-    if (res.ok) {
-      const { id } = await res.json()
-      setQuery('')
-      router.push(`/messages/${id}`)
+    setStartError(null)
+    try {
+      const res = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ other_user_id: userId }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setQuery('')
+        router.push(`/messages/${data.id}`)
+      } else {
+        setStartError(data.error ?? `HTTP ${res.status}`)
+      }
+    } catch (err: any) {
+      setStartError(err?.message ?? 'Network error')
     }
     setStarting(null)
   }
@@ -95,6 +103,12 @@ export default function MessagesSidebar({ currentUserId, conversations }: Props)
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {startError && (
+          <div className="mx-3 mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+            {startError}
+          </div>
+        )}
+
         {query.trim() ? (
           /* Search results */
           <div className="py-1">
