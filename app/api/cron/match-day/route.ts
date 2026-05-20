@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     if (home?.manager_id) {
       const { data: subs } = await supabase
         .from('push_subscriptions')
-        .select('subscription')
+        .select('endpoint, p256dh, auth')
         .eq('user_id', home.manager_id)
 
       if (subs?.length) {
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     if (away?.manager_id) {
       const { data: subs } = await supabase
         .from('push_subscriptions')
-        .select('subscription')
+        .select('endpoint, p256dh, auth')
         .eq('user_id', away.manager_id)
 
       if (subs?.length) {

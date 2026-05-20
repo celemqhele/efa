@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       if (!manager?.manager_id) continue
       const { data: subs } = await supabase
         .from('push_subscriptions')
-        .select('subscription')
+        .select('endpoint, p256dh, auth')
         .eq('user_id', manager.manager_id)
 
       if (subs?.length) {

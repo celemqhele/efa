@@ -15,13 +15,16 @@ export interface PushPayload {
 }
 
 export async function sendPushToUser(
-  subscriptions: { subscription: object }[],
+  subscriptions: { endpoint: string; p256dh: string; auth: string }[],
   payload: PushPayload
 ) {
   const results = await Promise.allSettled(
     subscriptions.map((row) =>
       webpush.sendNotification(
-        row.subscription as webpush.PushSubscription,
+        {
+          endpoint: row.endpoint,
+          keys: { p256dh: row.p256dh, auth: row.auth },
+        },
         JSON.stringify(payload)
       )
     )
