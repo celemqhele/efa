@@ -12,28 +12,14 @@ export default async function PageWrapper({ children, fullWidth = false }: PageW
 
   let profile = null
   let unreadCount = 0
-  let messageUnreadCount = 0
 
   if (user) {
-    const [{ data: p }, { count }, { data: myConvIds }] = await Promise.all([
+    const [{ data: p }, { count }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('notifications').select('*', { count: 'exact', head: true })
         .eq('user_id', user.id).eq('read', false),
-      supabase.from('conversations').select('id')
-        .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`),
     ])
     unreadCount = count ?? 0
-
-    const convIds = (myConvIds ?? []).map((c: any) => c.id)
-    if (convIds.length > 0) {
-      const { count: msgCount } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .in('conversation_id', convIds)
-        .neq('sender_id', user.id)
-        .is('read_at', null)
-      messageUnreadCount = msgCount ?? 0
-    }
 
     // If the profile row doesn't exist yet (DB trigger timing / pre-team-selection),
     // synthesize a minimal stub from session metadata so the nav shows logged-in state.
@@ -50,7 +36,7 @@ export default async function PageWrapper({ children, fullWidth = false }: PageW
 
   return (
     <div className="min-h-screen bg-navy">
-      <Nav profile={profile} unreadCount={unreadCount} messageUnreadCount={messageUnreadCount} />
+      <Nav profile={profile} unreadCount={unreadCount} />
       <main className={fullWidth ? '' : 'max-w-7xl mx-auto px-4 py-6'}>
         {children}
       </main>
