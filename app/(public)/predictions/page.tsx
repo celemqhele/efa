@@ -68,12 +68,12 @@ export default async function PredictionsPage() {
 
   // Fetch standings for all teams + tournaments in the available fixtures
   // so we can compute win probability (odds) for each upcoming match
-  const fixtureTeamIds = [
-    ...new Set(availableFixtures.flatMap((f: any) => [f.home_team?.id, f.away_team?.id].filter(Boolean))),
-  ] as string[]
-  const fixtureTournamentIds = [
-    ...new Set(availableFixtures.map((f: any) => f.tournament_id).filter(Boolean)),
-  ] as string[]
+  const fixtureTeamIds = Array.from(
+    new Set(availableFixtures.flatMap((f: any) => [f.home_team?.id, f.away_team?.id].filter(Boolean)))
+  ) as string[]
+  const fixtureTournamentIds = Array.from(
+    new Set(availableFixtures.map((f: any) => f.tournament_id).filter(Boolean))
+  ) as string[]
 
   const { data: fixtureStandings } =
     fixtureTeamIds.length > 0 && fixtureTournamentIds.length > 0
