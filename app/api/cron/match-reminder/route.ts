@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
-  const supabase = createAdminClient()
+  const supabase = await createAdminClient()
   const today = new Date().toISOString().split('T')[0]
 
   // Find today's fixtures that are NOT yet confirmed
