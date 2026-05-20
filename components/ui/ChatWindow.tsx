@@ -103,16 +103,22 @@ export default function ChatWindow({ conversationId, currentUserId, initialMessa
       {/* Message list */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
-          <p className="text-center text-slate-500 text-sm py-10">
-            No messages yet — say something to @{otherUsername}!
-          </p>
+          <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+            <div className="w-14 h-14 rounded-full bg-gold/20 border border-gold/30 flex items-center justify-center text-xl font-black text-gold mb-3">
+              {otherUsername[0]?.toUpperCase() ?? '?'}
+            </div>
+            <p className="font-bold text-slate-900 text-sm mb-1">@{otherUsername}</p>
+            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+              🔒 This is a private direct message. Only you and @{otherUsername} can read these messages.
+            </p>
+          </div>
         )}
 
         {messages.map((msg) => {
           const isMe = msg.sender_id === currentUserId
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[78%] ${msg.gif_url ? '' : `px-3.5 py-2 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-gold text-[#0a1128] rounded-br-md font-medium' : 'bg-navy-border/70 text-slate-900 rounded-bl-md'}`}`}>
+              <div className={`max-w-[78%] ${msg.gif_url ? '' : `px-3.5 py-2 rounded-2xl text-sm leading-relaxed ${isMe ? 'bg-gold text-[#0a1128] rounded-br-md font-medium' : 'bg-slate-200 text-slate-900 rounded-bl-md'}`}`}>
                 {msg.gif_url ? (
                   /* GIF message */
                   <div className="rounded-xl overflow-hidden max-w-[220px]">

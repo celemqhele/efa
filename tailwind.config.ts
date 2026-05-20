@@ -11,10 +11,10 @@ const config: Config = {
     extend: {
       colors: {
         navy: {
-          DEFAULT: '#f8f9fc',
-          light: '#f1f4fb',
-          card: '#ffffff',
-          border: '#e2e8f0',
+          DEFAULT: 'var(--navy)',
+          light: 'var(--navy-light)',
+          card: 'var(--navy-card)',
+          border: 'var(--navy-border)',
         },
         gold: {
           DEFAULT: '#c9a84c',

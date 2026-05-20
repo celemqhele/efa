@@ -1,34 +1,65 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import LoungeChat from '@/components/ui/LoungeChat'
 
 export const dynamic = 'force-dynamic'
 
+const LOUNGE_NAME = 'EFA Lounge'
+const LOUNGE_DESC = 'The official EFA group chat — all managers welcome 🏆'
+const LOUNGE_WELCOME = '👋 Welcome to the EFA Lounge! This is the official group chat for all EFA managers. Chat about fixtures, share room codes, trash talk — anything goes. See you on the pitch! ⚽'
+
 export default async function MessagesPage() {
   const supabase = await createClient()
+  const admin = await createAdminClient()
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [profileRes, channelRes] = await Promise.all([
-    supabase.from('profiles').select('username').eq('id', user.id).single(),
-    supabase.from('channels').select('id, name, description').eq('name', 'EFA Lounge').single(),
-  ])
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .single()
 
-  const profile = profileRes.data
-  const channel = channelRes.data
+  // Use admin client to read/create channel (bypasses RLS)
+  let { data: channel } = await admin
+    .from('channels')
+    .select('id, name, description')
+    .eq('name', LOUNGE_NAME)
+    .maybeSingle()
+
+  if (!channel) {
+    // Auto-create EFA Lounge on first visit — no manual SQL needed
+    const { data: created } = await admin
+      .from('channels')
+      .insert({ name: LOUNGE_NAME, description: LOUNGE_DESC })
+      .select('id, name, description')
+      .single()
+
+    channel = created
+
+    if (created) {
+      // Drop a welcome message from the first admin to open the page
+      await admin.from('channel_messages').insert({
+        channel_id: created.id,
+        sender_id: user.id,
+        content: LOUNGE_WELCOME,
+      })
+    }
+  }
 
   if (!channel) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <p className="text-4xl mb-3">🏆</p>
-        <p className="font-semibold text-slate-900 mb-1">EFA Lounge not set up yet</p>
-        <p className="text-slate-500 text-sm">Ask an admin to run the channels migration.</p>
+        <p className="text-4xl mb-3">⚠️</p>
+        <p className="font-semibold text-slate-900 mb-1">Could not load EFA Lounge</p>
+        <p className="text-slate-500 text-sm">Make sure the channels table exists in Supabase.</p>
       </div>
     )
   }
 
   const [messagesRes, memberCountRes] = await Promise.all([
-    supabase
+    admin
       .from('channel_messages')
       .select('id, channel_id, sender_id, content, gif_url, created_at, sender:profiles!channel_messages_sender_id_fkey(username, avatar_url)')
       .eq('channel_id', channel.id)

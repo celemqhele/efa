@@ -99,9 +99,13 @@ export default function LoungeChat({ channelId, currentUserId, currentUsername, 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-          <p className="text-center text-slate-500 text-sm py-10">
-            No messages yet — be the first in the EFA Lounge! 🏆
-          </p>
+          <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+            <p className="text-4xl mb-3">🏆</p>
+            <p className="font-bold text-slate-900 text-sm mb-1">Welcome to the EFA Lounge</p>
+            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+              The official group chat for all EFA managers. Send the first message!
+            </p>
+          </div>
         )}
 
         {messages.map((msg) => {
@@ -129,7 +133,7 @@ export default function LoungeChat({ channelId, currentUserId, currentUsername, 
                   <div className={`max-w-[75%] px-3.5 py-2 rounded-2xl text-sm ${
                     isMe
                       ? 'bg-gold text-[#0a1128] rounded-br-md font-medium'
-                      : 'bg-navy-border/70 text-slate-900 rounded-bl-md'
+                      : 'bg-slate-200 text-slate-900 rounded-bl-md'
                   }`}>
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                     <p className={`text-[10px] mt-0.5 ${isMe ? 'text-[#0a1128]/50 text-right' : 'text-slate-500'}`}>

@@ -61,7 +61,7 @@ export default function Nav({ profile, unreadCount = 0, messageUnreadCount = 0 }
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   pathname === link.href
                     ? 'bg-[#c9a84c]/20 text-[#c9a84c]'
-                    : 'text-slate-400 hover:text-slate-900 hover:bg-black/5'
+                    : 'text-slate-400 hover:text-slate-900 hover:bg-black/5 dark:hover:bg-white/10 dark:hover:text-slate-100'
                 }`}
               >
                 {link.label}
@@ -77,7 +77,7 @@ export default function Nav({ profile, unreadCount = 0, messageUnreadCount = 0 }
                 {/* Messages */}
                 <Link
                   href="/messages"
-                  className="relative p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 transition-colors"
+                  className="relative p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 dark:hover:bg-white/10 dark:hover:text-slate-100 transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -93,7 +93,7 @@ export default function Nav({ profile, unreadCount = 0, messageUnreadCount = 0 }
                 {/* Notifications bell */}
                 <Link
                   href="/notifications"
-                  className="relative p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 transition-colors"
+                  className="relative p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 dark:hover:bg-white/10 dark:hover:text-slate-100 transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -156,7 +156,7 @@ export default function Nav({ profile, unreadCount = 0, messageUnreadCount = 0 }
             {/* Mobile menu toggle */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 transition-colors"
+              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 dark:hover:bg-white/10 dark:hover:text-slate-100 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {menuOpen
@@ -180,7 +180,7 @@ export default function Nav({ profile, unreadCount = 0, messageUnreadCount = 0 }
                   className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     pathname === link.href
                       ? 'bg-[#c9a84c]/20 text-[#c9a84c]'
-                      : 'text-slate-400 hover:text-slate-900 hover:bg-black/5'
+                      : 'text-slate-400 hover:text-slate-900 hover:bg-black/5 dark:hover:bg-white/10 dark:hover:text-slate-100'
                   }`}
                 >
                   {link.label}
@@ -193,7 +193,7 @@ export default function Nav({ profile, unreadCount = 0, messageUnreadCount = 0 }
                   className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
                     pathname.startsWith('/messages')
                       ? 'bg-[#c9a84c]/20 text-[#c9a84c]'
-                      : 'text-slate-400 hover:text-slate-900 hover:bg-black/5'
+                      : 'text-slate-400 hover:text-slate-900 hover:bg-black/5 dark:hover:bg-white/10 dark:hover:text-slate-100'
                   }`}
                 >
                   💬 Messages
