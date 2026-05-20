@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
+import { calculateProbability } from '@/lib/probability-engine'
 
 export const revalidate = 60
 
@@ -65,6 +66,30 @@ export default async function PredictionsPage() {
 
   const availableFixtures = (upcomingFixtures ?? []).filter((f: any) => !f.result)
 
+  // Fetch standings for all teams + tournaments in the available fixtures
+  // so we can compute win probability (odds) for each upcoming match
+  const fixtureTeamIds = [
+    ...new Set(availableFixtures.flatMap((f: any) => [f.home_team?.id, f.away_team?.id].filter(Boolean))),
+  ] as string[]
+  const fixtureTournamentIds = [
+    ...new Set(availableFixtures.map((f: any) => f.tournament_id).filter(Boolean)),
+  ] as string[]
+
+  const { data: fixtureStandings } =
+    fixtureTeamIds.length > 0 && fixtureTournamentIds.length > 0
+      ? await supabase
+          .from('standings')
+          .select('team_id, tournament_id, played, wins, draws, losses, goals_for, goals_against, points, form')
+          .in('team_id', fixtureTeamIds)
+          .in('tournament_id', fixtureTournamentIds)
+      : { data: [] as any[] }
+
+  // Build lookup: `${team_id}_${tournament_id}` → standing row
+  const standingLookup = new Map<string, any>()
+  for (const s of fixtureStandings ?? []) {
+    standingLookup.set(`${s.team_id}_${s.tournament_id}`, s)
+  }
+
   // Rank medal helper
   const rankMedal = (rank: number) => {
     if (rank === 1) return '🥇'
@@ -123,50 +148,60 @@ export default async function PredictionsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {availableFixtures.map((f: any) => (
-              <Link
-                key={f.id}
-                href={`/fixtures/${f.id}`}
-                className="card p-4 flex items-center gap-4 hover:border-gold/40 transition-colors group"
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <Image
-                    src={getTeamLogo(
-                      f.home_team.logo_league_folder,
-                      f.home_team.logo_team_slug,
-                      'standings_row'
-                    )}
-                    alt={f.home_team.name}
-                    width={32}
-                    height={32}
-                    className="object-contain shrink-0"
-                  />
-                  <span className="text-sm font-semibold text-slate-900 truncate">
-                    {f.home_team.name}
-                  </span>
-                </div>
-                <span className="text-xs font-bold text-slate-500 shrink-0">VS</span>
-                <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                  <span className="text-sm font-semibold text-slate-900 truncate text-right">
-                    {f.away_team.name}
-                  </span>
-                  <Image
-                    src={getTeamLogo(
-                      f.away_team.logo_league_folder,
-                      f.away_team.logo_team_slug,
-                      'standings_row'
-                    )}
-                    alt={f.away_team.name}
-                    width={32}
-                    height={32}
-                    className="object-contain shrink-0"
-                  />
-                </div>
-                <span className="text-xs text-gold font-semibold shrink-0 group-hover:underline">
-                  Predict →
-                </span>
-              </Link>
-            ))}
+            {availableFixtures.map((f: any) => {
+              const homeStanding = standingLookup.get(`${f.home_team?.id}_${f.tournament_id}`) ?? null
+              const awayStanding = standingLookup.get(`${f.away_team?.id}_${f.tournament_id}`) ?? null
+              const prob = calculateProbability(homeStanding, awayStanding, { homeWins: 0, awayWins: 0, draws: 0 })
+
+              return (
+                <Link
+                  key={f.id}
+                  href={`/fixtures/${f.id}`}
+                  className="card p-4 hover:border-gold/40 transition-colors group"
+                >
+                  {/* Teams row */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Image
+                        src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')}
+                        alt={f.home_team.name}
+                        width={28} height={28}
+                        className="object-contain shrink-0"
+                      />
+                      <span className="text-sm font-semibold text-slate-900 truncate">{f.home_team.name}</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-500 shrink-0">VS</span>
+                    <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                      <span className="text-sm font-semibold text-slate-900 truncate text-right">{f.away_team.name}</span>
+                      <Image
+                        src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')}
+                        alt={f.away_team.name}
+                        width={28} height={28}
+                        className="object-contain shrink-0"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Win probability bar */}
+                  <div className="space-y-1">
+                    <div className="flex h-2 rounded-full overflow-hidden gap-px">
+                      <div className="bg-gold rounded-l-full transition-all" style={{ width: `${prob.home}%` }} title={`${f.home_team.name} ${prob.home}%`} />
+                      <div className="bg-slate-500 transition-all" style={{ width: `${prob.draw}%` }} title={`Draw ${prob.draw}%`} />
+                      <div className="bg-slate-400 rounded-r-full transition-all" style={{ width: `${prob.away}%` }} title={`${f.away_team.name} ${prob.away}%`} />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-slate-500">
+                      <span className="text-gold font-semibold">{prob.home}%</span>
+                      <span>{prob.draw}% Draw</span>
+                      <span>{prob.away}%</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 text-right">
+                    <span className="text-xs text-gold font-semibold group-hover:underline">Predict →</span>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>

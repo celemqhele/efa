@@ -320,7 +320,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           /* ── POST-MATCH SCORE ─────────────────────────────────────────── */
           <div className="flex items-center justify-between gap-4">
             {/* Home */}
-            <div className="flex-1 flex flex-col items-center gap-3">
+            <Link href={`/teams/${homeTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
               <Image
                 src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
                 alt={homeTeam.name}
@@ -332,7 +332,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 <p className="font-bold text-slate-900 text-sm">{homeTeam.name}</p>
                 <p className="text-xs text-slate-500">{homeManager?.username ?? '—'}</p>
               </div>
-            </div>
+            </Link>
 
             {/* Score */}
             <div className="flex items-center gap-3">
@@ -346,7 +346,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             </div>
 
             {/* Away */}
-            <div className="flex-1 flex flex-col items-center gap-3">
+            <Link href={`/teams/${awayTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
               <Image
                 src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
                 alt={awayTeam.name}
@@ -358,12 +358,12 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 <p className="font-bold text-slate-900 text-sm">{awayTeam.name}</p>
                 <p className="text-xs text-slate-500">{awayManager?.username ?? '—'}</p>
               </div>
-            </div>
+            </Link>
           </div>
         ) : (
           /* ── PRE-MATCH TEAMS ──────────────────────────────────────────── */
           <div className="flex items-center justify-between gap-4">
-            <div className="flex-1 flex flex-col items-center gap-3">
+            <Link href={`/teams/${homeTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
               <Image
                 src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
                 alt={homeTeam.name}
@@ -375,13 +375,13 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 <p className="font-bold text-slate-900 text-sm">{homeTeam.name}</p>
                 <p className="text-xs text-slate-500">{homeManager?.username ?? '—'}</p>
               </div>
-            </div>
+            </Link>
 
             <div className="text-center">
               <span className="text-3xl font-black text-slate-600">VS</span>
             </div>
 
-            <div className="flex-1 flex flex-col items-center gap-3">
+            <Link href={`/teams/${awayTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
               <Image
                 src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
                 alt={awayTeam.name}
@@ -393,7 +393,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 <p className="font-bold text-slate-900 text-sm">{awayTeam.name}</p>
                 <p className="text-xs text-slate-500">{awayManager?.username ?? '—'}</p>
               </div>
-            </div>
+            </Link>
           </div>
         )}
 
@@ -476,37 +476,53 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             ) : (
               <div className="space-y-2">
                 {h2hList.map((f: any) => {
-                  const isHome = f.home_team_id === fixture.home_team_id
+                  // Determine which team was home/away in this specific h2h fixture
+                  const hTeam = f.home_team_id === fixture.home_team_id ? homeTeam : awayTeam
+                  const aTeam = f.home_team_id === fixture.home_team_id ? awayTeam : homeTeam
                   const hScore = f.result.home_score
                   const aScore = f.result.away_score
-                  const ourScore = isHome ? hScore : aScore
-                  const theirScore = isHome ? aScore : hScore
-                  const outcome =
-                    ourScore > theirScore ? 'W' : ourScore < theirScore ? 'L' : 'D'
+                  // From current home team's perspective
+                  const ourScore = f.home_team_id === fixture.home_team_id ? hScore : aScore
+                  const theirScore = f.home_team_id === fixture.home_team_id ? aScore : hScore
+                  const outcome = ourScore > theirScore ? 'W' : ourScore < theirScore ? 'L' : 'D'
                   const outcomeColor =
-                    outcome === 'W'
-                      ? 'text-green-400'
-                      : outcome === 'L'
-                      ? 'text-red-400'
-                      : 'text-yellow-400'
+                    outcome === 'W' ? 'text-green-400' : outcome === 'L' ? 'text-red-400' : 'text-yellow-400'
 
                   return (
-                    <div
-                      key={f.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-navy-border/30"
-                    >
-                      <span className="text-slate-400 text-xs">
-                        {f.home_team_id === fixture.home_team_id
-                          ? homeTeam.name
-                          : awayTeam.name}{' '}
-                        (H)
-                      </span>
-                      <span className="font-bold text-slate-900 tabular-nums">
+                    <div key={f.id} className="flex items-center gap-2 p-3 rounded-lg bg-navy-border/30">
+                      {/* Home team — clickable logo */}
+                      <Link href={`/teams/${hTeam.id}`} className="flex items-center gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
+                        {hTeam.logo_league_folder && (
+                          <Image
+                            src={getTeamLogo(hTeam.logo_league_folder, hTeam.logo_team_slug, 'standings_row')}
+                            alt={hTeam.name}
+                            width={24} height={24}
+                            className="object-contain shrink-0"
+                          />
+                        )}
+                        <span className="text-xs text-slate-400 truncate">{hTeam.name}</span>
+                      </Link>
+
+                      {/* Score — links to that fixture */}
+                      <Link href={`/fixtures/${f.id}`} className="font-bold text-slate-900 tabular-nums text-sm px-2 hover:text-gold transition-colors shrink-0">
                         {hScore} – {aScore}
-                      </span>
-                      <span className={`text-xs font-bold ${outcomeColor}`}>
-                        {outcome}
-                      </span>
+                      </Link>
+
+                      {/* Away team — clickable logo */}
+                      <Link href={`/teams/${aTeam.id}`} className="flex items-center justify-end gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
+                        <span className="text-xs text-slate-400 truncate text-right">{aTeam.name}</span>
+                        {aTeam.logo_league_folder && (
+                          <Image
+                            src={getTeamLogo(aTeam.logo_league_folder, aTeam.logo_team_slug, 'standings_row')}
+                            alt={aTeam.name}
+                            width={24} height={24}
+                            className="object-contain shrink-0"
+                          />
+                        )}
+                      </Link>
+
+                      {/* Outcome badge */}
+                      <span className={`text-xs font-black w-5 text-center shrink-0 ${outcomeColor}`}>{outcome}</span>
                     </div>
                   )
                 })}

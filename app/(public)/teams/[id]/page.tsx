@@ -42,6 +42,19 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
   if (!team) notFound()
 
+  // Resolve all sibling team IDs for this club (same slug across phases)
+  // Must run early so trophies + standings can use it
+  const { data: siblingTeams } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('logo_league_folder', team.logo_league_folder)
+    .eq('logo_team_slug', team.logo_team_slug)
+  const allTeamIds = (siblingTeams ?? []).map((t: any) => t.id)
+  const siblingIds: string[] = allTeamIds.length > 0 ? allTeamIds : [id]
+  const teamOrFilter = siblingIds
+    .flatMap((tid) => [`home_team_id.eq.${tid}`, `away_team_id.eq.${tid}`])
+    .join(',')
+
   const manager = (team as any).manager
 
   // Check if current user is admin (for manager controls)
@@ -82,18 +95,18 @@ export default async function TeamProfilePage({ params }: PageProps) {
     }
   }
 
-  // Trophies with tournament + season
+  // Trophies with tournament + season — across ALL sibling team rows
   const { data: trophies } = await supabase
     .from('trophies')
     .select('*, tournament:tournaments(*), season:seasons(*)')
-    .eq('team_id', id)
+    .in('team_id', siblingIds)
     .order('awarded_at', { ascending: false })
 
-  // Standings across all tournaments
+  // Standings across all tournaments — across ALL sibling team rows so Phase 1 history shows
   const { data: standings } = await supabase
     .from('standings')
     .select('*, tournament:tournaments(*)')
-    .eq('team_id', id)
+    .in('team_id', siblingIds)
 
   // Active standings (from active tournaments)
   const activeStandings = (standings ?? []).filter(
@@ -204,17 +217,6 @@ export default async function TeamProfilePage({ params }: PageProps) {
     matchStatsList && matchStatsList.length > 0
       ? getTeamDNA(buildTeamStats(matchStatsList as any, true, []))
       : []
-
-  // All sibling team IDs for this club (same club across multiple phases)
-  const { data: siblingTeams } = await supabase
-    .from('teams')
-    .select('id')
-    .eq('logo_league_folder', team.logo_league_folder)
-    .eq('logo_team_slug', team.logo_team_slug)
-  const allTeamIds = (siblingTeams ?? []).map((t) => t.id)
-  const teamOrFilter = allTeamIds.length > 0
-    ? allTeamIds.flatMap((tid) => [`home_team_id.eq.${tid}`, `away_team_id.eq.${tid}`]).join(',')
-    : `home_team_id.eq.${id},away_team_id.eq.${id}`
 
   // Upcoming fixtures for this club
   const { data: upcomingFixtures } = await supabase
@@ -544,36 +546,52 @@ export default async function TeamProfilePage({ params }: PageProps) {
         )}
       </div>
 
-      {/* ── Active Tournament Standings ──────────────────────────────────── */}
-      {activeStandings.length > 0 && (
+      {/* ── Season History (one card per tournament) ─────────────────────── */}
+      {(standings ?? []).length > 0 && (
         <div className="card p-5">
           <h2 className="section-header">
-            <span className="text-gold">📋</span> Current Season Standings
+            <span className="text-gold">📋</span> Season History
           </h2>
           <div className="space-y-3">
-            {activeStandings.map((s: any) => (
-              <div key={s.id} className="p-3 rounded-lg bg-navy-border/30">
-                <p className="text-xs font-semibold text-gold uppercase tracking-wider mb-2">
-                  {s.tournament?.name ?? 'Tournament'}
-                </p>
-                <div className="grid grid-cols-7 gap-2 text-center text-xs">
-                  {[
-                    { label: 'P', val: s.played },
-                    { label: 'W', val: s.wins },
-                    { label: 'D', val: s.draws },
-                    { label: 'L', val: s.losses },
-                    { label: 'GF', val: s.goals_for },
-                    { label: 'GA', val: s.goals_against },
-                    { label: 'PTS', val: s.points },
-                  ].map(({ label, val }) => (
-                    <div key={label}>
-                      <p className="font-bold text-slate-900">{val}</p>
-                      <p className="text-slate-500">{label}</p>
-                    </div>
-                  ))}
+            {[...(standings as any[])]
+              .sort((a, b) => {
+                // Active season first
+                if (a.tournament?.status === 'active' && b.tournament?.status !== 'active') return -1
+                if (b.tournament?.status === 'active' && a.tournament?.status !== 'active') return 1
+                return 0
+              })
+              .map((s: any) => (
+                <div key={s.id} className="p-3 rounded-lg bg-navy-border/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-gold uppercase tracking-wider">
+                      {s.tournament?.name ?? 'Tournament'}
+                    </p>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      s.tournament?.status === 'active'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-slate-500/20 text-slate-400'
+                    }`}>
+                      {s.tournament?.status === 'active' ? 'Current' : 'Completed'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-7 gap-2 text-center text-xs">
+                    {[
+                      { label: 'P', val: s.played },
+                      { label: 'W', val: s.wins },
+                      { label: 'D', val: s.draws },
+                      { label: 'L', val: s.losses },
+                      { label: 'GF', val: s.goals_for },
+                      { label: 'GA', val: s.goals_against },
+                      { label: 'PTS', val: s.points },
+                    ].map(({ label, val }) => (
+                      <div key={label}>
+                        <p className="font-bold text-slate-900">{val}</p>
+                        <p className="text-slate-500">{label}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}
