@@ -10,9 +10,10 @@ import ThemeToggle from './ThemeToggle'
 interface NavProps {
   profile?: Profile | null
   unreadCount?: number
+  messageUnreadCount?: number
 }
 
-export default function Nav({ profile, unreadCount = 0 }: NavProps) {
+export default function Nav({ profile, unreadCount = 0, messageUnreadCount = 0 }: NavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -74,6 +75,22 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
             <ThemeToggle />
             {profile ? (
               <>
+                {/* Messages */}
+                <Link
+                  href="/messages"
+                  className="relative p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  {messageUnreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#c9a84c] text-[#0a1128] text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {messageUnreadCount > 9 ? '9+' : messageUnreadCount}
+                    </span>
+                  )}
+                </Link>
+
                 {/* Notifications bell */}
                 <Link
                   href="/notifications"
@@ -170,6 +187,24 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
                   {link.label}
                 </Link>
               ))}
+              {profile && (
+                <Link
+                  href="/messages"
+                  onClick={() => setMenuOpen(false)}
+                  className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                    pathname.startsWith('/messages')
+                      ? 'bg-[#c9a84c]/20 text-[#c9a84c]'
+                      : 'text-slate-400 hover:text-slate-900 hover:bg-black/5'
+                  }`}
+                >
+                  💬 Messages
+                  {messageUnreadCount > 0 && (
+                    <span className="ml-auto w-5 h-5 bg-[#c9a84c] text-[#0a1128] text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {messageUnreadCount > 9 ? '9+' : messageUnreadCount}
+                    </span>
+                  )}
+                </Link>
+              )}
               {isAdmin && (
                 <Link
                   href="/admin/dashboard"

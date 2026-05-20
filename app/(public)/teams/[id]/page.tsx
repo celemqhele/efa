@@ -7,6 +7,7 @@ import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
 import TeamManagerAdmin from './TeamManagerAdmin'
 import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
+import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { format, parseISO } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
@@ -265,14 +266,23 @@ export default async function TeamProfilePage({ params }: PageProps) {
                 className="object-contain w-24 h-24"
               />
             </div>
-            <div className="pb-1">
+            <div className="pb-1 flex-1">
               <h1 className="text-2xl font-black text-slate-900">{team.name}</h1>
-              <p className="text-slate-400 text-sm">
-                Manager:{' '}
-                <span className="text-gold font-semibold">
-                  {manager ? `@${manager.username}` : '(NO MANAGER)'}
-                </span>
-              </p>
+              <div className="flex items-center gap-3 flex-wrap mt-0.5">
+                <p className="text-slate-400 text-sm">
+                  Manager:{' '}
+                  <span className="text-gold font-semibold">
+                    {manager ? `@${manager.username}` : '(NO MANAGER)'}
+                  </span>
+                </p>
+                {/* Message button — shown to logged-in users who aren't the manager */}
+                {manager && currentUser && currentUser.id !== manager.id && (
+                  <MessageManagerButton
+                    managerId={manager.id}
+                    managerUsername={manager.username}
+                  />
+                )}
+              </div>
             </div>
           </div>
 
