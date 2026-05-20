@@ -33,7 +33,6 @@ export default function Nav({ profile, unreadCount = 0, messageUnreadCount = 0 }
     { href: '/fixtures', label: 'Fixtures' },
     { href: '/results', label: 'Results' },
     { href: '/predictions', label: 'Predictions' },
-    { href: '/lounge', label: '🏆 Lounge' },
     { href: '/hall-of-fame', label: 'Hall of Fame' },
     { href: '/rules', label: 'Rules' },
   ]
