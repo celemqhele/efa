@@ -66,28 +66,86 @@ export default async function PredictionsPage() {
 
   const availableFixtures = (upcomingFixtures ?? []).filter((f: any) => !f.result)
 
-  // Fetch standings for all teams + tournaments in the available fixtures
-  // so we can compute win probability (odds) for each upcoming match
+  // Fetch ALL standings for teams in upcoming fixtures — across every season/phase
+  // This gives a full career picture so probabilities aren't flat when a new season just started
   const fixtureTeamIds = Array.from(
     new Set(availableFixtures.flatMap((f: any) => [f.home_team?.id, f.away_team?.id].filter(Boolean)))
   ) as string[]
-  const fixtureTournamentIds = Array.from(
-    new Set(availableFixtures.map((f: any) => f.tournament_id).filter(Boolean))
-  ) as string[]
 
-  const { data: fixtureStandings } =
-    fixtureTeamIds.length > 0 && fixtureTournamentIds.length > 0
-      ? await supabase
-          .from('standings')
-          .select('team_id, tournament_id, played, wins, draws, losses, goals_for, goals_against, points, form')
-          .in('team_id', fixtureTeamIds)
-          .in('tournament_id', fixtureTournamentIds)
-      : { data: [] as any[] }
+  // Also resolve sibling team IDs (same club, different phase rows) so Phase 1 data is included
+  const { data: siblingRows } = fixtureTeamIds.length > 0
+    ? await supabase
+        .from('teams')
+        .select('id, logo_team_slug')
+        .in('id', fixtureTeamIds)
+    : { data: [] as any[] }
 
-  // Build lookup: `${team_id}_${tournament_id}` → standing row
-  const standingLookup = new Map<string, any>()
-  for (const s of fixtureStandings ?? []) {
-    standingLookup.set(`${s.team_id}_${s.tournament_id}`, s)
+  // Map: slug → all team_ids for that club
+  const slugToIds = new Map<string, string[]>()
+  for (const t of siblingRows ?? []) {
+    if (!t.logo_team_slug) continue
+    if (!slugToIds.has(t.logo_team_slug)) slugToIds.set(t.logo_team_slug, [])
+    slugToIds.get(t.logo_team_slug)!.push(t.id)
+  }
+
+  // Get all sibling IDs so we can query Phase 1 + Phase 2 standings together
+  const { data: allSiblings } = slugToIds.size > 0
+    ? await supabase
+        .from('teams')
+        .select('id, logo_team_slug')
+        .in('logo_team_slug', Array.from(slugToIds.keys()))
+    : { data: [] as any[] }
+
+  const allRelevantTeamIds = Array.from(new Set((allSiblings ?? []).map((t: any) => t.id))) as string[]
+
+  // Fetch every standing row for all relevant team IDs (all seasons combined)
+  const { data: fixtureStandings } = allRelevantTeamIds.length > 0
+    ? await supabase
+        .from('standings')
+        .select('team_id, tournament_id, played, wins, draws, losses, goals_for, goals_against, points, form, unbeaten_run')
+        .in('team_id', allRelevantTeamIds)
+    : { data: [] as any[] }
+
+  // Build per-slug aggregated standing: sum career stats, use most recent form string
+  // Maps original fixture team_id → a synthetic aggregated standing
+  const aggregatedLookup = new Map<string, any>()
+
+  for (const [slug, ids] of Array.from(slugToIds.entries())) {
+    // Find all sibling IDs for this club
+    const clubSiblingIds = new Set((allSiblings ?? [])
+      .filter((t: any) => t.logo_team_slug === slug)
+      .map((t: any) => t.id))
+
+    // Collect all standings rows for this club
+    const clubStandings = (fixtureStandings ?? []).filter((s: any) => clubSiblingIds.has(s.team_id))
+    if (clubStandings.length === 0) continue
+
+    // Aggregate career totals
+    const totalPlayed = clubStandings.reduce((n: number, s: any) => n + (s.played ?? 0), 0)
+    const totalGF     = clubStandings.reduce((n: number, s: any) => n + (s.goals_for ?? 0), 0)
+    const totalGA     = clubStandings.reduce((n: number, s: any) => n + (s.goals_against ?? 0), 0)
+    const totalWins   = clubStandings.reduce((n: number, s: any) => n + (s.wins ?? 0), 0)
+    const totalDraws  = clubStandings.reduce((n: number, s: any) => n + (s.draws ?? 0), 0)
+
+    // Use form from the row with the most games played (best proxy for current form)
+    const richestRow = clubStandings.sort((a: any, b: any) => (b.played ?? 0) - (a.played ?? 0))[0]
+
+    const aggregated = {
+      played: totalPlayed,
+      goals_for: totalGF,
+      goals_against: totalGA,
+      wins: totalWins,
+      draws: totalDraws,
+      losses: totalPlayed - totalWins - totalDraws,
+      // Form: prefer current season's form; fall back to best available
+      form: richestRow?.form ?? '',
+      unbeaten_run: richestRow?.unbeaten_run ?? 0,
+    }
+
+    // Map every original fixture team ID (for this slug) back to the aggregated standing
+    for (const id of ids) {
+      aggregatedLookup.set(id, aggregated)
+    }
   }
 
   // Rank medal helper
