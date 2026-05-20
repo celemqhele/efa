@@ -12,9 +12,9 @@ export default async function MessagesPage() {
   // All conversations for this user
   const { data: conversations } = await supabase
     .from('conversations')
-    .select('id, participant_1, participant_2, last_message_at')
+    .select('id, participant_1, participant_2, created_at')
     .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
-    .order('last_message_at', { ascending: false })
+    .order('created_at', { ascending: false })
 
   const convList = conversations ?? []
 
