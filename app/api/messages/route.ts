@@ -20,11 +20,5 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Bump conversation timestamp for sort order
-  await supabase
-    .from('conversations')
-    .update({ last_message_at: new Date().toISOString() })
-    .eq('id', conversation_id)
-
   return NextResponse.json(data)
 }
