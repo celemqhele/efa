@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient } from '@/lib/supabase/server'
 import { sendPushToUser } from '@/lib/push'
 import { NextResponse } from 'next/server'
 
