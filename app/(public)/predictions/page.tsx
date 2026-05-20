@@ -207,8 +207,8 @@ export default async function PredictionsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {availableFixtures.map((f: any) => {
-              const homeStanding = standingLookup.get(`${f.home_team?.id}_${f.tournament_id}`) ?? null
-              const awayStanding = standingLookup.get(`${f.away_team?.id}_${f.tournament_id}`) ?? null
+              const homeStanding = aggregatedLookup.get(f.home_team?.id) ?? null
+              const awayStanding = aggregatedLookup.get(f.away_team?.id) ?? null
               const prob = calculateProbability(homeStanding, awayStanding, { homeWins: 0, awayWins: 0, draws: 0 })
 
               return (
