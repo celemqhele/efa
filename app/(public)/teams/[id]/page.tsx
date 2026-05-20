@@ -7,6 +7,7 @@ import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
 import TeamManagerAdmin from './TeamManagerAdmin'
 import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
+import { format, parseISO } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
 
@@ -204,6 +205,46 @@ export default async function TeamProfilePage({ params }: PageProps) {
       ? getTeamDNA(buildTeamStats(matchStatsList as any, true, []))
       : []
 
+  // All sibling team IDs for this club (same club across multiple phases)
+  const { data: siblingTeams } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('logo_league_folder', team.logo_league_folder)
+    .eq('logo_team_slug', team.logo_team_slug)
+  const allTeamIds = (siblingTeams ?? []).map((t) => t.id)
+  const teamOrFilter = allTeamIds.length > 0
+    ? allTeamIds.flatMap((tid) => [`home_team_id.eq.${tid}`, `away_team_id.eq.${tid}`]).join(',')
+    : `home_team_id.eq.${id},away_team_id.eq.${id}`
+
+  // Upcoming fixtures for this club
+  const { data: upcomingFixtures } = await supabase
+    .from('fixtures')
+    .select(`
+      id, scheduled_date, matchday, round_type, status,
+      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+      tournament:tournaments(name, type)
+    `)
+    .or(teamOrFilter)
+    .in('status', ['scheduled', 'awaiting_confirmation'])
+    .order('scheduled_date', { ascending: true })
+    .limit(5)
+
+  // Recent results for this club (displayed on page)
+  const { data: clubRecentResults } = await supabase
+    .from('fixtures')
+    .select(`
+      id, scheduled_date, matchday, round_type, home_team_id, away_team_id,
+      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+      tournament:tournaments(name, type),
+      result:results(home_score, away_score, override_reason)
+    `)
+    .or(teamOrFilter)
+    .eq('status', 'confirmed')
+    .order('scheduled_date', { ascending: false })
+    .limit(6)
+
   return (
     <div className="space-y-6">
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
@@ -279,6 +320,143 @@ export default async function TeamProfilePage({ params }: PageProps) {
           />
         </div>
       )}
+
+      {/* ── Upcoming Fixtures ────────────────────────────────────────────── */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="section-header mb-0">
+            <span className="text-gold">📅</span> Upcoming Fixtures
+          </h2>
+          <Link href="/fixtures" className="text-xs text-gold hover:text-gold-light transition-colors">
+            All fixtures →
+          </Link>
+        </div>
+        {!upcomingFixtures?.length ? (
+          <p className="text-slate-500 text-sm text-center py-4">No upcoming fixtures scheduled.</p>
+        ) : (
+          <div className="divide-y divide-navy-border">
+            {(upcomingFixtures as any[]).map((f) => {
+              const isHome = allTeamIds.includes(f.home_team?.id)
+              const opponent = isHome ? f.away_team : f.home_team
+              const dateStr = f.scheduled_date
+                ? format(parseISO(f.scheduled_date), 'EEE d MMM')
+                : 'TBD'
+              return (
+                <Link
+                  key={f.id}
+                  href={`/fixtures/${f.id}`}
+                  className="flex items-center gap-3 py-3 hover:bg-navy-light/50 -mx-5 px-5 transition-colors"
+                >
+                  {/* Opponent logo */}
+                  {opponent?.logo_league_folder ? (
+                    <Image
+                      src={getTeamLogo(opponent.logo_league_folder, opponent.logo_team_slug, 'standings_row')}
+                      alt={opponent.name}
+                      width={32} height={32}
+                      className="object-contain shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded bg-navy-border flex items-center justify-center text-xs text-slate-500 shrink-0">?</div>
+                  )}
+
+                  {/* Match info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">
+                      <span className="text-slate-500 font-normal">{isHome ? 'vs' : '@'}</span>{' '}
+                      {opponent?.name ?? 'TBD'}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate">{f.tournament?.name}</p>
+                  </div>
+
+                  {/* Date + status */}
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-medium text-slate-900">{dateStr}</p>
+                    {f.status === 'awaiting_confirmation' && (
+                      <span className="text-[10px] text-yellow-400 font-semibold">Pending</span>
+                    )}
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Recent Results ────────────────────────────────────────────────── */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="section-header mb-0">
+            <span className="text-gold">🏁</span> Recent Results
+          </h2>
+          <Link href="/results" className="text-xs text-gold hover:text-gold-light transition-colors">
+            All results →
+          </Link>
+        </div>
+        {!clubRecentResults?.length ? (
+          <p className="text-slate-500 text-sm text-center py-4">No results yet.</p>
+        ) : (
+          <div className="divide-y divide-navy-border">
+            {(clubRecentResults as any[]).map((f) => {
+              const result = Array.isArray(f.result) ? f.result[0] : f.result
+              if (!result) return null
+              const isHome = allTeamIds.includes(f.home_team_id)
+              const myScore = isHome ? result.home_score : result.away_score
+              const theirScore = isHome ? result.away_score : result.home_score
+              const opponent = isHome ? f.away_team : f.home_team
+              const won = myScore > theirScore
+              const drew = myScore === theirScore
+              const outcomeColor = won ? 'text-green-400' : drew ? 'text-yellow-400' : 'text-red-400'
+              const outcomeLetter = won ? 'W' : drew ? 'D' : 'L'
+              const dateStr = f.scheduled_date
+                ? format(parseISO(f.scheduled_date), 'EEE d MMM')
+                : '—'
+              return (
+                <Link
+                  key={f.id}
+                  href={`/results/${f.id}`}
+                  className="flex items-center gap-3 py-3 hover:bg-navy-light/50 -mx-5 px-5 transition-colors"
+                >
+                  {/* Outcome badge */}
+                  <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-black shrink-0 ${
+                    won ? 'bg-green-500/20 text-green-400' : drew ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {outcomeLetter}
+                  </span>
+
+                  {/* Opponent logo */}
+                  {opponent?.logo_league_folder ? (
+                    <Image
+                      src={getTeamLogo(opponent.logo_league_folder, opponent.logo_team_slug, 'standings_row')}
+                      alt={opponent.name}
+                      width={28} height={28}
+                      className="object-contain shrink-0"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded bg-navy-border flex items-center justify-center text-xs text-slate-500 shrink-0">?</div>
+                  )}
+
+                  {/* Match info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">
+                      <span className="text-slate-500 font-normal">{isHome ? 'vs' : '@'}</span>{' '}
+                      {opponent?.name ?? 'Unknown'}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate">{f.tournament?.name}</p>
+                  </div>
+
+                  {/* Score + date */}
+                  <div className="text-right shrink-0">
+                    <p className={`text-sm font-black tabular-nums ${outcomeColor}`}>
+                      {myScore}–{theirScore}
+                    </p>
+                    <p className="text-[10px] text-slate-500">{dateStr}</p>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ── Season Stats ─────────────────────────────────────────────────── */}
       <div className="card p-5">
