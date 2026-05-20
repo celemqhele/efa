@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/match-day",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/match-reminder",
+      "schedule": "0 18 * * *"
+    }
+  ]
+}

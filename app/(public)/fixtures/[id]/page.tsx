@@ -7,6 +7,7 @@ import { FormStrip } from '@/components/ui/FormBadge'
 import { calculateProbability } from '@/lib/probability-engine'
 import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
 import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
+import MatchroomCode from '@/components/ui/MatchroomCode'
 
 export const revalidate = 30
 
@@ -451,6 +452,13 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               </div>
             </div>
           </div>
+
+          {/* Matchroom Code — editable by home manager, visible to all */}
+          <MatchroomCode
+            fixtureId={id}
+            initialCode={(fixture as any).matchroom_code ?? null}
+            isHomeManager={!!isHomeManager}
+          />
 
           {/* Win Probability */}
           <div className="card p-5">
