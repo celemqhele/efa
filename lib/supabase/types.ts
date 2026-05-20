@@ -212,6 +212,7 @@ export interface Database {
           is_postponed: boolean
           postponed_from: string | null
           deadline: string | null
+          matchroom_code: string | null
           created_at: string
         }
         Insert: {
@@ -227,6 +228,7 @@ export interface Database {
           is_postponed?: boolean
           postponed_from?: string | null
           deadline?: string | null
+          matchroom_code?: string | null
           created_at?: string
         }
         Update: {
@@ -242,6 +244,7 @@ export interface Database {
           is_postponed?: boolean
           postponed_from?: string | null
           deadline?: string | null
+          matchroom_code?: string | null
           created_at?: string
         }
         Relationships: []
@@ -653,6 +656,105 @@ export interface Database {
           endpoint?: string
           p256dh?: string
           auth?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          id: string
+          participant_1: string
+          participant_2: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          participant_1: string
+          participant_2: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          participant_1?: string
+          participant_2?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          sender_id: string
+          content: string | null
+          gif_url: string | null
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          sender_id: string
+          content?: string | null
+          gif_url?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          sender_id?: string
+          content?: string | null
+          gif_url?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      channels: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      channel_messages: {
+        Row: {
+          id: string
+          channel_id: string
+          sender_id: string
+          content: string | null
+          gif_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          channel_id: string
+          sender_id: string
+          content?: string | null
+          gif_url?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          channel_id?: string
+          sender_id?: string
+          content?: string | null
+          gif_url?: string | null
           created_at?: string
         }
         Relationships: []
