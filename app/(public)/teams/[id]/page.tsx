@@ -114,27 +114,20 @@ export default async function TeamProfilePage({ params }: PageProps) {
     (s: any) => s.tournament?.status === 'active'
   )
 
-  // Aggregate season stats from all standings
-  const totalPlayed = standings?.reduce((s, r) => s + r.played, 0) ?? 0
-  const totalWins = standings?.reduce((s, r) => s + r.wins, 0) ?? 0
-  const totalDraws = standings?.reduce((s, r) => s + r.draws, 0) ?? 0
-  const totalLosses = standings?.reduce((s, r) => s + r.losses, 0) ?? 0
-  const totalGF = standings?.reduce((s, r) => s + r.goals_for, 0) ?? 0
-  const totalGA = standings?.reduce((s, r) => s + r.goals_against, 0) ?? 0
+  // Current season stats — active tournament only (resets to 0 at season start)
+  const currentStanding = (activeStandings[0] as any) ?? null
+  const totalPlayed = currentStanding?.played ?? 0
+  const totalWins = currentStanding?.wins ?? 0
+  const totalDraws = currentStanding?.draws ?? 0
+  const totalLosses = currentStanding?.losses ?? 0
+  const totalGF = currentStanding?.goals_for ?? 0
+  const totalGA = currentStanding?.goals_against ?? 0
   const totalGD = totalGF - totalGA
-  const totalPoints = standings?.reduce((s, r) => s + r.points, 0) ?? 0
-  const totalCleanSheets = standings?.reduce((s, r) => s + r.clean_sheets, 0) ?? 0
+  const totalPoints = currentStanding?.points ?? 0
+  const totalCleanSheets = currentStanding?.clean_sheets ?? 0
 
-  // Biggest win from standings
-  const biggestWin = standings
-    ?.filter((s) => s.biggest_win_score)
-    .sort((a, b) => {
-      const parseScore = (sc: string) => {
-        const [h, aw] = sc.split('-').map(Number)
-        return h - aw
-      }
-      return parseScore(b.biggest_win_score ?? '0-0') - parseScore(a.biggest_win_score ?? '0-0')
-    })[0]
+  // Biggest win — from current season only
+  const biggestWin = currentStanding?.biggest_win_score ? currentStanding : null
 
   // Form from most active standing
   const primaryStanding =
@@ -474,6 +467,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
       <div className="card p-5">
         <h2 className="section-header">
           <span className="text-gold">📊</span> Season Statistics
+          {currentStanding?.tournament?.name && (
+            <span className="ml-2 text-xs font-normal text-slate-400 normal-case tracking-normal">
+              {currentStanding.tournament.name}
+            </span>
+          )}
         </h2>
         <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
           {[
