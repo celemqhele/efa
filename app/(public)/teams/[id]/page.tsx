@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
 import TeamManagerAdmin from './TeamManagerAdmin'
@@ -250,7 +251,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
         </div>
         <div className="px-6 pb-6 -mt-12 relative">
           <div className="flex items-end gap-5">
-            <div className="rounded-2xl overflow-hidden border-4 border-navy-card bg-navy shadow-xl">
+            <div className={`rounded-2xl overflow-hidden border-4 shadow-xl ${
+              team.logo_team_slug === 'tottenham'
+                ? 'border-[#132257] bg-[#ffffff]'
+                : 'border-navy-card bg-navy'
+            }`}>
               <Image
                 src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
                 alt={team.name}
@@ -354,11 +359,12 @@ export default async function TeamProfilePage({ params }: PageProps) {
                 >
                   {/* Opponent logo */}
                   {opponent?.logo_league_folder ? (
-                    <Image
-                      src={getTeamLogo(opponent.logo_league_folder, opponent.logo_team_slug, 'standings_row')}
+                    <TeamLogo
+                      leagueFolder={opponent.logo_league_folder}
+                      teamSlug={opponent.logo_team_slug}
+                      context="standings_row"
                       alt={opponent.name}
-                      width={32} height={32}
-                      className="object-contain shrink-0"
+                      className="w-8 h-8 shrink-0"
                     />
                   ) : (
                     <div className="w-8 h-8 rounded bg-navy-border flex items-center justify-center text-xs text-slate-500 shrink-0">?</div>
@@ -430,11 +436,12 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
                   {/* Opponent logo */}
                   {opponent?.logo_league_folder ? (
-                    <Image
-                      src={getTeamLogo(opponent.logo_league_folder, opponent.logo_team_slug, 'standings_row')}
+                    <TeamLogo
+                      leagueFolder={opponent.logo_league_folder}
+                      teamSlug={opponent.logo_team_slug}
+                      context="standings_row"
                       alt={opponent.name}
-                      width={28} height={28}
-                      className="object-contain shrink-0"
+                      className="w-7 h-7 shrink-0"
                     />
                   ) : (
                     <div className="w-7 h-7 rounded bg-navy-border flex items-center justify-center text-xs text-slate-500 shrink-0">?</div>

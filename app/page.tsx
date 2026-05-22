@@ -4,6 +4,7 @@ import Image from 'next/image'
 import PageWrapper from '@/components/ui/PageWrapper'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
@@ -162,11 +163,12 @@ export default async function HomePage() {
                   <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-3 gap-3 hover:bg-black/5 -mx-4 px-4 transition-colors">
                     <div className="flex-1 flex items-center gap-2">
                       {f.home_team?.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')}
+                        <TeamLogo
+                          leagueFolder={f.home_team.logo_league_folder}
+                          teamSlug={f.home_team.logo_team_slug}
+                          context="standings_row"
                           alt={f.home_team.name}
-                          width={28} height={28}
-                          className="object-contain"
+                          className="w-7 h-7 shrink-0"
                         />
                       )}
                       <span className="text-sm font-medium text-slate-900 truncate">{f.home_team?.name}</span>
@@ -193,11 +195,12 @@ export default async function HomePage() {
                     <div className="flex-1 flex items-center justify-end gap-2">
                       <span className="text-sm font-medium text-slate-900 truncate text-right">{f.away_team?.name}</span>
                       {f.away_team?.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')}
+                        <TeamLogo
+                          leagueFolder={f.away_team.logo_league_folder}
+                          teamSlug={f.away_team.logo_team_slug}
+                          context="standings_row"
                           alt={f.away_team.name}
-                          width={28} height={28}
-                          className="object-contain"
+                          className="w-7 h-7 shrink-0"
                         />
                       )}
                     </div>
@@ -225,7 +228,7 @@ export default async function HomePage() {
                     <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-black/5 transition-colors border border-transparent hover:border-slate-200">
                       <div className="flex items-center gap-2 flex-1">
                         {f.home_team?.logo_league_folder && (
-                          <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
+                          <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt={f.home_team.name} className="w-6 h-6 shrink-0" />
                         )}
                         <span className="text-sm text-slate-900 font-medium truncate">{f.home_team?.name}</span>
                       </div>
@@ -235,7 +238,7 @@ export default async function HomePage() {
                       <div className="flex items-center gap-2 flex-1 justify-end">
                         <span className="text-sm text-slate-900 font-medium truncate text-right">{f.away_team?.name}</span>
                         {f.away_team?.logo_league_folder && (
-                          <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
+                          <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt={f.away_team.name} className="w-6 h-6 shrink-0" />
                         )}
                       </div>
                     </Link>
@@ -267,11 +270,12 @@ export default async function HomePage() {
                         {idx + 1}
                       </span>
                       {team?.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                        <TeamLogo
+                          leagueFolder={team.logo_league_folder}
+                          teamSlug={team.logo_team_slug}
+                          context="standings_row"
                           alt={team.name}
-                          width={20} height={20}
-                          className="object-contain"
+                          className="w-5 h-5 shrink-0"
                         />
                       )}
                       <span className="flex-1 text-xs text-slate-900 truncate font-medium">{team?.name}</span>
