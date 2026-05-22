@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     const map: Record<string, any> = {}
 
-    function row(teamId: string) {
+    const row = (teamId: string) => {
       if (!map[teamId]) map[teamId] = {
         tournament_id, team_id: teamId,
         played: 0, wins: 0, draws: 0, losses: 0,
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 
     const gmap: Record<string, any> = {}
 
-    function grow(teamId: string) {
+    const grow = (teamId: string) => {
       if (!gmap[teamId]) gmap[teamId] = {
         tournament_id, team_id: teamId,
         played: 0, wins: 0, draws: 0, losses: 0,
