@@ -45,8 +45,21 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
   const sharp = (await import('sharp')).default
   const Tesseract = await import('tesseract.js')
 
-  // Preprocess: greyscale + contrast + sharpen
+  // Get image dimensions so we can crop to the eFootball stats panel.
+  // The center stats table always occupies ~32–68% of width and ~10–95% of height.
+  // Cropping strips the yellow side panels, team badges, and player photos — all noise
+  // for OCR — and reduces the image area to ~15% of the original, which is much faster.
+  const meta = await sharp(imageBuffer).metadata()
+  const w = meta.width ?? 1920
+  const h = meta.height ?? 1080
+
+  const cropLeft   = Math.round(w * 0.32)
+  const cropWidth  = Math.round(w * 0.36)
+  const cropTop    = Math.round(h * 0.10)
+  const cropHeight = Math.round(h * 0.85)
+
   const processed = await sharp(imageBuffer)
+    .extract({ left: cropLeft, top: cropTop, width: cropWidth, height: cropHeight })
     .greyscale()
     .normalize()
     .sharpen()
@@ -66,9 +79,9 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
 
   // Strategy 1: standard "Team A X - Y Team B" format
   const standardHeader = /^(.+?)\s+(\d+)\s*[-–]\s*(\d+)\s+(.+)$/
-  // Strategy 2: eFootball style — team name then score, no dash, scores separated by non-alphanumeric
-  // e.g. "BE HUMBLE 8 [icon] 0 [noise]" → find line with exactly two digit groups separated by non-word chars
-  const efootballHeader = /^(.+?)\s+(\d+)\s+[^0-9a-zA-Z]+\s*(\d+)/
+  // Strategy 2: eFootball style — "TEAM_NAME SCORE [≡/logo/noise] SCORE TEAM_NAME"
+  // The separator between scores is a non-alphanumeric character (≡ logo, dash, etc.)
+  const efootballHeader = /^(.+?)\s+(\d{1,2})\s+[^0-9a-zA-Z\s][^\d]*(\d{1,2})/
 
   for (const line of lines) {
     // Skip the "Full Time" line itself
@@ -113,8 +126,8 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
 
   // Parse stat table rows — handles both pipe-delimited and space-delimited formats:
   // "51% | Possession | 49%"  or  "51% Possession 49%"  or  "19 Shots 3"
-  const statPattern = /^(\d+%?)\s*[|]\s*(.+?)\s*[|]\s*(\d+%?)$/
-  const statPatternAlt = /^(\d+%?)\s+([A-Za-z][A-Za-z\s]+?)\s+(\d+%?)$/
+  const statPattern = /^(\d+%?)\s*[|]\s*(.+?)\s*[|]\s*(\d+%?)/
+  const statPatternAlt = /^(\d+%?)\s+([A-Za-z][A-Za-z\s]{2,}?)\s+(\d+%?)\s*$/
 
   for (const line of lines) {
     const m = line.match(statPattern) || line.match(statPatternAlt)
