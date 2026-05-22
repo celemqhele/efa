@@ -61,10 +61,20 @@ interface OcrResult {
     away_offsides?: number
     home_corners?: number
     away_corners?: number
+    home_free_kicks?: number
+    away_free_kicks?: number
     home_passes?: number
     away_passes?: number
     home_successful_passes?: number
     away_successful_passes?: number
+    home_crosses?: number
+    away_crosses?: number
+    home_interceptions?: number
+    away_interceptions?: number
+    home_tackles?: number
+    away_tackles?: number
+    home_saves?: number
+    away_saves?: number
   }
 }
 
@@ -74,9 +84,14 @@ const STAT_FIELDS = [
   { key: 'shots_on_target', label: 'Shots on Target' },
   { key: 'fouls', label: 'Fouls' },
   { key: 'offsides', label: 'Offsides' },
-  { key: 'corners', label: 'Corners' },
+  { key: 'corners', label: 'Corner Kicks' },
+  { key: 'free_kicks', label: 'Free Kicks' },
   { key: 'passes', label: 'Passes' },
   { key: 'successful_passes', label: 'Successful Passes' },
+  { key: 'crosses', label: 'Crosses' },
+  { key: 'interceptions', label: 'Interceptions' },
+  { key: 'tackles', label: 'Tackles' },
+  { key: 'saves', label: 'Saves' },
 ] as const
 
 type StatKey = (typeof STAT_FIELDS)[number]['key']
