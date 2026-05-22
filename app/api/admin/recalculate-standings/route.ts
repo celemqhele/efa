@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       if (!map[teamId]) map[teamId] = {
         tournament_id, team_id: teamId,
         played: 0, wins: 0, draws: 0, losses: 0,
-        goals_for: 0, goals_against: 0, goal_difference: 0, points: 0,
+        goals_for: 0, goals_against: 0, points: 0,
         form: '', unbeaten_run: 0, clean_sheets: 0,
       }
       return map[teamId]
@@ -84,8 +84,6 @@ export async function POST(request: Request) {
       hr.losses       += awayWin ? 1 : 0;   ar.losses       += homeWin ? 1 : 0
       hr.goals_for    += hs;                ar.goals_for    += as_
       hr.goals_against += as_;              ar.goals_against += hs
-      hr.goal_difference = hr.goals_for - hr.goals_against
-      ar.goal_difference = ar.goals_for - ar.goals_against
       hr.points       += homeWin ? 3 : draw ? 1 : 0
       ar.points       += awayWin ? 3 : draw ? 1 : 0
       hr.form          = (hr.form + (homeWin ? 'W' : draw ? 'D' : 'L')).slice(-5)
@@ -115,7 +113,7 @@ export async function POST(request: Request) {
       if (!gmap[teamId]) gmap[teamId] = {
         tournament_id, team_id: teamId,
         played: 0, wins: 0, draws: 0, losses: 0,
-        goals_for: 0, goals_against: 0, goal_difference: 0, points: 0,
+        goals_for: 0, goals_against: 0, points: 0,
       }
       return gmap[teamId]
     }
@@ -140,8 +138,6 @@ export async function POST(request: Request) {
       hr.losses       += awayWin ? 1 : 0;   ar.losses       += homeWin ? 1 : 0
       hr.goals_for    += hs;                ar.goals_for    += as_
       hr.goals_against += as_;              ar.goals_against += hs
-      hr.goal_difference = hr.goals_for - hr.goals_against
-      ar.goal_difference = ar.goals_for - ar.goals_against
       hr.points       += homeWin ? 3 : draw ? 1 : 0
       ar.points       += awayWin ? 3 : draw ? 1 : 0
     }
