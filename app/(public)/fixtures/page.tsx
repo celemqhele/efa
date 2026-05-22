@@ -26,7 +26,7 @@ const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
     pill: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   },
   confirmed: {
-    label: 'Confirmed',
+    label: 'FT',
     pill: 'bg-green-500/20 text-green-400 border-green-500/30',
   },
   abandoned: {
@@ -44,6 +44,14 @@ export default async function FixturesPage({ searchParams }: PageProps) {
   const supabase = await createClient()
   const params = await searchParams
   const selectedTournamentId = params.tournament ?? null
+
+  const { data: { user } } = await supabase.auth.getUser()
+  let isAdmin = false
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles').select('role').eq('id', user.id).maybeSingle()
+    isAdmin = profile?.role === 'admin'
+  }
 
   const { data: tournaments } = await supabase
     .from('tournaments')
@@ -209,72 +217,83 @@ export default async function FixturesPage({ searchParams }: PageProps) {
             const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
             const homeWin = result && result.home_score > result.away_score
             const awayWin = result && result.away_score > result.home_score
+            const canSubmit = isAdmin && (f.status === 'scheduled' || f.status === 'awaiting_confirmation')
 
             return (
-              <Link
-                key={f.id}
-                href={`/fixtures/${f.id}`}
-                className="card flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-black/[0.03] transition-all group"
-              >
-                {/* Home team */}
-                <div className="flex-1 flex items-center gap-2.5 min-w-0 justify-end flex-row-reverse sm:flex-row">
-                  <span className={`text-sm font-semibold truncate text-right sm:text-left ${
-                    homeWin ? 'text-slate-900' : awayWin ? 'text-slate-400' : 'text-slate-900'
-                  }`}>
-                    {f.home_team?.name ?? 'TBC'}
-                  </span>
-                  {f.home_team?.logo_league_folder && (
-                    <div className="flex-shrink-0">
-                      <TeamLogo
-                        leagueFolder={f.home_team.logo_league_folder}
-                        teamSlug={f.home_team.logo_team_slug}
-                        context="standings_row"
-                        alt={f.home_team.name}
-                        className={`w-8 h-8 ${awayWin ? 'opacity-40' : ''}`}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Centre */}
-                <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                  {result ? (
-                    <span className="text-slate-900 font-bold text-lg leading-none">
-                      {result.home_score}{' '}
-                      <span className="text-slate-500">–</span>{' '}
-                      {result.away_score}
+              <div key={f.id} className="flex items-center gap-2">
+                <Link
+                  href={`/fixtures/${f.id}`}
+                  className="card flex-1 flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-black/[0.03] transition-all group"
+                >
+                  {/* Home team */}
+                  <div className="flex-1 flex items-center gap-2.5 min-w-0 justify-end flex-row-reverse sm:flex-row">
+                    <span className={`text-sm font-semibold truncate text-right sm:text-left ${
+                      homeWin ? 'text-slate-900' : awayWin ? 'text-slate-400' : 'text-slate-900'
+                    }`}>
+                      {f.home_team?.name ?? 'TBC'}
                     </span>
-                  ) : (
-                    <span className="text-[#c9a84c] font-bold text-sm">vs</span>
-                  )}
-                  <span className="text-[10px] text-slate-500 text-center leading-tight">
-                    {formatDate(f.scheduled_date)}
-                  </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
-                    {statusInfo.label}
-                  </span>
-                </div>
+                    {f.home_team?.logo_league_folder && (
+                      <div className="flex-shrink-0">
+                        <TeamLogo
+                          leagueFolder={f.home_team.logo_league_folder}
+                          teamSlug={f.home_team.logo_team_slug}
+                          context="standings_row"
+                          alt={f.home_team.name}
+                          className={`w-8 h-8 ${awayWin ? 'opacity-40' : ''}`}
+                        />
+                      </div>
+                    )}
+                  </div>
 
-                {/* Away team */}
-                <div className="flex-1 flex items-center gap-2.5 min-w-0">
-                  {f.away_team?.logo_league_folder && (
-                    <div className="flex-shrink-0">
-                      <TeamLogo
-                        leagueFolder={f.away_team.logo_league_folder}
-                        teamSlug={f.away_team.logo_team_slug}
-                        context="standings_row"
-                        alt={f.away_team.name}
-                        className={`w-8 h-8 ${homeWin ? 'opacity-40' : ''}`}
-                      />
-                    </div>
-                  )}
-                  <span className={`text-sm font-semibold truncate ${
-                    awayWin ? 'text-slate-900' : homeWin ? 'text-slate-400' : 'text-slate-900'
-                  }`}>
-                    {f.away_team?.name ?? 'TBC'}
-                  </span>
-                </div>
-              </Link>
+                  {/* Centre */}
+                  <div className="flex flex-col items-center gap-1 min-w-[80px]">
+                    {result ? (
+                      <span className="text-slate-900 font-bold text-lg leading-none">
+                        {result.home_score}{' '}
+                        <span className="text-slate-500">–</span>{' '}
+                        {result.away_score}
+                      </span>
+                    ) : (
+                      <span className="text-[#c9a84c] font-bold text-sm">vs</span>
+                    )}
+                    <span className="text-[10px] text-slate-500 text-center leading-tight">
+                      {formatDate(f.scheduled_date)}
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
+                      {statusInfo.label}
+                    </span>
+                  </div>
+
+                  {/* Away team */}
+                  <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                    {f.away_team?.logo_league_folder && (
+                      <div className="flex-shrink-0">
+                        <TeamLogo
+                          leagueFolder={f.away_team.logo_league_folder}
+                          teamSlug={f.away_team.logo_team_slug}
+                          context="standings_row"
+                          alt={f.away_team.name}
+                          className={`w-8 h-8 ${homeWin ? 'opacity-40' : ''}`}
+                        />
+                      </div>
+                    )}
+                    <span className={`text-sm font-semibold truncate ${
+                      awayWin ? 'text-slate-900' : homeWin ? 'text-slate-400' : 'text-slate-900'
+                    }`}>
+                      {f.away_team?.name ?? 'TBC'}
+                    </span>
+                  </div>
+                </Link>
+
+                {canSubmit && (
+                  <Link
+                    href={`/admin/results/submit?fixture=${f.id}`}
+                    className="shrink-0 px-3 py-2 text-xs font-semibold text-[#c9a84c] border border-[#c9a84c]/30 rounded-lg hover:bg-[#c9a84c]/10 transition-colors whitespace-nowrap"
+                  >
+                    Submit
+                  </Link>
+                )}
+              </div>
             )
           })}
         </div>
