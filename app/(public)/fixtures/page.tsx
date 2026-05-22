@@ -122,7 +122,7 @@ export default async function FixturesPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Fixtures</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Fixtures & Results</h1>
         {activeTournament && (
           <p className="text-sm text-[#c9a84c] mt-0.5">{activeTournament.name}</p>
         )}
