@@ -19,6 +19,15 @@ export async function POST(request: Request) {
 
   const db = await createAdminClient()
 
+  // Fetch tournament type so we know how to categorise fixtures
+  const { data: tournament } = await db
+    .from('tournaments')
+    .select('type')
+    .eq('id', tournament_id)
+    .single()
+
+  const tournamentType = (tournament as any)?.type ?? 'league'
+
   // Fetch all confirmed fixtures for this tournament with results
   const { data: fixtures, error: fxErr } = await db
     .from('fixtures')
@@ -29,8 +38,15 @@ export async function POST(request: Request) {
   if (fxErr) return Response.json({ error: fxErr.message }, { status: 500 })
 
   const allFixtures = (fixtures ?? []) as any[]
-  const leagueFixtures = allFixtures.filter((f) => f.round_type === 'league')
-  const groupFixtures  = allFixtures.filter((f) => f.round_type === 'group')
+
+  // For league tournaments: treat null/league round_type as league fixtures
+  // For UCL/Europa: treat 'group' round_type as group fixtures
+  const leagueFixtures = tournamentType === 'league'
+    ? allFixtures.filter((f) => !f.round_type || f.round_type === 'league')
+    : []
+  const groupFixtures = (tournamentType === 'ucl' || tournamentType === 'europa')
+    ? allFixtures.filter((f) => f.round_type === 'group')
+    : []
 
   // ── Rebuild league standings ─────────────────────────────────────────────────
   if (leagueFixtures.length > 0) {
@@ -42,7 +58,7 @@ export async function POST(request: Request) {
       if (!map[teamId]) map[teamId] = {
         tournament_id, team_id: teamId,
         played: 0, wins: 0, draws: 0, losses: 0,
-        goals_for: 0, goals_against: 0, points: 0,
+        goals_for: 0, goals_against: 0, goal_difference: 0, points: 0,
         form: '', unbeaten_run: 0, clean_sheets: 0,
       }
       return map[teamId]
@@ -68,6 +84,8 @@ export async function POST(request: Request) {
       hr.losses       += awayWin ? 1 : 0;   ar.losses       += homeWin ? 1 : 0
       hr.goals_for    += hs;                ar.goals_for    += as_
       hr.goals_against += as_;              ar.goals_against += hs
+      hr.goal_difference = hr.goals_for - hr.goals_against
+      ar.goal_difference = ar.goals_for - ar.goals_against
       hr.points       += homeWin ? 3 : draw ? 1 : 0
       ar.points       += awayWin ? 3 : draw ? 1 : 0
       hr.form          = (hr.form + (homeWin ? 'W' : draw ? 'D' : 'L')).slice(-5)
@@ -97,7 +115,7 @@ export async function POST(request: Request) {
       if (!gmap[teamId]) gmap[teamId] = {
         tournament_id, team_id: teamId,
         played: 0, wins: 0, draws: 0, losses: 0,
-        goals_for: 0, goals_against: 0, points: 0,
+        goals_for: 0, goals_against: 0, goal_difference: 0, points: 0,
       }
       return gmap[teamId]
     }
@@ -122,6 +140,8 @@ export async function POST(request: Request) {
       hr.losses       += awayWin ? 1 : 0;   ar.losses       += homeWin ? 1 : 0
       hr.goals_for    += hs;                ar.goals_for    += as_
       hr.goals_against += as_;              ar.goals_against += hs
+      hr.goal_difference = hr.goals_for - hr.goals_against
+      ar.goal_difference = ar.goals_for - ar.goals_against
       hr.points       += homeWin ? 3 : draw ? 1 : 0
       ar.points       += awayWin ? 3 : draw ? 1 : 0
     }
