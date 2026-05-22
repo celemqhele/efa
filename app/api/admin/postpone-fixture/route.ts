@@ -56,14 +56,18 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Failed to update fixture' }, { status: 500 })
   }
 
-  // Audit log
-  await adminSupabase.from('audit_log').insert({
-    admin_id: user.id,
-    action: 'postpone_fixture',
-    target_type: 'fixture',
-    target_id: fixtureId,
-    details: { old_date: fixture.scheduled_date, new_date: newDateTime.toISOString() },
-  }).catch(() => {}) // Ignore audit log errors
+  // Audit log - ignore errors
+  try {
+    await adminSupabase.from('audit_log').insert({
+      admin_id: user.id,
+      action: 'postpone_fixture',
+      target_type: 'fixture',
+      target_id: fixtureId,
+      details: { old_date: fixture.scheduled_date, new_date: newDateTime.toISOString() },
+    })
+  } catch (err) {
+    // Silently ignore audit log errors
+  }
 
   return Response.json({ success: true, message: 'Fixture postponed successfully' })
 }
