@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
@@ -53,15 +53,15 @@ export default async function FixturesPage({ searchParams }: PageProps) {
     isAdmin = profile?.role === 'admin'
   }
 
+  // Only fetch active tournaments
   const { data: tournaments } = await supabase
     .from('tournaments')
     .select('id, name, type, status')
-    .in('status', ['active', 'upcoming', 'completed'])
+    .eq('status', 'active')
     .order('created_at', { ascending: true })
 
   const activeTournamentId =
     selectedTournamentId ??
-    tournaments?.find((t) => t.status === 'active')?.id ??
     tournaments?.[0]?.id ??
     null
 
