@@ -105,8 +105,12 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   const allFixtures = (fixtures ?? []) as any[]
   const allBreaks = (breaksRaw ?? []) as any[]
 
-  // Next upcoming fixture for this user's team
-  const today = new Date().toISOString().slice(0, 10)
+  // Next upcoming fixture for this user's team.
+  // The server runs in UTC; subtract 1 day so "today" fixtures are never missed
+  // for users in UTC-X timezones (already-played fixtures are excluded by status filter).
+  const _now = new Date()
+  _now.setDate(_now.getDate() - 1)
+  const today = _now.toISOString().slice(0, 10)
   let nextQuery = supabase
     .from('fixtures')
     .select(`

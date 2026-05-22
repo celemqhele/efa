@@ -15,7 +15,7 @@ export default async function CreateTournamentPage() {
   // All teams
   const { data: teams } = await supabase
     .from('teams')
-    .select('id, name, logo_league_folder, logo_team_slug')
+    .select('id, name, logo_league_folder, logo_team_slug, manager_id')
     .order('name', { ascending: true })
 
   // Active league tournament + standings for UCL/Europa auto-population

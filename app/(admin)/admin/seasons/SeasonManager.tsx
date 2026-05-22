@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -301,9 +302,17 @@ function StartPhaseDialog({
   onClose: () => void
 }) {
   const router = useRouter()
+  const supabase = createClient()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Manager assignment state (step 3)
+  const [users, setUsers] = useState<{ id: string; username: string }[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [localManagers, setLocalManagers] = useState<Record<string, string>>({})
+  const [assigningTeamId, setAssigningTeamId] = useState<string | null>(null)
+  const [assignErrors, setAssignErrors] = useState<Record<string, string>>({})
 
   const today = new Date().toISOString().split('T')[0]
   const [seasonName, setSeasonName] = useState('')
@@ -384,15 +393,19 @@ function StartPhaseDialog({
         setError(`Select exactly 20 teams for the league. (${leagueTeamIds.length}/20 selected)`)
         return
       }
+      // Fetch users for the manager assignment step
+      setUsersLoading(true)
+      supabase.from('profiles').select('id, username').order('username')
+        .then(({ data }) => { setUsers(data ?? []); setUsersLoading(false) })
     }
-    if (step === 3) {
+    if (step === 4) {
       if (uclTeamIds.length !== 12) { setError('Select exactly 12 teams for UCL.'); return }
       if (europaTeamIds.length !== 8) { setError('Select exactly 8 teams for Europa.'); return }
     }
     setStep((s) => s + 1)
   }
 
-  const STEP_LABELS = ['Phase Details', 'League Teams', 'UCL & Europa Draw', 'Confirm & Launch']
+  const STEP_LABELS = ['Phase Details', 'League Teams', 'Assign Managers', 'UCL & Europa Draw', 'Confirm & Launch']
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-4 overflow-y-auto">
@@ -402,7 +415,7 @@ function StartPhaseDialog({
           <div>
             <h2 className="text-slate-900 font-bold text-lg">Start New Phase</h2>
             <p className="text-slate-500 text-xs mt-0.5">
-              Step {step} of 4: {STEP_LABELS[step - 1]}
+              Step {step} of 5: {STEP_LABELS[step - 1]}
             </p>
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-900 text-xl leading-none">
@@ -414,7 +427,7 @@ function StartPhaseDialog({
         <div className="h-0.5 bg-slate-200">
           <div
             className="h-full bg-[#c9a84c] transition-all"
-            style={{ width: `${(step / 4) * 100}%` }}
+            style={{ width: `${(step / 5) * 100}%` }}
           />
         </div>
 
@@ -495,8 +508,106 @@ function StartPhaseDialog({
             </div>
           )}
 
-          {/* ── Step 3: UCL & Europa draw (from league teams) ── */}
+          {/* ── Step 3: Assign Managers ── */}
           {step === 3 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-slate-900 font-semibold text-sm">Manager Assignments</h3>
+                <span className="text-xs text-slate-500">Optional — can skip</span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Assign managers to your selected teams. Teams without a manager can still compete.
+              </p>
+
+              {usersLoading ? (
+                <div className="py-8 text-center text-slate-400 text-sm">Loading users…</div>
+              ) : (
+                <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                  {leagueTeamObjects.map((team) => {
+                    const resolvedManagerId = localManagers[team.id] ?? team.manager_id
+                    const mgr = resolvedManagerId ? users.find((u) => u.id === resolvedManagerId) : null
+                    const isAssigning = assigningTeamId === team.id
+                    const assignErr = assignErrors[team.id]
+
+                    return (
+                      <div key={team.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                        {team.logo_league_folder ? (
+                          <Image
+                            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                            alt={team.name}
+                            width={20}
+                            height={20}
+                            className="object-contain shrink-0"
+                          />
+                        ) : (
+                          <div className="w-5 h-5 rounded bg-slate-200 shrink-0" />
+                        )}
+                        <span className="text-xs font-medium text-slate-900 truncate flex-1 min-w-0">{team.name}</span>
+
+                        {assignErr && (
+                          <span className="text-[10px] text-red-400 truncate max-w-[100px] shrink-0" title={assignErr}>
+                            {assignErr}
+                          </span>
+                        )}
+
+                        {mgr ? (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-xs text-green-600 font-medium">{mgr.username}</span>
+                            <button
+                              type="button"
+                              title="Change manager"
+                              onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[team.id]; return n })}
+                              className="text-[10px] text-slate-400 hover:text-red-400 transition-colors"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ) : (
+                          <select
+                            className="text-xs border border-slate-300 rounded-md px-2 py-1 bg-white text-slate-700 max-w-[150px] shrink-0"
+                            value=""
+                            disabled={isAssigning}
+                            onChange={async (e) => {
+                              const userId = e.target.value
+                              if (!userId) return
+                              setAssigningTeamId(team.id)
+                              setAssignErrors((prev) => { const n = { ...prev }; delete n[team.id]; return n })
+                              try {
+                                const res = await fetch('/api/admin/managers/assign', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ team_id: team.id, user_id: userId }),
+                                })
+                                const data = await res.json()
+                                if (!res.ok) throw new Error(data.error ?? 'Failed to assign')
+                                setLocalManagers((prev) => ({ ...prev, [team.id]: userId }))
+                              } catch (err: any) {
+                                setAssignErrors((prev) => ({ ...prev, [team.id]: err.message }))
+                              } finally {
+                                setAssigningTeamId(null)
+                              }
+                            }}
+                          >
+                            <option value="">{isAssigning ? 'Assigning…' : '— assign —'}</option>
+                            {users.map((u) => (
+                              <option key={u.id} value={u.id}>{u.username}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-400">
+                {leagueTeamObjects.filter((t) => localManagers[t.id] || t.manager_id).length} of {leagueTeamObjects.length} teams have managers
+              </p>
+            </div>
+          )}
+
+          {/* ── Step 4: UCL & Europa draw (from league teams) ── */}
+          {step === 4 && (
             <div className="space-y-6">
               {prevTeamIds.length > 0 && (
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-300">
@@ -560,8 +671,8 @@ function StartPhaseDialog({
             </div>
           )}
 
-          {/* ── Step 4: Confirm ── */}
-          {step === 4 && (
+          {/* ── Step 5: Confirm ── */}
+          {step === 5 && (
             <div className="space-y-4">
               <h3 className="text-slate-900 font-semibold">Ready to launch</h3>
               <div className="bg-slate-50 rounded-xl p-4 space-y-3 text-sm">
@@ -612,9 +723,9 @@ function StartPhaseDialog({
             {step === 1 ? 'Cancel' : 'Back'}
           </button>
 
-          {step < 4 ? (
+          {step < 5 ? (
             <button onClick={nextStep} className="btn-gold text-sm px-8">
-              Next
+              {step === 3 ? 'Next (UCL & Europa)' : 'Next'}
             </button>
           ) : (
             <button

@@ -34,7 +34,12 @@ const MONTH_NAMES = [
 ]
 
 function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  // Use local date parts — toISOString() returns UTC which causes off-by-one
+  // in timezones that are behind UTC (e.g. UTC-1 at 23:00 = next UTC day).
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function getDaysInMonth(year: number, month: number): Date[] {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { getTeamLogo } from '@/lib/logo-resolver'
+import { createClient } from '@/lib/supabase/client'
 
 interface Season {
   id: string
@@ -18,6 +19,7 @@ interface Team {
   name: string
   logo_league_folder: string
   logo_team_slug: string
+  manager_id: string | null
 }
 
 interface Standing {
@@ -82,6 +84,18 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
+
+  // Manager assignments
+  const [users, setUsers] = useState<{ id: string; username: string }[]>([])
+  const [localManagers, setLocalManagers] = useState<Record<string, string>>({})
+  const [assigningTeamId, setAssigningTeamId] = useState<string | null>(null)
+  const [assignErrors, setAssignErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('profiles').select('id, username').order('username')
+      .then(({ data }) => setUsers(data ?? []))
+  }, [])
 
   // Submission
   const [loading, setLoading] = useState(false)
@@ -417,6 +431,95 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                   <span className="text-xs font-medium truncate">{team.name}</span>
                   {isSelected && <span className="ml-auto text-green-400 text-xs">✓</span>}
                 </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Manager Assignments */}
+      {selectedTeamIds.length > 0 && (
+        <div className="card p-5">
+          <h2 className="section-header">
+            Manager Assignments
+            <span className="ml-auto text-sm font-normal text-slate-400">Optional</span>
+          </h2>
+          <p className="text-slate-400 text-xs mb-4">
+            Assign managers to selected teams. Teams can compete without a manager.
+          </p>
+          <div className="space-y-1.5">
+            {selectedTeamIds.map((id) => {
+              const team = allTeams.find((t) => t.id === id)
+              if (!team) return null
+              const resolvedManagerId = localManagers[id] ?? team.manager_id
+              const mgr = resolvedManagerId ? users.find((u) => u.id === resolvedManagerId) : null
+              const isAssigning = assigningTeamId === id
+              const assignErr = assignErrors[id]
+
+              return (
+                <div key={id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-navy-light border border-navy-border">
+                  {team.logo_league_folder && (
+                    <Image
+                      src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                      alt={team.name}
+                      width={20}
+                      height={20}
+                      className="object-contain shrink-0"
+                    />
+                  )}
+                  <span className="text-xs font-medium text-slate-900 truncate flex-1 min-w-0">{team.name}</span>
+
+                  {assignErr && (
+                    <span className="text-[10px] text-red-400 truncate max-w-[100px] shrink-0" title={assignErr}>
+                      {assignErr}
+                    </span>
+                  )}
+
+                  {mgr ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-xs text-green-600 font-medium">{mgr.username}</span>
+                      <button
+                        type="button"
+                        title="Change manager"
+                        onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[id]; return n })}
+                        className="text-[10px] text-slate-400 hover:text-red-400 transition-colors"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      className="text-xs border border-navy-border rounded-md px-2 py-1 bg-white text-slate-700 max-w-[160px] shrink-0"
+                      value=""
+                      disabled={isAssigning}
+                      onChange={async (e) => {
+                        const userId = e.target.value
+                        if (!userId) return
+                        setAssigningTeamId(id)
+                        setAssignErrors((prev) => { const n = { ...prev }; delete n[id]; return n })
+                        try {
+                          const res = await fetch('/api/admin/managers/assign', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ team_id: id, user_id: userId }),
+                          })
+                          const data = await res.json()
+                          if (!res.ok) throw new Error(data.error ?? 'Failed to assign')
+                          setLocalManagers((prev) => ({ ...prev, [id]: userId }))
+                        } catch (err: any) {
+                          setAssignErrors((prev) => ({ ...prev, [id]: err.message }))
+                        } finally {
+                          setAssigningTeamId(null)
+                        }
+                      }}
+                    >
+                      <option value="">{isAssigning ? 'Assigning…' : '— assign manager —'}</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>{u.username}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               )
             })}
           </div>
