@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
+import { cropToStatsPanel, parseOcrText } from '@/lib/parse-screenshot-client'
 
 interface Team {
   id: string
@@ -113,7 +114,8 @@ export default function ResultSubmitClient({
 
   // Screenshot / OCR state
   const fileRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
+  const [ocrProgress, setOcrProgress] = useState(0)   // 0–100, 0 = idle
+  const [ocrStatus, setOcrStatus] = useState('')
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null)
   const [ocrError, setOcrError] = useState('')
 
@@ -183,18 +185,53 @@ export default function ResultSubmitClient({
   async function handleScreenshotUpload() {
     const file = fileRef.current?.files?.[0]
     if (!file) return
-    setUploading(true)
+    setOcrProgress(1)
+    setOcrStatus('Cropping stats panel...')
     setOcrError('')
     setOcrResult(null)
 
     try {
-      const formData = new FormData()
-      formData.append('screenshot', file)
-      const res = await fetch('/api/admin/parse-screenshot', { method: 'POST', body: formData })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'OCR failed')
+      // Crop to eFootball center stats panel in the browser (Canvas API)
+      const croppedUrl = await cropToStatsPanel(file)
 
-      const ocr: OcrResult = data
+      setOcrStatus('Reading text...')
+      setOcrProgress(10)
+
+      // Run Tesseract entirely in the browser — no server call, no timeout
+      const Tesseract = (await import('tesseract.js')).default
+      const { data: { text } } = await Tesseract.recognize(croppedUrl, 'eng', {
+        logger: (m: any) => {
+          if (m.status === 'recognizing text') {
+            setOcrProgress(Math.round(10 + m.progress * 85))
+            setOcrStatus(`Reading... ${Math.round(m.progress * 100)}%`)
+          } else if (m.status === 'loading tesseract core') {
+            setOcrStatus('Loading engine...')
+            setOcrProgress(3)
+          } else if (m.status === 'initializing tesseract') {
+            setOcrStatus('Initialising...')
+            setOcrProgress(5)
+          } else if (m.status === 'loading language traineddata') {
+            setOcrStatus('Loading language...')
+            setOcrProgress(7)
+          }
+        },
+      })
+
+      URL.revokeObjectURL(croppedUrl)
+
+      setOcrStatus('Parsing...')
+      setOcrProgress(97)
+
+      const parsed = parseOcrText(text)
+
+      const ocr: OcrResult = {
+        home_team_name: parsed.homeTeamOcr,
+        away_team_name: parsed.awayTeamOcr,
+        home_score: parsed.homeScore,
+        away_score: parsed.awayScore,
+        stats: parsed.stats as any,
+      }
+
       setOcrResult(ocr)
       setHomeScore(String(ocr.home_score))
       setAwayScore(String(ocr.away_score))
@@ -203,13 +240,13 @@ export default function ResultSubmitClient({
       const newStats: StatValues = {}
       for (const f of STAT_FIELDS) {
         newStats[f.key] = {
-          home: String(ocr.stats[`home_${f.key}` as keyof typeof ocr.stats] ?? ''),
-          away: String(ocr.stats[`away_${f.key}` as keyof typeof ocr.stats] ?? ''),
+          home: String(parsed.stats[`home_${f.key}`] ?? ''),
+          away: String(parsed.stats[`away_${f.key}`] ?? ''),
         }
       }
       setStats(newStats)
 
-      // Auto-map teams from OCR via existing mappings
+      // Auto-map teams
       const homeMapping = teamNameMappings.find(
         (m) => m.ocr_name.toLowerCase() === ocr.home_team_name.toLowerCase()
       )
@@ -220,10 +257,13 @@ export default function ResultSubmitClient({
       else if (selectedFixture?.home_team) setMappedHomeTeamId(selectedFixture.home_team.id)
       if (awayMapping) setMappedAwayTeamId(awayMapping.team_id)
       else if (selectedFixture?.away_team) setMappedAwayTeamId(selectedFixture.away_team.id)
+
+      setOcrProgress(100)
+      setOcrStatus('Done')
     } catch (err: any) {
       setOcrError(err.message)
-    } finally {
-      setUploading(false)
+      setOcrProgress(0)
+      setOcrStatus('')
     }
   }
 
@@ -444,11 +484,22 @@ export default function ResultSubmitClient({
                     <p className="text-slate-700 text-sm font-medium">Click to upload screenshot</p>
                     <p className="text-slate-500 text-xs mt-1">PNG, JPG up to 10MB</p>
                   </label>
-                  {uploading && (
-                    <div className="mt-4 flex items-center justify-center gap-2 text-gold text-sm">
-                      <div className="w-4 h-4 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
-                      Parsing screenshot...
+                  {ocrProgress > 0 && ocrProgress < 100 && (
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-gold">
+                        <span>{ocrStatus}</span>
+                        <span>{ocrProgress}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-navy-border overflow-hidden">
+                        <div
+                          className="h-full bg-gold rounded-full transition-all duration-300"
+                          style={{ width: `${ocrProgress}%` }}
+                        />
+                      </div>
                     </div>
+                  )}
+                  {ocrProgress === 100 && (
+                    <p className="mt-3 text-xs text-green-400 text-center">✓ Parsed</p>
                   )}
                 </div>
 

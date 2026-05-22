@@ -100,13 +100,27 @@ export default async function FixturesPage({ searchParams }: PageProps) {
         .select(`
           id, matchday, scheduled_date, status, round_type, leg,
           home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
-          away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
-          results(home_score, away_score)
+          away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
         `)
         .eq('tournament_id', activeTournamentId)
         .eq('matchday', selectedMatchday)
         .order('scheduled_date', { ascending: true })
     : { data: null }
+
+  // Fetch results separately — PostgREST join on results is unreliable without
+  // explicit FK hint, so we query directly and merge by fixture_id.
+  const fixtureIds = (fixtures ?? []).map((f: any) => f.id)
+  const { data: resultsData } = fixtureIds.length > 0
+    ? await supabase
+        .from('results')
+        .select('fixture_id, home_score, away_score')
+        .in('fixture_id', fixtureIds)
+    : { data: [] }
+
+  const resultsByFixture: Record<string, { home_score: number; away_score: number }> = {}
+  for (const r of resultsData ?? []) {
+    resultsByFixture[r.fixture_id] = r
+  }
 
   function formatDate(dateStr: string | null): string {
     if (!dateStr) return 'TBD'
@@ -213,7 +227,7 @@ export default async function FixturesPage({ searchParams }: PageProps) {
       ) : (
         <div className="space-y-2">
           {(fixtures ?? []).map((f: any) => {
-            const result = f.results?.[0] ?? null
+            const result = resultsByFixture[f.id] ?? null
             const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
             const homeWin = result && result.home_score > result.away_score
             const awayWin = result && result.away_score > result.home_score
