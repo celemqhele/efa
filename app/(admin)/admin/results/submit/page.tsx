@@ -19,7 +19,7 @@ export default async function ResultSubmitPage({
       away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
       tournament:tournaments!fixtures_tournament_id_fkey(id, name, type)
     `)
-    .or('status.eq.awaiting_confirmation,status.eq.scheduled')
+    .not('status', 'eq', 'abandoned')
     .order('scheduled_date', { ascending: true })
 
   // Filter: awaiting_confirmation OR has a result_confirmation already

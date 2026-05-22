@@ -231,7 +231,7 @@ export default async function FixturesPage({ searchParams }: PageProps) {
             const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
             const homeWin = result && result.home_score > result.away_score
             const awayWin = result && result.away_score > result.home_score
-            const canSubmit = isAdmin && (f.status === 'scheduled' || f.status === 'awaiting_confirmation')
+            const canSubmit = isAdmin && f.status !== 'abandoned'
 
             return (
               <div key={f.id} className="flex items-center gap-2">
