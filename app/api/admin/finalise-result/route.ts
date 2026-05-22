@@ -16,7 +16,6 @@ async function checkAndAutoSack(
   adminUserId: string,
   threshold = 4
 ): Promise<void> {
-  // Fetch last `threshold` confirmed results for this team
   const { data: recent } = await db
     .from('fixtures')
     .select(`
@@ -30,15 +29,12 @@ async function checkAndAutoSack(
 
   if (!recent || recent.length < threshold) return
 
-  // Check every result was an absence for this specific team
   const allAbsent = (recent as any[]).every((f) => {
     const result = Array.isArray(f.results) ? f.results[0] : f.results
     if (!result?.override_reason) return false
     const reason: string = (result.override_reason as string).toLowerCase()
     if (!reason.includes('absent')) return false
-    // Both absent — counts for both teams
     if (reason.includes('both')) return true
-    // Single absent — check which team via forfeit score (0-3 or 3-0)
     const isHome = f.home_team_id === teamId
     return isHome
       ? result.home_score === 0 && result.away_score === 3
@@ -47,7 +43,6 @@ async function checkAndAutoSack(
 
   if (!allAbsent) return
 
-  // Fetch team to get manager and sibling rows
   const { data: team } = await db
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug, manager_id')
@@ -58,7 +53,6 @@ async function checkAndAutoSack(
 
   const sackUserId = team.manager_id
 
-  // Find all sibling rows (same club across phases)
   let allClubIds: string[] = [teamId]
   if (team.logo_league_folder && team.logo_team_slug) {
     const { data: siblings } = await db
@@ -240,7 +234,6 @@ export async function POST(request: Request) {
   const away_absent = body.away_absent ?? false
   const bothAbsent = home_absent && away_absent
 
-  // Enforce forfeit scores server-side regardless of what the client sent
   let home_score: number
   let away_score: number
   if (bothAbsent) {
@@ -297,7 +290,6 @@ export async function POST(request: Request) {
     )
   }
 
-  // Build override_reason: absent takes priority over manual override
   const effectiveOverrideReason = bothAbsent
     ? 'Both teams absent — result void (0–0, no points)'
     : home_absent
@@ -306,26 +298,30 @@ export async function POST(request: Request) {
     ? `${(awayTeam as any)?.name ?? 'Away team'} absent — forfeit (3–0)`
     : (override_reason ?? null)
 
-  // Insert result
+  // ── Upsert result (handles re-submissions without duplicate key error) ──────
   const { data: result, error: resultError } = await adminSupabase
     .from('results')
-    .insert({
-      fixture_id,
-      home_score,
-      away_score,
-      finalised_by: user.id,
-      screenshot_url: screenshot_url ?? null,
-      override_reason: effectiveOverrideReason,
-    })
+    .upsert(
+      {
+        fixture_id,
+        home_score,
+        away_score,
+        finalised_by: user.id,
+        screenshot_url: screenshot_url ?? null,
+        override_reason: effectiveOverrideReason,
+      },
+      { onConflict: 'fixture_id' }
+    )
     .select('id')
     .single()
 
   if (resultError || !result) {
-    return Response.json({ error: resultError?.message ?? 'Failed to insert result' }, { status: 500 })
+    return Response.json({ error: resultError?.message ?? 'Failed to upsert result' }, { status: 500 })
   }
 
-  // Insert match stats
+  // ── Match stats: wipe old rows for this result then insert fresh ────────────
   if (stats && Object.keys(stats).length > 0) {
+    await adminSupabase.from('match_stats').delete().eq('result_id', result.id)
     const { error: statsError } = await adminSupabase
       .from('match_stats')
       .insert({ result_id: result.id, ...stats })
@@ -339,7 +335,6 @@ export async function POST(request: Request) {
     .eq('id', fixture_id)
 
   // ── Absent team tracking ──────────────────────────────────────────────────
-  // Increment abandon_count for each absent team, then check for auto-sack
   try {
     const absentTeamIds: string[] = []
     if (home_absent && fixture.home_team_id) absentTeamIds.push(fixture.home_team_id)
@@ -374,7 +369,6 @@ export async function POST(request: Request) {
 
     const tType: string = (tournament as any)?.type ?? ''
 
-    // Update standings — skip entirely when both teams are absent (0-0, no points)
     if (!bothAbsent) {
       if (roundType === 'league' && homeTeamId && awayTeamId) {
         await updateLeagueStandings(adminSupabase, tournamentId, homeTeamId, awayTeamId, home_score, away_score)
@@ -383,7 +377,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Tournament progression
     if (roundType === 'group' && (tType === 'ucl' || tType === 'europa')) {
       const { count: pendingGroups } = await adminSupabase
         .from('fixtures')
@@ -397,7 +390,6 @@ export async function POST(request: Request) {
       }
     } else if (roundType === 'sf') {
       if (bothAbsent) {
-        // Both SF teams absent: best previously-eliminated team takes the bracket slot
         const { data: allSFs } = await adminSupabase
           .from('fixtures')
           .select('home_team_id, away_team_id')
@@ -413,7 +405,6 @@ export async function POST(request: Request) {
           .select('team_id, points, goals_for, goals_against')
           .eq('tournament_id', tournamentId)
 
-        // Eliminated = had a group standing but did not advance to SF
         const eliminated = (groupStandings ?? []).filter((s: any) => !sfTeamIds.has(s.team_id))
         const sortedElim = [...eliminated].sort((a: any, b: any) => {
           if (b.points !== a.points) return b.points - a.points
@@ -425,7 +416,6 @@ export async function POST(request: Request) {
         const bestEliminated = sortedElim[0]
 
         if (bestEliminated) {
-          // Treat best eliminated team as "home winner" so fillFinalSlot assigns them
           await fillFinalSlot(adminSupabase, tournamentId, fixture_id, 1, 0, bestEliminated.team_id, null)
         }
       } else {
@@ -454,9 +444,20 @@ export async function POST(request: Request) {
 
   const notifications: Database['public']['Tables']['notifications']['Insert'][] = []
 
-  const notifTitle = bothAbsent ? 'Match Voided' : (home_absent || away_absent) ? 'Forfeit Recorded' : 'Result Confirmed'
+  const notifTitle = bothAbsent
+    ? 'Match Voided'
+    : home_absent || away_absent
+    ? 'Forfeit Recorded'
+    : 'Result Confirmed'
+
   const notifBody = `${homeTeamObj?.name ?? 'Home'} ${home_score}–${away_score} ${awayTeamObj?.name ?? 'Away'}${
-    bothAbsent ? ' (both absent — no points)' : home_absent ? ` (${homeTeamObj?.name ?? 'Home'} absent)` : away_absent ? ` (${awayTeamObj?.name ?? 'Away'} absent)` : ''
+    bothAbsent
+      ? ' (both absent — no points)'
+      : home_absent
+      ? ` (${homeTeamObj?.name ?? 'Home'} absent)`
+      : away_absent
+      ? ` (${awayTeamObj?.name ?? 'Away'} absent)`
+      : ''
   }`
 
   if (homeTeamObj?.manager_id) {
