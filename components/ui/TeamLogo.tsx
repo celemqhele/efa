@@ -24,6 +24,7 @@ const SIZE_PX: Record<LogoContext, number> = {
 export default function TeamLogo({ leagueFolder, teamSlug, context, alt, className = '' }: TeamLogoProps) {
   const src = getTeamLogo(leagueFolder, teamSlug, context)
   const size = SIZE_PX[context]
+  const needsDarkCircle = teamSlug === 'tottenham'
 
   return (
     <Image
@@ -31,7 +32,7 @@ export default function TeamLogo({ leagueFolder, teamSlug, context, alt, classNa
       alt={alt}
       width={size}
       height={size}
-      className={`object-contain ${className}`}
+      className={`object-contain ${needsDarkCircle ? 'dark:bg-white dark:rounded-full dark:p-0.5' : ''} ${className}`}
       onError={(e) => {
         const target = e.target as HTMLImageElement
         target.style.display = 'none'
