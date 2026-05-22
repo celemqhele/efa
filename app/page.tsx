@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import PageWrapper from '@/components/ui/PageWrapper'
@@ -214,7 +214,7 @@ export default async function HomePage() {
           <section className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="section-header mb-0">Latest Results</h2>
-              <Link href="/results" className="text-xs text-[#c9a84c] hover:text-[#e0c06a]">View all →</Link>
+              <Link href="/fixtures" className="text-xs text-[#c9a84c] hover:text-[#e0c06a]">View all →</Link>
             </div>
 
             {!latestResults?.length ? (
@@ -225,7 +225,7 @@ export default async function HomePage() {
                   const f = r.fixtures
                   if (!f) return null
                   return (
-                    <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-black/5 transition-colors border border-transparent hover:border-slate-200">
+                    <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-black/5 transition-colors border border-transparent hover:border-slate-300 dark:hover:border-slate-600">
                       <div className="flex items-center gap-2 flex-1">
                         {f.home_team?.logo_league_folder && (
                           <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt={f.home_team.name} className="w-6 h-6 shrink-0" />
