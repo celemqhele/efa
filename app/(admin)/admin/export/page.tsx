@@ -89,37 +89,61 @@ export default async function ExportPage({ searchParams }: Props) {
     if (type === 'standings') {
       const tType = selectedTournament?.type
       if (tType === 'league') {
-        const { data } = await supabase
-          .from('standings')
-          .select('*, team:teams(name, logo_league_folder, logo_team_slug)')
-          .eq('tournament_id', activeTournamentId)
-          .order('points', { ascending: false })
-          .order('goals_for', { ascending: false })
-        standings = data ?? []
-
-        // If no matches played yet, build zero-rows from fixture team list
-        if (standings.length === 0) {
-          const { data: fxTeams } = await supabase
+        // Compute live from confirmed fixtures — same source of truth as standings page
+        const [{ data: participants }, { data: confirmedFixtures }] = await Promise.all([
+          supabase
+            .from('tournament_participants')
+            .select('team_id, teams(id, name, logo_league_folder, logo_team_slug)')
+            .eq('tournament_id', activeTournamentId),
+          supabase
             .from('fixtures')
-            .select('home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug), away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug)')
+            .select('home_team_id, away_team_id, results(home_score, away_score, override_reason)')
             .eq('tournament_id', activeTournamentId)
-          const seen = new Set<string>()
-          const zeroRows: any[] = []
-          for (const fx of fxTeams ?? []) {
-            for (const [tid, tobj] of [
-              [fx.home_team_id, fx.home_team],
-              [fx.away_team_id, fx.away_team],
-            ] as [string | null, any][]) {
-              if (tid && !seen.has(tid)) {
-                seen.add(tid)
-                zeroRows.push({ team_id: tid, team: tobj, played: 0, wins: 0, draws: 0, losses: 0, goals_for: 0, goals_against: 0, points: 0 })
-              }
-            }
+            .eq('status', 'confirmed'),
+        ])
+
+        const map: Record<string, any> = {}
+        for (const p of participants ?? []) {
+          map[(p as any).team_id] = {
+            id: (p as any).team_id,
+            team: (p as any).teams,
+            played: 0, wins: 0, draws: 0, losses: 0,
+            goals_for: 0, goals_against: 0, points: 0,
           }
-          standings = zeroRows.sort((a, b) => (a.team?.name ?? '').localeCompare(b.team?.name ?? ''))
         }
+
+        for (const f of confirmedFixtures ?? []) {
+          const result = Array.isArray((f as any).results) ? (f as any).results[0] : (f as any).results
+          if (!result) continue
+          const { home_score: hs, away_score: as_, override_reason } = result
+          const reason = (override_reason ?? '').toLowerCase()
+          if (reason.includes('both') && reason.includes('absent')) continue
+
+          const homeWin = hs > as_, awayWin = as_ > hs, draw = hs === as_
+          const hr = map[(f as any).home_team_id]
+          const ar = map[(f as any).away_team_id]
+
+          if (hr) {
+            hr.played++; hr.wins += homeWin ? 1 : 0; hr.draws += draw ? 1 : 0; hr.losses += awayWin ? 1 : 0
+            hr.goals_for += hs; hr.goals_against += as_
+            hr.points += homeWin ? 3 : draw ? 1 : 0
+          }
+          if (ar) {
+            ar.played++; ar.wins += awayWin ? 1 : 0; ar.draws += draw ? 1 : 0; ar.losses += homeWin ? 1 : 0
+            ar.goals_for += as_; ar.goals_against += hs
+            ar.points += awayWin ? 3 : draw ? 1 : 0
+          }
+        }
+
+        standings = Object.values(map).sort((a: any, b: any) => {
+          if (b.points !== a.points) return b.points - a.points
+          const gdA = a.goals_for - a.goals_against
+          const gdB = b.goals_for - b.goals_against
+          if (gdB !== gdA) return gdB - gdA
+          return b.goals_for - a.goals_for
+        })
       } else {
-        // UCL / Europa — show group standings
+        // UCL / Europa — group_standings table (still used for group stage)
         const { data } = await (supabase.from('group_standings') as any)
           .select('*, team:teams(name, logo_league_folder, logo_team_slug)')
           .eq('tournament_id', activeTournamentId)
