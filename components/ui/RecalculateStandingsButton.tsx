@@ -7,13 +7,11 @@ interface Props {
   tournamentName: string
 }
 
-export default function RecalculateStandingsButton({ tournamentId, tournamentName }: Props) {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+export default function RecalculateStandingsButton({ tournamentId }: Props) {
+  const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
-  async function handleClick() {
-    if (!confirm(`Recalculate standings for "${tournamentName}" from all confirmed results?\n\nThis will clear and rebuild the table from scratch.`)) return
-
+  async function handleConfirm() {
     setStatus('loading')
     setMessage('')
 
@@ -28,9 +26,9 @@ export default function RecalculateStandingsButton({ tournamentId, tournamentNam
 
       const { league_fixtures_processed: l, group_fixtures_processed: g } = data
       const parts = []
-      if (l > 0) parts.push(`${l} league result${l !== 1 ? 's' : ''}`)
-      if (g > 0) parts.push(`${g} group result${g !== 1 ? 's' : ''}`)
-      setMessage(parts.length ? `Done — processed ${parts.join(' + ')}` : 'Done — no confirmed results found')
+      if (l > 0) parts.push(`${l} league`)
+      if (g > 0) parts.push(`${g} group`)
+      setMessage(parts.length ? `✓ Done (${parts.join(' + ')} results)` : '✓ Done — no results found')
       setStatus('done')
     } catch (err: any) {
       setMessage(err.message)
@@ -38,10 +36,30 @@ export default function RecalculateStandingsButton({ tournamentId, tournamentNam
     }
   }
 
+  if (status === 'confirm') {
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-slate-500">Rebuild from scratch?</span>
+        <button
+          onClick={handleConfirm}
+          className="text-xs px-2.5 py-1 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+        >
+          Yes, recalculate
+        </button>
+        <button
+          onClick={() => setStatus('idle')}
+          className="text-xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <button
-        onClick={handleClick}
+        onClick={() => { setStatus('confirm'); setMessage('') }}
         disabled={status === 'loading'}
         className="btn-outline text-xs px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
       >
@@ -51,9 +69,7 @@ export default function RecalculateStandingsButton({ tournamentId, tournamentNam
             Calculating…
           </>
         ) : (
-          <>
-            <span>⟳</span> Recalculate Standings
-          </>
+          <>⟳ Recalculate Standings</>
         )}
       </button>
       {message && (
