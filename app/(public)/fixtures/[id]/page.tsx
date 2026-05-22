@@ -8,6 +8,7 @@ import { calculateProbability } from '@/lib/probability-engine'
 import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
 import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
 import MatchroomCode from '@/components/ui/MatchroomCode'
+import ReactionsPanel from '@/components/ui/ReactionsPanel'
 
 export const revalidate = 30
 
@@ -206,12 +207,14 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   // Reactions
   const { data: reactionsRaw } = await supabase
     .from('reactions')
-    .select('emoji')
+    .select('emoji, user_id')
     .eq('fixture_id', id)
 
   const reactionCounts: Record<string, number> = {}
+  const userReactionEmojis: string[] = []
   for (const r of reactionsRaw ?? []) {
     reactionCounts[r.emoji] = (reactionCounts[r.emoji] ?? 0) + 1
+    if (user && r.user_id === user.id) userReactionEmojis.push(r.emoji)
   }
 
   // DNA for both teams (only if match stats available from previous games)
@@ -294,8 +297,6 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       ? 'awaiting_confirmation'
       : 'scores_mismatch'
     : 'pending'
-
-  const EMOJI_REACTIONS = ['🔥', '😬', '😭', '🐐']
 
   return (
     <div className="space-y-6">
@@ -638,16 +639,12 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             <h2 className="section-header">
               <span className="text-gold">💬</span> Reactions
             </h2>
-            <div className="flex gap-4">
-              {EMOJI_REACTIONS.map((emoji) => (
-                <div key={emoji} className="flex flex-col items-center gap-1">
-                  <span className="text-2xl">{emoji}</span>
-                  <span className="text-sm font-semibold text-slate-700">
-                    {reactionCounts[emoji] ?? 0}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <ReactionsPanel
+              fixtureId={id}
+              initialCounts={reactionCounts}
+              initialUserReactions={userReactionEmojis}
+              userId={user?.id ?? null}
+            />
           </div>
         </>
       )}

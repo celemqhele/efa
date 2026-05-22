@@ -114,12 +114,14 @@ async function updateLeagueStandings(
   const draw = homeScore === awayScore
 
   const [{ data: hr }, { data: ar }] = await Promise.all([
-    db.from('standings').select('*').eq('tournament_id', tournamentId).eq('team_id', homeTeamId).single(),
-    db.from('standings').select('*').eq('tournament_id', tournamentId).eq('team_id', awayTeamId).single(),
+    db.from('standings').select('*').eq('tournament_id', tournamentId).eq('team_id', homeTeamId).maybeSingle(),
+    db.from('standings').select('*').eq('tournament_id', tournamentId).eq('team_id', awayTeamId).maybeSingle(),
   ])
 
   await Promise.all([
-    db.from('standings').update({
+    db.from('standings').upsert({
+      tournament_id: tournamentId,
+      team_id: homeTeamId,
       played: (hr?.played ?? 0) + 1,
       wins: (hr?.wins ?? 0) + (homeWin ? 1 : 0),
       draws: (hr?.draws ?? 0) + (draw ? 1 : 0),
@@ -130,9 +132,11 @@ async function updateLeagueStandings(
       form: (String(hr?.form ?? '') + (homeWin ? 'W' : draw ? 'D' : 'L')).slice(-5),
       unbeaten_run: homeWin || draw ? (hr?.unbeaten_run ?? 0) + 1 : 0,
       clean_sheets: (hr?.clean_sheets ?? 0) + (awayScore === 0 ? 1 : 0),
-    }).eq('tournament_id', tournamentId).eq('team_id', homeTeamId),
+    }, { onConflict: 'tournament_id,team_id' }),
 
-    db.from('standings').update({
+    db.from('standings').upsert({
+      tournament_id: tournamentId,
+      team_id: awayTeamId,
       played: (ar?.played ?? 0) + 1,
       wins: (ar?.wins ?? 0) + (awayWin ? 1 : 0),
       draws: (ar?.draws ?? 0) + (draw ? 1 : 0),
@@ -143,7 +147,7 @@ async function updateLeagueStandings(
       form: (String(ar?.form ?? '') + (awayWin ? 'W' : draw ? 'D' : 'L')).slice(-5),
       unbeaten_run: awayWin || draw ? (ar?.unbeaten_run ?? 0) + 1 : 0,
       clean_sheets: (ar?.clean_sheets ?? 0) + (homeScore === 0 ? 1 : 0),
-    }).eq('tournament_id', tournamentId).eq('team_id', awayTeamId),
+    }, { onConflict: 'tournament_id,team_id' }),
   ])
 }
 
@@ -160,12 +164,14 @@ async function updateGroupStandings(
   const draw = homeScore === awayScore
 
   const [{ data: hr }, { data: ar }] = await Promise.all([
-    db.from('group_standings').select('*').eq('tournament_id', tournamentId).eq('team_id', homeTeamId).single(),
-    db.from('group_standings').select('*').eq('tournament_id', tournamentId).eq('team_id', awayTeamId).single(),
+    db.from('group_standings').select('*').eq('tournament_id', tournamentId).eq('team_id', homeTeamId).maybeSingle(),
+    db.from('group_standings').select('*').eq('tournament_id', tournamentId).eq('team_id', awayTeamId).maybeSingle(),
   ])
 
   await Promise.all([
-    db.from('group_standings').update({
+    db.from('group_standings').upsert({
+      tournament_id: tournamentId,
+      team_id: homeTeamId,
       played: (hr?.played ?? 0) + 1,
       wins: (hr?.wins ?? 0) + (homeWin ? 1 : 0),
       draws: (hr?.draws ?? 0) + (draw ? 1 : 0),
@@ -173,9 +179,11 @@ async function updateGroupStandings(
       goals_for: (hr?.goals_for ?? 0) + homeScore,
       goals_against: (hr?.goals_against ?? 0) + awayScore,
       points: (hr?.points ?? 0) + (homeWin ? 3 : draw ? 1 : 0),
-    }).eq('tournament_id', tournamentId).eq('team_id', homeTeamId),
+    }, { onConflict: 'tournament_id,team_id' }),
 
-    db.from('group_standings').update({
+    db.from('group_standings').upsert({
+      tournament_id: tournamentId,
+      team_id: awayTeamId,
       played: (ar?.played ?? 0) + 1,
       wins: (ar?.wins ?? 0) + (awayWin ? 1 : 0),
       draws: (ar?.draws ?? 0) + (draw ? 1 : 0),
@@ -183,7 +191,7 @@ async function updateGroupStandings(
       goals_for: (ar?.goals_for ?? 0) + awayScore,
       goals_against: (ar?.goals_against ?? 0) + homeScore,
       points: (ar?.points ?? 0) + (awayWin ? 3 : draw ? 1 : 0),
-    }).eq('tournament_id', tournamentId).eq('team_id', awayTeamId),
+    }, { onConflict: 'tournament_id,team_id' }),
   ])
 }
 

@@ -597,7 +597,7 @@ export default function ResultSubmitClient({
             </div>
 
             {/* Stat Editor */}
-            {(ocrResult || mode === 'manual') && (
+            {selectedFixture && (
               <div className="card p-5">
                 <h2 className="section-header">Match Stats</h2>
                 <div className="grid grid-cols-1 gap-2">
