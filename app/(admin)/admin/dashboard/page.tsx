@@ -5,6 +5,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import Link from 'next/link'
 import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
+import RecalculateStandingsButton from '@/components/ui/RecalculateStandingsButton'
 
 export const revalidate = 0
 
@@ -213,18 +214,21 @@ export default async function AdminDashboardPage() {
                   ? 'text-green-400 bg-green-500/10 border-green-500/20'
                   : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
                 return (
-                  <div key={t.id} className="flex items-center justify-between bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
-                    <div className="min-w-0">
-                      <p className="text-slate-900 text-sm font-medium truncate">{t.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`text-xs px-1.5 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
+                  <div key={t.id} className="bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <p className="text-slate-900 text-sm font-medium truncate">{t.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs px-1.5 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
+                        </div>
+                      </div>
+                      <div className="text-right ml-3 shrink-0">
+                        <p className="text-gold font-bold text-lg">{countMap[t.id] ?? 0}</p>
+                        <p className="text-slate-500 text-xs">fixtures</p>
                       </div>
                     </div>
-                    <div className="text-right ml-3 shrink-0">
-                      <p className="text-gold font-bold text-lg">{countMap[t.id] ?? 0}</p>
-                      <p className="text-slate-500 text-xs">fixtures</p>
-                    </div>
+                    <RecalculateStandingsButton tournamentId={t.id} tournamentName={t.name} />
                   </div>
                 )
               })}
