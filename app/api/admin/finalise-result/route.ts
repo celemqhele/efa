@@ -264,7 +264,6 @@ export async function POST(request: Request) {
       id,
       tournament_id,
       round_type,
-      group_name,
       matchday,
       home_team_id,
       away_team_id,
@@ -275,7 +274,7 @@ export async function POST(request: Request) {
     .single()
 
   if (fixtureError || !fixtureRaw) {
-    return Response.json({ error: 'Fixture not found' }, { status: 404 })
+    return Response.json({ error: fixtureError?.message ?? 'Fixture not found' }, { status: 404 })
   }
 
   const fixture = fixtureRaw as any
