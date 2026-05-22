@@ -31,11 +31,11 @@ function hasWinStreak(form: string) {
 export default async function StandingsPage({ searchParams }: Props) {
   const supabase = await createClient()
 
-  // All visible tournaments
+  // Only active tournaments — completed ones are archived
   const { data: allT } = await supabase
     .from('tournaments')
     .select('id, name, type, status')
-    .in('status', ['active', 'completed', 'upcoming'])
+    .eq('status', 'active')
     .order('created_at', { ascending: false })
 
   const tournaments = allT ?? []
@@ -65,39 +65,76 @@ export default async function StandingsPage({ searchParams }: Props) {
   let knockoutRounds: any[] | null = null
 
   if (selected.type === 'league') {
-    const { data } = await supabase
-      .from('standings')
-      .select(`
-        id, played, wins, draws, losses, goals_for, goals_against,
-        goal_difference, points, form, unbeaten_run,
-        teams(
-          id, name, logo_league_folder, logo_team_slug,
-          profiles!manager_id(username)
-        )
-      `)
-      .eq('tournament_id', selected.id)
-      .order('points', { ascending: false })
-      .order('goal_difference', { ascending: false })
-      .order('goals_for', { ascending: false })
-    standings = data
-
-    // Fallback: if no standings rows yet, show all participants with 0 stats
-    if (!standings || standings.length === 0) {
-      const { data: parts } = await supabase
+    // Compute standings live from confirmed fixtures — no dependency on standings table
+    const [{ data: participants }, { data: confirmedFixtures }] = await Promise.all([
+      supabase
         .from('tournament_participants')
-        .select(`
-          team_id,
-          teams(id, name, logo_league_folder, logo_team_slug, profiles!manager_id(username))
-        `)
+        .select('team_id, teams(id, name, logo_league_folder, logo_team_slug, profiles!manager_id(username))')
+        .eq('tournament_id', selected.id),
+      supabase
+        .from('fixtures')
+        .select('home_team_id, away_team_id, results(home_score, away_score, override_reason)')
         .eq('tournament_id', selected.id)
-      standings = (parts ?? []).map((p: any, idx) => ({
-        id: `fallback-${idx}`,
+        .eq('status', 'confirmed'),
+    ])
+
+    // Seed every team with zero stats
+    const map: Record<string, any> = {}
+    for (const p of participants ?? []) {
+      map[(p as any).team_id] = {
+        id: (p as any).team_id,
+        teams: (p as any).teams,
         played: 0, wins: 0, draws: 0, losses: 0,
-        goals_for: 0, goals_against: 0, goal_difference: 0, points: 0,
-        form: '', unbeaten_run: 0,
-        teams: p.teams,
-      }))
+        goals_for: 0, goals_against: 0, points: 0,
+        form: '', unbeaten_run: 0, clean_sheets: 0,
+      }
     }
+
+    // Accumulate results
+    for (const f of confirmedFixtures ?? []) {
+      const result = Array.isArray((f as any).results) ? (f as any).results[0] : (f as any).results
+      if (!result) continue
+      const { home_score: hs, away_score: as_, override_reason } = result
+      const reason = (override_reason ?? '').toLowerCase()
+      if (reason.includes('both') && reason.includes('absent')) continue
+
+      const homeWin = hs > as_, awayWin = as_ > hs, draw = hs === as_
+      const hr = map[(f as any).home_team_id]
+      const ar = map[(f as any).away_team_id]
+
+      if (hr) {
+        hr.played++
+        hr.wins += homeWin ? 1 : 0
+        hr.draws += draw ? 1 : 0
+        hr.losses += awayWin ? 1 : 0
+        hr.goals_for += hs
+        hr.goals_against += as_
+        hr.points += homeWin ? 3 : draw ? 1 : 0
+        hr.form = (hr.form + (homeWin ? 'W' : draw ? 'D' : 'L')).slice(-5)
+        hr.unbeaten_run = homeWin || draw ? hr.unbeaten_run + 1 : 0
+        hr.clean_sheets += as_ === 0 ? 1 : 0
+      }
+      if (ar) {
+        ar.played++
+        ar.wins += awayWin ? 1 : 0
+        ar.draws += draw ? 1 : 0
+        ar.losses += homeWin ? 1 : 0
+        ar.goals_for += as_
+        ar.goals_against += hs
+        ar.points += awayWin ? 3 : draw ? 1 : 0
+        ar.form = (ar.form + (awayWin ? 'W' : draw ? 'D' : 'L')).slice(-5)
+        ar.unbeaten_run = awayWin || draw ? ar.unbeaten_run + 1 : 0
+        ar.clean_sheets += hs === 0 ? 1 : 0
+      }
+    }
+
+    standings = Object.values(map)
+      .map((s: any) => ({ ...s, goal_difference: s.goals_for - s.goals_against }))
+      .sort((a: any, b: any) => {
+        if (b.points !== a.points) return b.points - a.points
+        if (b.goal_difference !== a.goal_difference) return b.goal_difference - a.goal_difference
+        return b.goals_for - a.goals_for
+      })
   } else if (selected.type === 'ucl' || selected.type === 'europa') {
     const { data: gs } = await supabase
       .from('group_standings')
