@@ -372,8 +372,18 @@ async function loadFixtureContext(adminSupabase: AdminSupabase, formData: FormDa
     },
   ]
 
+  const adminClient = adminSupabase as unknown as {
+    from: (table: string) => {
+      select: (columns: string) => {
+        eq: (column: string, value: string) => {
+          maybeSingle: () => Promise<{ data: unknown; error: unknown }>
+        }
+      }
+    }
+  }
+
   for (const attempt of tableAttempts) {
-    const { data, error } = await adminSupabase
+    const { data, error } = await adminClient
       .from(attempt.table)
       .select(attempt.select)
       .eq('id', fixtureId)
