@@ -82,7 +82,17 @@ function toNumber(value: unknown): number | null {
 }
 
 function numbersFromString(value: string) {
-  return [...value.replace(/,/g, '').matchAll(/-?\d+(?:\.\d+)?/g)].map((match) => Number(match[0]))
+  const cleaned = value.replace(/,/g, '')
+  const regex = /-?\d+(?:\.\d+)?/g
+  const values: number[] = []
+  let match = regex.exec(cleaned)
+
+  while (match !== null) {
+    values.push(Number(match[0]))
+    match = regex.exec(cleaned)
+  }
+
+  return values
 }
 
 function firstNumberFromKeys(record: Record<string, unknown>, keys: string[]) {
