@@ -223,6 +223,7 @@ export async function POST(request: Request) {
     screenshot_url?: string
     stats?: Partial<Omit<MatchStatsInsert, 'id' | 'result_id'>>
   }
+
   try {
     body = await request.json()
   } catch {
@@ -236,6 +237,7 @@ export async function POST(request: Request) {
 
   let home_score: number
   let away_score: number
+
   if (bothAbsent) {
     home_score = 0
     away_score = 0
@@ -283,13 +285,6 @@ export async function POST(request: Request) {
   const homeTeam = Array.isArray(fixture.home_team) ? fixture.home_team[0] : fixture.home_team
   const awayTeam = Array.isArray(fixture.away_team) ? fixture.away_team[0] : fixture.away_team
 
-  if (homeTeam?.manager_id === user.id || awayTeam?.manager_id === user.id) {
-    return Response.json(
-      { error: 'A different admin must finalise this result.' },
-      { status: 403 }
-    )
-  }
-
   const effectiveOverrideReason = bothAbsent
     ? 'Both teams absent — result void (0–0, no points)'
     : home_absent
@@ -322,9 +317,11 @@ export async function POST(request: Request) {
   // ── Match stats: wipe old rows for this result then insert fresh ────────────
   if (stats && Object.keys(stats).length > 0) {
     await adminSupabase.from('match_stats').delete().eq('result_id', result.id)
+
     const { error: statsError } = await adminSupabase
       .from('match_stats')
       .insert({ result_id: result.id, ...stats })
+
     if (statsError) console.error('Failed to insert match stats:', statsError.message)
   }
 
@@ -337,12 +334,17 @@ export async function POST(request: Request) {
   // ── Absent team tracking ──────────────────────────────────────────────────
   try {
     const absentTeamIds: string[] = []
+
     if (home_absent && fixture.home_team_id) absentTeamIds.push(fixture.home_team_id)
     if (away_absent && fixture.away_team_id) absentTeamIds.push(fixture.away_team_id)
 
     for (const tid of absentTeamIds) {
       const { data: teamRow } = await adminSupabase
-        .from('teams').select('abandon_count').eq('id', tid).single()
+        .from('teams')
+        .select('abandon_count')
+        .eq('id', tid)
+        .single()
+
       await adminSupabase
         .from('teams')
         .update({ abandon_count: (teamRow?.abandon_count ?? 0) + 1 })
@@ -371,9 +373,23 @@ export async function POST(request: Request) {
 
     if (!bothAbsent) {
       if (roundType === 'league' && homeTeamId && awayTeamId) {
-        await updateLeagueStandings(adminSupabase, tournamentId, homeTeamId, awayTeamId, home_score, away_score)
+        await updateLeagueStandings(
+          adminSupabase,
+          tournamentId,
+          homeTeamId,
+          awayTeamId,
+          home_score,
+          away_score
+        )
       } else if (roundType === 'group' && homeTeamId && awayTeamId) {
-        await updateGroupStandings(adminSupabase, tournamentId, homeTeamId, awayTeamId, home_score, away_score)
+        await updateGroupStandings(
+          adminSupabase,
+          tournamentId,
+          homeTeamId,
+          awayTeamId,
+          home_score,
+          away_score
+        )
       }
     }
 
@@ -397,7 +413,9 @@ export async function POST(request: Request) {
           .eq('round_type', 'sf')
 
         const sfTeamIds = new Set<string>(
-          (allSFs ?? []).flatMap((f: any) => [f.home_team_id, f.away_team_id]).filter(Boolean)
+          (allSFs ?? [])
+            .flatMap((f: any) => [f.home_team_id, f.away_team_id])
+            .filter(Boolean)
         )
 
         const { data: groupStandings } = await adminSupabase
@@ -406,17 +424,30 @@ export async function POST(request: Request) {
           .eq('tournament_id', tournamentId)
 
         const eliminated = (groupStandings ?? []).filter((s: any) => !sfTeamIds.has(s.team_id))
+
         const sortedElim = [...eliminated].sort((a: any, b: any) => {
           if (b.points !== a.points) return b.points - a.points
+
           const gdA = (a.goals_for ?? 0) - (a.goals_against ?? 0)
           const gdB = (b.goals_for ?? 0) - (b.goals_against ?? 0)
+
           if (gdB !== gdA) return gdB - gdA
+
           return (b.goals_for ?? 0) - (a.goals_for ?? 0)
         })
+
         const bestEliminated = sortedElim[0]
 
         if (bestEliminated) {
-          await fillFinalSlot(adminSupabase, tournamentId, fixture_id, 1, 0, bestEliminated.team_id, null)
+          await fillFinalSlot(
+            adminSupabase,
+            tournamentId,
+            fixture_id,
+            1,
+            0,
+            bestEliminated.team_id,
+            null
+          )
         }
       } else {
         await fillFinalSlot(
@@ -431,7 +462,14 @@ export async function POST(request: Request) {
       }
     } else if (roundType === 'final') {
       if (!bothAbsent) {
-        await awardTrophy(adminSupabase, tournamentId, home_score, away_score, homeTeamId, awayTeamId)
+        await awardTrophy(
+          adminSupabase,
+          tournamentId,
+          home_score,
+          away_score,
+          homeTeamId,
+          awayTeamId
+        )
       }
     }
   } catch (err) {
@@ -466,7 +504,11 @@ export async function POST(request: Request) {
       type: 'result_confirmed',
       title: notifTitle,
       body: notifBody,
-      data: { fixture_id, home_score: String(home_score), away_score: String(away_score) },
+      data: {
+        fixture_id,
+        home_score: String(home_score),
+        away_score: String(away_score),
+      },
     })
   }
 
@@ -476,7 +518,11 @@ export async function POST(request: Request) {
       type: 'result_confirmed',
       title: notifTitle,
       body: notifBody,
-      data: { fixture_id, home_score: String(home_score), away_score: String(away_score) },
+      data: {
+        fixture_id,
+        home_score: String(home_score),
+        away_score: String(away_score),
+      },
     })
   }
 
