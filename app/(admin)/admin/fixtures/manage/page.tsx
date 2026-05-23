@@ -22,13 +22,18 @@ export default async function FixturesManagePage({
 }) {
   const supabase = await createClient()
 
-  // All tournaments
+  // Active tournaments only
   const { data: tournaments } = await supabase
     .from('tournaments')
     .select('id, name, type, status')
+    .eq('status', 'active')
     .order('created_at', { ascending: false })
 
-  const activeTournamentId = searchParams.tournament ?? tournaments?.[0]?.id ?? ''
+  const requestedTournamentId = searchParams.tournament
+  const activeTournamentId =
+    tournaments?.some((t) => t.id === requestedTournamentId)
+      ? requestedTournamentId
+      : tournaments?.[0]?.id ?? ''
 
   // Fixtures for selected tournament
   const { data: fixtures } = activeTournamentId
