@@ -1,4 +1,4 @@
-﻿import { notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -253,7 +253,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
           <div className="flex items-end gap-5">
             <div className={`rounded-2xl overflow-hidden border-4 shadow-xl ${
               team.logo_team_slug === 'tottenham'
-                ? 'border-[#132257] bg-[#ffffff]'
+                ? 'border-[#132257] bg-[#ffffff] p-1.5'
                 : 'border-navy-card bg-navy'
             }`}>
               <Image
