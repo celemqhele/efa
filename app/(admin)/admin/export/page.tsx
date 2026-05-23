@@ -72,18 +72,42 @@ export default async function ExportPage({ searchParams }: Props) {
     }
 
     if (type === 'results') {
-      const { data } = await supabase
+      // FT on the public fixtures page is stored as status = 'confirmed'.
+      // Fetch those fixtures first, then fetch scores directly from results by fixture_id.
+      // This avoids relying on the nested results join, which can return empty data
+      // depending on the FK relationship PostgREST picks.
+      const { data: ftFixtures } = await supabase
         .from('fixtures')
         .select(`
-          id, matchday, scheduled_date,
+          id, matchday, scheduled_date, status,
           home_team:teams!fixtures_home_team_id_fkey(name, logo_league_folder, logo_team_slug),
-          away_team:teams!fixtures_away_team_id_fkey(name, logo_league_folder, logo_team_slug),
-          results(home_score, away_score)
+          away_team:teams!fixtures_away_team_id_fkey(name, logo_league_folder, logo_team_slug)
         `)
         .eq('tournament_id', activeTournamentId)
         .eq('matchday', selectedMatchday)
+        .eq('status', 'confirmed')
         .order('scheduled_date', { ascending: true })
-      results = (data ?? []).filter((f: any) => (f.results?.length ?? 0) > 0)
+
+      const fixtureIds = (ftFixtures ?? []).map((f: any) => f.id)
+
+      const { data: scoreRows } = fixtureIds.length > 0
+        ? await supabase
+            .from('results')
+            .select('fixture_id, home_score, away_score')
+            .in('fixture_id', fixtureIds)
+        : { data: [] }
+
+      const scoresByFixture: Record<string, { home_score: number; away_score: number }> = {}
+      for (const row of scoreRows ?? []) {
+        scoresByFixture[(row as any).fixture_id] = {
+          home_score: (row as any).home_score,
+          away_score: (row as any).away_score,
+        }
+      }
+
+      results = (ftFixtures ?? [])
+        .map((f: any) => ({ ...f, result: scoresByFixture[f.id] ?? null }))
+        .filter((f: any) => f.result)
     }
 
     if (type === 'standings') {
@@ -180,12 +204,12 @@ export default async function ExportPage({ searchParams }: Props) {
   const card: React.CSSProperties = {
     fontFamily: "'Segoe UI', system-ui, sans-serif",
     width: '600px',
-    background: 'var(--export-card-bg)',
+    background: '#0a1128',
     padding: '32px',
     borderRadius: '12px',
   }
 
-  const rowEven: React.CSSProperties = { background: 'var(--export-row-bg)', borderRadius: '8px' }
+  const rowEven: React.CSSProperties = { background: '#0f1a3d', borderRadius: '8px' }
   const rowOdd: React.CSSProperties = { background: 'transparent' }
 
   function TeamLogoInline({ folder, slug, size = 38 }: { folder?: string | null; slug?: string | null; size?: number }) {
@@ -206,7 +230,7 @@ export default async function ExportPage({ searchParams }: Props) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px 8px', color: 'var(--export-muted)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px 8px', color: '#64748b', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>
           <div style={{ width: '24px', textAlign: 'center' }}>#</div>
           <div style={{ flex: 1, marginLeft: '10px' }}>TEAM</div>
           <div style={{ width: '28px', textAlign: 'center' }}>P</div>
@@ -236,16 +260,16 @@ export default async function ExportPage({ searchParams }: Props) {
                 borderLeft: `3px solid ${borderColor}`,
               }}
             >
-              <div style={{ width: '24px', textAlign: 'center', color: 'var(--export-muted)', fontSize: '12px', fontWeight: 700 }}>{i + 1}</div>
+              <div style={{ width: '24px', textAlign: 'center', color: '#64748b', fontSize: '12px', fontWeight: 700 }}>{i + 1}</div>
               <TeamLogoInline folder={s.team?.logo_league_folder} slug={s.team?.logo_team_slug} size={28} />
-              <div style={{ flex: 1, color: 'var(--export-text)', fontWeight: 600, fontSize: '13px', marginLeft: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ flex: 1, color: '#ffffff', fontWeight: 600, fontSize: '13px', marginLeft: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {s.team?.name ?? '—'}
               </div>
-              <div style={{ width: '28px', textAlign: 'center', color: 'var(--export-soft-text)', fontSize: '12px' }}>{s.played}</div>
-              <div style={{ width: '28px', textAlign: 'center', color: 'var(--export-soft-text)', fontSize: '12px' }}>{s.wins}</div>
-              <div style={{ width: '28px', textAlign: 'center', color: 'var(--export-soft-text)', fontSize: '12px' }}>{s.draws}</div>
-              <div style={{ width: '28px', textAlign: 'center', color: 'var(--export-soft-text)', fontSize: '12px' }}>{s.losses}</div>
-              <div style={{ width: '36px', textAlign: 'center', color: gd >= 0 ? 'var(--export-green)' : 'var(--export-red)', fontSize: '12px', fontWeight: 600 }}>
+              <div style={{ width: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>{s.played}</div>
+              <div style={{ width: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>{s.wins}</div>
+              <div style={{ width: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>{s.draws}</div>
+              <div style={{ width: '28px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>{s.losses}</div>
+              <div style={{ width: '36px', textAlign: 'center', color: gd >= 0 ? '#4ade80' : '#f87171', fontSize: '12px', fontWeight: 600 }}>
                 {gd > 0 ? `+${gd}` : gd}
               </div>
               <div style={{ width: mode === 'group' ? '28px' : '36px', textAlign: 'center', color: accent, fontSize: '15px', fontWeight: 900 }}>{s.points}</div>
@@ -262,41 +286,12 @@ export default async function ExportPage({ searchParams }: Props) {
   }
 
   return (
-    <>
-      <style>{`
-        html:not(.dark) .export-page {
-          --export-card-bg: #ffffff;
-          --export-row-bg: #f8fafc;
-          --export-text: #0f172a;
-          --export-muted: #64748b;
-          --export-muted-strong: #475569;
-          --export-soft-text: #64748b;
-          --export-score-divider: #94a3b8;
-          --export-divider: #e2e8f0;
-          --export-green: #16a34a;
-          --export-red: #dc2626;
-        }
-
-        html.dark .export-page {
-          --export-card-bg: #0a1128;
-          --export-row-bg: #0f1a3d;
-          --export-text: #ffffff;
-          --export-muted: #64748b;
-          --export-muted-strong: #475569;
-          --export-soft-text: #94a3b8;
-          --export-score-divider: #334155;
-          --export-divider: #1e2d5a;
-          --export-green: #4ade80;
-          --export-red: #f87171;
-        }
-      `}</style>
-
-      <div className="export-page space-y-6 text-slate-900 dark:text-slate-100">
+    <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Export</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Generate shareable PNG cards for WhatsApp</p>
+          <h1 className="text-2xl font-bold text-slate-900">Export</h1>
+          <p className="text-slate-400 text-sm mt-1">Generate shareable PNG cards for WhatsApp</p>
         </div>
         <ExportButton filename={filename} />
       </div>
@@ -310,7 +305,7 @@ export default async function ExportPage({ searchParams }: Props) {
             className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-colors border ${
               type === t
                 ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
-                : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
+                : 'text-slate-500 border-slate-200 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
             }`}
           >
             {t}
@@ -328,7 +323,7 @@ export default async function ExportPage({ searchParams }: Props) {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
                 t.id === activeTournamentId
                   ? 'bg-[#c9a84c]/20 text-[#c9a84c] border-[#c9a84c]/60'
-                  : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-[#c9a84c]'
+                  : 'text-slate-500 border-slate-200 hover:text-[#c9a84c]'
               }`}
             >
               {t.name}
@@ -347,7 +342,7 @@ export default async function ExportPage({ searchParams }: Props) {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
                 md === selectedMatchday
                   ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
-                  : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
+                  : 'text-slate-500 border-slate-200 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
               }`}
             >
               MD {md}
@@ -374,7 +369,7 @@ export default async function ExportPage({ searchParams }: Props) {
                 <div style={{ color: accent, fontWeight: 700, fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>
                   {selectedTournament?.name ?? 'EFA'}
                 </div>
-                <div style={{ color: 'var(--export-text)', fontWeight: 900, fontSize: '20px', lineHeight: 1, letterSpacing: '-0.01em' }}>
+                <div style={{ color: '#ffffff', fontWeight: 900, fontSize: '20px', lineHeight: 1, letterSpacing: '-0.01em' }}>
                   {typeLabel}
                 </div>
               </div>
@@ -385,7 +380,7 @@ export default async function ExportPage({ searchParams }: Props) {
           {type === 'fixtures' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {fixtures.length === 0 ? (
-                <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
+                <div style={{ color: '#64748b', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
                   No fixtures found for Matchday {selectedMatchday}
                 </div>
               ) : (
@@ -400,7 +395,7 @@ export default async function ExportPage({ searchParams }: Props) {
                   >
                     {/* Home side — name right-aligned, logo nearest center */}
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingRight: '10px' }}>
-                      <span style={{ color: 'var(--export-text)', fontWeight: 600, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {(f.home_team as any)?.name ?? '—'}
                       </span>
                       <TeamLogoInline folder={(f.home_team as any)?.logo_league_folder} slug={(f.home_team as any)?.logo_team_slug} />
@@ -413,7 +408,7 @@ export default async function ExportPage({ searchParams }: Props) {
                     {/* Away side — logo nearest center, name left-aligned */}
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '10px' }}>
                       <TeamLogoInline folder={(f.away_team as any)?.logo_league_folder} slug={(f.away_team as any)?.logo_team_slug} />
-                      <span style={{ color: 'var(--export-text)', fontWeight: 600, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {(f.away_team as any)?.name ?? '—'}
                       </span>
                     </div>
@@ -421,7 +416,7 @@ export default async function ExportPage({ searchParams }: Props) {
                 ))
               )}
               {fixtureDate && (
-                <div style={{ color: 'var(--export-muted)', fontSize: '11px', textAlign: 'center', marginTop: '10px', letterSpacing: '0.04em' }}>
+                <div style={{ color: '#64748b', fontSize: '11px', textAlign: 'center', marginTop: '10px', letterSpacing: '0.04em' }}>
                   {fixtureDate}
                 </div>
               )}
@@ -432,12 +427,12 @@ export default async function ExportPage({ searchParams }: Props) {
           {type === 'results' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {results.length === 0 ? (
-                <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
+                <div style={{ color: '#64748b', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
                   No results yet for Matchday {selectedMatchday}
                 </div>
               ) : (
                 results.map((f: any, i: number) => {
-                  const r = f.results?.[0]
+                  const r = f.result
                   const homeWon = r && r.home_score > r.away_score
                   const awayWon = r && r.away_score > r.home_score
                   return (
@@ -451,20 +446,20 @@ export default async function ExportPage({ searchParams }: Props) {
                     >
                       {/* Home — name right-aligned, logo nearest center */}
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingRight: '10px' }}>
-                        <span style={{ color: homeWon ? 'var(--export-text)' : 'var(--export-muted)', fontWeight: homeWon ? 700 : 400, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ color: homeWon ? '#ffffff' : '#64748b', fontWeight: homeWon ? 700 : 400, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {(f.home_team as any)?.name ?? '—'}
                         </span>
                         <TeamLogoInline folder={(f.home_team as any)?.logo_league_folder} slug={(f.home_team as any)?.logo_team_slug} />
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '72px', justifyContent: 'center' }}>
-                        <span style={{ color: homeWon ? accent : 'var(--export-text)', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.home_score ?? '?'}</span>
-                        <span style={{ color: 'var(--export-score-divider)', fontWeight: 700, fontSize: '13px' }}>–</span>
-                        <span style={{ color: awayWon ? accent : 'var(--export-text)', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.away_score ?? '?'}</span>
+                        <span style={{ color: homeWon ? accent : '#ffffff', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.home_score ?? '?'}</span>
+                        <span style={{ color: '#334155', fontWeight: 700, fontSize: '13px' }}>–</span>
+                        <span style={{ color: awayWon ? accent : '#ffffff', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.away_score ?? '?'}</span>
                       </div>
                       {/* Away — logo nearest center, name left-aligned */}
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '10px' }}>
                         <TeamLogoInline folder={(f.away_team as any)?.logo_league_folder} slug={(f.away_team as any)?.logo_team_slug} />
-                        <span style={{ color: awayWon ? 'var(--export-text)' : 'var(--export-muted)', fontWeight: awayWon ? 700 : 400, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ color: awayWon ? '#ffffff' : '#64748b', fontWeight: awayWon ? 700 : 400, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {(f.away_team as any)?.name ?? '—'}
                         </span>
                       </div>
@@ -483,11 +478,11 @@ export default async function ExportPage({ searchParams }: Props) {
               <div style={{ display: 'flex', gap: '16px', marginTop: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#c9a84c' }} />
-                  <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>UCL (1–12)</span>
+                  <span style={{ color: '#64748b', fontSize: '10px' }}>UCL (1–12)</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
-                  <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Europa (13–20)</span>
+                  <span style={{ color: '#64748b', fontSize: '10px' }}>Europa (13–20)</span>
                 </div>
               </div>
             </>
@@ -497,7 +492,7 @@ export default async function ExportPage({ searchParams }: Props) {
           {type === 'standings' && selectedTournament?.type !== 'league' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {Object.keys(groupStandings).length === 0 ? (
-                <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
+                <div style={{ color: '#64748b', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
                   No standings data available
                 </div>
               ) : (
@@ -513,7 +508,7 @@ export default async function ExportPage({ searchParams }: Props) {
                   {/* Legend */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#c9a84c' }} />
-                    <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top 2 from each group qualify</span>
+                    <span style={{ color: '#64748b', fontSize: '10px' }}>Top 2 from each group qualify</span>
                   </div>
                 </>
               )}
@@ -521,17 +516,16 @@ export default async function ExportPage({ searchParams }: Props) {
           )}
 
           {/* Footer */}
-          <div style={{ borderTop: '1px solid var(--export-divider)', marginTop: '24px', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px', letterSpacing: '0.06em' }}>
+          <div style={{ borderTop: '1px solid #1e2d5a', marginTop: '24px', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ color: '#475569', fontSize: '10px', letterSpacing: '0.06em' }}>
               EFA — EFOOTBALL FEDERAL ASSOCIATION
             </div>
-            <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px' }}>
+            <div style={{ color: '#475569', fontSize: '10px' }}>
               efa-fxyk.vercel.app
             </div>
           </div>
         </div>
       </div>
-      </div>
-    </>
+    </div>
   )
 }
