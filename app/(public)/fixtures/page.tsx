@@ -95,50 +95,19 @@ export default async function FixturesPage({ searchParams }: PageProps) {
 
   const activeTournament = tournaments?.find((t) => t.id === activeTournamentId)
 
-  // Build matchday map from fixture dates.
-  // Display matchday follows the fixture date, not the stored DB matchday.
-  // This means changing scheduled_date automatically moves a fixture into the matchday for that date.
+  // Build matchday completion map
   const { data: allMdRows } = activeTournamentId
     ? await supabase
         .from('fixtures')
-        .select('id, matchday, scheduled_date, status')
+        .select('matchday, scheduled_date, status')
         .eq('tournament_id', activeTournamentId)
     : { data: null }
-
-  const dateMatchdayScores: Record<string, Record<number, number>> = {}
-
-  for (const f of allMdRows ?? []) {
-    const md = f.matchday ?? 0
-    const dateKey = getDateKey(f.scheduled_date)
-    if (!md || !dateKey) continue
-
-    if (!dateMatchdayScores[dateKey]) dateMatchdayScores[dateKey] = {}
-
-    dateMatchdayScores[dateKey][md] = (dateMatchdayScores[dateKey][md] ?? 0) + 1
-  }
-
-  const dateToMatchday: Record<string, number> = {}
-  for (const [dateKey, scores] of Object.entries(dateMatchdayScores)) {
-    const winner = Object.entries(scores)
-      .map(([md, score]) => ({ md: Number(md), score }))
-      .sort((a, b) => b.score - a.score || b.md - a.md)[0]
-
-    if (winner) dateToMatchday[dateKey] = winner.md
-  }
-
-  function getDisplayMatchday(f: { matchday?: number | null; scheduled_date?: string | null }) {
-    const dateKey = getDateKey(f.scheduled_date ?? null)
-
-    // If this date already belongs to a matchday, use that matchday.
-    // Otherwise fall back to the fixture's stored matchday.
-    return (dateKey && dateToMatchday[dateKey]) || f.matchday || 0
-  }
 
   const mdMap: Record<number, { total: number; done: number }> = {}
   const mdDates: Record<number, string[]> = {}
 
   for (const f of allMdRows ?? []) {
-    const md = getDisplayMatchday(f as any)
+    const md = f.matchday ?? 0
     const dateKey = getDateKey(f.scheduled_date)
 
     if (!md) continue
@@ -153,9 +122,12 @@ export default async function FixturesPage({ searchParams }: PageProps) {
   const sortedMatchdays = Object.keys(mdMap).map(Number).sort((a, b) => a - b)
   const todayKey = getDateKeyFromDate(new Date())
 
-  // Default = today's matchday first, then the next future incomplete matchday.
-  const todayMatchday =
-    sortedMatchdays.find((md) => mdDates[md]?.includes(todayKey)) ?? null
+  // A single calendar day can contain multiple matchdays.
+  // Default load = the FIRST matchday scheduled for today.
+  // Badge logic below marks ALL matchdays scheduled today as Current.
+  const todayMatchdays = sortedMatchdays.filter((md) =>
+    mdDates[md]?.includes(todayKey)
+  )
 
   const nextUpcomingMatchday =
     sortedMatchdays
@@ -164,13 +136,13 @@ export default async function FixturesPage({ searchParams }: PageProps) {
         dateKey: (mdDates[md] ?? []).filter((date) => date >= todayKey).sort()[0] ?? null,
       }))
       .filter((item) => item.dateKey && mdMap[item.md]?.done < mdMap[item.md]?.total)
-      .sort((a, b) => String(a.dateKey).localeCompare(String(b.dateKey)))[0]?.md ?? null
+      .sort((a, b) => String(a.dateKey).localeCompare(String(b.dateKey)) || a.md - b.md)[0]?.md ?? null
 
   const firstIncompleteMatchday =
     sortedMatchdays.find((md) => mdMap[md].done < mdMap[md].total) ?? null
 
   const currentMatchday =
-    todayMatchday ??
+    todayMatchdays[0] ??
     nextUpcomingMatchday ??
     firstIncompleteMatchday ??
     sortedMatchdays[sortedMatchdays.length - 1] ??
@@ -178,9 +150,8 @@ export default async function FixturesPage({ searchParams }: PageProps) {
 
   const selectedMatchday = params.matchday ? parseInt(params.matchday) : currentMatchday
 
-  // Fetch fixtures for the selected display matchday.
-  // We fetch all tournament fixtures first because display matchday is derived from scheduled_date.
-  const { data: rawFixtures } = activeTournamentId
+  // Fetch ALL fixtures for the selected matchday (no status filter)
+  const { data: fixtures } = activeTournamentId
     ? await supabase
         .from('fixtures')
         .select(`
@@ -189,10 +160,9 @@ export default async function FixturesPage({ searchParams }: PageProps) {
           away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
         `)
         .eq('tournament_id', activeTournamentId)
+        .eq('matchday', selectedMatchday)
         .order('scheduled_date', { ascending: true })
     : { data: null }
-
-  const fixtures = (rawFixtures ?? []).filter((f: any) => getDisplayMatchday(f) === selectedMatchday)
 
   // Fetch results separately — PostgREST join on results is unreliable without
   // explicit FK hint, so we query directly and merge by fixture_id.
@@ -225,7 +195,9 @@ export default async function FixturesPage({ searchParams }: PageProps) {
     mdMap[selectedMatchday]?.total > 0 &&
     mdMap[selectedMatchday]?.done === mdMap[selectedMatchday]?.total
 
-  const isCurrentMd = selectedMatchday === currentMatchday
+  const isCurrentMd =
+    todayMatchdays.includes(selectedMatchday) ||
+    selectedMatchday === currentMatchday
 
   return (
     <div className="space-y-6">
@@ -277,7 +249,7 @@ export default async function FixturesPage({ searchParams }: PageProps) {
             <span className="text-sm font-bold text-slate-900">
               {ROUND_LABELS[(fixtures?.[0] as any)?.round_type ?? ''] ?? `Matchday ${selectedMatchday}`}
             </span>
-            {isCurrentMd && !mdComplete && (
+            {isCurrentMd && (
               <span className="ml-2 text-[10px] bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
                 Current
               </span>
