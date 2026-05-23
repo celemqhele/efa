@@ -27,7 +27,7 @@ export default function ExportButton({ filename }: { filename: string }) {
     <button
       onClick={handleDownload}
       disabled={loading}
-      className="px-5 py-2.5 bg-[#c9a84c] text-[#0a1128] font-bold rounded-lg hover:bg-[#e0c06a] transition-colors text-sm disabled:opacity-60"
+      className="px-5 py-2.5 bg-[#c9a84c] text-[#0a1128] font-bold rounded-lg hover:bg-[#e0c06a] transition-colors text-sm disabled:opacity-60 shadow-sm dark:shadow-none focus:outline-none focus:ring-2 focus:ring-[#c9a84c]/40"
     >
       {loading ? 'Generating...' : 'Download PNG'}
     </button>
