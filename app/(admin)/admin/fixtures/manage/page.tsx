@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import FixtureActions from './FixtureActions'
@@ -110,6 +110,8 @@ export default async function FixturesManagePage({
                 {(fixtures ?? []).map((fx: any) => {
                   const result = fx.result?.[0]
                   const statusCls = STATUS_COLOURS[fx.status] ?? STATUS_COLOURS.scheduled
+                  const homeTeam = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
+                  const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
                   return (
                     <tr key={fx.id} className="hover:bg-navy-light/40 transition-colors">
                       <td className="py-3 px-4">
@@ -123,15 +125,15 @@ export default async function FixturesManagePage({
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          {fx.home_team?.logo_league_folder && (
+                          {homeTeam?.logo_league_folder && (
                             <Image
-                              src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')}
-                              alt={fx.home_team.name}
+                              src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'standings_row')}
+                              alt={homeTeam.name}
                               width={28} height={28}
                               className="object-contain shrink-0"
                             />
                           )}
-                          <span className="text-slate-900 font-medium">{fx.home_team?.name}</span>
+                          <span className="text-slate-900 font-medium">{homeTeam?.name}</span>
                         </div>
                       </td>
                       <td className="py-3 px-2 text-center">
@@ -145,15 +147,15 @@ export default async function FixturesManagePage({
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          {fx.away_team?.logo_league_folder && (
+                          {awayTeam?.logo_league_folder && (
                             <Image
-                              src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')}
-                              alt={fx.away_team.name}
+                              src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'standings_row')}
+                              alt={awayTeam.name}
                               width={28} height={28}
                               className="object-contain shrink-0"
                             />
                           )}
-                          <span className="text-slate-900 font-medium">{fx.away_team?.name}</span>
+                          <span className="text-slate-900 font-medium">{awayTeam?.name}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -183,6 +185,10 @@ export default async function FixturesManagePage({
                           fixtureId={fx.id}
                           currentDate={fx.scheduled_date}
                           status={fx.status}
+                          homeTeamId={homeTeam?.id ?? ''}
+                          homeTeamName={homeTeam?.name ?? ''}
+                          awayTeamId={awayTeam?.id ?? ''}
+                          awayTeamName={awayTeam?.name ?? ''}
                         />
                       </td>
                     </tr>
