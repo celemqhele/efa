@@ -64,6 +64,18 @@ function getDateKey(dateStr: string | null): string | null {
   return getDateKeyFromDate(date)
 }
 
+async function getSupabaseTodayKey(supabase: any): Promise<string> {
+  const { data, error } = await supabase.rpc('get_app_time')
+
+  if (!error) {
+    const row = Array.isArray(data) ? data[0] : data
+    if (row?.today_local) return String(row.today_local)
+  }
+
+  // Fallback only if the Supabase RPC has not been created yet.
+  return getDateKeyFromDate(new Date())
+}
+
 export default async function FixturesPage({ searchParams }: PageProps) {
   const supabase = await createClient()
   const params = await searchParams
@@ -120,7 +132,7 @@ export default async function FixturesPage({ searchParams }: PageProps) {
   }
 
   const sortedMatchdays = Object.keys(mdMap).map(Number).sort((a, b) => a - b)
-  const todayKey = getDateKeyFromDate(new Date())
+  const todayKey = await getSupabaseTodayKey(supabase)
 
   // A single calendar day can contain multiple matchdays.
   // Default load = the FIRST matchday scheduled for today.
