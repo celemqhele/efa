@@ -11,9 +11,9 @@ export default async function ManageManagersPage() {
       .from('teams')
       .select('id, name, logo_league_folder, logo_team_slug, manager_id')
       .order('name', { ascending: true }),
-    supabase
+    (supabase as any)
       .from('profiles')
-      .select('id, username, avatar_url, role')
+      .select('id, username, avatar_url, role, whatsapp_number')
       .order('username', { ascending: true }),
   ])
 

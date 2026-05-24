@@ -56,12 +56,12 @@ export default async function AdminDashboardPage() {
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
   const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString()
 
-  const { data: todaysFixtures } = await supabase
+  const { data: todaysFixtures } = await (supabase as any)
     .from('fixtures')
     .select(`
       id, matchday, status, scheduled_date,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug)
+      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, whatsapp_number)),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, whatsapp_number))
     `)
     .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
     .gte('scheduled_date', todayStart)
@@ -274,7 +274,16 @@ export default async function AdminDashboardPage() {
                       <span className={`text-xs px-2 py-0.5 rounded border shrink-0 ${statusCls}`}>
                         {fx.status.replace('_', ' ')}
                       </span>
-                      <DashboardFixtureActions fixtureId={fx.id} status={fx.status} />
+                      <DashboardFixtureActions
+                        fixtureId={fx.id}
+                        status={fx.status}
+                        homeTeamName={fx.home_team?.name}
+                        awayTeamName={fx.away_team?.name}
+                        homeManagerName={fx.home_team?.manager?.username}
+                        homeManagerPhone={fx.home_team?.manager?.whatsapp_number}
+                        awayManagerName={fx.away_team?.manager?.username}
+                        awayManagerPhone={fx.away_team?.manager?.whatsapp_number}
+                      />
                     </div>
                   )
                 })}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import WhatsAppButton from '@/components/ui/WhatsAppButton'
 
 interface Team {
   id: string
@@ -16,6 +17,7 @@ interface Profile {
   username: string
   avatar_url: string | null
   role: string
+  whatsapp_number?: string | null
 }
 
 interface Props {
@@ -34,15 +36,20 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
   const [error, setError] = useState('')
   const [localTeams, setLocalTeams] = useState<Team[]>(teams)
   const [localManagedMap, setLocalManagedMap] = useState<Record<string, Team>>(managedTeamByUser)
+  const [localProfiles, setLocalProfiles] = useState<Profile[]>(profiles)
+
+  // WhatsApp number editing state
+  const [editingWa, setEditingWa] = useState(false)
+  const [waInput, setWaInput] = useState('')
+  const [waSaving, setWaSaving] = useState(false)
+  const [waError, setWaError] = useState('')
 
   const managerProfile = selectedTeam?.manager_id
-    ? profiles.find((p) => p.id === selectedTeam.manager_id) ?? null
+    ? localProfiles.find((p) => p.id === selectedTeam.manager_id) ?? null
     : null
 
-  // Users who are not managing any team (available to assign)
-  const freeUsers = profiles.filter((p) => !localManagedMap[p.id])
-  // Users who already manage a team
-  const busyUsers = profiles.filter((p) => !!localManagedMap[p.id])
+  const freeUsers = localProfiles.filter((p) => !localManagedMap[p.id])
+  const busyUsers = localProfiles.filter((p) => !!localManagedMap[p.id])
 
   async function handleSack(teamId: string) {
     setLoading(true)
@@ -56,7 +63,6 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to remove manager')
 
-      // Update local state
       setLocalTeams((prev) =>
         prev.map((t) => (t.id === teamId ? { ...t, manager_id: null } : t))
       )
@@ -67,6 +73,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
         return next
       })
       setSelectedTeam((t) => (t ? { ...t, manager_id: null } : null))
+      setEditingWa(false)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -86,7 +93,6 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to assign manager')
 
-      // Update local state
       setLocalTeams((prev) =>
         prev.map((t) => (t.id === teamId ? { ...t, manager_id: userId } : t))
       )
@@ -95,11 +101,43 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
         setLocalManagedMap((prev) => ({ ...prev, [userId]: { ...assignedTeam, manager_id: userId } }))
       }
       setSelectedTeam((t) => (t ? { ...t, manager_id: userId } : null))
+      setEditingWa(false)
     } catch (err: any) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleSaveWa(userId: string) {
+    setWaSaving(true)
+    setWaError('')
+    try {
+      const res = await fetch('/api/admin/managers/set-whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, whatsapp_number: waInput }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to save')
+
+      // Update local profile so WA button appears immediately
+      setLocalProfiles((prev) =>
+        prev.map((p) => p.id === userId ? { ...p, whatsapp_number: data.whatsapp_number } : p)
+      )
+      setEditingWa(false)
+      setWaInput('')
+    } catch (err: any) {
+      setWaError(err.message)
+    } finally {
+      setWaSaving(false)
+    }
+  }
+
+  function openEditWa(currentNumber: string | null | undefined) {
+    setWaInput(currentNumber ?? '')
+    setWaError('')
+    setEditingWa(true)
   }
 
   const managedCount = localTeams.filter((t) => t.manager_id).length
@@ -125,18 +163,18 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {localTeams.map((team) => {
             const isSelected = selectedTeam?.id === team.id
-            const manager = team.manager_id ? profiles.find((p) => p.id === team.manager_id) : null
+            const manager = team.manager_id ? localProfiles.find((p) => p.id === team.manager_id) : null
+            const hasWa = !!manager?.whatsapp_number
             return (
               <button
                 key={team.id}
-                onClick={() => { setSelectedTeam(team); setError('') }}
+                onClick={() => { setSelectedTeam(team); setError(''); setEditingWa(false) }}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl border text-left transition-all ${
                   isSelected
                     ? 'border-gold bg-gold/10 shadow-[0_0_12px_rgba(201,168,76,0.15)]'
                     : 'border-slate-200 bg-white hover:border-gold/40 hover:bg-gold/5'
                 }`}
               >
-                {/* Logo */}
                 <div className="w-10 h-10 shrink-0 flex items-center justify-center rounded-lg">
                   {team.logo_league_folder && team.logo_team_slug ? (
                     <Image
@@ -151,17 +189,20 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                   )}
                 </div>
 
-                {/* Name + manager */}
                 <div className="flex-1 min-w-0">
                   <p className="text-slate-900 text-sm font-semibold truncate">{team.name}</p>
                   {manager ? (
-                    <p className="text-green-600 text-xs truncate">{manager.username}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-green-600 text-xs truncate">{manager.username}</p>
+                      {hasWa && (
+                        <span className="text-[#25D366] text-[10px]">●</span>
+                      )}
+                    </div>
                   ) : (
                     <p className="text-slate-400 text-xs italic">No manager</p>
                   )}
                 </div>
 
-                {/* Status dot */}
                 <span className={`w-2 h-2 rounded-full shrink-0 ${team.manager_id ? 'bg-green-400' : 'bg-slate-300'}`} />
               </button>
             )
@@ -209,41 +250,104 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
 
             {/* Current manager */}
             {selectedTeam.manager_id && managerProfile ? (
-              <div>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-3">Current Manager</p>
-                <div className="flex items-center gap-3 rounded-xl px-4 py-3 border border-slate-200">
-                  {managerProfile.avatar_url ? (
-                    <Image
-                      src={managerProfile.avatar_url}
-                      alt={managerProfile.username}
-                      width={40} height={40}
-                      className="rounded-full object-contain bg-white"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center shrink-0">
-                      <span className="text-gold font-bold text-sm">
-                        {managerProfile.username[0].toUpperCase()}
-                      </span>
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Current Manager</p>
+
+                <div className="rounded-xl px-4 py-3 border border-slate-200 space-y-3">
+                  {/* Manager info row */}
+                  <div className="flex items-center gap-3">
+                    {managerProfile.avatar_url ? (
+                      <Image
+                        src={managerProfile.avatar_url}
+                        alt={managerProfile.username}
+                        width={40} height={40}
+                        className="rounded-full object-contain bg-white"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center shrink-0">
+                        <span className="text-gold font-bold text-sm">
+                          {managerProfile.username[0].toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-slate-900 font-semibold">{managerProfile.username}</p>
+                      <p className="text-slate-400 text-xs capitalize">{managerProfile.role}</p>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-slate-900 font-semibold">{managerProfile.username}</p>
-                    <p className="text-slate-400 text-xs capitalize">{managerProfile.role}</p>
+                    <button
+                      onClick={() => handleSack(selectedTeam.id)}
+                      disabled={loading}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
+                    >
+                      {loading ? 'Removing…' : 'Remove'}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleSack(selectedTeam.id)}
-                    disabled={loading}
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
-                  >
-                    {loading ? 'Removing…' : 'Remove'}
-                  </button>
+
+                  {/* WhatsApp section */}
+                  <div className="pt-2 border-t border-slate-100">
+                    {editingWa ? (
+                      <div className="space-y-2">
+                        <label className="text-xs text-slate-500 font-medium">
+                          WhatsApp number (international, digits only)
+                        </label>
+                        <input
+                          type="tel"
+                          value={waInput}
+                          onChange={(e) => setWaInput(e.target.value)}
+                          placeholder="e.g. 447911123456"
+                          className="input-field text-sm py-1.5 w-full"
+                          autoFocus
+                        />
+                        {waError && <p className="text-red-400 text-xs">{waError}</p>}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSaveWa(managerProfile.id)}
+                            disabled={waSaving}
+                            className="btn-gold text-xs py-1.5 flex-1"
+                          >
+                            {waSaving ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => { setEditingWa(false); setWaError('') }}
+                            className="btn-outline text-xs py-1.5 flex-1"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {managerProfile.whatsapp_number ? (
+                          <>
+                            <WhatsAppButton
+                              phone={managerProfile.whatsapp_number}
+                              message={`Hi ${managerProfile.username}! This is the EFA League Admin. `}
+                              label={`Message ${managerProfile.username}`}
+                            />
+                            <button
+                              onClick={() => openEditWa(managerProfile.whatsapp_number)}
+                              className="text-xs text-slate-400 hover:text-slate-600 underline"
+                            >
+                              Edit
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => openEditWa(null)}
+                            className="text-xs text-slate-400 hover:text-[#25D366] border border-dashed border-slate-300 hover:border-[#25D366]/50 rounded-lg px-3 py-1.5 transition-colors"
+                          >
+                            + Add WhatsApp number
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Assign a Manager</p>
 
-                {/* Free users */}
                 {freeUsers.length === 0 && (
                   <p className="text-slate-500 text-sm text-center py-4">
                     All registered users are already managing a team.
@@ -279,7 +383,6 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                     </button>
                   ))}
 
-                  {/* Busy users (already have a team) */}
                   {busyUsers.length > 0 && (
                     <>
                       {freeUsers.length > 0 && (
