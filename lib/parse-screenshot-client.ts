@@ -9,26 +9,46 @@ export interface ClientParsedResult {
   stats: Record<string, number>
 }
 
-const STAT_LABEL_MAP: Record<string, string> = {
-  'possession':        'possession',
-  'shots on target':   'shots_on_target',
-  'shots':             'shots',
-  'fouls':             'fouls',
-  'offsides':          'offsides',
-  'corner kicks':      'corners',
-  'corners':           'corners',
-  'free kicks':        'free_kicks',
-  'passes':            'passes',
-  'successful passes': 'successful_passes',
-  'crosses':           'crosses',
-  'interceptions':     'interceptions',
-  'tackles':           'tackles',
-  'saves':             'saves',
-}
+// ── Ordered label map — LONGER / MORE SPECIFIC entries first ─────────────────
+// Order matters: 'passes' would match inside 'successful passes' if it came first.
+const LABEL_MAP: [string, string][] = [
+  ['shots on target',   'shots_on_target'],
+  ['successful passes', 'successful_passes'],
+  ['corner kicks',      'corners'],
+  ['free kicks',        'free_kicks'],
+  ['possession',        'possession'],
+  ['shots',             'shots'],
+  ['fouls',             'fouls'],
+  ['offsides',          'offsides'],
+  ['offside',           'offsides'],
+  ['corners',           'corners'],
+  ['passes',            'passes'],
+  ['crosses',           'crosses'],
+  ['interceptions',     'interceptions'],
+  ['tackles',           'tackles'],
+  ['saves',             'saves'],
+]
 
 function parseNum(s: string): number {
   const n = parseInt(s.replace(/[^0-9]/g, ''), 10)
   return isNaN(n) ? 0 : n
+}
+
+function tryMatchLabel(
+  label: string,
+  homeStr: string,
+  awayStr: string,
+  stats: Record<string, number>,
+) {
+  const norm = label.toLowerCase().trim()
+  for (const [key, statKey] of LABEL_MAP) {
+    if (norm.includes(key)) {
+      stats[`home_${statKey}`] = parseNum(homeStr)
+      stats[`away_${statKey}`] = parseNum(awayStr)
+      return true
+    }
+  }
+  return false
 }
 
 export function parseOcrText(text: string): ClientParsedResult {
@@ -40,7 +60,6 @@ export function parseOcrText(text: string): ClientParsedResult {
   let awayScore = 0
 
   const standardHeader = /^(.+?)\s+(\d+)\s*[-–]\s*(\d+)\s+(.+)$/
-  // eFootball: "TEAM_NAME SCORE [≡ or any non-alphanum] SCORE [rest]"
   const efootballHeader = /^(.+?)\s+(\d{1,2})\s+[^0-9a-zA-Z\s][^\d]*(\d{1,2})/
 
   for (const line of lines) {
@@ -78,27 +97,34 @@ export function parseOcrText(text: string): ClientParsedResult {
     }
   }
 
-  // Parse stat rows: "46% Possession 54%" or "6 Shots 9"
-  const statPipe = /^(\d+%?)\s*[|]\s*(.+?)\s*[|]\s*(\d+%?)/
-  const statAlt  = /^(\d+%?)\s+([A-Za-z][A-Za-z\s]{2,}?)\s+(\d+%?)\s*$/
-
   const stats: Record<string, number> = {}
 
+  // ── Strategy 1: inline "homeNum label awayNum" (with optional pipe separators)
+  // Handles: "46% Possession 54%", "6 | Shots on Target | 9", "143 Passes 138"
+  const reLine = /^(\d+%?)\s*[|]?\s*([A-Za-z][A-Za-z\s]{2,}?)\s*[|]?\s*(\d+%?)\s*$/
   for (const line of lines) {
-    const m = line.match(statPipe) || line.match(statAlt)
-    if (!m) continue
+    const m = line.match(reLine)
+    if (m) tryMatchLabel(m[2], m[1], m[3], stats)
+  }
 
-    const homeVal = m[1]
-    const label   = m[2].toLowerCase().trim()
-    const awayVal = m[3]
-
-    for (const [key, statKey] of Object.entries(STAT_LABEL_MAP)) {
-      if (label.includes(key)) {
-        stats[`home_${statKey}`] = parseNum(homeVal)
-        stats[`away_${statKey}`] = parseNum(awayVal)
-        break
-      }
+  // ── Strategy 2: triplet pattern — each value/label on its own line
+  // Handles OCR that reads: "143\nPasses\n138\n119\nSuccessful Passes\n107\n..."
+  for (let i = 0; i + 2 < lines.length; i++) {
+    const numA = lines[i].match(/^(\d+%?)\s*$/)
+    const numB = lines[i + 2].match(/^(\d+%?)\s*$/)
+    const mid  = lines[i + 1]
+    // mid must look like a stat label (starts with letter, no digits)
+    if (numA && numB && /^[A-Za-z]/.test(mid) && !/\d/.test(mid)) {
+      tryMatchLabel(mid, numA[1], numB[1], stats)
     }
+  }
+
+  // ── Strategy 3: "label homeNum awayNum" (label-first layout)
+  // Handles: "Possession 46% 54%", "Passes 143 138"
+  const reLabel = /^([A-Za-z][A-Za-z\s]{2,}?)\s+(\d+%?)\s+(\d+%?)\s*$/
+  for (const line of lines) {
+    const m = line.match(reLabel)
+    if (m) tryMatchLabel(m[1], m[2], m[3], stats)
   }
 
   return { homeTeamOcr, awayTeamOcr, homeScore, awayScore, stats }
@@ -114,18 +140,20 @@ export async function cropToStatsPanel(file: File): Promise<string> {
       const w = img.naturalWidth
       const h = img.naturalHeight
 
-      const cropLeft   = Math.round(w * 0.32)
-      const cropTop    = Math.round(h * 0.10)
-      const cropWidth  = Math.round(w * 0.36)
-      const cropHeight = Math.round(h * 0.85)
+      // Wider crop to ensure home values (left column) and away values (right column)
+      // are both captured. eFootball stats layout spans roughly 20%–80% of screen width.
+      const cropLeft   = Math.round(w * 0.18)
+      const cropTop    = Math.round(h * 0.08)
+      const cropWidth  = Math.round(w * 0.64)
+      const cropHeight = Math.round(h * 0.88)
 
       const canvas = document.createElement('canvas')
       canvas.width  = cropWidth
       canvas.height = cropHeight
       const ctx = canvas.getContext('2d')!
 
-      // Greyscale + contrast boost via CSS filter on the canvas context
-      ctx.filter = 'grayscale(1) contrast(1.4)'
+      // Greyscale + contrast boost helps Tesseract accuracy
+      ctx.filter = 'grayscale(1) contrast(1.5)'
       ctx.drawImage(img, cropLeft, cropTop, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
       URL.revokeObjectURL(url)
 
