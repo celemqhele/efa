@@ -312,6 +312,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                   label={dna.label}
                   emoji={dna.emoji}
                   color={dna.color}
+                  level={dna.level}
                   isOwnTeam={isCurrentManager}
                 />
               ))}

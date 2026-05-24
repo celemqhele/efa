@@ -19,6 +19,33 @@ export interface DNAProfile {
   label: string
   emoji: string
   color: string
+  level: string   // e.g. '+++++' down to '-----'
+  score: number   // raw 0–1, useful for sorting / display
+}
+
+// ── Score → level mapping ────────────────────────────────────────────────────
+export function scoreToLevel(s: number): string {
+  if (s >= 0.80) return '+++++'
+  if (s >= 0.65) return '++++'
+  if (s >= 0.50) return '+++'
+  if (s >= 0.38) return '++'
+  if (s >= 0.27) return '+'
+  if (s >= 0.18) return '-'
+  if (s >= 0.10) return '--'
+  if (s >= 0.04) return '---'
+  return '----'
+}
+
+export const LEVEL_LABELS: Record<string, { short: string; detail: string }> = {
+  '+++++': { short: 'Pure Expression',  detail: 'Textbook execution — this team is the definitive version of this style.' },
+  '++++':  { short: 'Strong Match',     detail: 'Clearly plays this way with high consistency across games.' },
+  '+++':   { short: 'Solid Match',      detail: 'Consistent traits of this style visible across most games.' },
+  '++':    { short: 'Moderate Match',   detail: 'Clear tendencies toward this style, but not yet dominant.' },
+  '+':     { short: 'Developing',       detail: 'Early signs of this style emerging — becoming more consistent.' },
+  '-':     { short: 'Marginal',         detail: 'Closest available match, but only a slight lean toward this style.' },
+  '--':    { short: 'Weak Match',       detail: 'Minimal traits — may shift to a different style with more data.' },
+  '---':   { short: 'Very Weak',        detail: 'Barely matches this style — likely limited data available.' },
+  '----':  { short: 'Forced Match',     detail: 'Closest available with current data — not a strong fit yet.' },
 }
 
 // ── Soft-threshold helpers ───────────────────────────────────────────────────
@@ -226,7 +253,13 @@ export function getTeamDNA(stats: TeamStats): DNAProfile[] {
   const strong = scored.filter((p) => p.s >= 0.45).slice(0, 3)
   const result = strong.length > 0 ? strong : [scored[0]]
 
-  return result.map(({ label, emoji, color }) => ({ label, emoji, color }))
+  return result.map(({ label, emoji, color, s }) => ({
+    label,
+    emoji,
+    color,
+    level: scoreToLevel(s),
+    score: s,
+  }))
 }
 
 type MatchStatsRow = {
