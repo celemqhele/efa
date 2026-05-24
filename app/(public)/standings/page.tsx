@@ -1,652 +1,892 @@
-﻿export const dynamic = 'force-dynamic'
+import { createClient } from "@/lib/supabase/server";
+import TeamLogo from "@/components/ui/TeamLogo";
+import Link from "next/link";
+import { format, parseISO } from "date-fns";
 
-import { createClient } from '@/lib/supabase/server'
-import TeamLogo from '@/components/ui/TeamLogo'
-import StandingsSwitcher from './StandingsSwitcher'
-import Link from 'next/link'
+export const dynamic = "force-dynamic";
 
-interface Props {
-  searchParams: { t?: string }
+interface PageProps {
+  searchParams: Promise<{ tournament?: string; matchday?: string }>;
 }
 
-function positionStyle(pos: number) {
-  if (pos <= 12) return 'text-[#c9a84c] font-bold'
-  return 'text-blue-400 font-semibold'
+const TOURNAMENT_TYPE_LABELS: Record<string, string> = {
+  league: "PL",
+  ucl: "UCL",
+  europa: "Europa",
+  super_cup: "Super Cup",
+};
+
+const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
+  scheduled: {
+    label: "Scheduled",
+    pill: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+  },
+  awaiting_confirmation: {
+    label: "Awaiting",
+    pill: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  },
+  confirmed: {
+    label: "FT",
+    pill: "bg-green-500/20 text-green-400 border-green-500/30",
+  },
+  abandoned: {
+    label: "Abandoned",
+    pill: "bg-red-500/20 text-red-400 border-red-500/30",
+  },
+};
+
+const ROUND_LABELS: Record<string, string> = {
+  sf: "Semi-Final",
+  final: "Final",
+};
+
+const APP_TIME_ZONE = "Africa/Johannesburg";
+
+function getDateKeyFromDate(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+
+  return `${year}-${month}-${day}`;
 }
 
-function rowHighlight(pos: number) {
-  if (pos <= 12) return 'border-l-2 border-[#c9a84c]'
-  return 'border-l-2 border-blue-500'
+function getDateKey(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const date = parseISO(dateStr);
+  if (Number.isNaN(date.getTime())) return null;
+  return getDateKeyFromDate(date);
 }
 
-function lastSix(form: string) {
-  return form.replace(/[^WDL]/g, '').split('').slice(-6)
+async function getSupabaseTodayKey(supabase: any): Promise<string> {
+  const { data, error } = await supabase.rpc("get_app_time");
+
+  if (!error) {
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row?.today_local) return String(row.today_local);
+  }
+
+  // Fallback only if the Supabase RPC has not been created yet.
+  return getDateKeyFromDate(new Date());
 }
 
-function hasWinStreak(form: string) {
-  const t = form.replace(/[^WDL]/g, '')
-  return t.length >= 3 && t.slice(-3) === 'WWW'
-}
+export default async function FixturesPage({ searchParams }: PageProps) {
+  const supabase = await createClient();
+  const params = await searchParams;
+  const selectedTournamentId = params.tournament ?? null;
 
-export default async function StandingsPage({ searchParams }: Props) {
-  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let isAdmin = false;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    isAdmin = profile?.role === "admin";
+  }
 
-  // Only active tournaments — completed ones are archived
-  const { data: allT } = await supabase
-    .from('tournaments')
-    .select('id, name, type, status')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
+  // Only fetch active tournaments
+  const { data: tournaments } = await supabase
+    .from("tournaments")
+    .select("id, name, type, status")
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
 
-  const tournaments = allT ?? []
+  const requestedTournament = selectedTournamentId
+    ? tournaments?.find((t) => t.id === selectedTournamentId)
+    : null;
 
-  // Selected tournament: URL param → active league → first
-  const selectedId = searchParams.t
-  const selected =
-    (selectedId ? tournaments.find((t) => t.id === selectedId) : null) ??
-    tournaments.find((t) => t.type === 'league' && t.status === 'active') ??
-    tournaments[0]
+  const activeTournamentId =
+    requestedTournament?.id ?? tournaments?.[0]?.id ?? null;
 
-  if (!selected) {
+  const activeTournament = tournaments?.find(
+    (t) => t.id === activeTournamentId,
+  );
+
+  // Build matchday completion map
+  const { data: allMdRows } = activeTournamentId
+    ? await supabase
+        .from("fixtures")
+        .select("matchday, scheduled_date, status")
+        .eq("tournament_id", activeTournamentId)
+    : { data: null };
+
+  const mdMap: Record<number, { total: number; done: number }> = {};
+  const mdDates: Record<number, string[]> = {};
+
+  for (const f of allMdRows ?? []) {
+    const md = f.matchday ?? 0;
+    const dateKey = getDateKey(f.scheduled_date);
+
+    if (!md) continue;
+    if (!mdMap[md]) mdMap[md] = { total: 0, done: 0 };
+    if (!mdDates[md]) mdDates[md] = [];
+
+    mdMap[md].total++;
+    if (f.status === "confirmed") mdMap[md].done++;
+    if (dateKey && !mdDates[md].includes(dateKey)) mdDates[md].push(dateKey);
+  }
+
+  const sortedMatchdays = Object.keys(mdMap)
+    .map(Number)
+    .sort((a, b) => a - b);
+  const todayKey = await getSupabaseTodayKey(supabase);
+
+  // A single calendar day can contain multiple matchdays.
+  // Default load = the FIRST matchday scheduled for today.
+  // Badge logic below marks ALL matchdays scheduled today as Current.
+  const todayMatchdays = sortedMatchdays.filter((md) =>
+    mdDates[md]?.includes(todayKey),
+  );
+
+  const nextUpcomingMatchday =
+    sortedMatchdays
+      .map((md) => ({
+        md,
+        dateKey:
+          (mdDates[md] ?? []).filter((date) => date >= todayKey).sort()[0] ??
+          null,
+      }))
+      .filter(
+        (item) => item.dateKey && mdMap[item.md]?.done < mdMap[item.md]?.total,
+      )
+      .sort(
+        (a, b) =>
+          String(a.dateKey).localeCompare(String(b.dateKey)) || a.md - b.md,
+      )[0]?.md ?? null;
+
+  const firstIncompleteMatchday =
+    sortedMatchdays.find((md) => mdMap[md].done < mdMap[md].total) ?? null;
+
+  const currentMatchday =
+    todayMatchdays[0] ??
+    nextUpcomingMatchday ??
+    firstIncompleteMatchday ??
+    sortedMatchdays[sortedMatchdays.length - 1] ??
+    1;
+
+  const selectedMatchday = params.matchday
+    ? parseInt(params.matchday)
+    : currentMatchday;
+
+  // Fetch ALL fixtures for the selected matchday (no status filter)
+  const { data: fixtures } = activeTournamentId
+    ? await supabase
+        .from("fixtures")
+        .select(
+          `
+          id, matchday, scheduled_date, status, round_type, leg,
+          home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+          away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
+        `,
+        )
+        .eq("tournament_id", activeTournamentId)
+        .eq("matchday", selectedMatchday)
+        .order("scheduled_date", { ascending: true })
+    : { data: null };
+
+  // Fetch results separately — PostgREST join on results is unreliable without
+  // explicit FK hint, so we query directly and merge by fixture_id.
+  const fixtureIds = (fixtures ?? []).map((f: any) => f.id);
+  const { data: resultsData } =
+    fixtureIds.length > 0
+      ? await supabase
+          .from("results")
+          .select("fixture_id, home_score, away_score")
+          .in("fixture_id", fixtureIds)
+      : { data: [] };
+
+  const resultsByFixture: Record<
+    string,
+    { home_score: number; away_score: number }
+  > = {};
+  for (const r of resultsData ?? []) {
+    resultsByFixture[r.fixture_id] = r;
+  }
+
+  const isLeagueTournament = activeTournament?.type === "league";
+  const isGroupTournament =
+    activeTournament?.type === "ucl" || activeTournament?.type === "europa";
+
+  // Build public standings from tournament_participants first.
+  // This is important for UCL/Europa because teams with 0 games played must still appear.
+  const { data: participantRows } =
+    activeTournamentId && (isLeagueTournament || isGroupTournament)
+      ? await supabase
+          .from("tournament_participants")
+          .select("team_id, group_name")
+          .eq("tournament_id", activeTournamentId)
+      : { data: [] };
+
+  const cleanGroupName = (value: unknown): string | null => {
+    const raw = String(value ?? "").trim();
+    if (!raw) return null;
+    return raw.replace(/^group\s+/i, "").trim() || null;
+  };
+
+  const { data: allGroupFixtureRows } =
+    activeTournamentId && isGroupTournament
+      ? await supabase
+          .from("fixtures")
+          .select("id, home_team_id, away_team_id, round_type")
+          .eq("tournament_id", activeTournamentId)
+          .eq("round_type", "group")
+      : { data: [] };
+
+  const participantTeamIds = Array.from(
+    new Set((participantRows ?? []).map((p: any) => p.team_id).filter(Boolean)),
+  );
+
+  const groupFixtureTeamIds = Array.from(
+    new Set(
+      (allGroupFixtureRows ?? [])
+        .flatMap((f: any) => [f.home_team_id, f.away_team_id])
+        .filter(Boolean),
+    ),
+  );
+
+  const standingTeamIds = Array.from(
+    new Set([
+      ...participantTeamIds,
+      ...(isGroupTournament ? groupFixtureTeamIds : []),
+    ]),
+  );
+
+  const { data: participantTeams } =
+    standingTeamIds.length > 0
+      ? await supabase
+          .from("teams")
+          .select("id, name, logo_league_folder, logo_team_slug")
+          .in("id", standingTeamIds)
+      : { data: [] };
+
+  const teamById: Record<string, any> = {};
+  for (const team of participantTeams ?? []) {
+    teamById[(team as any).id] = team;
+  }
+
+  const participantGroupByTeam: Record<string, string> = {};
+  for (const p of participantRows ?? []) {
+    const teamId = (p as any).team_id;
+    const groupName = cleanGroupName((p as any).group_name);
+    if (!teamId || !groupName) continue;
+    participantGroupByTeam[teamId] = groupName;
+  }
+
+  // UCL can miss 0-played teams from group_standings/participants.
+  // Infer group membership from every scheduled group fixture, then apply any known
+  // tournament_participants.group_name labels on top.
+  const groupByTeamFromFixtures: Record<string, string> = {};
+  if (isGroupTournament) {
+    const parent: Record<string, string> = {};
+
+    const find = (teamId: string): string => {
+      if (!parent[teamId]) parent[teamId] = teamId;
+      if (parent[teamId] !== teamId) parent[teamId] = find(parent[teamId]);
+      return parent[teamId];
+    };
+
+    const union = (a: string, b: string) => {
+      const rootA = find(a);
+      const rootB = find(b);
+      if (rootA !== rootB) parent[rootB] = rootA;
+    };
+
+    for (const teamId of standingTeamIds) {
+      if (teamId) find(teamId);
+    }
+
+    for (const f of allGroupFixtureRows ?? []) {
+      const homeId = (f as any).home_team_id;
+      const awayId = (f as any).away_team_id;
+      if (homeId && awayId) union(homeId, awayId);
+    }
+
+    const teamsByRoot: Record<string, string[]> = {};
+    for (const teamId of standingTeamIds) {
+      if (!teamId) continue;
+      const root = find(teamId);
+      if (!teamsByRoot[root]) teamsByRoot[root] = [];
+      teamsByRoot[root].push(teamId);
+    }
+
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const usedNames = new Set(Object.values(participantGroupByTeam));
+    let nextAutoIndex = 0;
+
+    for (const teamIds of Object.values(teamsByRoot)) {
+      const knownName = teamIds
+        .map((teamId) => participantGroupByTeam[teamId])
+        .filter(Boolean)
+        .sort()[0];
+
+      let groupName = knownName;
+      if (!groupName) {
+        while (
+          usedNames.has(alphabet[nextAutoIndex] ?? String(nextAutoIndex + 1))
+        ) {
+          nextAutoIndex++;
+        }
+        groupName = alphabet[nextAutoIndex] ?? String(nextAutoIndex + 1);
+        usedNames.add(groupName);
+        nextAutoIndex++;
+      }
+
+      for (const teamId of teamIds) {
+        groupByTeamFromFixtures[teamId] = groupName;
+      }
+    }
+  }
+
+  const { data: standingsFixtures } =
+    activeTournamentId && (isLeagueTournament || isGroupTournament)
+      ? await supabase
+          .from("fixtures")
+          .select("id, home_team_id, away_team_id, round_type")
+          .eq("tournament_id", activeTournamentId)
+          .eq("status", "confirmed")
+      : { data: [] };
+
+  const standingsFixtureIds = (standingsFixtures ?? []).map((f: any) => f.id);
+
+  const { data: standingsResultRows } =
+    standingsFixtureIds.length > 0
+      ? await supabase
+          .from("results")
+          .select("fixture_id, home_score, away_score, override_reason")
+          .in("fixture_id", standingsFixtureIds)
+      : { data: [] };
+
+  const standingsResultsByFixture: Record<
+    string,
+    { home_score: number; away_score: number; override_reason?: string | null }
+  > = {};
+  for (const r of standingsResultRows ?? []) {
+    standingsResultsByFixture[(r as any).fixture_id] = {
+      home_score: (r as any).home_score,
+      away_score: (r as any).away_score,
+      override_reason: (r as any).override_reason,
+    };
+  }
+
+  const createStandingRow = (teamId: string, groupName?: string | null) => ({
+    id: groupName ? `${groupName}-${teamId}` : teamId,
+    team_id: teamId,
+    group_name: groupName ?? null,
+    team: teamById[teamId] ?? null,
+    played: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    goals_for: 0,
+    goals_against: 0,
+    points: 0,
+  });
+
+  const applyResultToRows = (
+    homeRow: any,
+    awayRow: any,
+    homeScore: number,
+    awayScore: number,
+  ) => {
+    const homeWin = homeScore > awayScore;
+    const awayWin = awayScore > homeScore;
+    const draw = homeScore === awayScore;
+
+    homeRow.played++;
+    awayRow.played++;
+
+    homeRow.wins += homeWin ? 1 : 0;
+    homeRow.draws += draw ? 1 : 0;
+    homeRow.losses += awayWin ? 1 : 0;
+    homeRow.goals_for += homeScore;
+    homeRow.goals_against += awayScore;
+    homeRow.points += homeWin ? 3 : draw ? 1 : 0;
+
+    awayRow.wins += awayWin ? 1 : 0;
+    awayRow.draws += draw ? 1 : 0;
+    awayRow.losses += homeWin ? 1 : 0;
+    awayRow.goals_for += awayScore;
+    awayRow.goals_against += homeScore;
+    awayRow.points += awayWin ? 3 : draw ? 1 : 0;
+  };
+
+  const sortStandingRows = (rows: any[]) =>
+    rows.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+
+      const gdA = (a.goals_for ?? 0) - (a.goals_against ?? 0);
+      const gdB = (b.goals_for ?? 0) - (b.goals_against ?? 0);
+      if (gdB !== gdA) return gdB - gdA;
+
+      if ((b.goals_for ?? 0) !== (a.goals_for ?? 0))
+        return (b.goals_for ?? 0) - (a.goals_for ?? 0);
+
+      return String(a.team?.name ?? "").localeCompare(
+        String(b.team?.name ?? ""),
+      );
+    });
+
+  let leagueStandings: any[] = [];
+  const groupStandings: Record<string, any[]> = {};
+
+  if (isLeagueTournament) {
+    const leagueMap: Record<string, any> = {};
+
+    for (const p of participantRows ?? []) {
+      const teamId = (p as any).team_id;
+      if (!teamId) continue;
+      leagueMap[teamId] = createStandingRow(teamId);
+    }
+
+    for (const f of standingsFixtures ?? []) {
+      const fixture = f as any;
+      if (fixture.round_type && fixture.round_type !== "league") continue;
+
+      const result = standingsResultsByFixture[fixture.id];
+      if (!result) continue;
+
+      const reason = (result.override_reason ?? "").toLowerCase();
+      if (reason.includes("both") && reason.includes("absent")) continue;
+
+      const homeRow = leagueMap[fixture.home_team_id];
+      const awayRow = leagueMap[fixture.away_team_id];
+      if (!homeRow || !awayRow) continue;
+
+      applyResultToRows(homeRow, awayRow, result.home_score, result.away_score);
+    }
+
+    leagueStandings = sortStandingRows(Object.values(leagueMap));
+  }
+
+  if (isGroupTournament) {
+    const groupMap: Record<string, Record<string, any>> = {};
+
+    for (const teamId of standingTeamIds) {
+      if (!teamId) continue;
+
+      const groupName =
+        groupByTeamFromFixtures[teamId] ??
+        participantGroupByTeam[teamId] ??
+        "A";
+
+      if (!groupMap[groupName]) groupMap[groupName] = {};
+      groupMap[groupName][teamId] = createStandingRow(teamId, groupName);
+    }
+
+    for (const f of standingsFixtures ?? []) {
+      const fixture = f as any;
+      if (fixture.round_type !== "group") continue;
+
+      const result = standingsResultsByFixture[fixture.id];
+      if (!result) continue;
+
+      const reason = (result.override_reason ?? "").toLowerCase();
+      if (reason.includes("both") && reason.includes("absent")) continue;
+
+      const homeGroup =
+        groupByTeamFromFixtures[fixture.home_team_id] ??
+        participantGroupByTeam[fixture.home_team_id] ??
+        "A";
+      const awayGroup =
+        groupByTeamFromFixtures[fixture.away_team_id] ??
+        participantGroupByTeam[fixture.away_team_id] ??
+        homeGroup;
+
+      if (!groupMap[homeGroup]?.[fixture.home_team_id]) {
+        if (!groupMap[homeGroup]) groupMap[homeGroup] = {};
+        groupMap[homeGroup][fixture.home_team_id] = createStandingRow(
+          fixture.home_team_id,
+          homeGroup,
+        );
+      }
+      if (!groupMap[awayGroup]?.[fixture.away_team_id]) {
+        if (!groupMap[awayGroup]) groupMap[awayGroup] = {};
+        groupMap[awayGroup][fixture.away_team_id] = createStandingRow(
+          fixture.away_team_id,
+          awayGroup,
+        );
+      }
+
+      const homeRow = groupMap[homeGroup][fixture.home_team_id];
+      const awayRow = groupMap[awayGroup][fixture.away_team_id];
+
+      applyResultToRows(homeRow, awayRow, result.home_score, result.away_score);
+    }
+
+    for (const [groupName, rowsByTeam] of Object.entries(groupMap)) {
+      groupStandings[groupName] = sortStandingRows(Object.values(rowsByTeam));
+    }
+  }
+
+  function formatDate(dateStr: string | null): string {
+    if (!dateStr) return "TBD";
+    try {
+      return format(parseISO(dateStr), "EEE d MMM yyyy");
+    } catch {
+      return dateStr;
+    }
+  }
+
+  const prevMd =
+    sortedMatchdays.filter((md) => md < selectedMatchday).at(-1) ?? null;
+  const nextMd =
+    sortedMatchdays.filter((md) => md > selectedMatchday)[0] ?? null;
+
+  const mdComplete =
+    mdMap[selectedMatchday]?.total > 0 &&
+    mdMap[selectedMatchday]?.done === mdMap[selectedMatchday]?.total;
+
+  const isCurrentMd =
+    todayMatchdays.includes(selectedMatchday) ||
+    selectedMatchday === currentMatchday;
+
+  function PublicStandingsTable({
+    rows,
+    mode,
+  }: {
+    rows: any[];
+    mode: "league" | "group";
+  }) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Standings</h1>
-        <div className="card p-12 text-center">
-          <p className="text-4xl mb-4">🏆</p>
-          <p className="text-slate-500 text-sm">No active competitions yet.</p>
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="grid grid-cols-[34px_1fr_32px_32px_32px_32px_42px_44px] items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
+          <span className="text-center">#</span>
+          <span>Team</span>
+          <span className="text-center">P</span>
+          <span className="text-center">W</span>
+          <span className="text-center">D</span>
+          <span className="text-center">L</span>
+          <span className="text-center">GD</span>
+          <span className="text-center text-[#c9a84c]">Pts</span>
         </div>
+
+        {rows.map((row: any, index: number) => {
+          const gd = (row.goals_for ?? 0) - (row.goals_against ?? 0);
+          const qualificationBorder =
+            mode === "league"
+              ? index < 12
+                ? "border-l-[#c9a84c]"
+                : index < 20
+                  ? "border-l-blue-500"
+                  : "border-l-transparent"
+              : index < 2
+                ? "border-l-[#c9a84c]"
+                : "border-l-transparent";
+
+          return (
+            <div
+              key={row.id ?? `${row.team_id}-${index}`}
+              className={`grid grid-cols-[34px_1fr_32px_32px_32px_32px_42px_44px] items-center gap-2 px-3 py-2 text-xs border-l-4 ${qualificationBorder} ${index % 2 === 0 ? "bg-slate-50" : "bg-white"}`}
+            >
+              <span className="text-center font-bold text-slate-500">
+                {index + 1}
+              </span>
+
+              <div className="flex items-center gap-2 min-w-0">
+                {row.team?.logo_league_folder && (
+                  <TeamLogo
+                    leagueFolder={row.team.logo_league_folder}
+                    teamSlug={row.team.logo_team_slug}
+                    context="standings_row"
+                    alt={row.team.name}
+                    className="w-7 h-7 shrink-0"
+                  />
+                )}
+                <span className="font-semibold text-slate-900 truncate">
+                  {row.team?.name ?? "Unknown team"}
+                </span>
+                {mode === "group" && index < 2 && (
+                  <span className="text-[9px] font-black text-[#c9a84c] border border-[#c9a84c]/30 rounded px-1 py-0.5">
+                    Q
+                  </span>
+                )}
+              </div>
+
+              <span className="text-center text-slate-600">{row.played}</span>
+              <span className="text-center text-slate-600">{row.wins}</span>
+              <span className="text-center text-slate-600">{row.draws}</span>
+              <span className="text-center text-slate-600">{row.losses}</span>
+              <span
+                className={`text-center font-semibold ${gd >= 0 ? "text-green-600" : "text-red-500"}`}
+              >
+                {gd > 0 ? `+${gd}` : gd}
+              </span>
+              <span className="text-center font-black text-[#c9a84c]">
+                {row.points}
+              </span>
+            </div>
+          );
+        })}
       </div>
-    )
+    );
   }
-
-  // Fetch based on type
-  let standings: any[] | null = null
-  const groupStandings: Record<string, any[]> = {}
-  let knockoutRounds: any[] | null = null
-
-  if (selected.type === 'league') {
-    // Compute standings live from confirmed fixtures — no dependency on standings table
-    const [{ data: participants }, { data: confirmedFixtures }] = await Promise.all([
-      supabase
-        .from('tournament_participants')
-        .select('team_id, teams(id, name, logo_league_folder, logo_team_slug, profiles!manager_id(username))')
-        .eq('tournament_id', selected.id),
-      supabase
-        .from('fixtures')
-        .select('home_team_id, away_team_id, results(home_score, away_score, override_reason)')
-        .eq('tournament_id', selected.id)
-        .eq('status', 'confirmed'),
-    ])
-
-    // Seed every team with zero stats
-    const map: Record<string, any> = {}
-    for (const p of participants ?? []) {
-      map[(p as any).team_id] = {
-        id: (p as any).team_id,
-        teams: (p as any).teams,
-        played: 0, wins: 0, draws: 0, losses: 0,
-        goals_for: 0, goals_against: 0, points: 0,
-        form: '', unbeaten_run: 0, clean_sheets: 0,
-      }
-    }
-
-    // Accumulate results
-    for (const f of confirmedFixtures ?? []) {
-      const result = Array.isArray((f as any).results) ? (f as any).results[0] : (f as any).results
-      if (!result) continue
-      const { home_score: hs, away_score: as_, override_reason } = result
-      const reason = (override_reason ?? '').toLowerCase()
-      if (reason.includes('both') && reason.includes('absent')) continue
-
-      const homeWin = hs > as_, awayWin = as_ > hs, draw = hs === as_
-      const hr = map[(f as any).home_team_id]
-      const ar = map[(f as any).away_team_id]
-
-      if (hr) {
-        hr.played++
-        hr.wins += homeWin ? 1 : 0
-        hr.draws += draw ? 1 : 0
-        hr.losses += awayWin ? 1 : 0
-        hr.goals_for += hs
-        hr.goals_against += as_
-        hr.points += homeWin ? 3 : draw ? 1 : 0
-        hr.form = (hr.form + (homeWin ? 'W' : draw ? 'D' : 'L')).slice(-5)
-        hr.unbeaten_run = homeWin || draw ? hr.unbeaten_run + 1 : 0
-        hr.clean_sheets += as_ === 0 ? 1 : 0
-      }
-      if (ar) {
-        ar.played++
-        ar.wins += awayWin ? 1 : 0
-        ar.draws += draw ? 1 : 0
-        ar.losses += homeWin ? 1 : 0
-        ar.goals_for += as_
-        ar.goals_against += hs
-        ar.points += awayWin ? 3 : draw ? 1 : 0
-        ar.form = (ar.form + (awayWin ? 'W' : draw ? 'D' : 'L')).slice(-5)
-        ar.unbeaten_run = awayWin || draw ? ar.unbeaten_run + 1 : 0
-        ar.clean_sheets += hs === 0 ? 1 : 0
-      }
-    }
-
-    standings = Object.values(map)
-      .map((s: any) => ({ ...s, goal_difference: s.goals_for - s.goals_against }))
-      .sort((a: any, b: any) => {
-        if (b.points !== a.points) return b.points - a.points
-        if (b.goal_difference !== a.goal_difference) return b.goal_difference - a.goal_difference
-        return b.goals_for - a.goals_for
-      })
-  } else if (selected.type === 'ucl' || selected.type === 'europa') {
-    const { data: gs } = await supabase
-      .from('group_standings')
-      .select(`
-        id, group_name, played, wins, draws, losses,
-        goals_for, goals_against, goal_difference, points,
-        teams(id, name, logo_league_folder, logo_team_slug)
-      `)
-      .eq('tournament_id', selected.id)
-      .order('group_name')
-      .order('points', { ascending: false })
-      .order('goal_difference', { ascending: false })
-    for (const row of gs ?? []) {
-      const g = row.group_name ?? 'A'
-      if (!groupStandings[g]) groupStandings[g] = []
-      groupStandings[g].push(row)
-    }
-
-    // Fallback: if no group_standings rows yet, build from participants
-    if (Object.keys(groupStandings).length === 0) {
-      const { data: parts } = await supabase
-        .from('tournament_participants')
-        .select(`team_id, group_name, teams(id, name, logo_league_folder, logo_team_slug)`)
-        .eq('tournament_id', selected.id)
-      for (const p of parts ?? []) {
-        const g = (p as any).group_name ?? 'A'
-        if (!groupStandings[g]) groupStandings[g] = []
-        groupStandings[g].push({
-          id: `fallback-${(p as any).team_id}`,
-          group_name: g,
-          played: 0, wins: 0, draws: 0, losses: 0,
-          goals_for: 0, goals_against: 0, goal_difference: 0, points: 0,
-          teams: (p as any).teams,
-        })
-      }
-    }
-
-    const { data: kr } = await supabase
-      .from('knockout_rounds')
-      .select(`
-        id, round_name, home_agg, away_agg, winner_id,
-        home_team:home_team_id(id, name, logo_league_folder, logo_team_slug),
-        away_team:away_team_id(id, name, logo_league_folder, logo_team_slug)
-      `)
-      .eq('tournament_id', selected.id)
-    knockoutRounds = kr
-
-    // Fallback: if no knockout_rounds yet, read sf/final from fixtures table
-    if (!knockoutRounds?.length) {
-      const { data: kfx } = await supabase
-        .from('fixtures')
-        .select(`
-          id, round_type, status, matchday,
-          home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-          away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-          results(home_score, away_score)
-        `)
-        .eq('tournament_id', selected.id)
-        .in('round_type', ['sf', 'final'])
-        .order('matchday', { ascending: true })
-      if (kfx?.length) {
-        knockoutRounds = (kfx as any[]).map((fx) => {
-          const r = (fx.results as any[])?.[0]
-          const homeScore = r?.home_score ?? null
-          const awayScore = r?.away_score ?? null
-          let winnerId: string | null = null
-          if (fx.status === 'confirmed' && homeScore != null && awayScore != null) {
-            winnerId = homeScore >= awayScore ? fx.home_team?.id ?? null : fx.away_team?.id ?? null
-          }
-          return {
-            id: fx.id,
-            round_name: fx.round_type === 'sf' ? 'Semi Final' : 'Final',
-            home_agg: homeScore,
-            away_agg: awayScore,
-            winner_id: winnerId,
-            home_team: fx.home_team,
-            away_team: fx.away_team,
-          }
-        })
-      }
-    }
-  } else {
-    // Super Cup, custom
-    const { data: kr } = await supabase
-      .from('knockout_rounds')
-      .select(`
-        id, round_name, home_agg, away_agg, winner_id,
-        home_team:home_team_id(id, name, logo_league_folder, logo_team_slug),
-        away_team:away_team_id(id, name, logo_league_folder, logo_team_slug)
-      `)
-      .eq('tournament_id', selected.id)
-    knockoutRounds = kr
-    const { data: s } = await supabase
-      .from('standings')
-      .select(`
-        id, played, wins, draws, losses, goals_for, goals_against,
-        goal_difference, points, form,
-        teams(id, name, logo_league_folder, logo_team_slug, profiles!manager_id(username))
-      `)
-      .eq('tournament_id', selected.id)
-      .order('points', { ascending: false })
-    standings = s
-  }
-
-  const switcherTournaments = tournaments.map((t) => ({
-    id: t.id,
-    name: t.name,
-    type: t.type,
-  }))
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Standings</h1>
-          <p className="text-sm text-[#c9a84c] mt-0.5">{selected.name}</p>
-        </div>
-        {selected.type === 'league' && (
-          <div className="hidden sm:flex flex-col gap-1 text-right shrink-0">
-            <div className="flex items-center gap-1.5 justify-end">
-              <span className="w-3 h-3 rounded-sm bg-[#c9a84c]" />
-              <span className="text-xs text-slate-400">UCL (1–12)</span>
-            </div>
-            <div className="flex items-center gap-1.5 justify-end">
-              <span className="w-3 h-3 rounded-sm bg-blue-500" />
-              <span className="text-xs text-slate-400">Europa (13–20)</span>
-            </div>
-          </div>
+      {/* Page header */}
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Fixtures & Results
+        </h1>
+        {activeTournament && (
+          <p className="text-sm text-[#c9a84c] mt-0.5">
+            {activeTournament.name}
+          </p>
         )}
       </div>
 
-      {/* Switcher — only shown when >1 tournament */}
-      {tournaments.length > 1 && (
-        <StandingsSwitcher tournaments={switcherTournaments} selectedId={selected.id} />
+      {/* Tournament tabs */}
+      {tournaments && tournaments.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {tournaments.map((t) => {
+            const isActive = t.id === activeTournamentId;
+            return (
+              <Link
+                key={t.id}
+                href={`/fixtures?tournament=${t.id}`}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                  isActive
+                    ? "bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]"
+                    : "bg-transparent text-slate-400 border-slate-200 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]"
+                }`}
+              >
+                {TOURNAMENT_TYPE_LABELS[t.type] ?? t.name}
+              </Link>
+            );
+          })}
+        </div>
       )}
 
-      {/* LEAGUE VIEW */}
-      {selected.type === 'league' && (
-        <>
-          {!standings || standings.length === 0 ? (
-            <div className="card p-12 text-center text-slate-500 text-sm">No standings data yet.</div>
+      {/* Matchday navigation */}
+      {sortedMatchdays.length > 1 && (
+        <div className="flex items-center gap-3">
+          {prevMd !== null ? (
+            <Link
+              href={`/fixtures?${activeTournamentId ? `tournament=${activeTournamentId}&` : ""}matchday=${prevMd}`}
+              className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-slate-900 transition-colors"
+            >
+              ← MD {prevMd}
+            </Link>
           ) : (
-            <div className="card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50">
-                      <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider w-8">#</th>
-                      <th className="text-left py-3 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Club</th>
-                      <th className="text-center py-3 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-9">P</th>
-                      <th className="text-center py-3 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-9">W</th>
-                      <th className="text-center py-3 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-9">D</th>
-                      <th className="text-center py-3 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-9">L</th>
-                      <th className="hidden sm:table-cell text-center py-3 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-9">GF</th>
-                      <th className="hidden sm:table-cell text-center py-3 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-9">GA</th>
-                      <th className="text-center py-3 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-9">GD</th>
-                      <th className="text-center py-3 px-2 text-xs font-semibold text-[#c9a84c] uppercase tracking-wider w-10">Pts</th>
-                      <th className="text-left py-3 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider min-w-[120px]">Form</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {standings.map((s: any, idx: number) => {
-                      const pos = idx + 1
-                      const team = s.teams
-                      const managerUsername = team?.profiles?.username ?? null
-                      const formLetters = lastSix(s.form ?? '')
-                      const onFire = hasWinStreak(s.form ?? '')
-                      const unbeaten = s.unbeaten_run >= 5
+            <div className="w-20" />
+          )}
 
-                      return (
-                        <tr
-                          key={s.id}
-                          className={`border-b border-slate-200/60 hover:bg-black/[0.03] transition-colors ${rowHighlight(pos)}`}
-                        >
-                          <td className="py-3 px-3">
-                            <span className={`text-sm ${positionStyle(pos)}`}>{pos}</span>
-                          </td>
-                          <td className="py-2 px-2">
-                            <Link href={`/teams/${team?.id}`} className="flex items-center gap-2.5 min-w-0 group">
-                              {team?.logo_league_folder && (
-                                <div className="flex-shrink-0">
-                                  <TeamLogo
-                                    leagueFolder={team.logo_league_folder}
-                                    teamSlug={team.logo_team_slug}
-                                    context="standings_row"
-                                    alt={team.name}
-                                    className="w-7 h-7"
-                                  />
-                                </div>
-                              )}
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-slate-900 font-semibold text-sm truncate leading-tight group-hover:text-gold transition-colors">
-                                    {team?.name ?? 'Unknown'}
-                                  </span>
-                                  {onFire && <span className="text-base leading-none" title="Win streak">🔥</span>}
-                                  {unbeaten && (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-bold whitespace-nowrap">
-                                      Unbeaten
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[11px] text-slate-500 truncate leading-tight mt-0.5">
-                                  {managerUsername ? `(${managerUsername})` : '(NO MANAGER)'}
-                                </div>
-                              </div>
-                            </Link>
-                          </td>
-                          <td className="py-3 px-2 text-center text-slate-700">{s.played}</td>
-                          <td className="py-3 px-2 text-center text-slate-700">{s.wins}</td>
-                          <td className="py-3 px-2 text-center text-slate-700">{s.draws}</td>
-                          <td className="py-3 px-2 text-center text-slate-700">{s.losses}</td>
-                          <td className="hidden sm:table-cell py-3 px-2 text-center text-slate-700">{s.goals_for}</td>
-                          <td className="hidden sm:table-cell py-3 px-2 text-center text-slate-700">{s.goals_against}</td>
-                          <td className="py-3 px-2 text-center">
-                            <span className={s.goal_difference > 0 ? 'text-green-400' : s.goal_difference < 0 ? 'text-red-400' : 'text-slate-400'}>
-                              {s.goal_difference > 0 ? `+${s.goal_difference}` : s.goal_difference}
-                            </span>
-                          </td>
-                          <td className="py-3 px-2 text-center">
-                            <span className="text-slate-900 font-bold text-sm">{s.points}</span>
-                          </td>
-                          <td className="py-3 px-2">
-                            <div className="flex gap-0.5">
-                              {formLetters.map((r, i) => (
-                                <span
-                                  key={i}
-                                  className={r === 'W' ? 'badge-win' : r === 'D' ? 'badge-draw' : 'badge-loss'}
-                                >
-                                  {r}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+          <div className="flex-1 text-center">
+            <span className="text-sm font-bold text-slate-900">
+              {ROUND_LABELS[(fixtures?.[0] as any)?.round_type ?? ""] ??
+                `Matchday ${selectedMatchday}`}
+            </span>
+            {isCurrentMd && (
+              <span className="ml-2 text-[10px] bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                Current
+              </span>
+            )}
+            {mdComplete && (
+              <span className="ml-2 text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                Complete
+              </span>
+            )}
+          </div>
+
+          {nextMd !== null ? (
+            <Link
+              href={`/fixtures?${activeTournamentId ? `tournament=${activeTournamentId}&` : ""}matchday=${nextMd}`}
+              className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-slate-900 transition-colors"
+            >
+              MD {nextMd} →
+            </Link>
+          ) : (
+            <div className="w-20" />
+          )}
+        </div>
+      )}
+
+      {/* Fixtures list */}
+      {!activeTournamentId ? (
+        <div className="card p-12 text-center">
+          <p className="text-slate-500 text-sm">No active tournaments.</p>
+        </div>
+      ) : (fixtures ?? []).length === 0 ? (
+        <div className="card p-12 text-center">
+          <p className="text-slate-500 text-sm">
+            No fixtures for Matchday {selectedMatchday}.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {(fixtures ?? []).map((f: any) => {
+            const result = resultsByFixture[f.id] ?? null;
+            const statusInfo =
+              STATUS_STYLES[f.status] ?? STATUS_STYLES["scheduled"];
+            const homeWin = result && result.home_score > result.away_score;
+            const awayWin = result && result.away_score > result.home_score;
+            const canSubmit = isAdmin && f.status !== "abandoned";
+
+            return (
+              <div key={f.id} className="flex items-center gap-2">
+                <Link
+                  href={`/fixtures/${f.id}`}
+                  className="card flex-1 flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-black/[0.03] transition-all group"
+                >
+                  {/* Home team */}
+                  <div className="flex-1 flex items-center gap-2.5 min-w-0 justify-end flex-row-reverse sm:flex-row">
+                    <span
+                      className={`text-sm font-semibold truncate text-right sm:text-left ${
+                        homeWin
+                          ? "text-slate-900"
+                          : awayWin
+                            ? "text-slate-400"
+                            : "text-slate-900"
+                      }`}
+                    >
+                      {f.home_team?.name ?? "TBC"}
+                    </span>
+                    {f.home_team?.logo_league_folder && (
+                      <div className="flex-shrink-0">
+                        <TeamLogo
+                          leagueFolder={f.home_team.logo_league_folder}
+                          teamSlug={f.home_team.logo_team_slug}
+                          context="standings_row"
+                          alt={f.home_team.name}
+                          className={`w-8 h-8 ${awayWin ? "opacity-40" : ""}`}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Centre */}
+                  <div className="flex flex-col items-center gap-1 min-w-[80px]">
+                    {result ? (
+                      <span className="text-slate-900 font-bold text-lg leading-none">
+                        {result.home_score}{" "}
+                        <span className="text-slate-500">–</span>{" "}
+                        {result.away_score}
+                      </span>
+                    ) : (
+                      <span className="text-[#c9a84c] font-bold text-sm">
+                        vs
+                      </span>
+                    )}
+                    <span className="text-[10px] text-slate-500 text-center leading-tight">
+                      {formatDate(f.scheduled_date)}
+                    </span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}
+                    >
+                      {statusInfo.label}
+                    </span>
+                  </div>
+
+                  {/* Away team */}
+                  <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                    {f.away_team?.logo_league_folder && (
+                      <div className="flex-shrink-0">
+                        <TeamLogo
+                          leagueFolder={f.away_team.logo_league_folder}
+                          teamSlug={f.away_team.logo_team_slug}
+                          context="standings_row"
+                          alt={f.away_team.name}
+                          className={`w-8 h-8 ${homeWin ? "opacity-40" : ""}`}
+                        />
+                      </div>
+                    )}
+                    <span
+                      className={`text-sm font-semibold truncate ${
+                        awayWin
+                          ? "text-slate-900"
+                          : homeWin
+                            ? "text-slate-400"
+                            : "text-slate-900"
+                      }`}
+                    >
+                      {f.away_team?.name ?? "TBC"}
+                    </span>
+                  </div>
+                </Link>
+
+                {canSubmit && (
+                  <Link
+                    href={`/admin/results/submit?fixture=${f.id}`}
+                    className="shrink-0 px-3 py-2 text-xs font-semibold text-[#c9a84c] border border-[#c9a84c]/30 rounded-lg hover:bg-[#c9a84c]/10 transition-colors whitespace-nowrap"
+                  >
+                    Submit
+                  </Link>
+                )}
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Mobile legend */}
-              <div className="sm:hidden flex flex-wrap gap-3 px-4 py-3 border-t border-slate-200 bg-slate-50">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm bg-[#c9a84c]" />
-                  <span className="text-xs text-slate-400">UCL (1–12)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm bg-blue-500" />
-                  <span className="text-xs text-slate-400">Europa (13–20)</span>
-                </div>
+      {activeTournamentId &&
+        isLeagueTournament &&
+        leagueStandings.length > 0 && (
+          <div className="card p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  League Standings
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  All tournament teams included, even before they play.
+                </p>
               </div>
             </div>
-          )}
-        </>
-      )}
+            <PublicStandingsTable rows={leagueStandings} mode="league" />
+            <div className="flex flex-wrap gap-4 text-[10px] text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-[#c9a84c]" />
+                UCL places
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-blue-500" />
+                Europa places
+              </span>
+            </div>
+          </div>
+        )}
 
-      {/* UCL / EUROPA VIEW — groups + knockout */}
-      {(selected.type === 'ucl' || selected.type === 'europa') && (
-        <div className="space-y-8">
-          {Object.keys(groupStandings).length > 0 && (
+      {activeTournamentId &&
+        isGroupTournament &&
+        Object.keys(groupStandings).length > 0 && (
+          <div className="card p-4 sm:p-5 space-y-5">
             <div>
-              <h2 className="text-base font-bold text-slate-900 mb-4 uppercase tracking-wider text-[#c9a84c]">Group Stage</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(groupStandings).map(([group, rows]) => (
-                  <GroupTable key={group} groupName={group} rows={rows} />
-                ))}
-              </div>
-              <p className="text-xs text-slate-500 mt-3 flex items-center gap-1.5">
-                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-[#c9a84c] shrink-0" />
-                Top 2 from each group advance to the Semi Finals
+              <h2 className="text-lg font-bold text-slate-900">
+                Group Standings
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Built from participants and all group fixtures, so teams with 0
+                games are shown.
               </p>
             </div>
-          )}
-          {knockoutRounds && knockoutRounds.length > 0 && (
-            <KnockoutBracket rounds={knockoutRounds} />
-          )}
-          {Object.keys(groupStandings).length === 0 && !knockoutRounds?.length && (
-            <EmptyComp name={selected.name} />
-          )}
-        </div>
-      )}
 
-      {/* SUPER CUP / CUSTOM */}
-      {selected.type !== 'league' && selected.type !== 'ucl' && selected.type !== 'europa' && (
-        <div className="space-y-6">
-          {knockoutRounds && knockoutRounds.length > 0 && (
-            <KnockoutBracket rounds={knockoutRounds} />
-          )}
-          {standings && standings.length > 0 && (
-            <GenericTable standings={standings} />
-          )}
-          {!knockoutRounds?.length && !standings?.length && (
-            <EmptyComp name={selected.name} />
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
+            {Object.entries(groupStandings)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([groupName, rows]) => (
+                <div key={groupName} className="space-y-2">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#c9a84c]">
+                    Group {groupName}
+                  </h3>
+                  <PublicStandingsTable rows={rows} mode="group" />
+                </div>
+              ))}
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
-function GroupTable({ groupName, rows }: { groupName: string; rows: any[] }) {
-  return (
-    <div className="card overflow-hidden">
-      <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
-        <span className="text-xs font-bold text-[#c9a84c] uppercase tracking-widest">Group {groupName}</span>
-      </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-200">
-            <th className="text-left py-2 px-3 text-xs text-slate-500">Club</th>
-            <th className="text-center py-2 px-1 text-xs text-slate-500 w-7">P</th>
-            <th className="text-center py-2 px-1 text-xs text-slate-500 w-7">W</th>
-            <th className="text-center py-2 px-1 text-xs text-slate-500 w-7">D</th>
-            <th className="text-center py-2 px-1 text-xs text-slate-500 w-7">L</th>
-            <th className="text-center py-2 px-1 text-xs text-slate-500 w-9">GD</th>
-            <th className="text-center py-2 px-2 text-xs text-[#c9a84c] w-9">Pts</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r: any, idx: number) => (
-            <tr key={r.id} className={`border-b border-slate-200/40 ${idx < 2 ? 'border-l-2 border-[#c9a84c]' : 'border-l-2 border-transparent'}`}>
-              <td className="py-2 px-3">
-                <Link href={`/teams/${r.teams?.id}`} className="flex items-center gap-2 group">
-                  {r.teams?.logo_league_folder && (
-                    <TeamLogo
-                      leagueFolder={r.teams.logo_league_folder}
-                      teamSlug={r.teams.logo_team_slug}
-                      context="standings_row"
-                      alt={r.teams.name}
-                      className="w-5 h-5"
-                    />
-                  )}
-                  <span className="text-slate-900 text-xs font-medium truncate group-hover:text-gold transition-colors">{r.teams?.name ?? '—'}</span>
-                  {idx < 2 && (
-                    <span className="text-[10px] text-[#c9a84c] font-bold ml-auto shrink-0">Q</span>
-                  )}
-                </Link>
-              </td>
-              <td className="text-center text-xs text-slate-700 py-2 px-1">{r.played}</td>
-              <td className="text-center text-xs text-slate-700 py-2 px-1">{r.wins}</td>
-              <td className="text-center text-xs text-slate-700 py-2 px-1">{r.draws}</td>
-              <td className="text-center text-xs text-slate-700 py-2 px-1">{r.losses}</td>
-              <td className="text-center text-xs py-2 px-1">
-                <span className={r.goal_difference > 0 ? 'text-green-400' : r.goal_difference < 0 ? 'text-red-400' : 'text-slate-400'}>
-                  {r.goal_difference > 0 ? `+${r.goal_difference}` : r.goal_difference}
-                </span>
-              </td>
-              <td className="text-center py-2 px-2">
-                <span className="text-slate-900 font-bold text-xs">{r.points}</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-const ROUND_ORDER = ['Quarter Final', 'Semi Final', 'Final', 'Super Cup']
-
-function KnockoutBracket({ rounds }: { rounds: any[] }) {
-  const sorted = [...rounds].sort(
-    (a, b) => ROUND_ORDER.indexOf(a.round_name) - ROUND_ORDER.indexOf(b.round_name)
-  )
-  const grouped: Record<string, any[]> = {}
-  for (const r of sorted) {
-    const k = r.round_name ?? 'Round'
-    if (!grouped[k]) grouped[k] = []
-    grouped[k].push(r)
-  }
-
-  return (
-    <div className="space-y-6">
-      {Object.entries(grouped).map(([roundName, matches]) => (
-        <div key={roundName}>
-          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">{roundName}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {matches.map((m: any) => (
-              <MatchCard key={m.id} match={m} />
-            ))}
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+              <span className="w-2.5 h-2.5 rounded-sm bg-[#c9a84c]" />
+              Top 2 qualify
+            </div>
           </div>
-        </div>
-      ))}
+        )}
     </div>
-  )
-}
-
-function MatchCard({ match }: { match: any }) {
-  const home = match.home_team
-  const away = match.away_team
-  const hasScore = match.home_agg != null && match.away_agg != null
-  const winnerId = match.winner_id
-
-  return (
-    <div className="card p-4">
-      <div className="flex items-center gap-3">
-        {/* Home */}
-        <div className={`flex items-center gap-2 flex-1 min-w-0 ${winnerId === away?.id ? 'opacity-50' : ''}`}>
-          {home?.logo_league_folder && (
-            <TeamLogo
-              leagueFolder={home.logo_league_folder}
-              teamSlug={home.logo_team_slug}
-              context="standings_row"
-              alt={home.name}
-              className="w-7 h-7 shrink-0"
-            />
-          )}
-          <span className="text-slate-900 font-semibold text-sm truncate">{home?.name ?? 'TBD'}</span>
-          {winnerId === home?.id && <span className="text-[10px] text-[#c9a84c] font-bold shrink-0">W</span>}
-        </div>
-
-        {/* Score */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {hasScore ? (
-            <>
-              <span className="text-slate-900 font-black text-lg w-6 text-center">{match.home_agg}</span>
-              <span className="text-slate-500 text-sm">–</span>
-              <span className="text-slate-900 font-black text-lg w-6 text-center">{match.away_agg}</span>
-            </>
-          ) : (
-            <span className="text-slate-500 text-sm px-2">vs</span>
-          )}
-        </div>
-
-        {/* Away */}
-        <div className={`flex items-center gap-2 flex-1 min-w-0 justify-end ${winnerId === home?.id ? 'opacity-50' : ''}`}>
-          {winnerId === away?.id && <span className="text-[10px] text-[#c9a84c] font-bold shrink-0">W</span>}
-          <span className="text-slate-900 font-semibold text-sm truncate text-right">{away?.name ?? 'TBD'}</span>
-          {away?.logo_league_folder && (
-            <TeamLogo
-              leagueFolder={away.logo_league_folder}
-              teamSlug={away.logo_team_slug}
-              context="standings_row"
-              alt={away.name}
-              className="w-7 h-7 shrink-0"
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function GenericTable({ standings }: { standings: any[] }) {
-  return (
-    <div className="card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50">
-              <th className="text-left py-3 px-3 text-xs text-slate-400 uppercase w-8">#</th>
-              <th className="text-left py-3 px-2 text-xs text-slate-400 uppercase">Club</th>
-              <th className="text-center py-3 px-2 text-xs text-slate-400 uppercase w-9">P</th>
-              <th className="text-center py-3 px-2 text-xs text-slate-400 uppercase w-9">W</th>
-              <th className="text-center py-3 px-2 text-xs text-slate-400 uppercase w-9">D</th>
-              <th className="text-center py-3 px-2 text-xs text-slate-400 uppercase w-9">L</th>
-              <th className="text-center py-3 px-2 text-xs text-slate-400 uppercase w-9">GD</th>
-              <th className="text-center py-3 px-2 text-xs text-[#c9a84c] uppercase w-10">Pts</th>
-            </tr>
-          </thead>
-          <tbody>
-            {standings.map((s: any, idx: number) => (
-              <tr key={s.id} className="border-b border-slate-200/60 hover:bg-black/[0.03] border-l-2 border-l-transparent">
-                <td className="py-3 px-3 text-slate-400 text-sm">{idx + 1}</td>
-                <td className="py-2 px-2">
-                  <div className="flex items-center gap-2.5">
-                    {s.teams?.logo_league_folder && (
-                      <TeamLogo
-                        leagueFolder={s.teams.logo_league_folder}
-                        teamSlug={s.teams.logo_team_slug}
-                        context="standings_row"
-                        alt={s.teams.name}
-                        className="w-7 h-7"
-                      />
-                    )}
-                    <div>
-                      <div className="text-slate-900 font-semibold text-sm">{s.teams?.name ?? 'Unknown'}</div>
-                      {s.teams?.profiles?.username && (
-                        <div className="text-[11px] text-slate-500">({s.teams.profiles.username})</div>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="py-3 px-2 text-center text-slate-700">{s.played}</td>
-                <td className="py-3 px-2 text-center text-slate-700">{s.wins}</td>
-                <td className="py-3 px-2 text-center text-slate-700">{s.draws}</td>
-                <td className="py-3 px-2 text-center text-slate-700">{s.losses}</td>
-                <td className="py-3 px-2 text-center">
-                  <span className={s.goal_difference > 0 ? 'text-green-400' : s.goal_difference < 0 ? 'text-red-400' : 'text-slate-400'}>
-                    {s.goal_difference > 0 ? `+${s.goal_difference}` : s.goal_difference}
-                  </span>
-                </td>
-                <td className="py-3 px-2 text-center">
-                  <span className="text-slate-900 font-bold text-sm">{s.points}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function EmptyComp({ name }: { name: string }) {
-  return (
-    <div className="card p-12 text-center">
-      <p className="text-slate-500 text-sm">No data available for {name} yet.</p>
-    </div>
-  )
+  );
 }
