@@ -6,6 +6,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamDNA, buildTeamStatsMixed } from '@/lib/dna-engine'
+import DNABadge from '@/components/ui/DNABadge'
 import TeamManagerAdmin from './TeamManagerAdmin'
 import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
@@ -306,12 +307,13 @@ export default async function TeamProfilePage({ params }: PageProps) {
           {dnaProfiles.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5">
               {dnaProfiles.map((dna) => (
-                <span
+                <DNABadge
                   key={dna.label}
-                  className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${dna.color}`}
-                >
-                  {dna.emoji} {dna.label}
-                </span>
+                  label={dna.label}
+                  emoji={dna.emoji}
+                  color={dna.color}
+                  isOwnTeam={isCurrentManager}
+                />
               ))}
             </div>
           )}

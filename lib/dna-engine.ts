@@ -21,139 +21,212 @@ export interface DNAProfile {
   color: string
 }
 
+// ── Soft-threshold helpers ───────────────────────────────────────────────────
+// ramp: 0 at/below `lo`, 1 at/above `hi`, linear between
+function ramp(v: number, lo: number, hi: number): number {
+  if (v <= lo) return 0
+  if (v >= hi) return 1
+  return (v - lo) / (hi - lo)
+}
+// rampDown: 1 at/below `lo`, 0 at/above `hi`
+function rampDown(v: number, lo: number, hi: number): number {
+  return 1 - ramp(v, lo, hi)
+}
+// Add a stat contribution only when the stat was actually captured (> 0)
+function available(stat: number, weight: number, scoreFn: () => number): { pts: number; w: number } {
+  if (stat <= 0) return { pts: 0, w: 0 }
+  return { pts: weight * scoreFn(), w: weight }
+}
+
+// ── Profile definitions (scoring-based, 0–1) ────────────────────────────────
 const DNA_PROFILES: Array<{
   label: string
   emoji: string
   color: string
-  condition: (s: TeamStats) => boolean
+  score: (s: TeamStats) => number
 }> = [
-  // ── Strictest multi-variable profiles first (highest priority) ──────────
   {
     label: 'Elite Dominators',
     emoji: '👑',
     color: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    condition: (s) => {
+    score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
-      return (
-        s.avg_possession >= 53 &&
-        s.avg_passes >= 143 &&
-        pa >= 0.76 &&
-        s.avg_shots_on_target >= 5 &&
-        s.avg_saves <= 3 &&
-        s.avg_goals_against <= 1.0
-      )
+      const items = [
+        available(s.avg_possession,       40, () => ramp(s.avg_possession, 48, 60)),
+        available(s.avg_shots_on_target,  30, () => ramp(s.avg_shots_on_target, 4, 7)),
+        available(s.avg_goals_against,    30, () => rampDown(s.avg_goals_against, 0.6, 1.8)),
+        available(s.avg_passes,           25, () => ramp(s.avg_passes, 135, 155)),
+        available(s.avg_passes,           15, () => ramp(pa, 0.72, 0.82)),
+      ]
+      const totPts = items.reduce((a, i) => a + i.pts, 0)
+      const totW  = items.reduce((a, i) => a + i.w, 0)
+      return totW > 0 ? totPts / totW : 0
     },
   },
   {
     label: 'Tiki-Taka',
     emoji: '🎭',
     color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    condition: (s) => {
+    score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
-      return (
-        s.avg_possession >= 52 &&
-        s.avg_passes >= 140 &&
-        pa >= 0.75 &&
-        s.avg_crosses <= 2
-      )
+      const items = [
+        available(s.avg_possession, 45, () => ramp(s.avg_possession, 50, 62)),
+        available(s.avg_passes,     40, () => ramp(s.avg_passes, 130, 155)),
+        available(s.avg_passes,     25, () => ramp(pa, 0.72, 0.82)),
+        available(s.avg_crosses,    20, () => rampDown(s.avg_crosses, 1, 4)),
+      ]
+      const totPts = items.reduce((a, i) => a + i.pts, 0)
+      const totW  = items.reduce((a, i) => a + i.w, 0)
+      return totW > 0 ? totPts / totW : 0
     },
   },
-  // ── Active transition / pressing profiles ────────────────────────────────
   {
     label: 'Gegenpressing',
     emoji: '⚡',
     color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    condition: (s) =>
-      s.avg_tackles >= 6 &&
-      s.avg_interceptions >= 26 &&
-      s.avg_fouls >= 2 &&
-      s.avg_possession >= 47,
+    score: (s) => {
+      const items = [
+        available(s.avg_tackles,        40, () => ramp(s.avg_tackles, 4, 8)),
+        available(s.avg_interceptions,  40, () => ramp(s.avg_interceptions, 22, 32)),
+        available(s.avg_possession,     20, () => ramp(s.avg_possession, 44, 54)),
+        available(s.avg_fouls,          10, () => ramp(s.avg_fouls, 1, 4)),
+      ]
+      const totPts = items.reduce((a, i) => a + i.pts, 0)
+      const totW  = items.reduce((a, i) => a + i.w, 0)
+      return totW > 0 ? totPts / totW : 0
+    },
   },
   {
     label: 'Disciplined Pressers',
     emoji: '🧠',
     color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-    condition: (s) =>
-      s.avg_interceptions >= 26 &&
-      s.avg_tackles >= 6 &&
-      s.avg_fouls <= 2,
+    score: (s) => {
+      const items = [
+        available(s.avg_interceptions, 45, () => ramp(s.avg_interceptions, 22, 32)),
+        available(s.avg_tackles,       35, () => ramp(s.avg_tackles, 4, 8)),
+        available(s.avg_fouls,         20, () => rampDown(s.avg_fouls, 0, 3)),
+      ]
+      const totPts = items.reduce((a, i) => a + i.pts, 0)
+      const totW  = items.reduce((a, i) => a + i.w, 0)
+      return totW > 0 ? totPts / totW : 0
+    },
   },
-  // ── Counter-attack profiles ───────────────────────────────────────────────
   {
     label: 'Quick Counter',
     emoji: '🗡️',
     color: 'bg-red-500/20 text-red-400 border-red-500/30',
-    condition: (s) =>
-      s.avg_possession >= 44 &&
-      s.avg_possession <= 55 &&
-      s.avg_shots >= 9 &&
-      s.avg_offsides >= 1 &&
-      s.avg_passes <= 138,
+    score: (s) => {
+      const items = [
+        available(s.avg_possession, 35, () => ramp(rampDown(s.avg_possession, 44, 56) + ramp(s.avg_possession, 42, 52), 0.5, 1.5)),
+        available(s.avg_shots,      40, () => ramp(s.avg_shots, 7, 12)),
+        available(s.avg_offsides,   25, () => ramp(s.avg_offsides, 0.5, 2.5)),
+      ]
+      // Simpler: mid-possession + high shots
+      const posScore = ramp(s.avg_possession, 40, 50) * rampDown(s.avg_possession, 52, 62)
+      const shotScore = ramp(s.avg_shots, 7, 13)
+      const offScore = s.avg_offsides > 0 ? ramp(s.avg_offsides, 0.5, 2.5) : 0.5
+      const wPoss = 35, wShot = 40, wOff = s.avg_offsides > 0 ? 25 : 0
+      const total = wPoss * posScore + wShot * shotScore + wOff * offScore
+      return total / (wPoss + wShot + wOff || 1)
+    },
   },
   {
     label: 'Long Ball Counter',
     emoji: '🛡️',
     color: 'bg-slate-400/20 text-slate-300 border-slate-400/30',
-    condition: (s) =>
-      s.avg_possession <= 47 &&
-      s.avg_saves >= 4 &&
-      s.avg_interceptions >= 26,
+    score: (s) => {
+      const items = [
+        available(s.avg_possession,    40, () => rampDown(s.avg_possession, 40, 52)),
+        available(s.avg_saves,         35, () => ramp(s.avg_saves, 3, 6)),
+        available(s.avg_interceptions, 25, () => ramp(s.avg_interceptions, 22, 32)),
+      ]
+      const totPts = items.reduce((a, i) => a + i.pts, 0)
+      const totW  = items.reduce((a, i) => a + i.w, 0)
+      return totW > 0 ? totPts / totW : 0
+    },
   },
   {
     label: 'The Grinders',
     emoji: '💪',
     color: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    condition: (s) => {
+    score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
-      return (
-        s.avg_passes <= 128 &&
-        pa <= 0.72 &&
-        s.avg_fouls >= 2 &&
-        s.avg_tackles >= 6
-      )
+      const items = [
+        available(s.avg_tackles,  40, () => ramp(s.avg_tackles, 4, 8)),
+        available(s.avg_fouls,    30, () => ramp(s.avg_fouls, 1, 4)),
+        available(s.avg_passes,   30, () => rampDown(s.avg_passes, 110, 140)),
+        available(s.avg_passes,   20, () => rampDown(pa, 0.60, 0.76)),
+      ]
+      const totPts = items.reduce((a, i) => a + i.pts, 0)
+      const totW  = items.reduce((a, i) => a + i.w, 0)
+      return totW > 0 ? totPts / totW : 0
     },
   },
-  // ── Attacking style profiles ──────────────────────────────────────────────
   {
     label: 'Out Wide',
     emoji: '↔️',
     color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-    condition: (s) =>
-      s.avg_crosses >= 3 &&
-      s.avg_corners >= 3 &&
-      s.avg_passes >= 115,
+    score: (s) => {
+      const items = [
+        available(s.avg_crosses,  45, () => ramp(s.avg_crosses, 2, 5)),
+        available(s.avg_corners,  35, () => ramp(s.avg_corners, 2, 5)),
+        available(s.avg_passes,   20, () => ramp(s.avg_passes, 110, 140)),
+      ]
+      const totPts = items.reduce((a, i) => a + i.pts, 0)
+      const totW  = items.reduce((a, i) => a + i.w, 0)
+      return totW > 0 ? totPts / totW : 0
+    },
   },
   {
     label: 'Set-Piece Specialists',
     emoji: '📐',
     color: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
-    condition: (s) =>
-      s.avg_corners >= 3 &&
-      s.avg_free_kicks >= 2 &&
-      s.avg_crosses >= 2,
+    score: (s) => {
+      const items = [
+        available(s.avg_corners,    40, () => ramp(s.avg_corners, 2, 5)),
+        available(s.avg_free_kicks, 40, () => ramp(s.avg_free_kicks, 1, 3)),
+        available(s.avg_crosses,    20, () => ramp(s.avg_crosses, 1, 4)),
+      ]
+      const totPts = items.reduce((a, i) => a + i.pts, 0)
+      const totW  = items.reduce((a, i) => a + i.w, 0)
+      return totW > 0 ? totPts / totW : 0
+    },
   },
   {
     label: 'Shoot-on-Sight',
     emoji: '🎯',
     color: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
-    condition: (s) => {
+    score: (s) => {
       const sa = s.avg_shots > 0 ? s.avg_shots_on_target / s.avg_shots : 1
-      return s.avg_possession >= 48 && s.avg_shots >= 9 && sa <= 0.55
+      const items = [
+        available(s.avg_shots,           50, () => ramp(s.avg_shots, 8, 14)),
+        available(s.avg_shots_on_target, 30, () => rampDown(sa * 100, 40, 60)),
+        available(s.avg_possession,      20, () => ramp(s.avg_possession, 44, 56)),
+      ]
+      const totPts = items.reduce((a, i) => a + i.pts, 0)
+      const totW  = items.reduce((a, i) => a + i.w, 0)
+      return totW > 0 ? totPts / totW : 0
     },
   },
-  // ── Fallback — fires for any team that has played at least one game ────────
+  // ── Fallback — always scores 0.25 as a floor ────────────────────────────────
   {
     label: 'Pragmatic Stabilizers',
     emoji: '⚖️',
     color: 'bg-green-600/20 text-green-400 border-green-600/30',
-    condition: (s) => s.avg_possession > 0,
+    score: () => 0.25,
   },
 ]
 
 export function getTeamDNA(stats: TeamStats): DNAProfile[] {
-  return DNA_PROFILES
-    .filter((p) => p.condition(stats))
-    .map(({ label, emoji, color }) => ({ label, emoji, color }))
+  const scored = DNA_PROFILES
+    .map((p) => ({ ...p, s: p.score(stats) }))
+    .sort((a, b) => b.s - a.s)
+
+  // Return all profiles scoring >= 0.45, up to 3, always at least 1
+  const strong = scored.filter((p) => p.s >= 0.45).slice(0, 3)
+  const result = strong.length > 0 ? strong : [scored[0]]
+
+  return result.map(({ label, emoji, color }) => ({ label, emoji, color }))
 }
 
 type MatchStatsRow = {
