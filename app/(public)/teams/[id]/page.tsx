@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
-import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
+import { getTeamDNA, buildTeamStatsMixed } from '@/lib/dna-engine'
 import TeamManagerAdmin from './TeamManagerAdmin'
 import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
@@ -187,31 +187,49 @@ export default async function TeamProfilePage({ params }: PageProps) {
     (a, b) => b[1].played - a[1].played
   )
 
-  // DNA — from recent match stats
-  const { data: recentResults } = await supabase
-    .from('results')
-    .select('id')
-    .in(
-      'fixture_id',
-      (
-        await supabase
-          .from('fixtures')
-          .select('id')
-          .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
-          .limit(10)
-      ).data?.map((f) => f.id) ?? []
-    )
-    .limit(10)
+  // DNA — last 5 confirmed fixtures with correct home/away attribution
+  const dnaProfiles = await (async () => {
+    const { data: last5Fixtures } = await supabase
+      .from('fixtures')
+      .select('id, home_team_id')
+      .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
+      .eq('status', 'confirmed')
+      .order('scheduled_date', { ascending: false })
+      .limit(5)
 
-  const { data: matchStatsList } = await supabase
-    .from('match_stats')
-    .select('*')
-    .in('result_id', recentResults?.map((r) => r.id) ?? [])
+    if (!last5Fixtures?.length) return []
 
-  const dnaProfiles =
-    matchStatsList && matchStatsList.length > 0
-      ? getTeamDNA(buildTeamStats(matchStatsList as any, true, []))
-      : []
+    const { data: dnaResults } = await supabase
+      .from('results')
+      .select('id, fixture_id, home_score, away_score')
+      .in('fixture_id', last5Fixtures.map((f: any) => f.id))
+
+    if (!dnaResults?.length) return []
+
+    const resultIds = dnaResults.map((r: any) => r.id)
+    const { data: dnaStatsList } = await supabase
+      .from('match_stats')
+      .select('*')
+      .in('result_id', resultIds)
+
+    const resultMap: Record<string, { fixture_id: string; home_score: number; away_score: number }> = {}
+    for (const r of dnaResults) resultMap[r.id] = r
+
+    const dnaGames = (dnaStatsList ?? []).flatMap((ms: any) => {
+      const result = resultMap[ms.result_id]
+      if (!result) return []
+      const fixture = last5Fixtures.find((f: any) => f.id === result.fixture_id)
+      if (!fixture) return []
+      const isHomeTeam = (fixture as any).home_team_id === id
+      return [{
+        stats: ms,
+        isHome: isHomeTeam,
+        goalsAgainst: isHomeTeam ? result.away_score : result.home_score,
+      }]
+    })
+
+    return dnaGames.length >= 3 ? getTeamDNA(buildTeamStatsMixed(dnaGames)) : []
+  })()
 
   // Upcoming fixtures for this club
   const { data: upcomingFixtures } = await supabase
