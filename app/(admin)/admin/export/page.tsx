@@ -171,17 +171,115 @@ export default async function ExportPage({ searchParams }: Props) {
           return b.goals_for - a.goals_for
         })
       } else {
-        // UCL / Europa — group_standings table (still used for group stage)
-        const { data } = await (supabase.from('group_standings') as any)
-          .select('*, team:teams(name, logo_league_folder, logo_team_slug)')
-          .eq('tournament_id', activeTournamentId)
-          .order('points', { ascending: false })
-          .order('goals_for', { ascending: false })
-        const rows: any[] = data ?? []
-        for (const row of rows) {
-          const g = row.group_name ?? 'A'
-          if (!groupStandings[g]) groupStandings[g] = []
-          groupStandings[g].push(row)
+        // UCL / Europa — compute live from tournament_participants first
+        // This makes the export include every team in each group, even before they have played.
+        const [{ data: participants }, { data: confirmedFixtures }] = await Promise.all([
+          supabase
+            .from('tournament_participants')
+            .select('team_id, group_name, team:teams(id, name, logo_league_folder, logo_team_slug)')
+            .eq('tournament_id', activeTournamentId),
+          supabase
+            .from('fixtures')
+            .select(`
+              home_team_id, away_team_id, round_type,
+              home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+              away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+              results(home_score, away_score, override_reason)
+            `)
+            .eq('tournament_id', activeTournamentId)
+            .eq('status', 'confirmed')
+            .eq('round_type', 'group'),
+        ])
+
+        const teamGroupMap: Record<string, string> = {}
+        const rowMap: Record<string, any> = {}
+
+        const ensureGroup = (groupName: string) => {
+          if (!groupStandings[groupName]) groupStandings[groupName] = []
+          return groupStandings[groupName]
+        }
+
+        const ensureRow = (teamId: string, groupName: string, teamData?: any) => {
+          const key = `${groupName}:${teamId}`
+
+          if (!rowMap[key]) {
+            rowMap[key] = {
+              id: teamId,
+              tournament_id: activeTournamentId,
+              group_name: groupName,
+              team_id: teamId,
+              team: teamData ?? null,
+              played: 0,
+              wins: 0,
+              draws: 0,
+              losses: 0,
+              goals_for: 0,
+              goals_against: 0,
+              points: 0,
+            }
+
+            ensureGroup(groupName).push(rowMap[key])
+          } else if (!rowMap[key].team && teamData) {
+            rowMap[key].team = teamData
+          }
+
+          return rowMap[key]
+        }
+
+        for (const p of participants ?? []) {
+          const teamId = (p as any).team_id
+          const groupName = (p as any).group_name ?? 'A'
+          const teamData = (p as any).team ?? (p as any).teams ?? null
+
+          if (!teamId) continue
+
+          teamGroupMap[teamId] = groupName
+          ensureRow(teamId, groupName, teamData)
+        }
+
+        for (const f of confirmedFixtures ?? []) {
+          const result = Array.isArray((f as any).results) ? (f as any).results[0] : (f as any).results
+          if (!result) continue
+
+          const { home_score: hs, away_score: as_, override_reason } = result
+          const reason = (override_reason ?? '').toLowerCase()
+          if (reason.includes('both') && reason.includes('absent')) continue
+
+          const homeTeamId = (f as any).home_team_id
+          const awayTeamId = (f as any).away_team_id
+          const groupName = teamGroupMap[homeTeamId] ?? teamGroupMap[awayTeamId] ?? 'A'
+
+          const homeWin = hs > as_
+          const awayWin = as_ > hs
+          const draw = hs === as_
+
+          const hr = ensureRow(homeTeamId, groupName, (f as any).home_team)
+          const ar = ensureRow(awayTeamId, groupName, (f as any).away_team)
+
+          hr.played++; ar.played++
+          hr.wins += homeWin ? 1 : 0; ar.wins += awayWin ? 1 : 0
+          hr.draws += draw ? 1 : 0; ar.draws += draw ? 1 : 0
+          hr.losses += awayWin ? 1 : 0; ar.losses += homeWin ? 1 : 0
+          hr.goals_for += hs; ar.goals_for += as_
+          hr.goals_against += as_; ar.goals_against += hs
+          hr.points += homeWin ? 3 : draw ? 1 : 0
+          ar.points += awayWin ? 3 : draw ? 1 : 0
+        }
+
+        for (const groupName of Object.keys(groupStandings)) {
+          groupStandings[groupName].sort((a: any, b: any) => {
+            if (b.points !== a.points) return b.points - a.points
+
+            const gdA = (a.goals_for ?? 0) - (a.goals_against ?? 0)
+            const gdB = (b.goals_for ?? 0) - (b.goals_against ?? 0)
+            if (gdB !== gdA) return gdB - gdA
+
+            if ((b.goals_for ?? 0) !== (a.goals_for ?? 0)) {
+              return (b.goals_for ?? 0) - (a.goals_for ?? 0)
+            }
+
+            return (a.team?.name ?? '').localeCompare(b.team?.name ?? '')
+          })
         }
       }
     }
