@@ -37,6 +37,17 @@ export async function POST(request: Request) {
 
   const tournamentType = (tournament as any)?.type ?? 'league'
 
+  // Fetch tournament participants first.
+  // This is important because teams with 0 played games must still appear in standings.
+  const { data: participants, error: participantsErr } = await db
+    .from('tournament_participants')
+    .select('team_id, group_name')
+    .eq('tournament_id', tournament_id)
+
+  if (participantsErr) return Response.json({ error: participantsErr.message }, { status: 500 })
+
+  const participantRows = (participants ?? []) as any[]
+
   // Fetch all confirmed fixtures for this tournament with results.
   // Do NOT select fixtures.group_name because that column does not exist.
   const { data: fixtures, error: fxErr } = await db
@@ -54,7 +65,11 @@ export async function POST(request: Request) {
   const groupFixtures = allFixtures.filter((f) => f.round_type === 'group')
 
   // ── Rebuild league standings ─────────────────────────────────────────────────
-  if (leagueFixtures.length > 0) {
+  // Seed from tournament_participants so 0-played league teams still appear.
+  // For UCL/Europa, this will only run if there are actual league-type fixtures.
+  const shouldRebuildLeagueStandings = tournamentType === 'league' || leagueFixtures.length > 0
+
+  if (shouldRebuildLeagueStandings) {
     const { error: deleteErr } = await db
       .from('standings')
       .delete()
@@ -82,6 +97,11 @@ export async function POST(request: Request) {
         }
       }
       return map[teamId]
+    }
+
+    // Add every participant first, so the table is complete even before games are played.
+    for (const p of participantRows) {
+      if (p.team_id) row(p.team_id)
     }
 
     for (const f of leagueFixtures) {
@@ -142,19 +162,17 @@ export async function POST(request: Request) {
   }
 
   // ── Rebuild group standings ──────────────────────────────────────────────────
-  if (groupFixtures.length > 0) {
-    // UCL/Europa group names live on tournament_participants, not fixtures.
-    const { data: participants, error: participantsErr } = await db
-      .from('tournament_participants')
-      .select('team_id, group_name')
-      .eq('tournament_id', tournament_id)
+  // Seed from tournament_participants so teams with 0 played games still appear.
+  const shouldRebuildGroupStandings =
+    tournamentType === 'ucl' ||
+    tournamentType === 'europa' ||
+    groupFixtures.length > 0
 
-    if (participantsErr) return Response.json({ error: participantsErr.message }, { status: 500 })
-
+  if (shouldRebuildGroupStandings) {
     const teamGroupMap: Record<string, string> = {}
-    for (const p of participants ?? []) {
-      if ((p as any).team_id) {
-        teamGroupMap[(p as any).team_id] = (p as any).group_name ?? 'A'
+    for (const p of participantRows) {
+      if (p.team_id) {
+        teamGroupMap[p.team_id] = p.group_name ?? 'A'
       }
     }
 
@@ -186,6 +204,12 @@ export async function POST(request: Request) {
         }
       }
       return gmap[key]
+    }
+
+    // This is the missing piece:
+    // add every group participant before applying confirmed results.
+    for (const p of participantRows) {
+      if (p.team_id) grow(p.team_id, p.group_name ?? 'A')
     }
 
     for (const f of groupFixtures) {
@@ -247,6 +271,7 @@ export async function POST(request: Request) {
     target_id: tournament_id,
     details: {
       tournament_type: tournamentType,
+      participants: participantRows.length,
       league_fixtures: leagueFixtures.length,
       group_fixtures: groupFixtures.length,
     },
@@ -255,6 +280,7 @@ export async function POST(request: Request) {
   return Response.json({
     success: true,
     tournament_type: tournamentType,
+    participants_processed: participantRows.length,
     league_fixtures_processed: leagueFixtures.length,
     group_fixtures_processed: groupFixtures.length,
   })
