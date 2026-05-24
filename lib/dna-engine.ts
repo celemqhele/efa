@@ -141,15 +141,12 @@ const DNA_PROFILES: Array<{
       return s.avg_possession >= 48 && s.avg_shots >= 9 && sa <= 0.55
     },
   },
-  // ── Fallback — fires for any team with normal eFootball stats ─────────────
+  // ── Fallback — fires for any team that has played at least one game ────────
   {
     label: 'Pragmatic Stabilizers',
     emoji: '⚖️',
     color: 'bg-green-600/20 text-green-400 border-green-600/30',
-    condition: (s) =>
-      s.avg_possession >= 44 &&
-      s.avg_passes >= 108 &&
-      s.avg_goals_against <= 2.2,
+    condition: (s) => s.avg_possession > 0,
   },
 ]
 

@@ -228,7 +228,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
       }]
     })
 
-    return dnaGames.length >= 3 ? getTeamDNA(buildTeamStatsMixed(dnaGames)) : []
+    return dnaGames.length >= 1 ? getTeamDNA(buildTeamStatsMixed(dnaGames)) : []
   })()
 
   // Upcoming fixtures for this club

@@ -9,12 +9,12 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  let body: { team_id: string; from_date: string; to_date: string; reason: string }
+  let body: { team_id: string; from_date: string; to_date: string; reason: string; reschedule_from?: string }
   try { body = await request.json() } catch {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { team_id, from_date, to_date, reason } = body
+  const { team_id, from_date, to_date, reason, reschedule_from } = body
   if (!team_id || !from_date || !to_date || !reason) {
     return Response.json({ error: 'team_id, from_date, to_date, reason all required' }, { status: 400 })
   }
@@ -41,12 +41,13 @@ export async function POST(request: Request) {
     return Response.json({ success: true, postponed: 0, message: 'No scheduled fixtures in that date range.' })
   }
 
-  // Get all existing future fixtures for the team AFTER to_date (to know busy days)
+  // Get all existing future fixtures for the team after the reschedule start (to know busy days)
+  const futureStart = reschedule_from ?? to_date
   const { data: futureFixtures } = await adminSupabase
     .from('fixtures')
     .select('scheduled_date')
     .or(`home_team_id.eq.${team_id},away_team_id.eq.${team_id}`)
-    .gt('scheduled_date', to_date)
+    .gt('scheduled_date', futureStart)
     .in('status', ['scheduled', 'awaiting_confirmation'])
 
   // Build map of date → existing game count
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
 
   // Assign new dates to postponed fixtures (max 3 per day)
   const MAX_PER_DAY = 3
-  let cursor = addDays(toD, 1)
+  let cursor = reschedule_from ? parseISO(reschedule_from) : addDays(toD, 1)
   const updates: { id: string; scheduled_date: string; deadline: string; is_postponed: boolean }[] = []
 
   for (const fx of affectedFixtures) {

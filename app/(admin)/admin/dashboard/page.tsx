@@ -6,6 +6,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
 import RecalculateStandingsButton from '@/components/ui/RecalculateStandingsButton'
+import RefreshDNAButton from '@/components/ui/RefreshDNAButton'
+import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 
 export const revalidate = 0
 
@@ -157,6 +159,7 @@ export default async function AdminDashboardPage() {
           <Link href="/admin/managers" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Managers</Link>
           <Link href="/admin/hall-of-fame" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Hall of Fame</Link>
           <Link href="/admin/export" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Export</Link>
+          <RefreshDNAButton />
           <Link href="/admin/results/submit" className="btn-gold text-xs px-3 py-1.5">Submit Result</Link>
           <Link href="/admin/fixtures/manage" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Fixtures</Link>
         </div>
@@ -271,11 +274,7 @@ export default async function AdminDashboardPage() {
                       <span className={`text-xs px-2 py-0.5 rounded border shrink-0 ${statusCls}`}>
                         {fx.status.replace('_', ' ')}
                       </span>
-                      {fx.status === 'awaiting_confirmation' && (
-                        <Link href={`/admin/results/submit?fixture=${fx.id}`} className="btn-gold text-xs py-1 px-2 shrink-0">
-                          Finalise
-                        </Link>
-                      )}
+                      <DashboardFixtureActions fixtureId={fx.id} status={fx.status} />
                     </div>
                   )
                 })}
