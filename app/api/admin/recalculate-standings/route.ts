@@ -28,10 +28,11 @@ export async function POST(request: Request) {
 
   const tournamentType = (tournament as any)?.type ?? 'league'
 
-  // Fetch all confirmed fixtures for this tournament with results
+  // Fetch all confirmed fixtures for this tournament with results.
+  // group_name is needed because group_standings.group_name is NOT NULL.
   const { data: fixtures, error: fxErr } = await db
     .from('fixtures')
-    .select('id, home_team_id, away_team_id, round_type, results(home_score, away_score, override_reason)')
+    .select('id, home_team_id, away_team_id, round_type, group_name, results(home_score, away_score, override_reason)')
     .eq('tournament_id', tournament_id)
     .eq('status', 'confirmed')
 
@@ -96,10 +97,11 @@ export async function POST(request: Request) {
 
     const rows = Object.values(map)
     if (rows.length > 0) {
-      const { error: upsertErr } = await db
+      // We already delete this tournament's standings above, so insert is safer than upsert here.
+      const { error: insertErr } = await db
         .from('standings')
-        .upsert(rows, { onConflict: 'tournament_id,team_id' })
-      if (upsertErr) return Response.json({ error: upsertErr.message }, { status: 500 })
+        .insert(rows)
+      if (insertErr) return Response.json({ error: insertErr.message }, { status: 500 })
     }
   }
 
@@ -109,13 +111,22 @@ export async function POST(request: Request) {
 
     const gmap: Record<string, any> = {}
 
-    const grow = (teamId: string) => {
-      if (!gmap[teamId]) gmap[teamId] = {
-        tournament_id, team_id: teamId,
-        played: 0, wins: 0, draws: 0, losses: 0,
-        goals_for: 0, goals_against: 0, points: 0,
+    const grow = (teamId: string, groupName: string) => {
+      const key = `${groupName}:${teamId}`
+
+      if (!gmap[key]) gmap[key] = {
+        tournament_id,
+        group_name: groupName,
+        team_id: teamId,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goals_for: 0,
+        goals_against: 0,
+        points: 0,
       }
-      return gmap[teamId]
+      return gmap[key]
     }
 
     for (const f of groupFixtures) {
@@ -128,9 +139,10 @@ export async function POST(request: Request) {
       const homeWin = hs > as_
       const awayWin = as_ > hs
       const draw    = hs === as_
+      const groupName = f.group_name ?? 'Group Stage'
 
-      const hr = grow(f.home_team_id)
-      const ar = grow(f.away_team_id)
+      const hr = grow(f.home_team_id, groupName)
+      const ar = grow(f.away_team_id, groupName)
 
       hr.played++;  ar.played++
       hr.wins         += homeWin ? 1 : 0;   ar.wins         += awayWin ? 1 : 0
@@ -144,10 +156,11 @@ export async function POST(request: Request) {
 
     const rows = Object.values(gmap)
     if (rows.length > 0) {
-      const { error: upsertErr } = await db
+      // We already delete this tournament's group standings above, so insert avoids ON CONFLICT constraint errors.
+      const { error: insertErr } = await db
         .from('group_standings')
-        .upsert(rows, { onConflict: 'tournament_id,team_id' })
-      if (upsertErr) return Response.json({ error: upsertErr.message }, { status: 500 })
+        .insert(rows)
+      if (insertErr) return Response.json({ error: insertErr.message }, { status: 500 })
     }
   }
 
