@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
-import { getTeamDNA, buildTeamStatsMixed } from '@/lib/dna-engine'
+import { getTeamDNA, getTeamCombination, buildTeamStatsMixed } from '@/lib/dna-engine'
 import DNABadge from '@/components/ui/DNABadge'
+import CombinationBadge from '@/components/ui/CombinationBadge'
 import TeamManagerAdmin from './TeamManagerAdmin'
 import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
@@ -232,6 +233,8 @@ export default async function TeamProfilePage({ params }: PageProps) {
     return dnaGames.length >= 1 ? getTeamDNA(buildTeamStatsMixed(dnaGames)) : []
   })()
 
+  const dnaCombination = getTeamCombination(dnaProfiles)
+
   // Upcoming fixtures for this club
   const { data: upcomingFixtures } = await supabase
     .from('fixtures')
@@ -305,17 +308,30 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
           {/* DNA Badges */}
           {dnaProfiles.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {dnaProfiles.map((dna) => (
-                <DNABadge
-                  key={dna.label}
-                  label={dna.label}
-                  emoji={dna.emoji}
-                  color={dna.color}
-                  level={dna.level}
-                  isOwnTeam={isCurrentManager}
-                />
-              ))}
+            <div className="mt-4 space-y-2">
+              {/* Combination badge — shown when 2+ profiles combine into a named style */}
+              {dnaCombination && (
+                <div>
+                  <CombinationBadge
+                    combination={dnaCombination}
+                    profiles={dnaProfiles}
+                    isOwnTeam={isCurrentManager}
+                  />
+                </div>
+              )}
+              {/* Individual profile badges */}
+              <div className="flex flex-wrap gap-1.5">
+                {dnaProfiles.map((dna) => (
+                  <DNABadge
+                    key={dna.label}
+                    label={dna.label}
+                    emoji={dna.emoji}
+                    color={dna.color}
+                    level={dna.level}
+                    isOwnTeam={isCurrentManager}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>

@@ -2,13 +2,11 @@
 
 import { useState } from 'react'
 import { DNA_EXPLANATIONS } from '@/lib/dna-explanations'
-import { LEVEL_LABELS } from '@/lib/dna-engine'
+import { LEVEL_LABELS, DNAProfile, DNACombination } from '@/lib/dna-engine'
 
 interface Props {
-  label: string
-  emoji: string
-  color: string
-  level: string
+  combination: DNACombination
+  profiles: DNAProfile[]
   isOwnTeam: boolean
 }
 
@@ -27,30 +25,42 @@ function perspectivize(text: string, isOwnTeam: boolean): string {
     .replace(/\byou\b/g, 'they')
 }
 
-export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Props) {
+export default function CombinationBadge({ combination, profiles, isOwnTeam }: Props) {
   const [open, setOpen] = useState(false)
-  const explanation = DNA_EXPLANATIONS[label]
+  const { name, level } = combination
   const levelInfo = LEVEL_LABELS[level] ?? { short: 'Match', detail: '' }
 
-  // Level indicator color — greener for strong, amber for mid, red for weak
   const levelColor =
     level.startsWith('+++') ? 'text-green-500' :
     level.startsWith('++')  ? 'text-[#c9a84c]' :
     level === '+'           ? 'text-[#c9a84c]' :
                               'text-slate-400'
 
+  // Merge content from all component profiles
+  const allTendencies = profiles.flatMap((p) => {
+    const exp = DNA_EXPLANATIONS[p.label]
+    return exp ? exp.tendencies.map((t) => ({ text: t, profile: p })) : []
+  })
+  const allWeaknesses = profiles.flatMap((p) => {
+    const exp = DNA_EXPLANATIONS[p.label]
+    return exp ? exp.weaknesses.map((w) => ({ text: w, profile: p })) : []
+  })
+  const selfNotes = profiles
+    .map((p) => ({ text: DNA_EXPLANATIONS[p.label]?.selfNote ?? '', profile: p }))
+    .filter((n) => n.text)
+
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border transition-opacity hover:opacity-80 active:scale-95 cursor-pointer ${color}`}
+        className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c] hover:opacity-80 active:scale-95 cursor-pointer transition-opacity"
       >
-        <span>{emoji}</span>
-        <span>{label}</span>
-        <span className={`font-mono font-bold ml-0.5 ${levelColor}`}>{level}</span>
+        <span>⚗️</span>
+        <span>{name}</span>
+        <span className={`font-mono ml-0.5 ${levelColor}`}>{level}</span>
       </button>
 
-      {open && explanation && (
+      {open && (
         <div
           className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setOpen(false)}
@@ -62,14 +72,14 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{emoji}</span>
+                <span className="text-2xl">⚗️</span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-slate-900 font-bold text-base">{label}</h2>
+                    <h2 className="text-slate-900 font-bold text-base">{name}</h2>
                     <span className={`font-mono font-bold text-sm ${levelColor}`}>{level}</span>
                   </div>
-                  <span className={`inline-block mt-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${color}`}>
-                    {isOwnTeam ? 'Your Team\'s Style' : 'Opponent\'s Style'}
+                  <span className="text-[10px] font-semibold text-[#c9a84c]">
+                    Hybrid Playstyle
                   </span>
                 </div>
               </div>
@@ -83,7 +93,7 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
 
             {/* Body */}
             <div className="overflow-y-auto p-5 space-y-5">
-              {/* Style match level */}
+              {/* Combined level */}
               <div className="flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3">
                 <span className={`font-mono font-bold text-lg ${levelColor}`}>{level}</span>
                 <div>
@@ -92,41 +102,78 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
                 </div>
               </div>
 
+              {/* Component profiles */}
+              <div>
+                <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
+                  Built From
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {profiles.map((p) => (
+                    <span
+                      key={p.label}
+                      className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${p.color}`}
+                    >
+                      <span>{p.emoji}</span>
+                      <span>{p.label}</span>
+                      <span className={`font-mono font-bold ml-0.5 ${
+                        p.level.startsWith('+++') ? 'text-green-500' :
+                        p.level.startsWith('++')  ? 'text-[#c9a84c]' :
+                        p.level === '+'           ? 'text-[#c9a84c]' :
+                                                    'text-slate-400'
+                      }`}>{p.level}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
               {/* About */}
-              <p className="text-slate-600 text-sm leading-relaxed">{explanation.about}</p>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                {isOwnTeam
+                  ? `Your game doesn't fit a single mould — it's a compound identity. The ${name} style emerges from the combination of ${profiles.map((p) => p.label).join(' and ')}, making your approach genuinely difficult to prepare for.`
+                  : `This team doesn't fit a single mould. The ${name} style is a compound identity — a combination of ${profiles.map((p) => p.label).join(' and ')} that makes them genuinely unpredictable.`
+                }
+              </p>
 
               {isOwnTeam ? (
                 <>
+                  {/* Tendencies */}
                   <div>
                     <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
-                      Your Tendencies
+                      Combined Tendencies
                     </h3>
                     <ul className="space-y-1.5">
-                      {explanation.tendencies.map((t, i) => (
+                      {allTendencies.map((t, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                          <span className="text-green-500 shrink-0 mt-0.5">✓</span>
-                          {t}
+                          <span className={`shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${t.profile.color}`}>
+                            {t.profile.emoji}
+                          </span>
+                          {t.text}
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  <div className="bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl p-4">
-                    <h3 className="text-[#c9a84c] font-semibold text-xs uppercase tracking-wider mb-1.5">
-                      Coach Note
-                    </h3>
-                    <p className="text-slate-700 text-sm leading-relaxed">{explanation.selfNote}</p>
-                  </div>
+                  {/* Coach notes */}
+                  {selfNotes.map((n, i) => (
+                    <div key={i} className="bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl p-4">
+                      <h3 className="text-[#c9a84c] font-semibold text-xs uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${n.profile.color}`}>{n.profile.emoji}</span>
+                        Coach Note — {n.profile.label}
+                      </h3>
+                      <p className="text-slate-700 text-sm leading-relaxed">{n.text}</p>
+                    </div>
+                  ))}
 
+                  {/* Vulnerabilities */}
                   <div>
                     <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
                       Vulnerabilities to Watch
                     </h3>
                     <ul className="space-y-1.5">
-                      {explanation.weaknesses.map((w, i) => (
+                      {allWeaknesses.map((w, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
                           <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
-                          {w}
+                          {w.text}
                         </li>
                       ))}
                     </ul>
@@ -134,29 +181,33 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
                 </>
               ) : (
                 <>
+                  {/* What to expect */}
                   <div>
                     <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
                       What to Expect
                     </h3>
                     <ul className="space-y-1.5">
-                      {explanation.tendencies.map((t, i) => (
+                      {allTendencies.map((t, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                          <span className="text-blue-400 shrink-0 mt-0.5">›</span>
-                          {t}
+                          <span className={`shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${t.profile.color}`}>
+                            {t.profile.emoji}
+                          </span>
+                          {t.text}
                         </li>
                       ))}
                     </ul>
                   </div>
 
+                  {/* Exploit weaknesses */}
                   <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
                     <h3 className="text-red-400 font-semibold text-xs uppercase tracking-wider mb-2">
                       How to Exploit Their Weaknesses
                     </h3>
                     <ul className="space-y-1.5">
-                      {explanation.weaknesses.map((w, i) => (
+                      {allWeaknesses.map((w, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
                           <span className="text-red-400 shrink-0 mt-0.5">⚡</span>
-                          {perspectivize(w, false)}
+                          {perspectivize(w.text, false)}
                         </li>
                       ))}
                     </ul>

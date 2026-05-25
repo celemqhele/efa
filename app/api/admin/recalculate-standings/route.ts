@@ -223,7 +223,7 @@ export async function POST(request: Request) {
   let groupRowsWritten = 0
 
   if (tournamentType === 'league') {
-    const leagueFixtures = allFixtures.filter((fixture) => !fixture.round_type || fixture.round_type === 'league')
+    const leagueFixtures = allFixtures
     const teamIds = Array.from(new Set([
       ...(participants ?? []).map((p: any) => p.team_id).filter(Boolean),
       ...leagueFixtures.flatMap((fixture) => [fixture.home_team_id, fixture.away_team_id]).filter(Boolean),
