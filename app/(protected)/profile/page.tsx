@@ -5,51 +5,13 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
-import { format, parseISO, differenceInDays, isPast } from 'date-fns'
+import { format, parseISO, differenceInDays } from 'date-fns'
 import TeamChangeModal from './TeamChangeModal'
 import ProfileActions from './ProfileActions'
 
 export const revalidate = 0
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function predictionOutcome(pred: {
-  predicted_home_score: number | null
-  predicted_away_score: number | null
-  fixture?: {
-    result?: { home_score: number; away_score: number } | null
-  } | null
-}): 'exact' | 'correct_result' | 'wrong' | 'pending' {
-  const result = pred.fixture?.result
-  if (!result) return 'pending'
-  const ph = pred.predicted_home_score
-  const pa = pred.predicted_away_score
-  const rh = result.home_score
-  const ra = result.away_score
-  if (ph === rh && pa === ra) return 'exact'
-  const predWinner = ph != null && pa != null ? (ph > pa ? 'H' : ph < pa ? 'A' : 'D') : null
-  const realWinner = rh > ra ? 'H' : rh < ra ? 'A' : 'D'
-  if (predWinner === realWinner) return 'correct_result'
-  return 'wrong'
-}
-
-function pointsForOutcome(outcome: string, earned: number): number {
-  if (outcome === 'pending') return 0
-  return earned
-}
-
-const OUTCOME_STYLE: Record<string, string> = {
-  exact: 'bg-green-500/20 text-green-400 border-green-500/30',
-  correct_result: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  wrong: 'bg-red-500/20 text-red-400 border-red-500/30',
-  pending: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
-}
-const OUTCOME_LABEL: Record<string, string> = {
-  exact: '🎯 Exact',
-  correct_result: '✅ Correct',
-  wrong: '❌ Wrong',
-  pending: '⏳ Pending',
-}
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null
@@ -116,29 +78,6 @@ export default async function ProfilePage() {
         .order('scheduled_date', { ascending: true })
         .limit(5)
     : { data: null }
-
-  // Predictions with fixture + result data
-  const { data: predictions } = await supabase
-    .from('predictions')
-    .select(`
-      id, predicted_home_score, predicted_away_score, points_earned,
-      fixture:fixtures(
-        id, matchday,
-        home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
-        away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
-        result:results(home_score, away_score),
-        tournament:tournaments(name)
-      )
-    `)
-    .eq('user_id', user.id)
-    .order('id', { ascending: false })
-    .limit(20)
-
-  // Compute totals
-  const totalPoints = (predictions ?? []).reduce((sum: number, p: any) => {
-    const outcome = predictionOutcome(p)
-    return sum + (outcome !== 'pending' ? (p.points_earned ?? 0) : 0)
-  }, 0)
 
   const initials = profile?.username
     ? profile.username.slice(0, 2).toUpperCase()
@@ -329,129 +268,6 @@ export default async function ProfilePage() {
 
       {/* ── Account Security ─────────────────────────────────────────────── */}
       <ProfileActions userEmail={user.email ?? ''} />
-
-      {/* ── Prediction History ───────────────────────────────────────────── */}
-      <div className="card p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="section-header mb-0">
-            <span>🎯</span> Prediction History
-          </h2>
-          <div className="text-right">
-            <span className="text-2xl font-black text-[#c9a84c]">{totalPoints}</span>
-            <span className="text-xs text-slate-500 ml-1">pts total</span>
-          </div>
-        </div>
-
-        {!predictions || predictions.length === 0 ? (
-          <p className="text-slate-500 text-sm text-center py-6">No predictions made yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Fixture
-                  </th>
-                  <th className="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                    My Pred
-                  </th>
-                  <th className="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                    Result
-                  </th>
-                  <th className="text-center py-2 px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Outcome
-                  </th>
-                  <th className="text-center py-2 px-2 text-xs font-semibold text-[#c9a84c] uppercase tracking-wider">
-                    Pts
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(predictions as any[]).map((pred) => {
-                  const outcome = predictionOutcome(pred)
-                  const fixture = pred.fixture
-                  if (!fixture) return null
-                  return (
-                    <tr
-                      key={pred.id}
-                      className="border-b border-slate-200/60 hover:bg-black/[0.03] transition-colors"
-                    >
-                      <td className="py-3 px-2">
-                        <Link href={`/fixtures/${fixture.id}`} className="hover:text-[#c9a84c] transition-colors">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {fixture.home_team?.logo_league_folder && (
-                              <Image
-                                src={getTeamLogo(fixture.home_team.logo_league_folder, fixture.home_team.logo_team_slug, 'standings_row')}
-                                alt={fixture.home_team.name}
-                                width={18}
-                                height={18}
-                                className="object-contain shrink-0"
-                              />
-                            )}
-                            <span className="text-slate-900 text-xs font-medium truncate max-w-[80px]">
-                              {fixture.home_team?.name}
-                            </span>
-                            <span className="text-slate-600 text-xs">v</span>
-                            <span className="text-slate-900 text-xs font-medium truncate max-w-[80px]">
-                              {fixture.away_team?.name}
-                            </span>
-                            {fixture.away_team?.logo_league_folder && (
-                              <Image
-                                src={getTeamLogo(fixture.away_team.logo_league_folder, fixture.away_team.logo_team_slug, 'standings_row')}
-                                alt={fixture.away_team.name}
-                                width={18}
-                                height={18}
-                                className="object-contain shrink-0"
-                              />
-                            )}
-                          </div>
-                          <p className="text-[10px] text-slate-500 mt-0.5">
-                            {fixture.tournament?.name} · MD{fixture.matchday}
-                          </p>
-                        </Link>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <span className="font-mono font-bold text-slate-900 tabular-nums">
-                          {pred.predicted_home_score ?? '?'}–{pred.predicted_away_score ?? '?'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        {fixture.result ? (
-                          <span className="font-mono font-bold text-slate-700 tabular-nums">
-                            {fixture.result.home_score}–{fixture.result.away_score}
-                          </span>
-                        ) : (
-                          <span className="text-slate-600 text-xs">–</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded border ${OUTCOME_STYLE[outcome]}`}>
-                          {OUTCOME_LABEL[outcome]}
-                        </span>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <span className={`font-bold text-sm ${outcome === 'pending' ? 'text-slate-600' : outcome === 'wrong' ? 'text-slate-500' : 'text-[#c9a84c]'}`}>
-                          {outcome === 'pending' ? '?' : (pred.points_earned ?? 0)}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-slate-200">
-                  <td colSpan={4} className="py-3 px-2 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Total Points
-                  </td>
-                  <td className="py-3 px-2 text-center font-black text-[#c9a84c] text-lg">
-                    {totalPoints}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
-      </div>
 
     </div>
   )

@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import PageWrapper from '@/components/ui/PageWrapper'
-import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
@@ -314,7 +313,6 @@ export default async function HomePage() {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { href: '/hall-of-fame', label: 'Hall of Fame', icon: '🏆' },
-                { href: '/predictions', label: 'Predictions', icon: '🎯' },
                 { href: '/rules', label: 'Rules', icon: '📋' },
                 { href: '/calendar', label: 'Calendar', icon: '📅' },
               ].map((link) => (

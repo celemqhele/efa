@@ -512,7 +512,7 @@ export default async function ExportPage({ searchParams }: Props) {
           const rowOdd: React.CSSProperties = { background: 'transparent' }
 
           const allData = card.type === 'fixtures' ? card.fixtures : card.results
-          const matchdays = [...new Set(allData.map((f: any) => f.matchday).filter(Boolean))].sort((a, b) => a - b)
+          const matchdays = Array.from(new Set(allData.map((f: any) => f.matchday).filter(Boolean))).sort((a, b) => a - b)
           const mdPrefix = matchdays.length === 1 ? `MATCHDAY ${matchdays[0]} ` : ''
 
           const typeLabel =
