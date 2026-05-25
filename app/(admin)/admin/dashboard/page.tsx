@@ -271,22 +271,18 @@ export default async function AdminDashboardPage() {
                   )
                   return (
                     <div key={fx.id} className="bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
-                      {/* Mobile layout */}
-                      <div className="flex items-start gap-2 sm:hidden">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-slate-500 text-xs shrink-0">MD{fx.matchday}</span>
-                            <span className="text-slate-900 text-sm font-medium truncate">
-                              {fx.home_team?.name} <span className="text-slate-400 font-normal">vs</span> {fx.away_team?.name}
-                            </span>
-                          </div>
-                          <div className="mt-1">
-                            <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>
-                              {fx.status.replace(/_/g, ' ')}
-                            </span>
-                          </div>
+                      {/* Mobile layout — fully stacked */}
+                      <div className="sm:hidden">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-slate-500 text-xs font-semibold">MD{fx.matchday}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>
+                            {fx.status.replace(/_/g, ' ')}
+                          </span>
                         </div>
-                        <div className="shrink-0">{actions}</div>
+                        <p className="text-slate-900 text-sm font-semibold mb-2">
+                          {fx.home_team?.name} <span className="text-slate-400 font-normal">vs</span> {fx.away_team?.name}
+                        </p>
+                        <div className="flex justify-end">{actions}</div>
                       </div>
                       {/* Desktop layout — original */}
                       <div className="hidden sm:flex items-center gap-3">
@@ -332,9 +328,9 @@ export default async function AdminDashboardPage() {
           ) : (
             <div className="space-y-2">
               {pendingConfirmations!.map((fx: any) => (
-                <div key={fx.id} className="flex items-center justify-between bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
-                  <div>
-                    <p className="text-slate-900 text-sm font-medium">
+                <div key={fx.id} className="flex items-center justify-between gap-2 bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-900 text-sm font-medium truncate">
                       {fx.home_team?.name} vs {fx.away_team?.name}
                     </p>
                     <p className="text-slate-500 text-xs mt-0.5">
@@ -342,7 +338,7 @@ export default async function AdminDashboardPage() {
                       {fx.scheduled_date && ` · ${new Date(fx.scheduled_date).toLocaleDateString('en-GB')}`}
                     </p>
                   </div>
-                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="btn-gold text-xs py-1.5 px-3">
+                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="btn-gold text-xs py-1.5 px-3 shrink-0">
                     Finalise
                   </Link>
                 </div>
