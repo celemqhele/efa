@@ -3,11 +3,11 @@
 import { toPng } from 'html-to-image'
 import { useState } from 'react'
 
-export default function ExportButton({ filename }: { filename: string }) {
+export default function ExportButton({ filename, cardId }: { filename: string; cardId: string }) {
   const [loading, setLoading] = useState(false)
 
   async function handleDownload() {
-    const card = document.getElementById('export-card')
+    const card = document.getElementById(cardId)
     if (!card) return
     setLoading(true)
     try {
@@ -27,7 +27,7 @@ export default function ExportButton({ filename }: { filename: string }) {
     <button
       onClick={handleDownload}
       disabled={loading}
-      className="px-5 py-2.5 bg-[#c9a84c] text-[#0a1128] font-bold rounded-lg hover:bg-[#e0c06a] transition-colors text-sm disabled:opacity-60 shadow-sm dark:shadow-none focus:outline-none focus:ring-2 focus:ring-[#c9a84c]/40"
+      className="px-4 py-2 bg-[#c9a84c] text-[#0a1128] font-bold rounded-lg hover:bg-[#e0c06a] transition-colors text-sm disabled:opacity-60 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#c9a84c]/40"
     >
       {loading ? 'Generating...' : 'Download PNG'}
     </button>
