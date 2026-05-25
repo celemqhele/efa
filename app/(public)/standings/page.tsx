@@ -307,13 +307,13 @@ async function buildLiveStandings(supabase: any, tournamentId: string, tournamen
 function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className="grid grid-cols-[34px_1fr_32px_32px_32px_32px_42px_44px] items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
+      <div className="grid grid-cols-[28px_1fr_30px_36px_40px] sm:grid-cols-[34px_1fr_32px_32px_32px_32px_42px_44px] items-center gap-1 sm:gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
         <span className="text-center">#</span>
         <span>Team</span>
         <span className="text-center">P</span>
-        <span className="text-center">W</span>
-        <span className="text-center">D</span>
-        <span className="text-center">L</span>
+        <span className="hidden sm:block text-center">W</span>
+        <span className="hidden sm:block text-center">D</span>
+        <span className="hidden sm:block text-center">L</span>
         <span className="text-center">GD</span>
         <span className="text-center text-[#c9a84c]">Pts</span>
       </div>
@@ -328,30 +328,30 @@ function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' 
           <Link
             key={row.id ?? `${row.team_id}-${index}`}
             href={`/teams/${row.team_id}`}
-            className={`grid grid-cols-[34px_1fr_32px_32px_32px_32px_42px_44px] items-center gap-2 px-3 py-2 text-xs border-l-4 ${qualificationBorder} ${index % 2 === 0 ? 'bg-slate-50' : 'bg-white'} hover:bg-[#c9a84c]/10 transition-colors cursor-pointer`}
+            className={`grid grid-cols-[28px_1fr_30px_36px_40px] sm:grid-cols-[34px_1fr_32px_32px_32px_32px_42px_44px] items-center gap-1 sm:gap-2 px-3 py-2.5 text-xs border-l-4 ${qualificationBorder} ${index % 2 === 0 ? 'bg-slate-50' : 'bg-white'} hover:bg-[#c9a84c]/10 transition-colors cursor-pointer`}
           >
             <span className="text-center font-bold text-slate-500">{index + 1}</span>
 
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
               {row.team?.logo_league_folder && (
                 <TeamLogo
                   leagueFolder={row.team.logo_league_folder}
                   teamSlug={row.team.logo_team_slug}
                   context="standings_row"
                   alt={row.team.name}
-                  className="w-7 h-7 shrink-0"
+                  className="w-6 h-6 sm:w-7 sm:h-7 shrink-0"
                 />
               )}
               <span className="font-semibold text-slate-900 truncate">{row.team?.name ?? 'Unknown team'}</span>
               {mode === 'group' && index < 2 && (
-                <span className="text-[9px] font-black text-[#c9a84c] border border-[#c9a84c]/30 rounded px-1 py-0.5">Q</span>
+                <span className="hidden sm:inline text-[9px] font-black text-[#c9a84c] border border-[#c9a84c]/30 rounded px-1 py-0.5">Q</span>
               )}
             </div>
 
             <span className="text-center text-slate-600">{row.played ?? 0}</span>
-            <span className="text-center text-slate-600">{row.wins ?? 0}</span>
-            <span className="text-center text-slate-600">{row.draws ?? 0}</span>
-            <span className="text-center text-slate-600">{row.losses ?? 0}</span>
+            <span className="hidden sm:block text-center text-slate-600">{row.wins ?? 0}</span>
+            <span className="hidden sm:block text-center text-slate-600">{row.draws ?? 0}</span>
+            <span className="hidden sm:block text-center text-slate-600">{row.losses ?? 0}</span>
             <span className={`text-center font-semibold ${gd >= 0 ? 'text-green-600' : 'text-red-500'}`}>{gd > 0 ? `+${gd}` : gd}</span>
             <span className="text-center font-black text-[#c9a84c]">{row.points ?? 0}</span>
           </Link>

@@ -544,7 +544,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             <h2 className="section-header">
               <span className="text-gold">🧬</span> Team DNA
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                   {homeTeam.name}
@@ -592,12 +592,12 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               <span className="text-gold">📈</span> Recent Form (Last 6)
             </h2>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-400">{homeTeam.name}</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-slate-400 truncate min-w-0">{homeTeam.name}</span>
                 <FormStrip form={(homeStanding?.form ?? '').slice(-6)} />
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-400">{awayTeam.name}</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-slate-400 truncate min-w-0">{awayTeam.name}</span>
                 <FormStrip form={(awayStanding?.form ?? '').slice(-6)} />
               </div>
             </div>

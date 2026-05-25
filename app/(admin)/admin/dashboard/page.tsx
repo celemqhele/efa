@@ -147,21 +147,21 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
           <p className="text-slate-400 text-sm mt-1">
             {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 justify-end">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/results/submit" className="btn-gold text-xs px-3 py-1.5">Submit Result</Link>
+          <Link href="/admin/fixtures/manage" className="btn-outline text-xs px-3 py-1.5">Fixtures</Link>
           <Link href="/admin/seasons" className="btn-outline text-xs px-3 py-1.5">Seasons</Link>
-          <Link href="/admin/managers" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Managers</Link>
+          <Link href="/admin/managers" className="btn-outline text-xs px-3 py-1.5">Managers</Link>
           <Link href="/admin/hall-of-fame" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Hall of Fame</Link>
           <Link href="/admin/export" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Export</Link>
           <RefreshDNAButton />
-          <Link href="/admin/results/submit" className="btn-gold text-xs px-3 py-1.5">Submit Result</Link>
-          <Link href="/admin/fixtures/manage" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Fixtures</Link>
         </div>
       </div>
 
@@ -176,13 +176,13 @@ export default async function AdminDashboardPage() {
             {conflictFixtures!.map((fx: any) => {
               const confs = conflictMap[fx.id] ?? []
               return (
-                <div key={fx.id} className="flex items-center justify-between bg-navy-light rounded-lg px-4 py-3 border border-red-500/20">
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-400 text-xs">MD{fx.matchday}</span>
+                <div key={fx.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-navy-light rounded-lg px-4 py-3 border border-red-500/20">
+                  <div className="flex items-start sm:items-center flex-wrap gap-2">
+                    <span className="text-slate-400 text-xs shrink-0">MD{fx.matchday}</span>
                     <span className="text-slate-900 font-medium text-sm">
                       {(fx.home_team as any)?.name} vs {(fx.away_team as any)?.name}
                     </span>
-                    <div className="flex gap-2 ml-2">
+                    <div className="flex gap-2 flex-wrap">
                       {confs.map((c, i) => (
                         <span key={i} className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30">
                           {c.home_score}–{c.away_score}
@@ -190,7 +190,7 @@ export default async function AdminDashboardPage() {
                       ))}
                     </div>
                   </div>
-                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="btn-danger text-xs">
+                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="btn-danger text-xs self-start sm:self-auto shrink-0">
                     Resolve
                   </Link>
                 </div>
@@ -257,33 +257,36 @@ export default async function AdminDashboardPage() {
               <div className="space-y-2">
                 {todaysFixtures!.map((fx: any) => {
                   const statusCls = STATUS_COLOURS[fx.status] ?? 'text-slate-400 bg-slate-500/10 border-slate-500/20'
+                  const statusLabel = fx.status === 'awaiting_confirmation' ? 'Awaiting' : fx.status.replace(/_/g, ' ')
                   return (
-                    <div key={fx.id} className="flex items-center gap-3 bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
-                      <span className="text-slate-500 text-xs w-8 shrink-0">MD{fx.matchday}</span>
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {fx.home_team?.logo_league_folder && (
-                          <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain shrink-0" />
-                        )}
-                        <span className="text-slate-900 text-sm font-medium truncate">{fx.home_team?.name}</span>
-                        <span className="text-slate-500 text-xs mx-1">vs</span>
-                        <span className="text-slate-900 text-sm font-medium truncate">{fx.away_team?.name}</span>
-                        {fx.away_team?.logo_league_folder && (
-                          <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={24} height={24} className="object-contain shrink-0" />
-                        )}
+                    <div key={fx.id} className="bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-slate-500 text-xs shrink-0">MD{fx.matchday}</span>
+                            <span className="text-slate-900 text-sm font-medium truncate">
+                              {fx.home_team?.name} <span className="text-slate-400 font-normal">vs</span> {fx.away_team?.name}
+                            </span>
+                          </div>
+                          <div className="mt-1">
+                            <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>
+                              {statusLabel}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <DashboardFixtureActions
+                            fixtureId={fx.id}
+                            status={fx.status}
+                            homeTeamName={fx.home_team?.name}
+                            awayTeamName={fx.away_team?.name}
+                            homeManagerName={fx.home_team?.manager?.username}
+                            homeManagerPhone={fx.home_team?.manager?.whatsapp_number}
+                            awayManagerName={fx.away_team?.manager?.username}
+                            awayManagerPhone={fx.away_team?.manager?.whatsapp_number}
+                          />
+                        </div>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded border shrink-0 ${statusCls}`}>
-                        {fx.status.replace('_', ' ')}
-                      </span>
-                      <DashboardFixtureActions
-                        fixtureId={fx.id}
-                        status={fx.status}
-                        homeTeamName={fx.home_team?.name}
-                        awayTeamName={fx.away_team?.name}
-                        homeManagerName={fx.home_team?.manager?.username}
-                        homeManagerPhone={fx.home_team?.manager?.whatsapp_number}
-                        awayManagerName={fx.away_team?.manager?.username}
-                        awayManagerPhone={fx.away_team?.manager?.whatsapp_number}
-                      />
                     </div>
                   )
                 })}

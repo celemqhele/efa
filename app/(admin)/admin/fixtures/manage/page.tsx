@@ -98,7 +98,63 @@ export default async function FixturesManagePage({
         </div>
       ) : (
         <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile card list */}
+          <div className="sm:hidden divide-y divide-navy-border">
+            {(fixtures ?? []).map((fx: any) => {
+              const result = fx.result?.[0]
+              const statusCls = STATUS_COLOURS[fx.status] ?? STATUS_COLOURS.scheduled
+              const homeTeam = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
+              const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
+              return (
+                <div key={fx.id} className="px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-slate-500 text-xs font-semibold">
+                          {fx.round_type && fx.round_type !== 'league'
+                            ? fx.round_type.toUpperCase()
+                            : `MD${fx.matchday}`}
+                          {fx.leg > 1 && ` L${fx.leg}`}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>
+                          {fx.status.replace(/_/g, ' ')}
+                        </span>
+                        {fx.is_postponed && (
+                          <span className="text-orange-400 text-[10px]">Postponed</span>
+                        )}
+                      </div>
+                      <p className="text-slate-900 text-sm font-semibold">
+                        {homeTeam?.name ?? 'TBC'}
+                        <span className="text-slate-400 font-normal mx-1.5">
+                          {result ? `${result.home_score}–${result.away_score}` : 'vs'}
+                        </span>
+                        {awayTeam?.name ?? 'TBC'}
+                      </p>
+                      <p className="text-slate-500 text-xs mt-0.5">
+                        {fx.scheduled_date
+                          ? new Date(fx.scheduled_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                          : 'TBD'}
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      <FixtureActions
+                        fixtureId={fx.id}
+                        currentDate={fx.scheduled_date}
+                        status={fx.status}
+                        homeTeamId={homeTeam?.id ?? ''}
+                        homeTeamName={homeTeam?.name ?? ''}
+                        awayTeamId={awayTeam?.id ?? ''}
+                        awayTeamName={awayTeam?.name ?? ''}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-navy-border bg-navy-light/50">

@@ -413,8 +413,8 @@ export default function ResultSubmitClient({
           <>
             {/* Fixture Header */}
             <div className="card p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center justify-center gap-4">
                   <div className="text-center">
                     {selectedFixture.home_team?.logo_league_folder && (
                       <Image
@@ -424,12 +424,12 @@ export default function ResultSubmitClient({
                         className="object-contain mx-auto"
                       />
                     )}
-                    <p className="text-slate-900 text-sm font-bold mt-1">{selectedFixture.home_team?.name}</p>
+                    <p className="text-slate-900 text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.home_team?.name}</p>
                   </div>
-                  <div className="text-center px-4">
+                  <div className="text-center">
                     <p className="text-slate-500 text-xs">MD{selectedFixture.matchday}</p>
                     <p className="text-gold font-bold text-xl">vs</p>
-                    <p className="text-slate-500 text-xs">{selectedFixture.tournament?.name}</p>
+                    <p className="text-slate-500 text-xs truncate max-w-[90px]">{selectedFixture.tournament?.name}</p>
                   </div>
                   <div className="text-center">
                     {selectedFixture.away_team?.logo_league_folder && (
@@ -440,11 +440,11 @@ export default function ResultSubmitClient({
                         className="object-contain mx-auto"
                       />
                     )}
-                    <p className="text-slate-900 text-sm font-bold mt-1">{selectedFixture.away_team?.name}</p>
+                    <p className="text-slate-900 text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.away_team?.name}</p>
                   </div>
                 </div>
                 {/* Mode toggle */}
-                <div className="flex rounded-lg overflow-hidden border border-navy-border">
+                <div className="flex rounded-lg overflow-hidden border border-navy-border self-center sm:self-auto shrink-0">
                   <button
                     onClick={() => setMode('screenshot')}
                     className={`px-3 py-1.5 text-xs font-medium transition-colors ${
