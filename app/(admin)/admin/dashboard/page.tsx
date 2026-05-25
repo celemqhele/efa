@@ -257,10 +257,22 @@ export default async function AdminDashboardPage() {
               <div className="space-y-2">
                 {todaysFixtures!.map((fx: any) => {
                   const statusCls = STATUS_COLOURS[fx.status] ?? 'text-slate-400 bg-slate-500/10 border-slate-500/20'
-                  const statusLabel = fx.status === 'awaiting_confirmation' ? 'Awaiting' : fx.status.replace(/_/g, ' ')
+                  const actions = (
+                    <DashboardFixtureActions
+                      fixtureId={fx.id}
+                      status={fx.status}
+                      homeTeamName={fx.home_team?.name}
+                      awayTeamName={fx.away_team?.name}
+                      homeManagerName={fx.home_team?.manager?.username}
+                      homeManagerPhone={fx.home_team?.manager?.whatsapp_number}
+                      awayManagerName={fx.away_team?.manager?.username}
+                      awayManagerPhone={fx.away_team?.manager?.whatsapp_number}
+                    />
+                  )
                   return (
                     <div key={fx.id} className="bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
-                      <div className="flex items-start gap-2">
+                      {/* Mobile layout */}
+                      <div className="flex items-start gap-2 sm:hidden">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-slate-500 text-xs shrink-0">MD{fx.matchday}</span>
@@ -270,22 +282,30 @@ export default async function AdminDashboardPage() {
                           </div>
                           <div className="mt-1">
                             <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>
-                              {statusLabel}
+                              {fx.status.replace(/_/g, ' ')}
                             </span>
                           </div>
                         </div>
-                        <div className="shrink-0">
-                          <DashboardFixtureActions
-                            fixtureId={fx.id}
-                            status={fx.status}
-                            homeTeamName={fx.home_team?.name}
-                            awayTeamName={fx.away_team?.name}
-                            homeManagerName={fx.home_team?.manager?.username}
-                            homeManagerPhone={fx.home_team?.manager?.whatsapp_number}
-                            awayManagerName={fx.away_team?.manager?.username}
-                            awayManagerPhone={fx.away_team?.manager?.whatsapp_number}
-                          />
+                        <div className="shrink-0">{actions}</div>
+                      </div>
+                      {/* Desktop layout — original */}
+                      <div className="hidden sm:flex items-center gap-3">
+                        <span className="text-slate-500 text-xs w-8 shrink-0">MD{fx.matchday}</span>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {fx.home_team?.logo_league_folder && (
+                            <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain shrink-0" />
+                          )}
+                          <span className="text-slate-900 text-sm font-medium truncate">{fx.home_team?.name}</span>
+                          <span className="text-slate-500 text-xs mx-1">vs</span>
+                          <span className="text-slate-900 text-sm font-medium truncate">{fx.away_team?.name}</span>
+                          {fx.away_team?.logo_league_folder && (
+                            <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={24} height={24} className="object-contain shrink-0" />
+                          )}
                         </div>
+                        <span className={`text-xs px-2 py-0.5 rounded border shrink-0 ${statusCls}`}>
+                          {fx.status.replace('_', ' ')}
+                        </span>
+                        {actions}
                       </div>
                     </div>
                   )
