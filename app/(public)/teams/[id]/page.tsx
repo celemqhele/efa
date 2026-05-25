@@ -308,30 +308,27 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
           {/* DNA Badges */}
           {dnaProfiles.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {/* Combination badge — shown when 2+ profiles combine into a named style */}
-              {dnaCombination && (
-                <div>
-                  <CombinationBadge
-                    combination={dnaCombination}
-                    profiles={dnaProfiles}
-                    isOwnTeam={isCurrentManager}
-                  />
+            <div className="mt-4">
+              {dnaCombination ? (
+                <CombinationBadge
+                  combination={dnaCombination}
+                  profiles={dnaProfiles}
+                  isOwnTeam={isCurrentManager}
+                />
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {dnaProfiles.map((dna) => (
+                    <DNABadge
+                      key={dna.label}
+                      label={dna.label}
+                      emoji={dna.emoji}
+                      color={dna.color}
+                      level={dna.level}
+                      isOwnTeam={isCurrentManager}
+                    />
+                  ))}
                 </div>
               )}
-              {/* Individual profile badges */}
-              <div className="flex flex-wrap gap-1.5">
-                {dnaProfiles.map((dna) => (
-                  <DNABadge
-                    key={dna.label}
-                    label={dna.label}
-                    emoji={dna.emoji}
-                    color={dna.color}
-                    level={dna.level}
-                    isOwnTeam={isCurrentManager}
-                  />
-                ))}
-              </div>
             </div>
           )}
         </div>

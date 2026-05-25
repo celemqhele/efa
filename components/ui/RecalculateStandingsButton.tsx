@@ -24,11 +24,11 @@ export default function RecalculateStandingsButton({ tournamentId }: Props) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed')
 
-      const { league_fixtures_processed: l, group_fixtures_processed: g } = data
-      const parts = []
-      if (l > 0) parts.push(`${l} league`)
-      if (g > 0) parts.push(`${g} group`)
-      setMessage(parts.length ? `✓ Done (${parts.join(' + ')} results)` : '✓ Done — no results found')
+      const { standings_rows_written: s, group_rows_written: g, fixtures_processed: f } = data
+      const rows = (s ?? 0) + (g ?? 0)
+      setMessage(rows > 0
+        ? `✓ Done — ${rows} teams, ${f} fixtures`
+        : `✓ Done — ${f} fixtures processed`)
       setStatus('done')
     } catch (err: any) {
       setMessage(err.message)
