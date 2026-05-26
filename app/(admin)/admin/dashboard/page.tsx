@@ -51,10 +51,14 @@ export default async function AdminDashboardPage() {
     countMap[f.tournament_id] = (countMap[f.tournament_id] ?? 0) + 1
   }
 
-  // Today's fixtures
-  const today = new Date()
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
-  const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString()
+  // Today's fixtures — computed in Africa/Johannesburg local time so that the
+  // dashboard doesn't flip to "yesterday" between 22:00 and midnight UTC
+  // (when the Vercel server thinks it's still the previous day in UTC but
+  // JHB has already rolled over to the new day).
+  const JHB_TZ = 'Africa/Johannesburg'
+  const jhbToday = new Date().toLocaleDateString('en-CA', { timeZone: JHB_TZ }) // YYYY-MM-DD
+  const todayStart = new Date(`${jhbToday}T00:00:00+02:00`).toISOString()
+  const todayEnd = new Date(new Date(todayStart).getTime() + 24 * 60 * 60 * 1000).toISOString()
 
   const { data: todaysFixtures } = await (supabase as any)
     .from('fixtures')
@@ -151,7 +155,7 @@ export default async function AdminDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
           <p className="text-slate-400 text-sm mt-1">
-            {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Africa/Johannesburg' })}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
