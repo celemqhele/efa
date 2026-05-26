@@ -1,85 +1,54 @@
 import { createClient } from '@/lib/supabase/server'
 import TeamLogo from '@/components/ui/TeamLogo'
+import DateNav from '@/components/ui/DateNav'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
+import { getAppTodayKey, getAppDayUtcRange, APP_TIME_ZONE } from '@/lib/app-time'
 
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  searchParams: Promise<{ tournament?: string; matchday?: string }>
+  searchParams: Promise<{ date?: string }>
 }
 
-const TOURNAMENT_TYPE_LABELS: Record<string, string> = {
-  league: 'PL',
-  ucl: 'UCL',
-  europa: 'Europa',
+const TYPE_ORDER = ['league', 'ucl', 'europa', 'super_cup'] as const
+
+const TYPE_LABELS: Record<string, string> = {
+  league: 'Premier League',
+  ucl: 'UEFA Champions League',
+  europa: 'UEFA Europa League',
   super_cup: 'Super Cup',
 }
 
+const TYPE_ACCENT: Record<string, string> = {
+  league: 'text-[#c9a84c] border-[#c9a84c]/40 bg-[#c9a84c]/5',
+  ucl: 'text-blue-500 border-blue-500/40 bg-blue-500/5',
+  europa: 'text-orange-500 border-orange-500/40 bg-orange-500/5',
+  super_cup: 'text-purple-500 border-purple-500/40 bg-purple-500/5',
+}
+
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
-  scheduled: {
-    label: 'Scheduled',
-    pill: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
-  },
-  awaiting_confirmation: {
-    label: 'Awaiting',
-    pill: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  },
-  confirmed: {
-    label: 'FT',
-    pill: 'bg-green-500/20 text-green-400 border-green-500/30',
-  },
-  abandoned: {
-    label: 'Abandoned',
-    pill: 'bg-red-500/20 text-red-400 border-red-500/30',
-  },
+  scheduled: { label: 'Scheduled', pill: 'bg-slate-500/20 text-slate-500 border-slate-500/30' },
+  awaiting_confirmation: { label: 'Awaiting', pill: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' },
+  confirmed: { label: 'FT', pill: 'bg-green-500/20 text-green-600 border-green-500/30' },
+  abandoned: { label: 'Abandoned', pill: 'bg-red-500/20 text-red-500 border-red-500/30' },
 }
 
 const ROUND_LABELS: Record<string, string> = {
+  group: 'Group',
+  r16: 'Round of 16',
+  qf: 'Quarter-Final',
   sf: 'Semi-Final',
   final: 'Final',
-}
-
-const APP_TIME_ZONE = 'Africa/Johannesburg'
-
-function getDateKeyFromDate(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: APP_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date)
-
-  const year = parts.find((p) => p.type === 'year')?.value
-  const month = parts.find((p) => p.type === 'month')?.value
-  const day = parts.find((p) => p.type === 'day')?.value
-
-  return `${year}-${month}-${day}`
-}
-
-function getDateKey(dateStr: string | null): string | null {
-  if (!dateStr) return null
-  const date = parseISO(dateStr)
-  if (Number.isNaN(date.getTime())) return null
-  return getDateKeyFromDate(date)
-}
-
-async function getSupabaseTodayKey(supabase: any): Promise<string> {
-  const { data, error } = await supabase.rpc('get_app_time')
-
-  if (!error) {
-    const row = Array.isArray(data) ? data[0] : data
-    if (row?.today_local) return String(row.today_local)
-  }
-
-  // Fallback only if the Supabase RPC has not been created yet.
-  return getDateKeyFromDate(new Date())
 }
 
 export default async function FixturesPage({ searchParams }: PageProps) {
   const supabase = await createClient()
   const params = await searchParams
-  const selectedTournamentId = params.tournament ?? null
+
+  const todayKey = await getAppTodayKey(supabase)
+  const selectedDate = params.date ?? todayKey
+  const { startIso, endIso } = getAppDayUtcRange(selectedDate)
 
   const { data: { user } } = await supabase.auth.getUser()
   let isAdmin = false
@@ -89,95 +58,20 @@ export default async function FixturesPage({ searchParams }: PageProps) {
     isAdmin = profile?.role === 'admin'
   }
 
-  // Only fetch active tournaments
-  const { data: tournaments } = await supabase
-    .from('tournaments')
-    .select('id, name, type, status')
-    .eq('status', 'active')
-    .order('created_at', { ascending: true })
+  // Fetch all fixtures scheduled on the selected JHB day
+  const { data: fixtures } = await supabase
+    .from('fixtures')
+    .select(`
+      id, matchday, scheduled_date, status, round_type, leg,
+      tournament:tournaments(id, name, type),
+      home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+      away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
+    `)
+    .gte('scheduled_date', startIso)
+    .lt('scheduled_date', endIso)
+    .order('scheduled_date', { ascending: true })
 
-  const requestedTournament = selectedTournamentId
-    ? tournaments?.find((t) => t.id === selectedTournamentId)
-    : null
-
-  const activeTournamentId =
-    requestedTournament?.id ??
-    tournaments?.[0]?.id ??
-    null
-
-  const activeTournament = tournaments?.find((t) => t.id === activeTournamentId)
-
-  // Build matchday completion map
-  const { data: allMdRows } = activeTournamentId
-    ? await supabase
-        .from('fixtures')
-        .select('matchday, scheduled_date, status')
-        .eq('tournament_id', activeTournamentId)
-    : { data: null }
-
-  const mdMap: Record<number, { total: number; done: number }> = {}
-  const mdDates: Record<number, string[]> = {}
-
-  for (const f of allMdRows ?? []) {
-    const md = f.matchday ?? 0
-    const dateKey = getDateKey(f.scheduled_date)
-
-    if (!md) continue
-    if (!mdMap[md]) mdMap[md] = { total: 0, done: 0 }
-    if (!mdDates[md]) mdDates[md] = []
-
-    mdMap[md].total++
-    if (f.status === 'confirmed') mdMap[md].done++
-    if (dateKey && !mdDates[md].includes(dateKey)) mdDates[md].push(dateKey)
-  }
-
-  const sortedMatchdays = Object.keys(mdMap).map(Number).sort((a, b) => a - b)
-  const todayKey = await getSupabaseTodayKey(supabase)
-
-  // A single calendar day can contain multiple matchdays.
-  // Default load = the FIRST matchday scheduled for today.
-  // Badge logic below marks ALL matchdays scheduled today as Current.
-  const todayMatchdays = sortedMatchdays.filter((md) =>
-    mdDates[md]?.includes(todayKey)
-  )
-
-  const nextUpcomingMatchday =
-    sortedMatchdays
-      .map((md) => ({
-        md,
-        dateKey: (mdDates[md] ?? []).filter((date) => date >= todayKey).sort()[0] ?? null,
-      }))
-      .filter((item) => item.dateKey && mdMap[item.md]?.done < mdMap[item.md]?.total)
-      .sort((a, b) => String(a.dateKey).localeCompare(String(b.dateKey)) || a.md - b.md)[0]?.md ?? null
-
-  const firstIncompleteMatchday =
-    sortedMatchdays.find((md) => mdMap[md].done < mdMap[md].total) ?? null
-
-  const currentMatchday =
-    todayMatchdays[0] ??
-    nextUpcomingMatchday ??
-    firstIncompleteMatchday ??
-    sortedMatchdays[sortedMatchdays.length - 1] ??
-    1
-
-  const selectedMatchday = params.matchday ? parseInt(params.matchday) : currentMatchday
-
-  // Fetch ALL fixtures for the selected matchday (no status filter)
-  const { data: fixtures } = activeTournamentId
-    ? await supabase
-        .from('fixtures')
-        .select(`
-          id, matchday, scheduled_date, status, round_type, leg,
-          home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
-          away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
-        `)
-        .eq('tournament_id', activeTournamentId)
-        .eq('matchday', selectedMatchday)
-        .order('scheduled_date', { ascending: true })
-    : { data: null }
-
-  // Fetch results separately — PostgREST join on results is unreliable without
-  // explicit FK hint, so we query directly and merge by fixture_id.
+  // Results for those fixtures
   const fixtureIds = (fixtures ?? []).map((f: any) => f.id)
   const { data: resultsData } = fixtureIds.length > 0
     ? await supabase
@@ -188,197 +82,160 @@ export default async function FixturesPage({ searchParams }: PageProps) {
 
   const resultsByFixture: Record<string, { home_score: number; away_score: number }> = {}
   for (const r of resultsData ?? []) {
-    resultsByFixture[r.fixture_id] = r
+    resultsByFixture[(r as any).fixture_id] = r as any
   }
 
-  function formatDate(dateStr: string | null): string {
-    if (!dateStr) return 'TBD'
+  // Group by tournament type
+  const grouped: Record<string, any[]> = {}
+  for (const f of fixtures ?? []) {
+    const t = Array.isArray((f as any).tournament) ? (f as any).tournament[0] : (f as any).tournament
+    const key = t?.type ?? 'unknown'
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(f)
+  }
+
+  const orderedTypes = TYPE_ORDER.filter((t) => (grouped[t]?.length ?? 0) > 0)
+
+  function fixtureTime(scheduledDate: string | null): string | null {
+    if (!scheduledDate) return null
     try {
-      return format(parseISO(dateStr), 'EEE d MMM yyyy')
+      return new Date(scheduledDate).toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: APP_TIME_ZONE,
+      })
     } catch {
-      return dateStr
+      return null
     }
   }
 
-  const prevMd = sortedMatchdays.filter((md) => md < selectedMatchday).at(-1) ?? null
-  const nextMd = sortedMatchdays.filter((md) => md > selectedMatchday)[0] ?? null
-
-  const mdComplete =
-    mdMap[selectedMatchday]?.total > 0 &&
-    mdMap[selectedMatchday]?.done === mdMap[selectedMatchday]?.total
-
-  const isCurrentMd =
-    todayMatchdays.includes(selectedMatchday) ||
-    selectedMatchday === currentMatchday
-
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Fixtures & Results</h1>
-        {activeTournament && (
-          <p className="text-sm text-[#c9a84c] mt-0.5">{activeTournament.name}</p>
-        )}
       </div>
 
-      {/* Tournament tabs */}
-      {tournaments && tournaments.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {tournaments.map((t) => {
-            const isActive = t.id === activeTournamentId
-            return (
-              <Link
-                key={t.id}
-                href={`/fixtures?tournament=${t.id}`}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
-                  isActive
-                    ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
-                    : 'bg-transparent text-slate-400 border-slate-200 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
-                }`}
-              >
-                {TOURNAMENT_TYPE_LABELS[t.type] ?? t.name}
-              </Link>
-            )
-          })}
-        </div>
-      )}
+      <DateNav currentDate={selectedDate} todayKey={todayKey} basePath="/fixtures" />
 
-      {/* Matchday navigation */}
-      {sortedMatchdays.length > 1 && (
-        <div className="flex items-center gap-3">
-          {prevMd !== null ? (
-            <Link
-              href={`/fixtures?${activeTournamentId ? `tournament=${activeTournamentId}&` : ''}matchday=${prevMd}`}
-              className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-slate-900 transition-colors"
-            >
-              ← MD {prevMd}
-            </Link>
-          ) : (
-            <div className="w-20" />
-          )}
-
-          <div className="flex-1 text-center">
-            <span className="text-sm font-bold text-slate-900">
-              {ROUND_LABELS[(fixtures?.[0] as any)?.round_type ?? ''] ?? `Matchday ${selectedMatchday}`}
-            </span>
-            {isCurrentMd && (
-              <span className="ml-2 text-[10px] bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                Current
-              </span>
-            )}
-            {mdComplete && (
-              <span className="ml-2 text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                Complete
-              </span>
-            )}
-          </div>
-
-          {nextMd !== null ? (
-            <Link
-              href={`/fixtures?${activeTournamentId ? `tournament=${activeTournamentId}&` : ''}matchday=${nextMd}`}
-              className="px-3 py-1.5 rounded-lg text-sm border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-slate-900 transition-colors"
-            >
-              MD {nextMd} →
-            </Link>
-          ) : (
-            <div className="w-20" />
-          )}
-        </div>
-      )}
-
-      {/* Fixtures list only. Standings should live on the separate standings page. */}
-      {!activeTournamentId ? (
+      {orderedTypes.length === 0 ? (
         <div className="card p-12 text-center">
-          <p className="text-slate-500 text-sm">No active tournaments.</p>
-        </div>
-      ) : (fixtures ?? []).length === 0 ? (
-        <div className="card p-12 text-center">
-          <p className="text-slate-500 text-sm">No fixtures for Matchday {selectedMatchday}.</p>
+          <p className="text-slate-500 text-sm">
+            No fixtures for {format(parseISO(selectedDate), 'EEEE d MMM yyyy')}.
+          </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {(fixtures ?? []).map((f: any) => {
-            const result = resultsByFixture[f.id] ?? null
-            const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
-            const homeWin = result && result.home_score > result.away_score
-            const awayWin = result && result.away_score > result.home_score
-            const canSubmit = isAdmin && f.status !== 'abandoned'
-
+        <div className="space-y-6">
+          {orderedTypes.map((type) => {
+            const sectionFixtures = grouped[type] ?? []
+            const tournamentMeta = (Array.isArray(sectionFixtures[0]?.tournament)
+              ? sectionFixtures[0].tournament[0]
+              : sectionFixtures[0]?.tournament) as { id: string; name: string; type: string } | undefined
             return (
-              <div key={f.id} className="flex items-center gap-2">
-                <Link
-                  href={`/fixtures/${f.id}`}
-                  className="card flex-1 flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-black/[0.03] transition-all group"
-                >
-                  {/* Home team */}
-                  <div className="flex-1 flex items-center gap-2.5 min-w-0 justify-end flex-row-reverse sm:flex-row">
-                    <span className={`text-sm font-semibold truncate text-right sm:text-left ${
-                      homeWin ? 'text-slate-900' : awayWin ? 'text-slate-400' : 'text-slate-900'
-                    }`}>
-                      {f.home_team?.name ?? 'TBC'}
-                    </span>
-                    {f.home_team?.logo_league_folder && (
-                      <div className="flex-shrink-0">
-                        <TeamLogo
-                          leagueFolder={f.home_team.logo_league_folder}
-                          teamSlug={f.home_team.logo_team_slug}
-                          context="standings_row"
-                          alt={f.home_team.name}
-                          className={`w-8 h-8 ${awayWin ? 'opacity-40' : ''}`}
-                        />
+              <section key={type} className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded border ${TYPE_ACCENT[type] ?? 'text-slate-500 border-slate-200'}`}>
+                    {TYPE_LABELS[type] ?? tournamentMeta?.name ?? type}
+                  </h2>
+                  <span className="text-xs text-slate-400">
+                    {sectionFixtures.length} {sectionFixtures.length === 1 ? 'fixture' : 'fixtures'}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {sectionFixtures.map((f: any) => {
+                    const result = resultsByFixture[f.id]
+                    const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
+                    const homeWin = result && result.home_score > result.away_score
+                    const awayWin = result && result.away_score > result.home_score
+                    const time = fixtureTime(f.scheduled_date)
+                    const roundLabel = f.round_type && f.round_type !== 'group'
+                      ? ROUND_LABELS[f.round_type] ?? f.round_type.toUpperCase()
+                      : null
+
+                    return (
+                      <div key={f.id} className="flex items-center gap-2">
+                        <Link
+                          href={`/fixtures/${f.id}`}
+                          className="card flex-1 flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-black/[0.03] transition-all"
+                        >
+                          {/* Home */}
+                          <div className="flex-1 flex items-center gap-2.5 min-w-0 justify-end flex-row-reverse sm:flex-row">
+                            <span className={`text-sm font-semibold truncate text-right sm:text-left ${
+                              awayWin ? 'text-slate-400' : 'text-slate-900'
+                            }`}>
+                              {f.home_team?.name ?? 'TBC'}
+                            </span>
+                            {f.home_team?.logo_league_folder && (
+                              <div className="flex-shrink-0">
+                                <TeamLogo
+                                  leagueFolder={f.home_team.logo_league_folder}
+                                  teamSlug={f.home_team.logo_team_slug}
+                                  context="standings_row"
+                                  alt={f.home_team.name}
+                                  className={`w-8 h-8 ${awayWin ? 'opacity-40' : ''}`}
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Centre */}
+                          <div className="flex flex-col items-center gap-1 min-w-[80px]">
+                            {result ? (
+                              <span className="text-slate-900 font-bold text-lg leading-none">
+                                {result.home_score}{' '}
+                                <span className="text-slate-500">–</span>{' '}
+                                {result.away_score}
+                              </span>
+                            ) : (
+                              <span className="text-[#c9a84c] font-bold text-sm">vs</span>
+                            )}
+                            {time && (
+                              <span className="text-[10px] text-slate-500 font-mono">{time}</span>
+                            )}
+                            <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
+                              {statusInfo.label}
+                            </span>
+                            {roundLabel && (
+                              <span className="text-[9px] text-slate-400 uppercase tracking-wider">
+                                {roundLabel}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Away */}
+                          <div className="flex-1 flex items-center gap-2.5 min-w-0">
+                            {f.away_team?.logo_league_folder && (
+                              <div className="flex-shrink-0">
+                                <TeamLogo
+                                  leagueFolder={f.away_team.logo_league_folder}
+                                  teamSlug={f.away_team.logo_team_slug}
+                                  context="standings_row"
+                                  alt={f.away_team.name}
+                                  className={`w-8 h-8 ${homeWin ? 'opacity-40' : ''}`}
+                                />
+                              </div>
+                            )}
+                            <span className={`text-sm font-semibold truncate ${
+                              homeWin ? 'text-slate-400' : 'text-slate-900'
+                            }`}>
+                              {f.away_team?.name ?? 'TBC'}
+                            </span>
+                          </div>
+                        </Link>
+
+                        {isAdmin && f.status !== 'abandoned' && (
+                          <Link
+                            href={`/admin/results/submit?fixture=${f.id}`}
+                            className="shrink-0 px-3 py-2 text-xs font-semibold text-[#c9a84c] border border-[#c9a84c]/30 rounded-lg hover:bg-[#c9a84c]/10 transition-colors whitespace-nowrap"
+                          >
+                            Submit
+                          </Link>
+                        )}
                       </div>
-                    )}
-                  </div>
-
-                  {/* Centre */}
-                  <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                    {result ? (
-                      <span className="text-slate-900 font-bold text-lg leading-none">
-                        {result.home_score}{' '}
-                        <span className="text-slate-500">–</span>{' '}
-                        {result.away_score}
-                      </span>
-                    ) : (
-                      <span className="text-[#c9a84c] font-bold text-sm">vs</span>
-                    )}
-                    <span className="text-[10px] text-slate-500 text-center leading-tight">
-                      {formatDate(f.scheduled_date)}
-                    </span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
-                      {statusInfo.label}
-                    </span>
-                  </div>
-
-                  {/* Away team */}
-                  <div className="flex-1 flex items-center gap-2.5 min-w-0">
-                    {f.away_team?.logo_league_folder && (
-                      <div className="flex-shrink-0">
-                        <TeamLogo
-                          leagueFolder={f.away_team.logo_league_folder}
-                          teamSlug={f.away_team.logo_team_slug}
-                          context="standings_row"
-                          alt={f.away_team.name}
-                          className={`w-8 h-8 ${homeWin ? 'opacity-40' : ''}`}
-                        />
-                      </div>
-                    )}
-                    <span className={`text-sm font-semibold truncate ${
-                      awayWin ? 'text-slate-900' : homeWin ? 'text-slate-400' : 'text-slate-900'
-                    }`}>
-                      {f.away_team?.name ?? 'TBC'}
-                    </span>
-                  </div>
-                </Link>
-
-                {canSubmit && (
-                  <Link
-                    href={`/admin/results/submit?fixture=${f.id}`}
-                    className="shrink-0 px-3 py-2 text-xs font-semibold text-[#c9a84c] border border-[#c9a84c]/30 rounded-lg hover:bg-[#c9a84c]/10 transition-colors whitespace-nowrap"
-                  >
-                    Submit
-                  </Link>
-                )}
-              </div>
+                    )
+                  })}
+                </div>
+              </section>
             )
           })}
         </div>

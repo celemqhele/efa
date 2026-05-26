@@ -1,34 +1,8 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import {
-  resolveMatchdayForDate,
-  type FixtureMatchdayRow,
-} from '@/lib/matchday-resolver'
 
 type PostponeBody = {
   fixtureId: string
   newDate: string
-}
-
-async function resolveTargetMatchday(
-  adminSupabase: Awaited<ReturnType<typeof createAdminClient>>,
-  fixture: { id: string; tournament_id: string | null; matchday: number | null },
-  newDateTime: Date
-): Promise<number | null> {
-  if (!fixture.tournament_id) return fixture.matchday ?? null
-
-  const { data: tournamentFixtures, error } = await adminSupabase
-    .from('fixtures')
-    .select('id, matchday, scheduled_date')
-    .eq('tournament_id', fixture.tournament_id)
-
-  if (error || !tournamentFixtures) return fixture.matchday ?? null
-
-  return resolveMatchdayForDate(
-    tournamentFixtures as FixtureMatchdayRow[],
-    fixture.id,
-    newDateTime,
-    fixture.matchday ?? null
-  )
 }
 
 export async function POST(request: Request) {
@@ -55,7 +29,7 @@ export async function POST(request: Request) {
 
   const { data: fixture, error: fixtureError } = await adminSupabase
     .from('fixtures')
-    .select('id, status, scheduled_date, tournament_id, matchday')
+    .select('id, status, scheduled_date, matchday')
     .eq('id', fixtureId)
     .single()
 
@@ -63,8 +37,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Fixture not found' }, { status: 404 })
   }
 
-  const finishedStatuses = ['completed', 'confirmed', 'abandoned']
-  if (finishedStatuses.includes(fixture.status)) {
+  if (['completed', 'confirmed', 'abandoned'].includes(fixture.status)) {
     return Response.json({ error: 'Cannot postpone a finished fixture' }, { status: 400 })
   }
 
@@ -73,24 +46,14 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid date format' }, { status: 400 })
   }
 
-  const targetMatchday = await resolveTargetMatchday(adminSupabase, fixture, newDateTime)
-
-  const updatePayload: {
-    scheduled_date: string
-    is_postponed: boolean
-    matchday?: number
-  } = {
-    scheduled_date: newDateTime.toISOString(),
-    is_postponed: true,
-  }
-
-  if (typeof targetMatchday === 'number') {
-    updatePayload.matchday = targetMatchday
-  }
-
+  // Just move the date. Matchday stays as-is — it's metadata only;
+  // browsing/grouping is now date-based across the app.
   const { error: updateError } = await adminSupabase
     .from('fixtures')
-    .update(updatePayload)
+    .update({
+      scheduled_date: newDateTime.toISOString(),
+      is_postponed: true,
+    })
     .eq('id', fixtureId)
 
   if (updateError) {
@@ -106,17 +69,15 @@ export async function POST(request: Request) {
       details: {
         old_date: fixture.scheduled_date,
         new_date: newDateTime.toISOString(),
-        old_matchday: fixture.matchday,
-        new_matchday: targetMatchday,
+        matchday: fixture.matchday,
       },
     })
   } catch {
-    // Silently ignore audit log errors
+    // ignore audit log errors
   }
 
   return Response.json({
     success: true,
     message: 'Fixture postponed successfully',
-    matchday: targetMatchday,
   })
 }
