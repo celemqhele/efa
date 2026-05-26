@@ -1,5 +1,20 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { addDays, format, parseISO, isAfter } from 'date-fns'
+import { sendPushToUser } from '@/lib/push'
+
+const APP_TIME_ZONE = 'Africa/Johannesburg'
+
+function formatJhb(date: Date): string {
+  const datePart = date.toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short',
+    timeZone: APP_TIME_ZONE,
+  })
+  const timePart = date.toLocaleTimeString('en-GB', {
+    hour: '2-digit', minute: '2-digit',
+    timeZone: APP_TIME_ZONE,
+  })
+  return `${datePart} · ${timePart}`
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -27,10 +42,15 @@ export async function POST(request: Request) {
 
   const adminSupabase = await createAdminClient()
 
-  // All scheduled fixtures for the team in the date range
+  // All scheduled fixtures for the team in the date range — pull both teams' managers
+  // so we can notify them after the update.
   const { data: affectedFixtures } = await adminSupabase
     .from('fixtures')
-    .select('id, scheduled_date, home_team_id, away_team_id, matchday, tournament_id')
+    .select(`
+      id, scheduled_date, home_team_id, away_team_id, matchday, tournament_id,
+      home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id)
+    `)
     .or(`home_team_id.eq.${team_id},away_team_id.eq.${team_id}`)
     .gte('scheduled_date', from_date)
     .lte('scheduled_date', to_date)
@@ -59,7 +79,15 @@ export async function POST(request: Request) {
   // Assign new dates to postponed fixtures (max 3 per day)
   const MAX_PER_DAY = 3
   let cursor = reschedule_from ? parseISO(reschedule_from) : addDays(toD, 1)
-  const updates: { id: string; scheduled_date: string; deadline: string }[] = []
+  type Update = {
+    id: string
+    scheduled_date: string
+    deadline: string
+    old_date: string | null
+    home: { id?: string; name?: string; manager_id?: string | null } | null
+    away: { id?: string; name?: string; manager_id?: string | null } | null
+  }
+  const updates: Update[] = []
 
   for (const fx of affectedFixtures) {
     let safety = 0
@@ -68,10 +96,15 @@ export async function POST(request: Request) {
       const count = dateCounts.get(d) ?? 0
       if (count < MAX_PER_DAY) {
         dateCounts.set(d, count + 1)
+        const home = Array.isArray((fx as any).home_team) ? (fx as any).home_team[0] : (fx as any).home_team
+        const away = Array.isArray((fx as any).away_team) ? (fx as any).away_team[0] : (fx as any).away_team
         updates.push({
           id: fx.id,
           scheduled_date: d,
           deadline: `${d}T12:00:00Z`,
+          old_date: fx.scheduled_date ?? null,
+          home,
+          away,
         })
         break
       }
@@ -79,8 +112,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // Apply updates. Matchday stays as-is — fixtures are grouped by date now,
-  // matchday is purely metadata.
+  // Apply DB updates. Matchday stays untouched.
   await Promise.all(
     updates.map(({ id, scheduled_date, deadline }) =>
       adminSupabase
@@ -89,6 +121,59 @@ export async function POST(request: Request) {
         .eq('id', id)
     )
   )
+
+  // Notifications — in-app + push, per-fixture, both managers
+  try {
+    const inAppRows: any[] = []
+
+    for (const u of updates) {
+      const homeName = u.home?.name ?? 'Home'
+      const awayName = u.away?.name ?? 'Away'
+      const matchLabel = `${homeName} vs ${awayName}`
+      const oldWhen = u.old_date ? formatJhb(new Date(u.old_date)) : 'TBD'
+      const newWhen = formatJhb(new Date(`${u.scheduled_date}T12:00:00Z`))
+      const fixtureUrl = `/fixtures/${u.id}`
+      const managerIds = [u.home?.manager_id, u.away?.manager_id]
+        .filter((v): v is string => !!v)
+
+      for (const uid of managerIds) {
+        inAppRows.push({
+          user_id: uid,
+          type: 'fixture_postponed',
+          title: '📅 Match Postponed',
+          body: `${matchLabel} has been moved from ${oldWhen} to ${newWhen}.${reason ? ` Reason: ${reason}` : ''}`,
+          data: {
+            fixture_id: u.id,
+            old_date: u.old_date,
+            new_date: `${u.scheduled_date}T12:00:00Z`,
+            home_team: homeName,
+            away_team: awayName,
+            reason,
+          },
+        })
+
+        const { data: subs } = await adminSupabase
+          .from('push_subscriptions')
+          .select('endpoint, p256dh, auth')
+          .eq('user_id', uid)
+
+        if (subs?.length) {
+          await sendPushToUser(subs, {
+            title: '📅 Match Postponed',
+            body: `${matchLabel} moved to ${newWhen}`,
+            url: fixtureUrl,
+            tag: `postpone-${u.id}`,
+          })
+        }
+      }
+    }
+
+    if (inAppRows.length > 0) {
+      await adminSupabase.from('notifications').insert(inAppRows)
+    }
+  } catch {
+    // ignore notification errors
+  }
 
   await adminSupabase.from('audit_log').insert({
     admin_id: user.id,

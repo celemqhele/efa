@@ -30,6 +30,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
     { href: '/', label: 'Home' },
     { href: '/standings', label: 'Standings' },
     { href: '/fixtures', label: 'My Fixtures' },
+    { href: '/results', label: 'My Results' },
     { href: '/calendar', label: 'Calendar' },
     { href: '/hall-of-fame', label: 'Hall of Fame' },
     { href: '/rules', label: 'Rules' },

@@ -116,11 +116,6 @@ export default async function FixturesPage() {
 
   const upcomingStatuses = new Set(['scheduled', 'awaiting_confirmation'])
   const upcoming = (fixtures ?? []).filter((f: any) => upcomingStatuses.has(f.status))
-  const past = (fixtures ?? [])
-    .filter((f: any) => !upcomingStatuses.has(f.status))
-    .sort((a: any, b: any) =>
-      String(b.scheduled_date ?? '').localeCompare(String(a.scheduled_date ?? ''))
-    )
 
   const primaryTeam = teams[0]
 
@@ -234,9 +229,14 @@ export default async function FixturesPage() {
 
       {/* Upcoming */}
       <section className="space-y-3">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Upcoming</h2>
-          <span className="text-xs text-slate-400">{upcoming.length}</span>
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Upcoming</h2>
+            <span className="text-xs text-slate-400">{upcoming.length}</span>
+          </div>
+          <Link href="/results" className="text-xs text-[#c9a84c] hover:text-[#e0c06a]">
+            See results →
+          </Link>
         </div>
         {upcoming.length === 0 ? (
           <div className="card p-8 text-center text-sm text-slate-500">
@@ -245,23 +245,6 @@ export default async function FixturesPage() {
         ) : (
           <div className="space-y-2">
             {upcoming.map((f: any) => <FixtureRow key={f.id} f={f} />)}
-          </div>
-        )}
-      </section>
-
-      {/* Past */}
-      <section className="space-y-3">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Past Results</h2>
-          <span className="text-xs text-slate-400">{past.length}</span>
-        </div>
-        {past.length === 0 ? (
-          <div className="card p-8 text-center text-sm text-slate-500">
-            No results yet.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {past.map((f: any) => <FixtureRow key={f.id} f={f} />)}
           </div>
         )}
       </section>

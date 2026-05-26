@@ -89,19 +89,50 @@ export default async function HomePage() {
     upcomingFixtures = (data ?? []) as any[]
   }
 
-  // Latest results
-  const { data: latestResults } = await supabase
-    .from('results')
-    .select(`
-      id, home_score, away_score, created_at,
-      fixtures(
-        id, scheduled_date,
-        home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
-        away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
-      )
-    `)
-    .order('created_at', { ascending: false })
-    .limit(5)
+  // Latest results — personal to the user's team(s). For not-logged-in or
+  // teamless users, fall back to "any" so the section still has content.
+  let latestResults: any[] = []
+  if (userTeamIds.length > 0) {
+    const teamOrFilterResults = userTeamIds
+      .flatMap((id) => [`home_team_id.eq.${id}`, `away_team_id.eq.${id}`])
+      .join(',')
+    const { data: myFixtureIds } = await supabase
+      .from('fixtures')
+      .select('id')
+      .or(teamOrFilterResults)
+      .in('status', ['confirmed', 'completed', 'abandoned'])
+    const ids = (myFixtureIds ?? []).map((f: any) => f.id)
+    if (ids.length > 0) {
+      const { data } = await supabase
+        .from('results')
+        .select(`
+          id, home_score, away_score, created_at,
+          fixtures(
+            id, scheduled_date,
+            home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+            away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
+          )
+        `)
+        .in('fixture_id', ids)
+        .order('created_at', { ascending: false })
+        .limit(5)
+      latestResults = data ?? []
+    }
+  } else {
+    const { data } = await supabase
+      .from('results')
+      .select(`
+        id, home_score, away_score, created_at,
+        fixtures(
+          id, scheduled_date,
+          home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+          away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(5)
+    latestResults = data ?? []
+  }
 
   // Unbeaten run leaders (5+)
   const { data: unbeaten } = tournament
@@ -213,7 +244,7 @@ export default async function HomePage() {
           <section className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="section-header mb-0">Latest Results</h2>
-              <Link href="/fixtures" className="text-xs text-[#c9a84c] hover:text-[#e0c06a]">View all →</Link>
+              <Link href="/results" className="text-xs text-[#c9a84c] hover:text-[#e0c06a]">View all →</Link>
             </div>
 
             {!latestResults?.length ? (
