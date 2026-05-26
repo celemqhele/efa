@@ -1,6 +1,6 @@
 ﻿export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -55,13 +55,18 @@ export default async function AdminDashboardPage() {
 
   // Fixtures Due = anything that should already be played or finalised:
   //   - status scheduled or awaiting_confirmation
-  //   - scheduled_date <= end of today JHB
+  //   - scheduled_date <= end of today
   // As soon as a fixture is confirmed (or completed/abandoned) it drops off
   // this list automatically.
+  //
+  // Use the admin client so RLS doesn't hide other teams' fixtures from the
+  // logged-in admin (the calendar shows everything when logged out only
+  // because anonymous reads bypass authenticated RLS).
+  const adminSupabase = await createAdminClient()
   const todayKey = await getAppTodayKey(supabase)
   const { endIso: todayEnd } = getAppDayUtcRange(todayKey)
 
-  const { data: dueFixtures } = await (supabase as any)
+  const { data: dueFixtures } = await (adminSupabase as any)
     .from('fixtures')
     .select(`
       id, matchday, status, scheduled_date,
