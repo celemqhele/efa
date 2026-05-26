@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
@@ -16,7 +16,7 @@ interface Fixture {
   id: string
   matchday: number
   scheduled_date: string | null
-  status: string
+  status: 'scheduled' | 'awaiting_confirmation' | string
   tournament: { id: string; name: string; type: string } | null
   home_team: Team | null
   away_team: Team | null
@@ -101,6 +101,8 @@ interface StatValues {
   [key: string]: { home: string; away: string }
 }
 
+type StatusFilter = 'all' | 'awaiting_confirmation' | 'scheduled'
+
 export default function ResultSubmitClient({
   pendingFixtures,
   confirmationsByFixture,
@@ -110,6 +112,7 @@ export default function ResultSubmitClient({
 }: Props) {
   const [selectedFixtureId, setSelectedFixtureId] = useState<string>(defaultFixtureId ?? '')
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [mode, setMode] = useState<'screenshot' | 'manual'>('screenshot')
 
   // Screenshot / OCR state
@@ -146,14 +149,24 @@ export default function ResultSubmitClient({
   const selectedFixture = pendingFixtures.find((f) => f.id === selectedFixtureId) ?? null
   const existingConfs = selectedFixtureId ? (confirmationsByFixture[selectedFixtureId] ?? []) : []
 
+  // Advanced Filter Logic (Handles multi-word search & status buttons)
   const filteredFixtures = pendingFixtures.filter((fx) => {
+    // 1. Status Filter check
+    if (statusFilter !== 'all' && fx.status !== statusFilter) {
+      return false
+    }
+
+    // 2. Multi-word Search check
     if (!search) return true
-    const q = search.toLowerCase()
-    return (
-      fx.home_team?.name.toLowerCase().includes(q) ||
-      fx.away_team?.name.toLowerCase().includes(q) ||
-      fx.id.includes(q)
-    )
+    
+    // Split text by spaces and filter out empty strings
+    const searchWords = search.toLowerCase().split(/\s+/).filter(Boolean)
+    const homeName = fx.home_team?.name.toLowerCase() ?? ''
+    const awayName = fx.away_team?.name.toLowerCase() ?? ''
+    const combinedMatchText = `${homeName} vs ${awayName} ${fx.id.toLowerCase()}`
+
+    // Every word typed must match somewhere in the combined match text string
+    return searchWords.every((word) => combinedMatchText.includes(word))
   })
 
   // Auto-set scores when absent flags change
@@ -191,13 +204,10 @@ export default function ResultSubmitClient({
     setOcrResult(null)
 
     try {
-      // Crop to eFootball center stats panel in the browser (Canvas API)
       const croppedUrl = await cropToStatsPanel(file)
-
       setOcrStatus('Reading text...')
       setOcrProgress(10)
 
-      // Run Tesseract entirely in the browser — no server call, no timeout
       const Tesseract = (await import('tesseract.js')).default
       const { data: { text } } = await Tesseract.recognize(croppedUrl, 'eng', {
         logger: (m: any) => {
@@ -218,7 +228,6 @@ export default function ResultSubmitClient({
       })
 
       URL.revokeObjectURL(croppedUrl)
-
       setOcrStatus('Parsing...')
       setOcrProgress(97)
 
@@ -236,7 +245,6 @@ export default function ResultSubmitClient({
       setHomeScore(String(ocr.home_score))
       setAwayScore(String(ocr.away_score))
 
-      // Pre-fill stats
       const newStats: StatValues = {}
       for (const f of STAT_FIELDS) {
         newStats[f.key] = {
@@ -246,7 +254,6 @@ export default function ResultSubmitClient({
       }
       setStats(newStats)
 
-      // Auto-map teams
       const homeMapping = teamNameMappings.find(
         (m) => m.ocr_name.toLowerCase() === ocr.home_team_name.toLowerCase()
       )
@@ -336,9 +343,41 @@ export default function ResultSubmitClient({
       <div className="lg:col-span-1 space-y-4">
         <div className="card p-4">
           <h2 className="section-header">Select Fixture</h2>
+          
+          {/* Status Filter Tab Selector */}
+          <div className="flex rounded-lg overflow-hidden border border-navy-border p-0.5 bg-navy-light mb-3">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`flex-1 text-center py-1.5 text-xs font-medium rounded transition-colors ${
+                statusFilter === 'all' ? 'bg-gold text-navy shadow-sm' : 'text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('awaiting_confirmation')}
+              className={`flex-1 text-center py-1.5 text-xs font-medium rounded transition-colors ${
+                statusFilter === 'awaiting_confirmation' ? 'bg-gold text-navy shadow-sm' : 'text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Pending
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('scheduled')}
+              className={`flex-1 text-center py-1.5 text-xs font-medium rounded transition-colors ${
+                statusFilter === 'scheduled' ? 'bg-gold text-navy shadow-sm' : 'text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Scheduled
+            </button>
+          </div>
+
           <input
             type="text"
-            placeholder="Search by team name..."
+            placeholder="Search e.g. 'Chelsea Sunderland'..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input-field mb-3"
@@ -443,7 +482,6 @@ export default function ResultSubmitClient({
                     <p className="text-slate-900 text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.away_team?.name}</p>
                   </div>
                 </div>
-                {/* Mode toggle */}
                 <div className="flex rounded-lg overflow-hidden border border-navy-border self-center sm:self-auto shrink-0">
                   <button
                     onClick={() => setMode('screenshot')}
@@ -469,7 +507,6 @@ export default function ResultSubmitClient({
               <div className="card p-5 space-y-4">
                 <h2 className="section-header">Screenshot Upload</h2>
 
-                {/* Upload */}
                 <div className="border-2 border-dashed border-navy-border rounded-xl p-8 text-center">
                   <input
                     ref={fileRef}
@@ -509,7 +546,6 @@ export default function ResultSubmitClient({
                   </div>
                 )}
 
-                {/* OCR Result Team Verification */}
                 {ocrResult && (
                   <div className="space-y-4">
                     <div className="bg-navy-light rounded-lg p-4 border border-navy-border">
@@ -576,7 +612,6 @@ export default function ResultSubmitClient({
             <div className="card p-5">
               <h2 className="section-header">Score</h2>
 
-              {/* Absent toggles */}
               <div className="flex gap-4 mb-4">
                 <label className={`flex items-center gap-2 cursor-pointer flex-1 rounded-lg px-3 py-2 border transition-colors ${
                   homeAbsent ? 'border-red-400/50 bg-red-50' : 'border-slate-200 bg-slate-50'
