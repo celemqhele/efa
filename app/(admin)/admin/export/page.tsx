@@ -270,13 +270,14 @@ export default async function ExportPage({ searchParams }: Props) {
         const { data } = await supabase
           .from('fixtures')
           .select(
-            `id, matchday, scheduled_date,
+            `id, matchday, scheduled_date, status,
             home_team:teams!fixtures_home_team_id_fkey(name, logo_league_folder, logo_team_slug),
             away_team:teams!fixtures_away_team_id_fkey(name, logo_league_folder, logo_team_slug)`
           )
           .eq('tournament_id', tournamentId)
           .gte('scheduled_date', dateStart)
           .lte('scheduled_date', dateEnd)
+          .eq('status', 'scheduled')
           .order('scheduled_date', { ascending: true })
         fixtures = data ?? []
       }
