@@ -33,25 +33,13 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-const APP_TIME_ZONE = 'Africa/Johannesburg'
-
-// Local date parts for the day-cell Date objects (these are constructed at the
-// browser's local midnight for the month being displayed).
 function isoDate(d: Date): string {
+  // Use local date parts — toISOString() returns UTC which causes off-by-one
+  // in timezones that are behind UTC (e.g. UTC-1 at 23:00 = next UTC day).
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
-}
-
-// Convert any ISO timestamp / Date to its JHB calendar date (YYYY-MM-DD).
-// Used for bucketing fixtures and for computing "today" so the calendar
-// agrees with the rest of the app (admin manage, dashboard, etc.) which all
-// reason in JHB time. Without this, a fixture stored at e.g. 22:30 UTC
-// (= 00:30 JHB the next day) would land on the wrong calendar cell.
-function jhbDateKey(iso: string | Date): string {
-  const d = typeof iso === 'string' ? new Date(iso) : iso
-  return d.toLocaleDateString('en-CA', { timeZone: APP_TIME_ZONE })
 }
 
 function getDaysInMonth(year: number, month: number): Date[] {
@@ -89,12 +77,12 @@ const STATUS_PILL: Record<string, string> = {
 export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
   const days = getDaysInMonth(year, month)
 
-  // Build a map: JHB date → fixture[]. Bucketing by JHB (not UTC) ensures a
-  // fixture stored at e.g. 22:30 UTC ends up on the right JHB calendar day.
+  // Bucket fixtures by the UTC-date prefix of their scheduled_date string.
+  // This matches how scheduled_date is stored, and how admin manage filters.
   const fixtureMap: Record<string, FixtureSummary[]> = {}
   for (const f of fixtures) {
     if (!f.scheduled_date) continue
-    const key = jhbDateKey(f.scheduled_date)
+    const key = f.scheduled_date.slice(0, 10)
     if (!fixtureMap[key]) fixtureMap[key] = []
     fixtureMap[key].push(f)
   }
@@ -103,8 +91,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
   const firstDow = dayOfWeekMon(days[0])
   const blanks = Array.from({ length: firstDow }, (_, i) => i)
 
-  // "Today" is JHB today, regardless of where the user's browser is.
-  const today = jhbDateKey(new Date())
+  const today = isoDate(new Date())
 
   return (
     <>
