@@ -8,6 +8,7 @@ import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
 import RecalculateStandingsButton from '@/components/ui/RecalculateStandingsButton'
 import RefreshDNAButton from '@/components/ui/RefreshDNAButton'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
+import { getAppTodayKey, getAppDayUtcRange, APP_TIME_ZONE } from '@/lib/app-time'
 
 export const revalidate = 0
 
@@ -51,14 +52,10 @@ export default async function AdminDashboardPage() {
     countMap[f.tournament_id] = (countMap[f.tournament_id] ?? 0) + 1
   }
 
-  // Today's fixtures — computed in Africa/Johannesburg local time so that the
-  // dashboard doesn't flip to "yesterday" between 22:00 and midnight UTC
-  // (when the Vercel server thinks it's still the previous day in UTC but
-  // JHB has already rolled over to the new day).
-  const JHB_TZ = 'Africa/Johannesburg'
-  const jhbToday = new Date().toLocaleDateString('en-CA', { timeZone: JHB_TZ }) // YYYY-MM-DD
-  const todayStart = new Date(`${jhbToday}T00:00:00+02:00`).toISOString()
-  const todayEnd = new Date(new Date(todayStart).getTime() + 24 * 60 * 60 * 1000).toISOString()
+  // "Today" comes from the database via get_app_time RPC (same source the
+  // public fixtures page uses), with a robust Intl-based local fallback.
+  const todayKey = await getAppTodayKey(supabase)
+  const { startIso: todayStart, endIso: todayEnd } = getAppDayUtcRange(todayKey)
 
   const { data: todaysFixtures } = await (supabase as any)
     .from('fixtures')
@@ -261,6 +258,13 @@ export default async function AdminDashboardPage() {
               <div className="space-y-2">
                 {todaysFixtures!.map((fx: any) => {
                   const statusCls = STATUS_COLOURS[fx.status] ?? 'text-slate-400 bg-slate-500/10 border-slate-500/20'
+                  const timeLabel = fx.scheduled_date
+                    ? new Date(fx.scheduled_date).toLocaleTimeString('en-GB', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: APP_TIME_ZONE,
+                      })
+                    : null
                   const actions = (
                     <DashboardFixtureActions
                       fixtureId={fx.id}
@@ -279,6 +283,9 @@ export default async function AdminDashboardPage() {
                       <div className="sm:hidden">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                           <span className="text-slate-500 text-xs font-semibold">MD{fx.matchday}</span>
+                          {timeLabel && (
+                            <span className="text-slate-500 text-xs font-mono">{timeLabel}</span>
+                          )}
                           <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>
                             {fx.status.replace(/_/g, ' ')}
                           </span>
@@ -291,6 +298,9 @@ export default async function AdminDashboardPage() {
                       {/* Desktop layout — original */}
                       <div className="hidden sm:flex items-center gap-3">
                         <span className="text-slate-500 text-xs w-8 shrink-0">MD{fx.matchday}</span>
+                        {timeLabel && (
+                          <span className="text-slate-500 text-xs font-mono shrink-0 w-12">{timeLabel}</span>
+                        )}
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {fx.home_team?.logo_league_folder && (
                             <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain shrink-0" />
