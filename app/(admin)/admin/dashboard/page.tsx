@@ -52,20 +52,22 @@ export default async function AdminDashboardPage() {
     countMap[f.tournament_id] = (countMap[f.tournament_id] ?? 0) + 1
   }
 
-  // "Today" comes from the database via get_app_time RPC (same source the
-  // public fixtures page uses), with a robust Intl-based local fallback.
+  // Fixtures Due = anything that should already be played or finalised:
+  //   - status scheduled or awaiting_confirmation
+  //   - scheduled_date <= end of today JHB
+  // As soon as a fixture is confirmed (or completed/abandoned) it drops off
+  // this list automatically.
   const todayKey = await getAppTodayKey(supabase)
-  const { startIso: todayStart, endIso: todayEnd } = getAppDayUtcRange(todayKey)
+  const { endIso: todayEnd } = getAppDayUtcRange(todayKey)
 
-  const { data: todaysFixtures } = await (supabase as any)
+  const { data: dueFixtures } = await (supabase as any)
     .from('fixtures')
     .select(`
       id, matchday, status, scheduled_date,
       home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, whatsapp_number)),
       away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, whatsapp_number))
     `)
-    .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
-    .gte('scheduled_date', todayStart)
+    .in('status', ['scheduled', 'awaiting_confirmation'])
     .lt('scheduled_date', todayEnd)
     .order('scheduled_date', { ascending: true })
 
@@ -247,16 +249,21 @@ export default async function AdminDashboardPage() {
         <div className="lg:col-span-2">
           <div className="card p-5">
             <h2 className="section-header">
-              <span className="text-gold">📅</span> Today&apos;s Fixtures
+              <span className="text-gold">📅</span> Fixtures Due
+              {(dueFixtures?.length ?? 0) > 0 && (
+                <span className="ml-auto text-xs bg-gold/20 text-gold border border-gold/30 rounded-full px-2 py-0.5">
+                  {dueFixtures!.length}
+                </span>
+              )}
             </h2>
-            {(todaysFixtures?.length ?? 0) === 0 ? (
+            {(dueFixtures?.length ?? 0) === 0 ? (
               <div className="text-center py-8 text-slate-500">
-                <p className="text-4xl mb-2">🎮</p>
-                <p className="text-sm">No fixtures scheduled for today.</p>
+                <p className="text-4xl mb-2">✅</p>
+                <p className="text-sm">All caught up — no fixtures due.</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {todaysFixtures!.map((fx: any) => {
+                {dueFixtures!.map((fx: any) => {
                   const statusCls = STATUS_COLOURS[fx.status] ?? 'text-slate-400 bg-slate-500/10 border-slate-500/20'
                   const timeLabel = fx.scheduled_date
                     ? new Date(fx.scheduled_date).toLocaleTimeString('en-GB', {
