@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import ResultSubmitClient from './ResultSubmitClient'
 
 export const revalidate = 0
