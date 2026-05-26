@@ -29,7 +29,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
   const navLinks = [
     { href: '/', label: 'Home' },
     { href: '/standings', label: 'Standings' },
-    { href: '/fixtures', label: 'Fixtures & Results' },
+    { href: '/fixtures', label: 'My Fixtures' },
     { href: '/calendar', label: 'Calendar' },
     { href: '/hall-of-fame', label: 'Hall of Fame' },
     { href: '/rules', label: 'Rules' },
