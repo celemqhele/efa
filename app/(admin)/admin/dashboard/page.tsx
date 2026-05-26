@@ -8,6 +8,7 @@ import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
 import RecalculateStandingsButton from '@/components/ui/RecalculateStandingsButton'
 import RefreshDNAButton from '@/components/ui/RefreshDNAButton'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
+import DueFixturesExportButton from './DueFixturesExportButton'
 import { getAppTodayKey, getAppDayUtcRange, APP_TIME_ZONE } from '@/lib/app-time'
 
 export const revalidate = 0
@@ -255,6 +256,22 @@ export default async function AdminDashboardPage() {
                   {dueFixtures!.length}
                 </span>
               )}
+              <span className="ml-2">
+                <DueFixturesExportButton
+                  fixtures={(dueFixtures ?? []).map((fx: any) => ({
+                    id: fx.id,
+                    matchday: fx.matchday ?? null,
+                    scheduled_date: fx.scheduled_date ?? null,
+                    status: fx.status,
+                    home_team_name: fx.home_team?.name ?? null,
+                    home_team_folder: fx.home_team?.logo_league_folder ?? null,
+                    home_team_slug: fx.home_team?.logo_team_slug ?? null,
+                    away_team_name: fx.away_team?.name ?? null,
+                    away_team_folder: fx.away_team?.logo_league_folder ?? null,
+                    away_team_slug: fx.away_team?.logo_team_slug ?? null,
+                  }))}
+                />
+              </span>
             </h2>
             {(dueFixtures?.length ?? 0) === 0 ? (
               <div className="text-center py-8 text-slate-500">
