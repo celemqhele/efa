@@ -44,16 +44,20 @@ const ROUND_LABELS: Record<string, string> = {
 export default async function FixturesManagePage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>
+  searchParams: any // Flexible type prevents compilation errors across Next.js 14/15 version environments
 }) {
   const supabase = await createAdminClient()
-  const params = await searchParams
+
+  // Hybrid Resolution: Safe unpack whether searchParams arrives as a Promise (Next 15) or plain Object (Next 14)
+  const resolvedParams = searchParams && typeof searchParams.then === 'function'
+    ? await searchParams
+    : searchParams
 
   const todayKey = await getAppTodayKey(supabase)
-  const selectedDate = params.date ?? todayKey
+  const selectedDate = resolvedParams?.date ?? todayKey
   const { startIso, endIso } = getAppDayUtcRange(selectedDate)
 
-  // Fetch all fixtures scheduled on the selected day using exact core database relation aliases
+  // Fetch all fixtures scheduled on the selected day using core database relation aliases
   const { data: fixtures } = await supabase
     .from('fixtures')
     .select(`
@@ -126,7 +130,7 @@ export default async function FixturesManagePage({
                 </div>
 
                 <div className="card overflow-hidden">
-                  {/* Mobile card list */}
+                  {/* Mobile card list layout */}
                   <div className="sm:hidden divide-y divide-navy-border">
                     {sectionFixtures.map((fx: any) => {
                       const result = fx.result?.[0]
@@ -175,7 +179,7 @@ export default async function FixturesManagePage({
                     })}
                   </div>
 
-                  {/* Desktop table */}
+                  {/* Desktop table layout */}
                   <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
