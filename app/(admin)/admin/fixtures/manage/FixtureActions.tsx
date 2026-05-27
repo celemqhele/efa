@@ -129,9 +129,10 @@ export default function FixtureActions({
             Batch Postpone
           </button>
         )}
-        {status === 'awaiting_confirmation' && (
+        {/* FIX: Shows the button for both 'scheduled' and 'awaiting_confirmation' and sets the text to 'Submit' */}
+        {['scheduled', 'awaiting_confirmation'].includes(status) && (
           <a href={`/admin/results/submit?fixture=${fixtureId}`} className="btn-gold text-xs py-1 px-2.5">
-            Result
+            Submit
           </a>
         )}
       </div>
