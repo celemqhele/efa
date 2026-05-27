@@ -30,7 +30,6 @@ const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
 }
 
 export default async function AdminDashboardPage() {
-  // Using Admin Client globally across the dashboard to bypass RLS restrictions
   const supabase = await createAdminClient()
 
   // Fetch all active tournaments with fixture counts
@@ -66,7 +65,7 @@ export default async function AdminDashboardPage() {
       away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, whatsapp_number))
     `)
     .in('status', ['scheduled', 'awaiting_confirmation'])
-    .lte('scheduled_date', todayEnd) // Using .lte to guarantee inclusion of absolute end-of-day timelines safely
+    .lte('scheduled_date', todayEnd)
     .order('scheduled_date', { ascending: true })
 
   // Fixtures with conflicting result confirmations
@@ -300,7 +299,7 @@ export default async function AdminDashboardPage() {
                   )
                   return (
                     <div key={fx.id} className="bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
-                      {/* Mobile layout — fully stacked */}
+                      {/* Mobile layout */}
                       <div className="sm:hidden">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                           <span className="text-slate-400 text-xs font-semibold">MD{fx.matchday}</span>
@@ -316,27 +315,40 @@ export default async function AdminDashboardPage() {
                         </p>
                         <div className="flex justify-end">{actions}</div>
                       </div>
-                      {/* Desktop layout */}
-                      <div className="hidden sm:flex items-center gap-3">
-                        <span className="text-slate-400 text-xs w-8 shrink-0">MD{fx.matchday}</span>
+
+                      {/* Desktop layout — Balanced Grid System to completely fix wavy column layout bug */}
+                      <div className="hidden sm:flex items-center gap-4">
+                        <span className="text-slate-400 text-xs w-10 shrink-0 font-medium">MD{fx.matchday}</span>
                         {timeLabel && (
                           <span className="text-slate-400 text-xs font-mono shrink-0 w-12">{timeLabel}</span>
                         )}
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {fx.home_team?.logo_league_folder && (
-                            <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain shrink-0" />
-                          )}
-                          <span className="text-slate-100 text-sm font-medium truncate">{fx.home_team?.name}</span>
-                          <span className="text-slate-400 text-xs mx-1">vs</span>
-                          <span className="text-slate-100 text-sm font-medium truncate">{fx.away_team?.name}</span>
-                          {fx.away_team?.logo_league_folder && (
-                            <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={24} height={24} className="object-contain shrink-0" />
-                          )}
+                        
+                        {/* 3-Column sub-grid distribution layout container */}
+                        <div className="grid grid-cols-3 items-center flex-1 min-w-0 gap-2 mx-2">
+                          {/* Home Side: Right Aligned */}
+                          <div className="flex items-center justify-end gap-2.5 min-w-0 text-right">
+                            <span className="text-slate-100 text-sm font-semibold truncate">{fx.home_team?.name}</span>
+                            {fx.home_team?.logo_league_folder && (
+                              <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain shrink-0" />
+                            )}
+                          </div>
+
+                          {/* Center Divider: Centered */}
+                          <span className="text-slate-400/70 text-xs font-bold text-center uppercase tracking-wider select-none">vs</span>
+
+                          {/* Away Side: Left Aligned */}
+                          <div className="flex items-center justify-start gap-2.5 min-w-0 text-left">
+                            {fx.away_team?.logo_league_folder && (
+                              <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={24} height={24} className="object-contain shrink-0" />
+                            )}
+                            <span className="text-slate-100 text-sm font-semibold truncate">{fx.away_team?.name}</span>
+                          </div>
                         </div>
-                        <span className={`text-xs px-2 py-0.5 rounded border shrink-0 ${statusCls}`}>
+
+                        <span className={`text-xs px-2 py-0.5 rounded border shrink-0 w-40 text-center ${statusCls}`}>
                           {fx.status.replaceAll('_', ' ')}
                         </span>
-                        {actions}
+                        <div className="shrink-0">{actions}</div>
                       </div>
                     </div>
                   )
@@ -396,7 +408,7 @@ export default async function AdminDashboardPage() {
             <p className="text-slate-500 text-sm">No pending requests.</p>
           ) : (
             <div className="space-y-3">
-                  {changeRequests!.map((req: any) => (
+              {changeRequests!.map((req: any) => (
                 <div key={req.id} className="bg-navy-light rounded-lg px-3 py-3 border border-navy-border">
                   <div className="flex items-center gap-2 mb-2">
                     {req.requesting_user?.avatar_url ? (
