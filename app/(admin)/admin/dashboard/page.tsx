@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -30,7 +30,7 @@ const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
 }
 
 export default async function AdminDashboardPage() {
-  const supabase = await createAdminClient()
+  const supabase = await createClient()
 
   // Fetch all active tournaments with fixture counts
   const { data: tournaments } = await supabase
@@ -53,19 +53,23 @@ export default async function AdminDashboardPage() {
     countMap[f.tournament_id] = (countMap[f.tournament_id] ?? 0) + 1
   }
 
+  // Fixtures Due = anything that should already be played or finalised:
+  //   - status scheduled or awaiting_confirmation
+  //   - scheduled_date <= end of today
+  const adminSupabase = await createAdminClient()
   const todayKey = await getAppTodayKey(supabase)
   const { endIso: todayEnd } = getAppDayUtcRange(todayKey)
 
-  // Fixtures Due (scheduled_date <= end of today)
-  const { data: dueFixtures } = await (supabase as any)
+  // FIX: Updated relationship keys to use column names (home_team_id, away_team_id, manager_id)
+  const { data: dueFixtures } = await (adminSupabase as any)
     .from('fixtures')
     .select(`
       id, matchday, status, scheduled_date,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, whatsapp_number)),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, whatsapp_number))
+      home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug, manager:profiles!manager_id(id, username, whatsapp_number)),
+      away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug, manager:profiles!manager_id(id, username, whatsapp_number))
     `)
     .in('status', ['scheduled', 'awaiting_confirmation'])
-    .lte('scheduled_date', todayEnd)
+    .lt('scheduled_date', todayEnd)
     .order('scheduled_date', { ascending: true })
 
   // Fixtures with conflicting result confirmations
@@ -87,37 +91,40 @@ export default async function AdminDashboardPage() {
     })
     .map(([id]) => id)
 
+  // FIX: Updated relationship keys to use column names
   const { data: conflictFixtures } = conflictFixtureIds.length
     ? await supabase
         .from('fixtures')
         .select(`
           id, matchday, status,
-          home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-          away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug)
+          home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+          away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
         `)
         .in('id', conflictFixtureIds)
     : { data: [] }
 
   // Pending confirmations (awaiting_confirmation)
+  // FIX: Updated relationship keys to use column names
   const { data: pendingConfirmations } = await supabase
     .from('fixtures')
     .select(`
       id, matchday, scheduled_date,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug)
+      home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+      away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
     `)
     .eq('status', 'awaiting_confirmation')
     .order('scheduled_date', { ascending: true })
     .limit(10)
 
   // Pending team change requests
+  // FIX: Updated relationship keys to use column names
   const { data: changeRequests } = await supabase
     .from('team_change_requests')
     .select(`
       id, status, created_at,
-      requesting_user:profiles!team_change_requests_requesting_user_id_fkey(id, username, avatar_url),
-      requested_team:teams!team_change_requests_requested_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-      current_team:teams!team_change_requests_current_team_id_fkey(id, name)
+      requesting_user:profiles!requesting_user_id(id, username, avatar_url),
+      requested_team:teams!requested_team_id(id, name, logo_league_folder, logo_team_slug),
+      current_team:teams!current_team_id(id, name)
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
@@ -138,9 +145,10 @@ export default async function AdminDashboardPage() {
   for (const m of flaggedManagers ?? []) managerMap[m.id] = m.username
 
   // Recent audit log
+  // FIX: Updated relationship keys to use column names
   const { data: auditLog } = await supabase
     .from('audit_log')
-    .select('id, action, target_type, target_id, details, created_at, admin:profiles!audit_log_admin_id_fkey(username)')
+    .select('id, action, target_type, target_id, details, created_at, admin:profiles!admin_id(username)')
     .order('created_at', { ascending: false })
     .limit(10)
 
@@ -149,7 +157,7 @@ export default async function AdminDashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
           <p className="text-slate-400 text-sm mt-1">
             {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Africa/Johannesburg' })}
           </p>
@@ -179,7 +187,7 @@ export default async function AdminDashboardPage() {
                 <div key={fx.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-navy-light rounded-lg px-4 py-3 border border-red-500/20">
                   <div className="flex items-start sm:items-center flex-wrap gap-2">
                     <span className="text-slate-400 text-xs shrink-0">MD{fx.matchday}</span>
-                    <span className="text-slate-100 font-medium text-sm">
+                    <span className="text-slate-900 font-medium text-sm">
                       {(fx.home_team as any)?.name} vs {(fx.away_team as any)?.name}
                     </span>
                     <div className="flex gap-2 flex-wrap">
@@ -220,7 +228,7 @@ export default async function AdminDashboardPage() {
                   <div key={t.id} className="bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="min-w-0">
-                        <p className="text-slate-100 text-sm font-medium truncate">{t.name}</p>
+                        <p className="text-slate-900 text-sm font-medium truncate">{t.name}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`text-xs px-1.5 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
                           <span className={`text-xs px-1.5 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
@@ -299,56 +307,43 @@ export default async function AdminDashboardPage() {
                   )
                   return (
                     <div key={fx.id} className="bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
-                      {/* Mobile layout */}
+                      {/* Mobile layout — fully stacked */}
                       <div className="sm:hidden">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="text-slate-400 text-xs font-semibold">MD{fx.matchday}</span>
+                          <span className="text-slate-500 text-xs font-semibold">MD{fx.matchday}</span>
                           {timeLabel && (
-                            <span className="text-slate-400 text-xs font-mono">{timeLabel}</span>
+                            <span className="text-slate-500 text-xs font-mono">{timeLabel}</span>
                           )}
                           <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>
-                            {fx.status.replaceAll('_', ' ')}
+                            {fx.status.replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <p className="text-slate-100 text-sm font-semibold mb-2">
+                        <p className="text-slate-900 text-sm font-semibold mb-2">
                           {fx.home_team?.name} <span className="text-slate-400 font-normal">vs</span> {fx.away_team?.name}
                         </p>
                         <div className="flex justify-end">{actions}</div>
                       </div>
-
-                      {/* Desktop layout — Balanced Grid System to completely fix wavy column layout bug */}
-                      <div className="hidden sm:flex items-center gap-4">
-                        <span className="text-slate-400 text-xs w-10 shrink-0 font-medium">MD{fx.matchday}</span>
+                      {/* Desktop layout — original */}
+                      <div className="hidden sm:flex items-center gap-3">
+                        <span className="text-slate-500 text-xs w-8 shrink-0">MD{fx.matchday}</span>
                         {timeLabel && (
-                          <span className="text-slate-400 text-xs font-mono shrink-0 w-12">{timeLabel}</span>
+                          <span className="text-slate-500 text-xs font-mono shrink-0 w-12">{timeLabel}</span>
                         )}
-                        
-                        {/* 3-Column sub-grid distribution layout container */}
-                        <div className="grid grid-cols-3 items-center flex-1 min-w-0 gap-2 mx-2">
-                          {/* Home Side: Right Aligned */}
-                          <div className="flex items-center justify-end gap-2.5 min-w-0 text-right">
-                            <span className="text-slate-100 text-sm font-semibold truncate">{fx.home_team?.name}</span>
-                            {fx.home_team?.logo_league_folder && (
-                              <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain shrink-0" />
-                            )}
-                          </div>
-
-                          {/* Center Divider: Centered */}
-                          <span className="text-slate-400/70 text-xs font-bold text-center uppercase tracking-wider select-none">vs</span>
-
-                          {/* Away Side: Left Aligned */}
-                          <div className="flex items-center justify-start gap-2.5 min-w-0 text-left">
-                            {fx.away_team?.logo_league_folder && (
-                              <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={24} height={24} className="object-contain shrink-0" />
-                            )}
-                            <span className="text-slate-100 text-sm font-semibold truncate">{fx.away_team?.name}</span>
-                          </div>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {fx.home_team?.logo_league_folder && (
+                            <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain shrink-0" />
+                          )}
+                          <span className="text-slate-900 text-sm font-medium truncate">{fx.home_team?.name}</span>
+                          <span className="text-slate-500 text-xs mx-1">vs</span>
+                          <span className="text-slate-900 text-sm font-medium truncate">{fx.away_team?.name}</span>
+                          {fx.away_team?.logo_league_folder && (
+                            <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={24} height={24} className="object-contain shrink-0" />
+                          )}
                         </div>
-
-                        <span className={`text-xs px-2 py-0.5 rounded border shrink-0 w-40 text-center ${statusCls}`}>
-                          {fx.status.replaceAll('_', ' ')}
+                        <span className={`text-xs px-2 py-0.5 rounded border shrink-0 ${statusCls}`}>
+                          {fx.status.replace('_', ' ')}
                         </span>
-                        <div className="shrink-0">{actions}</div>
+                        {actions}
                       </div>
                     </div>
                   )
@@ -377,10 +372,10 @@ export default async function AdminDashboardPage() {
               {pendingConfirmations!.map((fx: any) => (
                 <div key={fx.id} className="flex items-center justify-between gap-2 bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
                   <div className="flex-1 min-w-0">
-                    <p className="text-slate-100 text-sm font-medium truncate">
+                    <p className="text-slate-900 text-sm font-medium truncate">
                       {fx.home_team?.name} vs {fx.away_team?.name}
                     </p>
-                    <p className="text-slate-400 text-xs mt-0.5">
+                    <p className="text-slate-500 text-xs mt-0.5">
                       MD{fx.matchday}
                       {fx.scheduled_date && ` · ${new Date(fx.scheduled_date).toLocaleDateString('en-GB')}`}
                     </p>
@@ -419,8 +414,8 @@ export default async function AdminDashboardPage() {
                       </div>
                     )}
                     <div className="min-w-0">
-                      <span className="text-slate-100 text-sm font-medium">{req.requesting_user?.username}</span>
-                      <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
+                      <span className="text-slate-900 text-sm font-medium">{req.requesting_user?.username}</span>
+                      <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
                         <span>{req.current_team?.name ?? 'No team'}</span>
                         <span>→</span>
                         <span className="text-gold">{req.requested_team?.name}</span>
@@ -454,8 +449,8 @@ export default async function AdminDashboardPage() {
                     <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={32} height={32} className="object-contain shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-slate-100 text-sm font-medium truncate">{team.name}</p>
-                    <p className="text-slate-400 text-xs">
+                    <p className="text-slate-900 text-sm font-medium truncate">{team.name}</p>
+                    <p className="text-slate-500 text-xs">
                       Manager: {team.manager_id ? (managerMap[team.manager_id] ?? 'Unknown') : 'None'}
                     </p>
                   </div>
@@ -482,12 +477,12 @@ export default async function AdminDashboardPage() {
                 <div key={entry.id} className="flex items-start gap-3 text-xs py-2 border-b border-navy-border last:border-0">
                   <div className="shrink-0 w-1.5 h-1.5 rounded-full bg-gold mt-1.5" />
                   <div className="flex-1 min-w-0">
-                    <span className="text-slate-100 font-medium">{entry.action}</span>
+                    <span className="text-slate-900 font-medium">{entry.action}</span>
                     {entry.target_type && (
-                      <span className="text-slate-400 ml-1">on {entry.target_type}</span>
+                      <span className="text-slate-500 ml-1">on {entry.target_type}</span>
                     )}
-                    <div className="text-slate-400 mt-0.5">
-                      {entry.admin?.username ?? 'System'} · {new Date(entry.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: APP_TIME_ZONE })}
+                    <div className="text-slate-500 mt-0.5">
+                      {entry.admin?.username ?? 'System'} · {new Date(entry.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 </div>
