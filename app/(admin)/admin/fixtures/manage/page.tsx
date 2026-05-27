@@ -46,7 +46,6 @@ export default async function FixturesManagePage({
 }: {
   searchParams: Promise<{ date?: string }>
 }) {
-  // Swapped to createAdminClient to ensure the layout matches the unrestricted guest calendar reads
   const supabase = await createAdminClient()
   const params = await searchParams
 
@@ -54,14 +53,14 @@ export default async function FixturesManagePage({
   const selectedDate = params.date ?? todayKey
   const { startIso, endIso } = getAppDayUtcRange(selectedDate)
 
-  // Fetch all fixtures scheduled on the selected day
+  // Fetch all fixtures scheduled on the selected day using exact core database relation aliases
   const { data: fixtures } = await supabase
     .from('fixtures')
     .select(`
       id, matchday, round_type, scheduled_date, status, is_postponed, leg,
       tournament:tournaments(id, name, type),
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+      home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+      away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
       result:results(home_score, away_score)
     `)
     .gte('scheduled_date', startIso)
@@ -176,7 +175,7 @@ export default async function FixturesManagePage({
                     })}
                   </div>
 
-                  {/* Desktop table Layout */}
+                  {/* Desktop table */}
                   <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
