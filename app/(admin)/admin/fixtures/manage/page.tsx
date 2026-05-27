@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import { format, parseISO } from 'date-fns'
@@ -26,12 +26,12 @@ const TYPE_ACCENT: Record<string, string> = {
 }
 
 const STATUS_COLOURS: Record<string, string> = {
-  scheduled: 'text-slate-500 bg-slate-500/10 border-slate-500/20',
-  awaiting_confirmation: 'text-yellow-600 bg-yellow-500/10 border-yellow-500/20',
-  confirmed: 'text-green-600 bg-green-500/10 border-green-500/20',
-  completed: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
-  postponed: 'text-orange-500 bg-orange-500/10 border-orange-500/20',
-  abandoned: 'text-red-500 bg-red-500/10 border-red-500/20',
+  scheduled: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+  awaiting_confirmation: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+  confirmed: 'text-green-400 bg-green-500/10 border-green-500/20',
+  completed: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  postponed: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+  abandoned: 'text-red-400 bg-red-500/10 border-red-500/20',
 }
 
 const ROUND_LABELS: Record<string, string> = {
@@ -46,14 +46,15 @@ export default async function FixturesManagePage({
 }: {
   searchParams: Promise<{ date?: string }>
 }) {
-  const supabase = await createClient()
+  // Swapped to createAdminClient to ensure the layout matches the unrestricted guest calendar reads
+  const supabase = await createAdminClient()
   const params = await searchParams
 
   const todayKey = await getAppTodayKey(supabase)
   const selectedDate = params.date ?? todayKey
   const { startIso, endIso } = getAppDayUtcRange(selectedDate)
 
-  // Fetch all fixtures scheduled on the selected JHB day
+  // Fetch all fixtures scheduled on the selected day
   const { data: fixtures } = await supabase
     .from('fixtures')
     .select(`
@@ -94,7 +95,7 @@ export default async function FixturesManagePage({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Fixture Management</h1>
+        <h1 className="text-2xl font-bold text-slate-100">Fixture Management</h1>
         <p className="text-slate-400 text-sm mt-1">
           {(fixtures?.length ?? 0)} fixture{(fixtures?.length ?? 0) === 1 ? '' : 's'} on {format(parseISO(selectedDate), 'EEE d MMM yyyy')}
         </p>
@@ -141,20 +142,20 @@ export default async function FixturesManagePage({
                         <div key={fx.id} className="px-4 py-3 space-y-2">
                           <div className="flex items-center gap-2 flex-wrap">
                             {time && (
-                              <span className="text-slate-700 text-xs font-bold font-mono">{time}</span>
+                              <span className="text-slate-400 text-xs font-bold font-mono">{time}</span>
                             )}
                             {round && (
                               <span className="text-slate-500 text-[10px] font-semibold uppercase">{round}</span>
                             )}
-                            <span className="text-slate-400 text-[10px]">MD{fx.matchday}</span>
+                            <span className="text-slate-500 text-[10px]">MD{fx.matchday}</span>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>
-                              {fx.status.replace(/_/g, ' ')}
+                              {fx.status.replaceAll('_', ' ')}
                             </span>
                             {fx.is_postponed && (
                               <span className="text-orange-400 text-[10px]">Postponed</span>
                             )}
                           </div>
-                          <p className="text-slate-900 text-sm font-semibold">
+                          <p className="text-slate-100 text-sm font-semibold">
                             {homeTeam?.name ?? 'TBC'}
                             <span className="text-slate-400 font-normal mx-1.5">
                               {result ? `${result.home_score}–${result.away_score}` : 'vs'}
@@ -175,7 +176,7 @@ export default async function FixturesManagePage({
                     })}
                   </div>
 
-                  {/* Desktop table */}
+                  {/* Desktop table Layout */}
                   <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -201,7 +202,7 @@ export default async function FixturesManagePage({
                           return (
                             <tr key={fx.id} className="hover:bg-navy-light/40 transition-colors">
                               <td className="py-3 px-4">
-                                <div className="text-slate-900 font-bold font-mono text-sm">{time ?? '—'}</div>
+                                <div className="text-slate-100 font-bold font-mono text-sm">{time ?? '—'}</div>
                                 <div className="text-slate-500 text-[10px] uppercase">
                                   {round ?? `MD${fx.matchday}`}
                                 </div>
@@ -216,16 +217,16 @@ export default async function FixturesManagePage({
                                       className="object-contain shrink-0"
                                     />
                                   )}
-                                  <span className="text-slate-900 font-medium">{homeTeam?.name}</span>
+                                  <span className="text-slate-100 font-medium">{homeTeam?.name}</span>
                                 </div>
                               </td>
                               <td className="py-3 px-2 text-center">
                                 {result ? (
-                                  <span className="text-slate-900 font-bold text-base">
+                                  <span className="text-slate-100 font-bold text-base">
                                     {result.home_score} – {result.away_score}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-600">vs</span>
+                                  <span className="text-slate-500">vs</span>
                                 )}
                               </td>
                               <td className="py-3 px-4">
@@ -238,12 +239,12 @@ export default async function FixturesManagePage({
                                       className="object-contain shrink-0"
                                     />
                                   )}
-                                  <span className="text-slate-900 font-medium">{awayTeam?.name}</span>
+                                  <span className="text-slate-100 font-medium">{awayTeam?.name}</span>
                                 </div>
                               </td>
                               <td className="py-3 px-4">
                                 <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>
-                                  {fx.status.replace(/_/g, ' ')}
+                                  {fx.status.replaceAll('_', ' ')}
                                 </span>
                                 {fx.is_postponed && (
                                   <span className="text-orange-400 text-xs ml-1">P</span>
