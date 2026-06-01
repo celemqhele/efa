@@ -1,4 +1,4 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
@@ -9,7 +9,7 @@ import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, 
 export const revalidate = 0
 
 interface Props {
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; showAll?: string }>
 }
 
 const TOURNAMENT_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -28,6 +28,9 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   const monthLabel = format(monthStart, 'MMMM yyyy')
   const prevMonth = format(subMonths(monthStart, 1), 'yyyy-MM')
   const nextMonth = format(addMonths(monthStart, 1), 'yyyy-MM')
+  
+  // Knob state
+  const showAll = sp.showAll === 'true'
 
   const supabase = await createClient()
 
@@ -51,9 +54,15 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
       .gte('break_end', format(monthStart, 'yyyy-MM-dd')),
   ])
 
-  // Index fixtures by date
+  // Apply the toggle filter (Adjust the condition if "other" fixtures means something different)
+  const rawFixtures = (fixtures ?? []) as any[]
+  const processedFixtures = showAll 
+    ? rawFixtures 
+    : rawFixtures.filter((f) => f.tournament?.type === 'league')
+
+  // Index processed fixtures by date
   const byDate: Record<string, any[]> = {}
-  for (const f of (fixtures ?? []) as any[]) {
+  for (const f of processedFixtures) {
     const d = f.scheduled_date as string
     if (!byDate[d]) byDate[d] = []
     byDate[d]!.push(f)
@@ -76,11 +85,33 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900">{monthLabel}</h1>
+        <div className="flex items-center gap-6">
+          <h1 className="text-xl font-bold text-slate-900">{monthLabel}</h1>
+          
+          {/* Toggle Knob */}
+          <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+            <span className={`text-xs font-medium ${!showAll ? 'text-slate-900' : 'text-slate-400'}`}>
+              Main Only
+            </span>
+            <Link
+              href={`?month=${sp.month || format(now, 'yyyy-MM')}&showAll=${showAll ? 'false' : 'true'}`}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${showAll ? 'bg-[#c9a84c]' : 'bg-slate-300'}`}
+              scroll={false}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${showAll ? 'translate-x-4' : 'translate-x-1'}`}
+              />
+            </Link>
+            <span className={`text-xs font-medium ${showAll ? 'text-slate-900' : 'text-slate-400'}`}>
+              All Fixtures
+            </span>
+          </div>
+        </div>
+
         <div className="flex items-center gap-2">
-          <Link href={`?month=${prevMonth}`} className="btn-outline text-xs px-3 py-2">← Prev</Link>
-          <Link href={`?month=${format(now, 'yyyy-MM')}`} className="text-xs text-[#c9a84c] px-3 py-2">Today</Link>
-          <Link href={`?month=${nextMonth}`} className="btn-outline text-xs px-3 py-2">Next →</Link>
+          <Link href={`?month=${prevMonth}&showAll=${showAll}`} className="btn-outline text-xs px-3 py-2">← Prev</Link>
+          <Link href={`?month=${format(now, 'yyyy-MM')}&showAll=${showAll}`} className="text-xs text-[#c9a84c] px-3 py-2">Today</Link>
+          <Link href={`?month=${nextMonth}&showAll=${showAll}`} className="btn-outline text-xs px-3 py-2">Next →</Link>
         </div>
       </div>
 
