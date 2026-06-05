@@ -32,10 +32,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
     { href: '/fixtures', label: 'My Fixtures' },
     { href: '/results', label: 'My Results' },
     ...(isAdmin 
-      ? [
-          { href: '/admin/calendar?scope=mine', label: 'My Calendar' },
-          { href: '/admin/calendar?scope=all', label: 'All Teams' }
-        ]
+      ? [{ href: '/admin/calendar?scope=mine', label: 'My Calendar' }]
       : [{ href: '/calendar', label: 'Calendar' }]
     ),
     { href: '/hall-of-fame', label: 'Hall of Fame' },

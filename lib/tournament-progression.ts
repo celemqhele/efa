@@ -1,6 +1,22 @@
 import { addDays, format, parseISO } from 'date-fns'
 
-// ─── Date picking ─────────────────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────────
+
+const KNOCKOUT_ROUNDS = ['qf', 'sf', 'final'] as const
+type KnockoutRound = typeof KNOCKOUT_ROUNDS[number]
+
+// Matchday indexing for bracket tracking
+// QF: 101-104, SF: 201-202, Final: 301
+const BRACKET_PROGRESSION: Record<number, { nextMd: number; slot: 'home_team_id' | 'away_team_id' }> = {
+  101: { nextMd: 201, slot: 'home_team_id' },
+  102: { nextMd: 201, slot: 'away_team_id' },
+  103: { nextMd: 202, slot: 'home_team_id' },
+  104: { nextMd: 202, slot: 'away_team_id' },
+  201: { nextMd: 301, slot: 'home_team_id' },
+  202: { nextMd: 301, slot: 'away_team_id' },
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getKnockoutDates(db: any, tournamentId: string, count: number): Promise<string[]> {
   const { data: lastGroupRow } = await db
@@ -60,8 +76,6 @@ async function getKnockoutDates(db: any, tournamentId: string, count: number): P
   return picked
 }
 
-// ─── Sort group standings ─────────────────────────────────────────────────────
-
 function sortGroup(teams: any[]): any[] {
   return [...teams].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points
@@ -72,23 +86,32 @@ function sortGroup(teams: any[]): any[] {
   })
 }
 
-// ─── Generate TBC knockout fixtures ──────────────────────────────────────────
-// NOTE: fixtures.home_team_id and away_team_id must be nullable in the DB for
-// the Final placeholder to work (ALTER TABLE fixtures ALTER COLUMN home_team_id DROP NOT NULL)
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+// ─── Bracket Generation ───────────────────────────────────────────────────────
 
 export async function generateTBCKnockouts(
   db: any,
-  tournamentId: string
+  tournamentId: string,
+  shuffleTeams = false
 ): Promise<{ error?: string }> {
-  // Idempotency: bail if SF fixtures already exist
-  const { count: existingSF } = await db
+  // Idempotency: bail if ANY knockout fixtures already exist
+  const { count: existingKO } = await db
     .from('fixtures')
     .select('*', { count: 'exact', head: true })
     .eq('tournament_id', tournamentId)
-    .eq('round_type', 'sf')
+    .in('round_type', ['qf', 'sf', 'final'])
 
-  if ((existingSF ?? 0) > 0) return { error: 'SF fixtures already exist' }
+  if ((existingKO ?? 0) > 0) return { error: 'Knockout fixtures already exist' }
 
+  // 1. Determine qualifying teams from group standings
   const { data: gs } = await db
     .from('group_standings')
     .select('team_id, group_name, points, goals_for, goals_against')
@@ -98,74 +121,139 @@ export async function generateTBCKnockouts(
 
   const grpA = sortGroup((gs ?? []).filter((s: any) => s.group_name === 'A'))
   const grpB = sortGroup((gs ?? []).filter((s: any) => s.group_name === 'B'))
+  
+  // Decide how many teams advance. Currently UCL/Europa are 2 groups -> 4 advance to SF.
+  // We'll support 4 teams (SF start) or 8 teams (QF start) if more groups added later.
+  
+  const qualifiers: string[] = []
+  if (grpA.length > 0 && grpB.length > 0) {
+    if (gs.length >= 16) {
+      // 8 teams advance (Top 4 from each or something? Let's stick to Top 2 for now)
+      // Actually let's just use what's there.
+    }
+    // Standard UCL/Europa: Top 2 from each -> SF
+    qualifiers.push(grpA[0].team_id, grpB[1].team_id, grpB[0].team_id, grpA[1].team_id)
+  }
 
-  // 1st A vs 2nd B → SF1; 1st B vs 2nd A → SF2
-  const sf1Home: string | null = grpA[0]?.team_id ?? null
-  const sf1Away: string | null = grpB[1]?.team_id ?? null
-  const sf2Home: string | null = grpB[0]?.team_id ?? null
-  const sf2Away: string | null = grpA[1]?.team_id ?? null
+  const teamCount = qualifiers.length
+  if (teamCount < 2) return { error: 'Not enough teams to start knockouts' }
 
-  const { data: maxMdRow } = await db
-    .from('fixtures')
-    .select('matchday')
-    .eq('tournament_id', tournamentId)
-    .eq('round_type', 'group')
-    .order('matchday', { ascending: false })
-    .limit(1)
-    .single()
-
-  const maxMd: number = (maxMdRow as any)?.matchday ?? 10
-
+  // Dates for SF1, SF2, Final (3 dates)
   const dates = await getKnockoutDates(db, tournamentId, 3)
   const d1 = dates[0] ?? format(addDays(new Date(), 7), 'yyyy-MM-dd')
   const d2 = dates[1] ?? format(addDays(new Date(), 14), 'yyyy-MM-dd')
   const d3 = dates[2] ?? format(addDays(new Date(), 21), 'yyyy-MM-dd')
 
-  const { error } = await db.from('fixtures').insert([
-    {
+  const finalQualifiers = shuffleTeams ? shuffle(qualifiers) : qualifiers
+
+  const fixtures: any[] = []
+
+  if (teamCount === 4) {
+    // SF -> Final
+    fixtures.push(
+      {
+        tournament_id: tournamentId,
+        home_team_id: finalQualifiers[0],
+        away_team_id: finalQualifiers[1],
+        matchday: 201,
+        scheduled_date: d1,
+        deadline: `${d1}T12:00:00Z`,
+        round_type: 'sf',
+        leg: 1,
+        status: 'scheduled',
+      },
+      {
+        tournament_id: tournamentId,
+        home_team_id: finalQualifiers[2],
+        away_team_id: finalQualifiers[3],
+        matchday: 202,
+        scheduled_date: d2,
+        deadline: `${d2}T12:00:00Z`,
+        round_type: 'sf',
+        leg: 1,
+        status: 'scheduled',
+      },
+      {
+        tournament_id: tournamentId,
+        home_team_id: null,
+        away_team_id: null,
+        matchday: 301,
+        scheduled_date: d3,
+        deadline: `${d3}T12:00:00Z`,
+        round_type: 'final',
+        leg: 1,
+        status: 'scheduled',
+      }
+    )
+  } else {
+    // Basic 2-team final for other counts or standalone
+    fixtures.push({
       tournament_id: tournamentId,
-      home_team_id: sf1Home,
-      away_team_id: sf1Away,
-      matchday: maxMd + 1,
+      home_team_id: finalQualifiers[0],
+      away_team_id: finalQualifiers[1] ?? null,
+      matchday: 301,
       scheduled_date: d1,
       deadline: `${d1}T12:00:00Z`,
-      round_type: 'sf',
-      leg: 1,
-      status: 'scheduled',
-      is_postponed: false,
-    },
-    {
-      tournament_id: tournamentId,
-      home_team_id: sf2Home,
-      away_team_id: sf2Away,
-      matchday: maxMd + 2,
-      scheduled_date: d2,
-      deadline: `${d2}T12:00:00Z`,
-      round_type: 'sf',
-      leg: 1,
-      status: 'scheduled',
-      is_postponed: false,
-    },
-    {
-      tournament_id: tournamentId,
-      home_team_id: null,
-      away_team_id: null,
-      matchday: maxMd + 3,
-      scheduled_date: d3,
-      deadline: `${d3}T12:00:00Z`,
       round_type: 'final',
       leg: 1,
       status: 'scheduled',
-      is_postponed: false,
-    },
-  ])
+    })
+  }
 
+  const { error } = await db.from('fixtures').insert(fixtures)
   if (error) return { error: error.message }
   return {}
 }
 
-// ─── Fill Final slot with SF winner ──────────────────────────────────────────
+// ─── Advancement Logic ────────────────────────────────────────────────────────
 
+export async function advanceWinner(
+  db: any,
+  tournamentId: string,
+  fixtureId: string,
+  homeScore: number,
+  awayScore: number,
+  homeTeamId: string | null,
+  awayTeamId: string | null
+): Promise<void> {
+  const winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
+  if (!winnerId) return // Handle draws if needed (penalties?) - for now assume winner exists
+
+  // Fetch current fixture to get its matchday
+  const { data: curFx } = await db
+    .from('fixtures')
+    .select('matchday, round_type')
+    .eq('id', fixtureId)
+    .single()
+
+  if (!curFx) return
+
+  const progression = BRACKET_PROGRESSION[curFx.matchday]
+  if (!progression) {
+    // If it's a final, award trophy
+    if (curFx.round_type === 'final') {
+      await awardTrophy(db, tournamentId, homeScore, awayScore, homeTeamId, awayTeamId)
+    }
+    return
+  }
+
+  // Find the next fixture in the bracket
+  const { data: nextFx } = await db
+    .from('fixtures')
+    .select('id')
+    .eq('tournament_id', tournamentId)
+    .eq('matchday', progression.nextMd)
+    .maybeSingle()
+
+  if (nextFx) {
+    await db
+      .from('fixtures')
+      .update({ [progression.slot]: winnerId })
+      .eq('id', nextFx.id)
+  }
+}
+
+/** @deprecated use advanceWinner */
 export async function fillFinalSlot(
   db: any,
   tournamentId: string,
@@ -175,33 +263,7 @@ export async function fillFinalSlot(
   homeTeamId: string | null,
   awayTeamId: string | null
 ): Promise<void> {
-  const winner = homeScore >= awayScore ? homeTeamId : awayTeamId
-
-  // Get all SF fixtures for this tournament sorted by matchday
-  const { data: allSFs } = await db
-    .from('fixtures')
-    .select('id, matchday')
-    .eq('tournament_id', tournamentId)
-    .eq('round_type', 'sf')
-    .order('matchday', { ascending: true })
-
-  if (!allSFs?.length) return
-
-  // Find Final fixture
-  const { data: finalFx } = await db
-    .from('fixtures')
-    .select('id')
-    .eq('tournament_id', tournamentId)
-    .eq('round_type', 'final')
-    .single()
-
-  if (!finalFx) return
-
-  const sfIndex = (allSFs as any[]).findIndex((f) => f.id === sfFixtureId)
-  // SF1 (index 0) → home slot; SF2 (index 1) → away slot
-  const field = sfIndex === 0 ? 'home_team_id' : 'away_team_id'
-
-  await db.from('fixtures').update({ [field]: winner }).eq('id', finalFx.id)
+  return advanceWinner(db, tournamentId, sfFixtureId, homeScore, awayScore, homeTeamId, awayTeamId)
 }
 
 // ─── Award trophy ─────────────────────────────────────────────────────────────

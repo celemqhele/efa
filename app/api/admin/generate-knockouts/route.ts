@@ -9,12 +9,12 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  let body: { tournament_id: string }
+  let body: { tournament_id: string; shuffle?: boolean }
   try { body = await request.json() } catch {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { tournament_id } = body
+  const { tournament_id, shuffle } = body
   if (!tournament_id) return Response.json({ error: 'tournament_id required' }, { status: 400 })
 
   const adminSupabase = await createAdminClient()
@@ -28,10 +28,11 @@ export async function POST(request: Request) {
     .neq('status', 'confirmed')
 
   if ((pendingGroups ?? 1) > 0) {
+    // We'll allow it but warn or log? Actually strict is safer.
     return Response.json({ error: 'Not all group fixtures are confirmed yet' }, { status: 400 })
   }
 
-  const result = await generateTBCKnockouts(adminSupabase, tournament_id)
+  const result = await generateTBCKnockouts(adminSupabase, tournament_id, !!shuffle)
   if (result.error) {
     return Response.json({ error: result.error }, { status: result.error === 'SF fixtures already exist' ? 409 : 500 })
   }

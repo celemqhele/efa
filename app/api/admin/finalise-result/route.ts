@@ -1,7 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import {
   generateTBCKnockouts,
-  fillFinalSlot,
+  advanceWinner,
   awardTrophy,
 } from '@/lib/tournament-progression'
 import type { Database } from '@/lib/supabase/types'
@@ -9,6 +9,7 @@ import type { Database } from '@/lib/supabase/types'
 type MatchStatsInsert = Database['public']['Tables']['match_stats']['Insert']
 
 // ─── Auto-sack helper ─────────────────────────────────────────────────────────
+// ... existing code ...
 
 async function checkAndAutoSack(
   db: any,
@@ -404,16 +405,17 @@ export async function POST(request: Request) {
       if (pendingGroups === 0) {
         await generateTBCKnockouts(adminSupabase, tournamentId)
       }
-    } else if (roundType === 'sf') {
-      if (bothAbsent) {
-        const { data: allSFs } = await adminSupabase
+    } else if (['qf', 'sf', 'final'].includes(roundType)) {
+      if (bothAbsent && roundType !== 'final') {
+        // Find best eliminated team from group stage to replace the absent teams
+        const { data: allKO } = await adminSupabase
           .from('fixtures')
           .select('home_team_id, away_team_id')
           .eq('tournament_id', tournamentId)
-          .eq('round_type', 'sf')
+          .in('round_type', ['qf', 'sf', 'final'])
 
-        const sfTeamIds = new Set<string>(
-          (allSFs ?? [])
+        const koTeamIds = new Set<string>(
+          (allKO ?? [])
             .flatMap((f: any) => [f.home_team_id, f.away_team_id])
             .filter(Boolean)
         )
@@ -423,23 +425,20 @@ export async function POST(request: Request) {
           .select('team_id, points, goals_for, goals_against')
           .eq('tournament_id', tournamentId)
 
-        const eliminated = (groupStandings ?? []).filter((s: any) => !sfTeamIds.has(s.team_id))
+        const eliminated = (groupStandings ?? []).filter((s: any) => !koTeamIds.has(s.team_id))
 
         const sortedElim = [...eliminated].sort((a: any, b: any) => {
           if (b.points !== a.points) return b.points - a.points
-
           const gdA = (a.goals_for ?? 0) - (a.goals_against ?? 0)
           const gdB = (b.goals_for ?? 0) - (b.goals_against ?? 0)
-
           if (gdB !== gdA) return gdB - gdA
-
           return (b.goals_for ?? 0) - (a.goals_for ?? 0)
         })
 
         const bestEliminated = sortedElim[0]
 
         if (bestEliminated) {
-          await fillFinalSlot(
+          await advanceWinner(
             adminSupabase,
             tournamentId,
             fixture_id,
@@ -450,21 +449,10 @@ export async function POST(request: Request) {
           )
         }
       } else {
-        await fillFinalSlot(
+        await advanceWinner(
           adminSupabase,
           tournamentId,
           fixture_id,
-          home_score,
-          away_score,
-          homeTeamId,
-          awayTeamId
-        )
-      }
-    } else if (roundType === 'final') {
-      if (!bothAbsent) {
-        await awardTrophy(
-          adminSupabase,
-          tournamentId,
           home_score,
           away_score,
           homeTeamId,

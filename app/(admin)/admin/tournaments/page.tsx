@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import DeleteTournamentButton from './DeleteTournamentButton'
+import GenerateKnockoutsButton from './GenerateKnockoutsButton'
 
 export const revalidate = 0
 
@@ -215,6 +216,11 @@ function TournamentCard({
         >
           Fixtures
         </Link>
+        <GenerateKnockoutsButton 
+          tournamentId={tournament.id} 
+          tournamentName={tournament.name} 
+          type={tournament.type} 
+        />
         <Link
           href={`/standings?t=${tournament.id}`}
           className="btn-outline text-xs flex-1 text-center"
