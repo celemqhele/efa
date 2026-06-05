@@ -9,17 +9,48 @@ export async function POST(request: Request) {
     .from('profiles').select('role').eq('id', user.id).single()
   if (adminProfile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { team_id, user_id } = await request.json()
-  if (!team_id || !user_id) return Response.json({ error: 'team_id and user_id are required' }, { status: 400 })
+  const { team_id, user_id, logo_league_folder, logo_team_slug, name } = await request.json()
+  if (!user_id || (!team_id && (!logo_league_folder || !logo_team_slug))) {
+    return Response.json({ error: 'user_id and (team_id or logo info) are required' }, { status: 400 })
+  }
 
   const adminSupabase = await createAdminClient()
+
+  let resolvedTeamId = team_id
+
+  // 1. Resolve team (create if needed)
+  if (!resolvedTeamId) {
+    const { data: existing } = await adminSupabase
+      .from('teams')
+      .select('id')
+      .eq('logo_team_slug', logo_team_slug)
+      .eq('logo_league_folder', logo_league_folder)
+      .maybeSingle()
+
+    if (existing) {
+      resolvedTeamId = existing.id
+    } else {
+      const { data: newTeam, error: createErr } = await adminSupabase
+        .from('teams')
+        .insert({
+          name: name || logo_team_slug,
+          logo_league_folder,
+          logo_team_slug,
+          abandon_count: 0
+        })
+        .select('id')
+        .single()
+      if (createErr || !newTeam) return Response.json({ error: 'Failed to create team: ' + createErr?.message }, { status: 500 })
+      resolvedTeamId = newTeam.id
+    }
+  }
 
   // Fetch team and target user profile in parallel
   const [{ data: team }, { data: targetProfile }] = await Promise.all([
     adminSupabase
       .from('teams')
       .select('id, name, logo_league_folder, logo_team_slug, manager_id')
-      .eq('id', team_id)
+      .eq('id', resolvedTeamId)
       .single(),
     adminSupabase
       .from('profiles')
@@ -54,15 +85,15 @@ export async function POST(request: Request) {
   }
 
   // Find all sibling rows for this club
-  let allClubIds: string[] = [team_id]
+  let allClubIds: string[] = [resolvedTeamId]
   if (team.logo_league_folder && team.logo_team_slug) {
     const { data: siblings } = await adminSupabase
       .from('teams')
       .select('id')
       .eq('logo_league_folder', team.logo_league_folder)
       .eq('logo_team_slug', team.logo_team_slug)
-      .neq('id', team_id)
-    allClubIds = [team_id, ...(siblings ?? []).map((s) => s.id)]
+      .neq('id', resolvedTeamId)
+    allClubIds = [resolvedTeamId, ...(siblings ?? []).map((s) => s.id)]
   }
 
   // Assign manager on all rows for this club
@@ -104,7 +135,7 @@ export async function POST(request: Request) {
     admin_id: user.id,
     action: 'assign_manager',
     target_type: 'team',
-    target_id: team_id,
+    target_id: resolvedTeamId,
     details: { team_name: team.name, assigned_user_id: user_id, username: targetProfile.username },
   })
 

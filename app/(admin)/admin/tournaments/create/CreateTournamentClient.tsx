@@ -15,7 +15,7 @@ interface Season {
 }
 
 interface Team {
-  id: string
+  id: string | null
   name: string
   logo_league_folder: string
   logo_team_slug: string
@@ -62,24 +62,27 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  // Team selection
-  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([])
+  // Team selection — using logo_team_slug as the unique key
+  const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])
   const [teamSearch, setTeamSearch] = useState('')
 
   // Auto-population for UCL / Europa
   const topTeamIds = leagueStandings.slice(0, UCL_SPOTS).map((s) => s.team_id)
   const europaTeamIds = leagueStandings.slice(UCL_SPOTS, UCL_SPOTS + EUROPA_SPOTS).map((s) => s.team_id)
 
+  const topTeamSlugs = allTeams.filter(t => t.id && topTeamIds.includes(t.id)).map(t => t.logo_team_slug)
+  const europaTeamSlugs = allTeams.filter(t => t.id && europaTeamIds.includes(t.id)).map(t => t.logo_team_slug)
+
   useEffect(() => {
     if (type !== 'custom') setName(TOURNAMENT_NAMES[type] ?? type)
     if (type === 'ucl') {
-      setSelectedTeamIds(topTeamIds)
+      setSelectedSlugs(topTeamSlugs)
     } else if (type === 'europa') {
-      setSelectedTeamIds(europaTeamIds)
+      setSelectedSlugs(europaTeamSlugs)
     } else if (type === 'super_cup') {
-      setSelectedTeamIds([])
+      setSelectedSlugs([])
     } else if (type === 'custom') {
-      setSelectedTeamIds([])
+      setSelectedSlugs([])
       setName('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,8 +90,8 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
 
   // Manager assignments
   const [users, setUsers] = useState<{ id: string; username: string }[]>([])
-  const [localManagers, setLocalManagers] = useState<Record<string, string>>({})
-  const [assigningTeamId, setAssigningTeamId] = useState<string | null>(null)
+  const [localManagers, setLocalManagers] = useState<Record<string, string>>({}) // slug -> user_id
+  const [assigningSlug, setAssigningSlug] = useState<string | null>(null)
   const [assignErrors, setAssignErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -101,14 +104,15 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  function toggleTeam(teamId: string) {
-    setSelectedTeamIds((prev) =>
-      prev.includes(teamId) ? prev.filter((id) => id !== teamId) : [...prev, teamId]
+  function toggleTeam(slug: string) {
+    setSelectedSlugs((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
     )
   }
 
   const filteredTeams = allTeams.filter((t) =>
-    t.name.toLowerCase().includes(teamSearch.toLowerCase())
+    t.name.toLowerCase().includes(teamSearch.toLowerCase()) ||
+    t.logo_team_slug.toLowerCase().includes(teamSearch.toLowerCase())
   )
 
   async function handleSubmit(e: React.FormEvent) {
@@ -116,7 +120,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
     setError('')
 
     if (!name.trim()) return setError('Tournament name is required.')
-    if ((type === 'league' || type === 'custom') && selectedTeamIds.length < 2) return setError('Select at least 2 teams.')
+    if ((type === 'league' || type === 'custom') && selectedSlugs.length < 2) return setError('Select at least 2 teams.')
     if (!startDate || !endDate) return setError('Start and end dates are required.')
 
     setLoading(true)
@@ -134,6 +138,15 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         seasonId = sData.id
       }
 
+      const selectedTeams = allTeams.filter(t => selectedSlugs.includes(t.logo_team_slug))
+      const teamsData = selectedTeams.map(t => ({
+        id: t.id,
+        name: t.name,
+        logo_league_folder: t.logo_league_folder,
+        logo_team_slug: t.logo_team_slug,
+        manager_id: localManagers[t.logo_team_slug] ?? null
+      }))
+
       const resolvedType = type === 'custom' ? (customTypeName.trim() || 'custom') : type
       const res = await fetch('/api/admin/create-tournament', {
         method: 'POST',
@@ -144,7 +157,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
           type: resolvedType,
           start_date: startDate,
           end_date: endDate,
-          team_ids: selectedTeamIds,
+          teams: teamsData,
         }),
       })
       const data = await res.json()
@@ -303,7 +316,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
           <h2 className="section-header">
             Teams
             <span className="ml-auto text-sm font-normal text-slate-400">
-              {selectedTeamIds.length} selected
+              {selectedSlugs.length} selected
             </span>
           </h2>
 
@@ -317,7 +330,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
 
           <input
             type="text"
-            placeholder="Search teams..."
+            placeholder="Search all clubs..."
             value={teamSearch}
             onChange={(e) => setTeamSearch(e.target.value)}
             className="input-field mb-4"
@@ -325,14 +338,14 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-96 overflow-y-auto">
             {filteredTeams.map((team) => {
-              const isSelected = selectedTeamIds.includes(team.id)
-              const isTopTeam = type === 'ucl' && topTeamIds.includes(team.id)
-              const isEuropaTeam = type === 'europa' && europaTeamIds.includes(team.id)
+              const isSelected = selectedSlugs.includes(team.logo_team_slug)
+              const isTopTeam = type === 'ucl' && topTeamSlugs.includes(team.logo_team_slug)
+              const isEuropaTeam = type === 'europa' && europaTeamSlugs.includes(team.logo_team_slug)
               return (
                 <button
-                  key={team.id}
+                  key={team.logo_team_slug}
                   type="button"
-                  onClick={() => toggleTeam(team.id)}
+                  onClick={() => toggleTeam(team.logo_team_slug)}
                   className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${
                     isSelected
                       ? 'bg-gold/10 border-gold/40 text-slate-900'
@@ -361,15 +374,15 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             })}
           </div>
 
-          {selectedTeamIds.length > 0 && (
+          {selectedSlugs.length > 0 && (
             <div className="mt-4 pt-4 border-t border-navy-border">
               <p className="text-xs text-slate-400 mb-2">Selected Teams</p>
               <div className="flex flex-wrap gap-2">
-                {selectedTeamIds.map((id) => {
-                  const team = allTeams.find((t) => t.id === id)
+                {selectedSlugs.map((slug) => {
+                  const team = allTeams.find((t) => t.logo_team_slug === slug)
                   if (!team) return null
                   return (
-                    <div key={id} className="flex items-center gap-1.5 bg-gold/10 border border-gold/30 rounded-full pl-1.5 pr-2.5 py-0.5">
+                    <div key={slug} className="flex items-center gap-1.5 bg-gold/10 border border-gold/30 rounded-full pl-1.5 pr-2.5 py-0.5">
                       {team.logo_league_folder && (
                         <Image
                           src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
@@ -379,7 +392,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                       <span className="text-xs text-slate-900">{team.name}</span>
                       <button
                         type="button"
-                        onClick={() => toggleTeam(id)}
+                        onClick={() => toggleTeam(slug)}
                         className="text-slate-400 hover:text-slate-900 text-xs ml-0.5"
                       >
                         ×
@@ -399,23 +412,23 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
           <p className="text-slate-400 text-sm mb-4">Select exactly 2 teams for the Super Cup.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {allTeams.map((team) => {
-              const isSelected = selectedTeamIds.includes(team.id)
+              const isSelected = selectedSlugs.includes(team.logo_team_slug)
               return (
                 <button
-                  key={team.id}
+                  key={team.logo_team_slug}
                   type="button"
                   onClick={() => {
                     if (isSelected) {
-                      toggleTeam(team.id)
-                    } else if (selectedTeamIds.length < 2) {
-                      toggleTeam(team.id)
+                      toggleTeam(team.logo_team_slug)
+                    } else if (selectedSlugs.length < 2) {
+                      toggleTeam(team.logo_team_slug)
                     }
                   }}
-                  disabled={!isSelected && selectedTeamIds.length >= 2}
+                  disabled={!isSelected && selectedSlugs.length >= 2}
                   className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${
                     isSelected
                       ? 'bg-gold/10 border-gold/40 text-slate-900'
-                      : selectedTeamIds.length >= 2
+                      : selectedSlugs.length >= 2
                         ? 'bg-navy-light border-navy-border text-slate-600 cursor-not-allowed'
                         : 'bg-navy-light border-navy-border text-slate-700 hover:border-gold/20'
                   }`}
@@ -438,7 +451,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
       )}
 
       {/* Manager Assignments */}
-      {selectedTeamIds.length > 0 && (
+      {selectedSlugs.length > 0 && (
         <div className="card p-5">
           <h2 className="section-header">
             Manager Assignments
@@ -448,16 +461,16 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             Assign managers to selected teams. Teams can compete without a manager.
           </p>
           <div className="space-y-1.5">
-            {selectedTeamIds.map((id) => {
-              const team = allTeams.find((t) => t.id === id)
+            {selectedSlugs.map((slug) => {
+              const team = allTeams.find((t) => t.logo_team_slug === slug)
               if (!team) return null
-              const resolvedManagerId = localManagers[id] ?? team.manager_id
+              const resolvedManagerId = localManagers[slug] ?? team.manager_id
               const mgr = resolvedManagerId ? users.find((u) => u.id === resolvedManagerId) : null
-              const isAssigning = assigningTeamId === id
-              const assignErr = assignErrors[id]
+              const isAssigning = assigningSlug === slug
+              const assignErr = assignErrors[slug]
 
               return (
-                <div key={id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-navy-light border border-navy-border">
+                <div key={slug} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-navy-light border border-navy-border">
                   {team.logo_league_folder && (
                     <Image
                       src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
@@ -481,7 +494,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                       <button
                         type="button"
                         title="Change manager"
-                        onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[id]; return n })}
+                        onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[slug]; return n })}
                         className="text-[10px] text-slate-400 hover:text-red-400 transition-colors"
                       >
                         ×
@@ -495,21 +508,30 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                       onChange={async (e) => {
                         const userId = e.target.value
                         if (!userId) return
-                        setAssigningTeamId(id)
-                        setAssignErrors((prev) => { const n = { ...prev }; delete n[id]; return n })
+                        setAssigningSlug(slug)
+                        setAssignErrors((prev) => { const n = { ...prev }; delete n[slug]; return n })
                         try {
+                          // Note: This API might need updating to handle creating team if it doesn't exist yet, 
+                          // but for now we'll assume it handles it or we'll update it next.
                           const res = await fetch('/api/admin/managers/assign', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ team_id: id, user_id: userId }),
+                            body: JSON.stringify({ 
+                              team_id: team.id, 
+                              user_id: userId,
+                              // Add these for potential team creation in the assign API
+                              logo_league_folder: team.logo_league_folder,
+                              logo_team_slug: team.logo_team_slug,
+                              name: team.name
+                            }),
                           })
                           const data = await res.json()
                           if (!res.ok) throw new Error(data.error ?? 'Failed to assign')
-                          setLocalManagers((prev) => ({ ...prev, [id]: userId }))
+                          setLocalManagers((prev) => ({ ...prev, [slug]: userId }))
                         } catch (err: any) {
-                          setAssignErrors((prev) => ({ ...prev, [id]: err.message }))
+                          setAssignErrors((prev) => ({ ...prev, [slug]: err.message }))
                         } finally {
-                          setAssigningTeamId(null)
+                          setAssigningSlug(null)
                         }
                       }}
                     >

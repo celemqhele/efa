@@ -34,7 +34,13 @@ export async function POST(request: Request) {
     type: TournamentType
     start_date: string
     end_date: string
-    team_ids: string[]
+    teams: {
+      id: string | null
+      name: string
+      logo_league_folder: string
+      logo_team_slug: string
+      manager_id: string | null
+    }[]
   }
   try {
     body = await request.json()
@@ -50,17 +56,62 @@ export async function POST(request: Request) {
     type,
     start_date,
     end_date,
-    team_ids,
+    teams,
   } = body
 
-  if (!name || !type || !start_date || !end_date || !team_ids || team_ids.length === 0) {
+  if (!name || !type || !start_date || !end_date || !teams || teams.length === 0) {
     return Response.json(
-      { error: 'name, type, start_date, end_date and team_ids are required' },
+      { error: 'name, type, start_date, end_date and teams are required' },
       { status: 400 }
     )
   }
 
   const adminSupabase = await createAdminClient()
+
+  // 1. Resolve all team IDs (create them if they don't exist)
+  const resolvedTeamIds: string[] = []
+  for (const team of teams) {
+    if (team.id) {
+      resolvedTeamIds.push(team.id)
+      // If manager_id provided but team doesn't have one, update it
+      if (team.manager_id) {
+        await adminSupabase.from('teams').update({ manager_id: team.manager_id }).eq('id', team.id).is('manager_id', null)
+      }
+    } else {
+      // Check if team already exists by slug (double check)
+      const { data: existing } = await adminSupabase
+        .from('teams')
+        .select('id')
+        .eq('logo_team_slug', team.logo_team_slug)
+        .eq('logo_league_folder', team.logo_league_folder)
+        .maybeSingle()
+
+      if (existing) {
+        resolvedTeamIds.push(existing.id)
+        if (team.manager_id) {
+          await adminSupabase.from('teams').update({ manager_id: team.manager_id }).eq('id', existing.id).is('manager_id', null)
+        }
+      } else {
+        // Create new team
+        const { data: newTeam, error: createErr } = await adminSupabase
+          .from('teams')
+          .insert({
+            name: team.name,
+            logo_league_folder: team.logo_league_folder,
+            logo_team_slug: team.logo_team_slug,
+            manager_id: team.manager_id,
+            abandon_count: 0
+          })
+          .select('id')
+          .single()
+
+        if (createErr || !newTeam) {
+          return Response.json({ error: `Failed to create team ${team.name}: ${createErr?.message}` }, { status: 500 })
+        }
+        resolvedTeamIds.push(newTeam.id)
+      }
+    }
+  }
 
   let resolvedSeasonId: string | null = season_id ?? null
 
@@ -109,7 +160,7 @@ export async function POST(request: Request) {
   const tournament_id = tournament.id
 
   // Insert tournament participants
-  const participantRows = team_ids.map((team_id) => ({
+  const participantRows = resolvedTeamIds.map((team_id) => ({
     tournament_id,
     team_id,
   }))
@@ -124,7 +175,7 @@ export async function POST(request: Request) {
 
   // Create standings rows for league type
   if (type === 'league') {
-    const standingRows = team_ids.map((team_id) => ({
+    const standingRows = resolvedTeamIds.map((team_id) => ({
       tournament_id,
       team_id,
       played: 0,
@@ -159,7 +210,7 @@ export async function POST(request: Request) {
       name,
       type,
       season_id: resolvedSeasonId,
-      team_count: team_ids.length,
+      team_count: resolvedTeamIds.length,
     },
   })
 
