@@ -371,7 +371,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
           <h2 className="section-header mb-0">
             <span className="text-gold">📅</span> Upcoming Fixtures
           </h2>
-          <Link href="/fixtures" className="text-xs text-gold hover:text-gold-light transition-colors">
+          <Link href={`/teams/${id}/fixtures`} className="text-xs text-gold hover:text-gold-light transition-colors">
             All fixtures →
           </Link>
         </div>
@@ -433,10 +433,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
           <h2 className="section-header mb-0">
             <span className="text-gold">🏁</span> Recent Results
           </h2>
-          <Link href="/results" className="text-xs text-gold hover:text-gold-light transition-colors">
+          <Link href={`/teams/${id}/fixtures`} className="text-xs text-gold hover:text-gold-light transition-colors">
             All results →
           </Link>
         </div>
+
         {!clubRecentResults?.length ? (
           <p className="text-slate-500 text-sm text-center py-4">No results yet.</p>
         ) : (

@@ -55,20 +55,19 @@ export default async function FixturesManagePage({
 
   const todayKey = await getAppTodayKey(supabase)
   const selectedDate = resolvedParams?.date ?? todayKey
-  const { startIso, endIso } = getAppDayUtcRange(selectedDate)
 
   // Fetch all fixtures scheduled on the selected day using core database relation aliases
+  // We align with the ExportPage logic which is confirmed working
   const { data: fixtures } = await supabase
     .from('fixtures')
     .select(`
       id, matchday, round_type, scheduled_date, status, is_postponed, leg,
       tournament:tournaments(id, name, type),
-      home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
-      away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
+      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
       result:results(home_score, away_score)
     `)
-    .gte('scheduled_date', startIso)
-    .lt('scheduled_date', endIso)
+    .eq('scheduled_date', selectedDate)
     .order('scheduled_date', { ascending: true })
 
   // Group by tournament type

@@ -9,7 +9,7 @@ import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, 
 export const revalidate = 0
 
 interface Props {
-  searchParams: Promise<{ month?: string; showAll?: string }>
+  searchParams: Promise<{ month?: string; scope?: 'mine' | 'all' }>
 }
 
 const TOURNAMENT_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -29,18 +29,24 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   const prevMonth = format(subMonths(monthStart, 1), 'yyyy-MM')
   const nextMonth = format(addMonths(monthStart, 1), 'yyyy-MM')
   
-  // Knob state
-  const showAll = sp.showAll === 'true'
+  // Scope state
+  const scope = sp.scope === 'mine' ? 'mine' : 'all'
 
   const supabase = await createClient()
+
+  // Fetch current user and their team
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: userTeam } = user 
+    ? await supabase.from('teams').select('id, name').eq('manager_id', user.id).maybeSingle()
+    : { data: null }
 
   const [{ data: fixtures }, { data: breaks }] = await Promise.all([
     supabase
       .from('fixtures')
       .select(`
         id, matchday, scheduled_date, status, round_type,
-        home_team:teams!home_team_id (id, name, logo_league_folder, logo_team_slug),
-        away_team:teams!away_team_id (id, name, logo_league_folder, logo_team_slug),
+        home_team:teams!fixtures_home_team_id_fkey (id, name, logo_league_folder, logo_team_slug),
+        away_team:teams!fixtures_away_team_id_fkey (id, name, logo_league_folder, logo_team_slug),
         tournament:tournaments (name, type),
         results (home_score, away_score)
       `)
@@ -54,11 +60,11 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
       .gte('break_end', format(monthStart, 'yyyy-MM-dd')),
   ])
 
-  // Apply the toggle filter (Adjust the condition if "other" fixtures means something different)
+  // Apply scope filter
   const rawFixtures = (fixtures ?? []) as any[]
-  const processedFixtures = showAll 
-    ? rawFixtures 
-    : rawFixtures.filter((f) => f.tournament?.type === 'league')
+  const processedFixtures = scope === 'mine'
+    ? (userTeam ? rawFixtures.filter((f) => f.home_team?.id === userTeam.id || f.away_team?.id === userTeam.id) : [])
+    : rawFixtures
 
   // Index processed fixtures by date
   const byDate: Record<string, any[]> = {}
@@ -88,30 +94,30 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
         <div className="flex items-center gap-6">
           <h1 className="text-xl font-bold text-slate-900">{monthLabel}</h1>
           
-          {/* Toggle Knob */}
+          {/* Scope Toggle */}
           <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
-            <span className={`text-xs font-medium ${!showAll ? 'text-slate-900' : 'text-slate-400'}`}>
-              Main Only
+            <span className={`text-xs font-medium ${scope === 'mine' ? 'text-slate-900' : 'text-slate-400'}`}>
+              My Team
             </span>
             <Link
-              href={`?month=${sp.month || format(now, 'yyyy-MM')}&showAll=${showAll ? 'false' : 'true'}`}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${showAll ? 'bg-[#c9a84c]' : 'bg-slate-300'}`}
+              href={`?month=${sp.month || format(now, 'yyyy-MM')}&scope=${scope === 'mine' ? 'all' : 'mine'}`}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${scope === 'all' ? 'bg-[#c9a84c]' : 'bg-slate-300'}`}
               scroll={false}
             >
               <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${showAll ? 'translate-x-4' : 'translate-x-1'}`}
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${scope === 'all' ? 'translate-x-4' : 'translate-x-1'}`}
               />
             </Link>
-            <span className={`text-xs font-medium ${showAll ? 'text-slate-900' : 'text-slate-400'}`}>
-              All Fixtures
+            <span className={`text-xs font-medium ${scope === 'all' ? 'text-slate-900' : 'text-slate-400'}`}>
+              All Teams
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href={`?month=${prevMonth}&showAll=${showAll}`} className="btn-outline text-xs px-3 py-2">← Prev</Link>
-          <Link href={`?month=${format(now, 'yyyy-MM')}&showAll=${showAll}`} className="text-xs text-[#c9a84c] px-3 py-2">Today</Link>
-          <Link href={`?month=${nextMonth}&showAll=${showAll}`} className="btn-outline text-xs px-3 py-2">Next →</Link>
+          <Link href={`?month=${prevMonth}&scope=${scope}`} className="btn-outline text-xs px-3 py-2">← Prev</Link>
+          <Link href={`?month=${format(now, 'yyyy-MM')}&scope=${scope}`} className="text-xs text-[#c9a84c] px-3 py-2">Today</Link>
+          <Link href={`?month=${nextMonth}&scope=${scope}`} className="btn-outline text-xs px-3 py-2">Next →</Link>
         </div>
       </div>
 
