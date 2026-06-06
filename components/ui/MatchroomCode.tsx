@@ -66,7 +66,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
             </div>
           ) : code ? (
             <div className="flex items-center gap-3">
-              <div className="flex-1 px-4 py-3 rounded-xl bg-gold/10 border border-gold/30 text-center">
+              <div className="flex-1 px-4 py-3 rounded-xl bg-gold/10 dark:bg-gold/5 border border-gold/30 text-center">
                 <p className="text-2xl font-black text-gold tracking-[0.2em] font-mono">{code}</p>
                 <p className="text-[10px] text-slate-400 mt-1">Share this with your opponent</p>
               </div>
@@ -92,7 +92,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
           <div className="space-y-2">
             <p className="text-xs text-slate-400">Room code set by the home team:</p>
             <div className="flex items-center gap-3">
-              <div className="flex-1 px-4 py-3 rounded-xl bg-gold/10 border border-gold/30 text-center">
+              <div className="flex-1 px-4 py-3 rounded-xl bg-gold/10 dark:bg-gold/5 border border-gold/30 text-center">
                 <p className="text-2xl font-black text-gold tracking-[0.2em] font-mono">{code}</p>
               </div>
               <button onClick={copy} className="btn-gold text-sm shrink-0">

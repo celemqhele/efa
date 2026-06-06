@@ -94,11 +94,11 @@ export default async function TeamFixturesPage({ params }: PageProps) {
   const { data: resultsData } = fixtureIds.length > 0
     ? await supabase
         .from('results')
-        .select('fixture_id, home_score, away_score')
+        .select('id, fixture_id, home_score, away_score')
         .in('fixture_id', fixtureIds)
     : { data: [] }
 
-  const resultsByFixture: Record<string, { home_score: number; away_score: number }> = {}
+  const resultsByFixture: Record<string, { id: string; home_score: number; away_score: number }> = {}
   for (const r of resultsData ?? []) {
     resultsByFixture[(r as any).fixture_id] = r as any
   }
@@ -138,7 +138,7 @@ export default async function TeamFixturesPage({ params }: PageProps) {
 
     return (
       <Link
-        href={f.status === 'confirmed' || f.status === 'completed' ? `/results/${f.id}` : `/fixtures/${f.id}`}
+        href={result ? `/results/${result.id}` : `/fixtures/${f.id}`}
         className="card flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-black/[0.03] transition-all"
       >
         <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-slate-500 border-slate-200'}`}>
