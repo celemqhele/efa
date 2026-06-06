@@ -278,6 +278,33 @@ export default function ResultSubmitClient({
     setStats((prev) => ({ ...prev, [key]: { ...prev[key], [side]: value } }))
   }
 
+  function handleSwap() {
+    // 1. Swap scores
+    const tempHomeScore = homeScore
+    setHomeScore(awayScore)
+    setAwayScore(tempHomeScore)
+
+    // 2. Swap stats
+    const newStats: StatValues = {}
+    for (const f of STAT_FIELDS) {
+      newStats[f.key] = {
+        home: stats[f.key]?.away ?? '',
+        away: stats[f.key]?.home ?? '',
+      }
+    }
+    setStats(newStats)
+
+    // 3. Swap absence flags
+    const tempHomeAbsent = homeAbsent
+    setHomeAbsent(awayAbsent)
+    setAwayAbsent(tempHomeAbsent)
+
+    // 4. Swap mapped team IDs (used in OCR verification)
+    const tempHomeId = mappedHomeTeamId
+    setMappedHomeTeamId(mappedAwayTeamId)
+    setMappedAwayTeamId(tempHomeId)
+  }
+
   async function handleSubmit() {
     if (!selectedFixtureId) return setSubmitError('Select a fixture first.')
     if (!(homeAbsent || awayAbsent) && (!homeScore || !awayScore)) return setSubmitError('Score is required.')
@@ -610,7 +637,16 @@ export default function ResultSubmitClient({
 
             {/* Score Input */}
             <div className="card p-5">
-              <h2 className="section-header">Score</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="section-header mb-0">Score</h2>
+                <button
+                  type="button"
+                  onClick={handleSwap}
+                  className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy-light text-slate-600 hover:text-gold hover:border-gold border border-navy-border transition-colors"
+                >
+                  ⇄ Swap Home/Away
+                </button>
+              </div>
 
               <div className="flex gap-4 mb-4">
                 <label className={`flex items-center gap-2 cursor-pointer flex-1 rounded-lg px-3 py-2 border transition-colors ${
