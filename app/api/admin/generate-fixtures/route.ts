@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { generateLeagueFixtures, type GeneratedFixture } from '@/lib/fixture-generator'
+import { generateLeagueFixtures, generateGroupFixtures, type GeneratedFixture } from '@/lib/fixture-generator'
 import type { Database } from '@/lib/supabase/types'
 
 type FixtureInsert = Database['public']['Tables']['fixtures']['Insert']
