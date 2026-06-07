@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       logo_team_slug: string
       manager_id: string | null
     }[]
+    settings?: any
   }
   try {
     body = await request.json()
