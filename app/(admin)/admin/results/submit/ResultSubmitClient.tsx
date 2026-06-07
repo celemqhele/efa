@@ -101,7 +101,7 @@ interface StatValues {
   [key: string]: { home: string; away: string }
 }
 
-type StatusFilter = 'all' | 'awaiting_confirmation' | 'scheduled'
+type StatusFilter = 'all' | 'awaiting_confirmation' | 'scheduled' | 'completed'
 
 export default function ResultSubmitClient({
   pendingFixtures,
@@ -146,14 +146,23 @@ export default function ResultSubmitClient({
   const [submitError, setSubmitError] = useState('')
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
+  // Reset state
+  const [resetLoading, setResetLoading] = useState(false)
+
   const selectedFixture = pendingFixtures.find((f) => f.id === selectedFixtureId) ?? null
   const existingConfs = selectedFixtureId ? (confirmationsByFixture[selectedFixtureId] ?? []) : []
+
+  const isFinished = selectedFixture ? ['completed', 'confirmed', 'abandoned'].includes(selectedFixture.status) : false
 
   // Advanced Filter Logic (Handles multi-word search & status buttons)
   const filteredFixtures = pendingFixtures.filter((fx) => {
     // 1. Status Filter check
-    if (statusFilter !== 'all' && fx.status !== statusFilter) {
-      return false
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'completed') {
+        if (!['completed', 'confirmed', 'abandoned'].includes(fx.status)) return false
+      } else if (fx.status !== statusFilter) {
+        return false
+      }
     }
 
     // 2. Multi-word Search check
@@ -348,6 +357,30 @@ export default function ResultSubmitClient({
     }
   }
 
+  // Reset handler
+  async function handleReset() {
+    if (!confirm('Are you sure you want to reset this fixture? This will delete the result and recalculate standings.')) return
+    
+    setResetLoading(true)
+    setSubmitError('')
+    try {
+      const res = await fetch('/api/admin/reset-fixture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fixture_id: selectedFixtureId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to reset')
+      
+      // Refresh page
+      window.location.reload()
+    } catch (err: any) {
+      setSubmitError(err.message)
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
   if (submitSuccess) {
     return (
       <div className="card p-12 text-center">
@@ -398,7 +431,16 @@ export default function ResultSubmitClient({
                 statusFilter === 'scheduled' ? 'bg-gold text-navy shadow-sm' : 'text-slate-400 hover:text-slate-900'
               }`}
             >
-              Scheduled
+              Sched.
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('completed')}
+              className={`flex-1 text-center py-1.5 text-xs font-medium rounded transition-colors ${
+                statusFilter === 'completed' ? 'bg-gold text-navy shadow-sm' : 'text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Comp.
             </button>
           </div>
 
@@ -474,6 +516,57 @@ export default function ResultSubmitClient({
           <div className="card p-12 text-center text-slate-500">
             <p className="text-4xl mb-3">⚽</p>
             <p>Select a fixture to submit its result.</p>
+          </div>
+        ) : isFinished ? (
+          <div className="card p-12 text-center space-y-6">
+            <div className="text-5xl">🏁</div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Fixture Completed</h2>
+              <p className="text-slate-500 mt-2">
+                This fixture already has a finalised result. 
+                Resetting it will delete the result and return it to <span className="font-bold">Scheduled</span>.
+              </p>
+            </div>
+
+            <div className="p-6 bg-navy-light rounded-2xl border border-navy-border inline-block min-w-[240px]">
+              <div className="flex items-center justify-center gap-6">
+                <div className="text-center">
+                  {selectedFixture.home_team?.logo_league_folder && (
+                    <Image
+                      src={getTeamLogo(selectedFixture.home_team.logo_league_folder, selectedFixture.home_team.logo_team_slug, 'fixture_card')}
+                      alt={selectedFixture.home_team.name}
+                      width={56} height={56}
+                      className="object-contain mx-auto"
+                    />
+                  )}
+                </div>
+                <div className="text-3xl font-black text-slate-900">vs</div>
+                <div className="text-center">
+                  {selectedFixture.away_team?.logo_league_folder && (
+                    <Image
+                      src={getTeamLogo(selectedFixture.away_team.logo_league_folder, selectedFixture.away_team.logo_team_slug, 'fixture_card')}
+                      alt={selectedFixture.away_team.name}
+                      width={56} height={56}
+                      className="object-contain mx-auto"
+                    />
+                  )}
+                </div>
+              </div>
+              <p className="text-xs font-bold text-slate-400 mt-4 uppercase tracking-widest">{selectedFixture.status}</p>
+            </div>
+
+            <div className="pt-4">
+              <button
+                onClick={handleReset}
+                disabled={resetLoading}
+                className="btn-outline border-red-500/20 text-red-500 hover:bg-red-50 py-3 px-8 font-bold text-base"
+              >
+                {resetLoading ? 'Resetting...' : 'Reset Result & Recalculate Standings'}
+              </button>
+              {submitError && (
+                <p className="text-red-500 text-sm mt-4 bg-red-50 p-3 rounded-lg border border-red-100">{submitError}</p>
+              )}
+            </div>
           </div>
         ) : (
           <>

@@ -38,6 +38,10 @@ export default function FixtureActions({
   const [batchError, setBatchError] = useState('')
   const [batchResult, setBatchResult] = useState<{ postponed: number; message?: string } | null>(null)
 
+  // ── Reset state ────────────────────────────────────────────────────────────
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+
   const isFinished = ['completed', 'confirmed', 'abandoned'].includes(status)
 
   // ── Single postpone handler ────────────────────────────────────────────────
@@ -60,6 +64,28 @@ export default function FixtureActions({
       setPostponeError(e.message)
     } finally {
       setPostponeLoading(false)
+    }
+  }
+
+  // ── Reset handler ──────────────────────────────────────────────────────────
+  async function handleReset() {
+    setResetLoading(true)
+    try {
+      const res = await fetch('/api/admin/reset-fixture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fixture_id: fixtureId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to reset')
+      
+      // Refresh page to show updated status
+      window.location.reload()
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setResetLoading(false)
+      setShowResetConfirm(false)
     }
   }
 
@@ -135,7 +161,44 @@ export default function FixtureActions({
             Submit
           </a>
         )}
+        {isFinished && (
+          <button
+            onClick={() => setShowResetConfirm(true)}
+            className="btn-outline text-xs py-1 px-2.5 text-red-400 border-red-500/20 hover:bg-red-500/10"
+          >
+            Reset Result
+          </button>
+        )}
       </div>
+
+      {/* ── Reset Confirmation Modal ────────────────────────────────────────── */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scale-in">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Reset Fixture?</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              This will delete the current result and all submissions. 
+              The fixture status will return to <span className="font-bold">Scheduled</span> and standings will be recalculated.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReset}
+                disabled={resetLoading}
+                className="flex-1 px-4 py-2 bg-red-500 text-white text-sm font-bold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {resetLoading ? 'Resetting...' : 'Yes, Reset'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Single postpone form ───────────────────────────────────────────── */}
       {showPostpone && (
