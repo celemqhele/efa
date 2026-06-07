@@ -24,7 +24,7 @@ export default function RecalculateStandingsButton({ tournamentId }: Props) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed')
 
-      const { standings_rows_written: s, group_rows_written: g, fixtures_processed: f } = data
+      const { standingsRowsWritten: s, groupRowsWritten: g, fixturesProcessed: f } = data
       const rows = (s ?? 0) + (g ?? 0)
       setMessage(rows > 0
         ? `✓ Done — ${rows} teams, ${f} fixtures`
