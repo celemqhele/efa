@@ -29,13 +29,13 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
   const [qualifiers, setQualifiers] = useState<Qualifier[]>([])
   const router = useRouter()
 
-  if (!['ucl', 'europa', 'custom'].includes(type)) return null
-
   useEffect(() => {
     if (showConfirm) {
       fetchQualifiers()
     }
   }, [showConfirm])
+
+  if (!['ucl', 'europa', 'custom'].includes(type)) return null
 
   async function fetchQualifiers() {
     setPreviewLoading(true)
