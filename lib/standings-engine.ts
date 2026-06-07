@@ -53,13 +53,22 @@ function emptyGroupStandingRow(tournamentId: string, groupName: string, teamId: 
   }
 }
 
-function applyResult(homeRow: any, awayRow: any, homeScore: number, awayScore: number) {
+function applyResult(homeRow: any, awayRow: any, homeScore: number, awayScore: number, isDoubleForfeit: boolean = false) {
+  homeRow.played++
+  awayRow.played++
+
+  if (isDoubleForfeit) {
+    // 0 points, 0 goals, but counts as played
+    if ('form' in homeRow) homeRow.form = (homeRow.form + 'L').slice(-5)
+    if ('form' in awayRow) awayRow.form = (awayRow.form + 'L').slice(-5)
+    homeRow.losses++
+    awayRow.losses++
+    return
+  }
+
   const homeWin = homeScore > awayScore
   const awayWin = awayScore > homeScore
   const draw = homeScore === awayScore
-
-  homeRow.played++
-  awayRow.played++
 
   homeRow.wins += homeWin ? 1 : 0
   awayRow.wins += awayWin ? 1 : 0
@@ -164,6 +173,8 @@ export async function recalculateStandings(tournamentId: string) {
   if (tournamentErr) throw new Error(tournamentErr.message)
 
   const tournamentType = (tournament as any)?.type ?? 'league'
+  const settings = (tournament as any)?.settings as any
+  const isGroupBased = !!(settings?.num_groups && settings.num_groups > 0)
 
   const { data: participants, error: participantsErr } = await db
     .from('tournament_participants')
@@ -199,8 +210,9 @@ export async function recalculateStandings(tournamentId: string) {
   let standingsRowsWritten = 0
   let groupRowsWritten = 0
 
-  if (tournamentType === 'league') {
-    const leagueFixtures = allFixtures
+  if (!isGroupBased) {
+    // League logic (Standard League or Custom without groups)
+    const leagueFixtures = allFixtures.filter(f => f.round_type === 'league' || !f.round_type)
     const teamIds = Array.from(new Set([
       ...(participants ?? []).map((p: any) => p.team_id).filter(Boolean),
       ...leagueFixtures.flatMap((fixture) => [fixture.home_team_id, fixture.away_team_id]).filter(Boolean),
@@ -226,9 +238,9 @@ export async function recalculateStandings(tournamentId: string) {
       if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) continue
 
       const reason = String(result.override_reason ?? '').toLowerCase()
-      if (reason.includes('both') && reason.includes('absent')) continue
+      const isDoubleForfeit = reason.includes('both') && reason.includes('absent')
 
-      applyResult(getRow(fixture.home_team_id), getRow(fixture.away_team_id), homeScore, awayScore)
+      applyResult(getRow(fixture.home_team_id), getRow(fixture.away_team_id), homeScore, awayScore, isDoubleForfeit)
     }
 
     const { error: deleteErr } = await db.from('standings').delete().eq('tournament_id', tournamentId)
@@ -240,9 +252,8 @@ export async function recalculateStandings(tournamentId: string) {
       if (insertErr) throw new Error(insertErr.message)
       standingsRowsWritten = rows.length
     }
-  }
-
-  if (tournamentType === 'ucl' || tournamentType === 'europa') {
+  } else {
+    // Group logic (UCL, Europa, or Custom with groups)
     const groupFixtures = allFixtures.filter((fixture) => fixture.round_type === 'group')
 
     const participantGroupByTeam: Record<string, string> = {}
@@ -283,7 +294,7 @@ export async function recalculateStandings(tournamentId: string) {
       if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) continue
 
       const reason = String(result.override_reason ?? '').toLowerCase()
-      if (reason.includes('both') && reason.includes('absent')) continue
+      const isDoubleForfeit = reason.includes('both') && reason.includes('absent')
 
       const homeGroup = groupByTeam[fixture.home_team_id] ?? participantGroupByTeam[fixture.home_team_id]
       const awayGroup = groupByTeam[fixture.away_team_id] ?? participantGroupByTeam[fixture.away_team_id] ?? homeGroup
@@ -293,6 +304,7 @@ export async function recalculateStandings(tournamentId: string) {
         getGroupRow(fixture.away_team_id, awayGroup),
         homeScore,
         awayScore,
+        isDoubleForfeit
       )
     }
 
