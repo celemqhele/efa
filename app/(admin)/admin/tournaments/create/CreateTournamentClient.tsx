@@ -62,6 +62,12 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
+  // Format Settings
+  const [numGroups, setNumGroups] = useState(4)
+  const [teamsPerGroup, setTeamsPerGroup] = useState(3)
+  const [numRounds, setNumRounds] = useState(2)
+  const [qualifiersPerGroup, setQualifiersPerGroup] = useState(2)
+
   // Team selection — using logo_team_slug as the unique key
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])
   const [teamSearch, setTeamSearch] = useState('')
@@ -77,13 +83,26 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
     if (type !== 'custom') setName(TOURNAMENT_NAMES[type] ?? type)
     if (type === 'ucl') {
       setSelectedSlugs(topTeamSlugs)
+      setNumGroups(4)
+      setTeamsPerGroup(3)
+      setNumRounds(2)
+      setQualifiersPerGroup(2)
     } else if (type === 'europa') {
       setSelectedSlugs(europaTeamSlugs)
+      setNumGroups(2)
+      setTeamsPerGroup(4)
+      setNumRounds(2)
+      setQualifiersPerGroup(2)
     } else if (type === 'super_cup') {
       setSelectedSlugs([])
+      setNumGroups(1)
+      setTeamsPerGroup(2)
+      setNumRounds(1)
     } else if (type === 'custom') {
       setSelectedSlugs([])
       setName('')
+    } else if (type === 'league') {
+      setNumRounds(2)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
@@ -122,6 +141,13 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
     if (!name.trim()) return setError('Tournament name is required.')
     if ((type === 'league' || type === 'custom') && selectedSlugs.length < 2) return setError('Select at least 2 teams.')
     if (!startDate || !endDate) return setError('Start and end dates are required.')
+    
+    // Validation for groups
+    if (type !== 'league' && type !== 'super_cup') {
+      if (selectedSlugs.length !== numGroups * teamsPerGroup) {
+        return setError(`Team count (${selectedSlugs.length}) does not match Group settings (${numGroups} groups × ${teamsPerGroup} teams = ${numGroups * teamsPerGroup}).`)
+      }
+    }
 
     setLoading(true)
     try {
@@ -158,6 +184,12 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
           start_date: startDate,
           end_date: endDate,
           teams: teamsData,
+          settings: {
+            num_groups: numGroups,
+            teams_per_group: teamsPerGroup,
+            num_rounds: numRounds,
+            qualifiers_per_group: qualifiersPerGroup
+          }
         }),
       })
       const data = await res.json()
@@ -309,6 +341,67 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
           </div>
         </div>
       </div>
+
+      {/* Format Settings */}
+      {(type !== 'super_cup') && (
+        <div className="card p-5">
+          <h2 className="section-header">Format Settings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {type !== 'league' && (
+              <>
+                <div>
+                  <label className="form-label">Number of Groups</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={numGroups}
+                    onChange={(e) => setNumGroups(parseInt(e.target.value) || 1)}
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Teams per Group</label>
+                  <input
+                    type="number"
+                    min="2"
+                    value={teamsPerGroup}
+                    onChange={(e) => setTeamsPerGroup(parseInt(e.target.value) || 2)}
+                    className="input-field"
+                  />
+                </div>
+              </>
+            )}
+            <div>
+              <label className="form-label">Rounds (1=Single, 2=H&A)</label>
+              <input
+                type="number"
+                min="1"
+                max="4"
+                value={numRounds}
+                onChange={(e) => setNumRounds(parseInt(e.target.value) || 1)}
+                className="input-field"
+              />
+            </div>
+            {type !== 'league' && (
+              <div>
+                <label className="form-label">Qualifiers per Group</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={qualifiersPerGroup}
+                  onChange={(e) => setQualifiersPerGroup(parseInt(e.target.value) || 1)}
+                  className="input-field"
+                />
+              </div>
+            )}
+          </div>
+          {type !== 'league' && (
+            <p className="mt-3 text-xs text-slate-400">
+              Total teams required: <strong className="text-gold">{numGroups * teamsPerGroup}</strong>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Team Selection */}
       {type !== 'super_cup' && (

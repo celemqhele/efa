@@ -57,6 +57,7 @@ export async function POST(request: Request) {
     start_date,
     end_date,
     teams,
+    settings: customSettings,
   } = body
 
   if (!name || !type || !start_date || !end_date || !teams || teams.length === 0) {
@@ -137,6 +138,13 @@ export async function POST(request: Request) {
     resolvedSeasonId = newSeason.id
   }
 
+  // Combine settings
+  const settings = {
+    start_date,
+    end_date,
+    ...customSettings,
+  }
+
   // Create tournament
   const { data: tournament, error: tournamentError } = await adminSupabase
     .from('tournaments')
@@ -145,7 +153,7 @@ export async function POST(request: Request) {
       name,
       type,
       status: 'active',
-      settings: { start_date, end_date },
+      settings,
     })
     .select('id')
     .single()

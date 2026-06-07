@@ -51,14 +51,32 @@ function isBreak(dateStr: string, breaks: Array<{ break_start: string; break_end
   })
 }
 
-function generateRoundRobin(teamIds: string[]): Array<[string, string]> {
+function generateRoundRobin(teamIds: string[], numRounds: number = 2): Array<[string, string]> {
   const pairs: Array<[string, string]> = []
+  
+  // Round 1: Everyone plays everyone once
   for (let i = 0; i < teamIds.length; i++) {
     for (let j = i + 1; j < teamIds.length; j++) {
       pairs.push([teamIds[i], teamIds[j]])
-      pairs.push([teamIds[j], teamIds[i]])
     }
   }
+
+  // Round 2 (and more): Mirror the pairs for H&A or just repeat
+  for (let r = 2; r <= numRounds; r++) {
+    const roundPairs: Array<[string, string]> = []
+    for (let i = 0; i < teamIds.length; i++) {
+      for (let j = i + 1; j < teamIds.length; j++) {
+        // If even round, flip home/away for H&A effect
+        if (r % 2 === 0) {
+          roundPairs.push([teamIds[j], teamIds[i]])
+        } else {
+          roundPairs.push([teamIds[i], teamIds[j]])
+        }
+      }
+    }
+    pairs.push(...roundPairs)
+  }
+
   return pairs
 }
 
@@ -77,9 +95,10 @@ export function generateLeagueFixtures(
   startDate: string,
   endDate: string,
   breaks: Array<{ break_start: string; break_end: string }>,
-  tournamentId: string
+  tournamentId: string,
+  numRounds: number = 2
 ): GeneratedFixture[] {
-  const allPairs = shuffle(generateRoundRobin(teamIds))
+  const allPairs = shuffle(generateRoundRobin(teamIds, numRounds))
   const fixtures: GeneratedFixture[] = []
 
   let currentDate = parseISO(startDate)
@@ -143,12 +162,13 @@ export function generateGroupFixtures(
   groups: Record<string, string[]>,
   startDate: string,
   endDate: string,
-  breaks: Array<{ break_start: string; break_end: string }>
+  breaks: Array<{ break_start: string; break_end: string }>,
+  numRounds: number = 2
 ): GeneratedFixture[] {
   const allPairs: Array<[string, string]> = []
 
   for (const teamIds of Object.values(groups)) {
-    allPairs.push(...generateRoundRobin(teamIds))
+    allPairs.push(...generateRoundRobin(teamIds, numRounds))
   }
 
   const shuffled = shuffle(allPairs)

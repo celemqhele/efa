@@ -76,10 +76,13 @@ export async function POST(request: Request) {
 
   const seasonBreaks = breaks ?? []
 
-  // Extract start/end dates from tournament settings
-  const settings = tournament.settings as Record<string, string> | null
+  // Extract start/end dates and format settings from tournament settings
+  const settings = tournament.settings as Record<string, any> | null
   const startDate = settings?.start_date
   const endDate = settings?.end_date
+  const numGroups = settings?.num_groups
+  const teamsPerGroup = settings?.teams_per_group
+  const numRounds = settings?.num_rounds ?? 2
 
   if (!startDate || !endDate) {
     return Response.json(
@@ -102,14 +105,71 @@ export async function POST(request: Request) {
     )
   }
 
-  // Generate fixtures
-  const generated: GeneratedFixture[] = generateLeagueFixtures(
-    teamIds,
-    startDate,
-    endDate,
-    seasonBreaks,
-    tournament_id
-  )
+  let generated: GeneratedFixture[] = []
+
+  // Group-based tournament?
+  if (numGroups && teamsPerGroup && tournament.type !== 'league') {
+    // 1. Assign teams to groups
+    const shuffledTeamIds = [...teamIds].sort(() => Math.random() - 0.5)
+    const groups: Record<string, string[]> = {}
+    const participantUpdates: Array<{ id: string; group_name: string }> = []
+
+    // Fetch participant IDs to update them
+    const { data: participantsWithIds } = await adminSupabase
+      .from('tournament_participants')
+      .select('id, team_id')
+      .eq('tournament_id', tournament_id)
+
+    for (let g = 0; g < numGroups; g++) {
+      const groupName = String.fromCharCode(65 + g) // A, B, C...
+      const groupTeams = shuffledTeamIds.slice(g * teamsPerGroup, (g + 1) * teamsPerGroup)
+      groups[groupName] = groupTeams
+
+      // Prepare updates for tournament_participants
+      groupTeams.forEach((tid) => {
+        const participant = participantsWithIds?.find((p) => p.team_id === tid)
+        if (participant) {
+          participantUpdates.push({ id: participant.id, group_name: groupName })
+        }
+      })
+    }
+
+    // Update participants with group names
+    for (const update of participantUpdates) {
+      await adminSupabase
+        .from('tournament_participants')
+        .update({ group_name: update.group_name })
+        .eq('id', update.id)
+    }
+
+    // 2. Initialize group standings
+    const groupStandingRows = participantUpdates.map((u) => {
+      const tid = participantsWithIds?.find((p) => p.id === u.id)?.team_id
+      return {
+        tournament_id,
+        team_id: tid,
+        group_name: u.group_name,
+        played: 0, wins: 0, draws: 0, losses: 0,
+        goals_for: 0, goals_against: 0, points: 0,
+      }
+    })
+
+    const { error: gsErr } = await (adminSupabase.from('group_standings') as any).insert(groupStandingRows)
+    if (gsErr) console.error('Failed to init group standings:', gsErr.message)
+
+    // 3. Generate group fixtures
+    generated = generateGroupFixtures(groups, startDate, endDate, seasonBreaks, numRounds)
+  } else {
+    // Standard league generation
+    generated = generateLeagueFixtures(
+      teamIds,
+      startDate,
+      endDate,
+      seasonBreaks,
+      tournament_id,
+      numRounds
+    )
+  }
 
   if (generated.length === 0) {
     return Response.json(
