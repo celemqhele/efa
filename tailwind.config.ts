@@ -16,6 +16,11 @@ const config: Config = {
           card: 'var(--navy-card)',
           border: 'var(--navy-border)',
         },
+        foreground: {
+          primary: 'var(--foreground-primary)',
+          secondary: 'var(--foreground-secondary)',
+          muted: 'var(--foreground-muted)',
+        },
         gold: {
           DEFAULT: '#c9a84c',
           light: '#e0c06a',

@@ -36,9 +36,9 @@ function StatBar({
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-slate-400">
-        <span className="font-semibold text-slate-900">{h}</span>
+        <span className="font-semibold text-foreground-primary">{h}</span>
         <span className="uppercase tracking-wider">{label}</span>
-        <span className="font-semibold text-slate-900">{a}</span>
+        <span className="font-semibold text-foreground-primary">{a}</span>
       </div>
       <div className="flex h-1.5 rounded-full overflow-hidden bg-navy-border">
         <div
@@ -72,7 +72,7 @@ function ProbabilityBar({
       <div className="flex justify-between text-sm font-semibold">
         <span className="text-gold">{home}%</span>
         <span className="text-slate-400">{draw}% Draw</span>
-        <span className="text-slate-700">{away}%</span>
+        <span className="text-foreground-secondary">{away}%</span>
       </div>
       <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
         <div
@@ -331,18 +331,18 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 className="object-contain"
               />
               <div className="text-center">
-                <p className="font-bold text-slate-900 text-sm">{homeTeam.name}</p>
+                <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
                 <p className="text-xs text-slate-500">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
 
             {/* Score */}
             <div className="flex items-center gap-3">
-              <span className="text-5xl font-black text-slate-900 tabular-nums">
+              <span className="text-5xl font-black text-foreground-primary tabular-nums">
                 {result.home_score}
               </span>
               <span className="text-2xl font-bold text-slate-500">–</span>
-              <span className="text-5xl font-black text-slate-900 tabular-nums">
+              <span className="text-5xl font-black text-foreground-primary tabular-nums">
                 {result.away_score}
               </span>
             </div>
@@ -357,7 +357,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 className="object-contain"
               />
               <div className="text-center">
-                <p className="font-bold text-slate-900 text-sm">{awayTeam.name}</p>
+                <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
                 <p className="text-xs text-slate-500">{awayManager?.username ?? '—'}</p>
               </div>
             </Link>
@@ -374,7 +374,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 className="object-contain"
               />
               <div className="text-center">
-                <p className="font-bold text-slate-900 text-sm">{homeTeam.name}</p>
+                <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
                 <p className="text-xs text-slate-500">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
@@ -392,7 +392,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 className="object-contain"
               />
               <div className="text-center">
-                <p className="font-bold text-slate-900 text-sm">{awayTeam.name}</p>
+                <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
                 <p className="text-xs text-slate-500">{awayManager?.username ?? '—'}</p>
               </div>
             </Link>
@@ -430,9 +430,9 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                     HOME — {homeTeam.name}
                   </p>
                   {homeManager && (
-                    <p className="text-slate-900 font-semibold">@{homeManager.username}</p>
+                    <p className="text-foreground-primary font-semibold">@{homeManager.username}</p>
                   )}
-                  <p className="text-slate-700 text-sm mt-1">
+                  <p className="text-foreground-secondary text-sm mt-1">
                     YOU CREATE THE MATCHROOM in eFootball
                   </p>
                 </div>
@@ -440,11 +440,11 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               <div className="flex items-start gap-3 p-4 rounded-lg bg-navy-border/50 border border-navy-border">
                 <span className="text-2xl">✈️</span>
                 <div>
-                  <p className="text-slate-700 font-bold text-sm uppercase tracking-wider">
+                  <p className="text-foreground-secondary font-bold text-sm uppercase tracking-wider">
                     AWAY — {awayTeam.name}
                   </p>
                   {awayManager && (
-                    <p className="text-slate-900 font-semibold">@{awayManager.username}</p>
+                    <p className="text-foreground-primary font-semibold">@{awayManager.username}</p>
                   )}
                   <p className="text-slate-400 text-sm mt-1">
                     You join the matchroom
@@ -513,7 +513,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                       </Link>
 
                       {/* Score — links to that fixture */}
-                      <Link href={`/fixtures/${f.id}`} className="font-bold text-slate-900 tabular-nums text-sm px-2 hover:text-gold transition-colors shrink-0">
+                      <Link href={`/fixtures/${f.id}`} className="font-bold text-foreground-primary tabular-nums text-sm px-2 hover:text-gold transition-colors shrink-0">
                         {hScore} – {aScore}
                       </Link>
 
@@ -628,8 +628,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 <StatBar label="Tackles" home={matchStats.home_tackles} away={matchStats.away_tackles} />
               </div>
               <div className="flex justify-between text-xs text-slate-500 mt-3 pt-3 border-t border-navy-border">
-                <span className="font-semibold text-slate-700">{homeTeam.name}</span>
-                <span className="font-semibold text-slate-700">{awayTeam.name}</span>
+                <span className="font-semibold text-foreground-secondary">{homeTeam.name}</span>
+                <span className="font-semibold text-foreground-secondary">{awayTeam.name}</span>
               </div>
             </div>
           )}
@@ -735,7 +735,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             </h3>
             <ul className="space-y-1">
               {OFFICIAL_RULES.map((r, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                <li key={i} className="flex items-start gap-2 text-sm text-foreground-secondary">
                   <span>{r.icon}</span>
                   <span>{r.rule}</span>
                 </li>
@@ -758,7 +758,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 </thead>
                 <tbody className="divide-y divide-navy-border/50">
                   {DISCONNECT_RULES.map((rule, i) => (
-                    <tr key={i} className="text-slate-700">
+                    <tr key={i} className="text-foreground-secondary">
                       <td className="py-2 pr-4 font-semibold text-gold">{rule.minute}</td>
                       <td className="py-2 pr-4">{rule.restart}</td>
                       <td className="py-2 text-slate-500">{rule.note}</td>
@@ -808,7 +808,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                           })}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-700">{comment.content}</p>
+                      <p className="text-sm text-foreground-secondary">{comment.content}</p>
                     </div>
                   </div>
 
@@ -822,7 +822,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                           </div>
                           <div className="flex-1 p-2.5 rounded-lg bg-navy-border/20 border border-navy-border/50">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-semibold text-slate-700">
+                              <span className="text-xs font-semibold text-foreground-secondary">
                                 @{reply.author?.username ?? 'Unknown'}
                               </span>
                               <span className="text-xs text-slate-600">
