@@ -26,7 +26,7 @@ async function getKnockoutDates(db: any, tournamentId: string, count: number): P
     .eq('round_type', 'group')
     .order('scheduled_date', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   const lastGroupDate: string = lastGroupRow?.scheduled_date
     ? String(lastGroupRow.scheduled_date).slice(0, 10)
@@ -100,7 +100,8 @@ function shuffle<T>(arr: T[]): T[] {
 export async function generateTBCKnockouts(
   db: any,
   tournamentId: string,
-  shuffleTeams = false
+  shuffleTeams = false,
+  manualQualifiers?: string[]
 ): Promise<{ error?: string }> {
   // Idempotency: bail if ANY knockout fixtures already exist
   const { count: existingKO } = await db
@@ -111,89 +112,102 @@ export async function generateTBCKnockouts(
 
   if ((existingKO ?? 0) > 0) return { error: 'Knockout fixtures already exist' }
 
-  // 1. Determine qualifying teams from group standings
-  const { data: gs } = await db
-    .from('group_standings')
-    .select('team_id, group_name, points, goals_for, goals_against')
-    .eq('tournament_id', tournamentId)
+  // 1. Fetch tournament settings to see how many advance
+  const { data: tournament } = await db
+    .from('tournaments')
+    .select('settings, type')
+    .eq('id', tournamentId)
+    .single()
 
-  if (!gs?.length) return { error: 'No group standings found' }
+  const settings = (tournament?.settings as any) || {}
+  const qualifiersPerGroup = settings.qualifiers_per_group ?? 2
+  const numGroups = settings.num_groups ?? 2
 
-  const grpA = sortGroup((gs ?? []).filter((s: any) => s.group_name === 'A'))
-  const grpB = sortGroup((gs ?? []).filter((s: any) => s.group_name === 'B'))
-  
-  // Decide how many teams advance. Currently UCL/Europa are 2 groups -> 4 advance to SF.
-  // We'll support 4 teams (SF start) or 8 teams (QF start) if more groups added later.
-  
-  const qualifiers: string[] = []
-  if (grpA.length > 0 && grpB.length > 0) {
-    if (gs.length >= 16) {
-      // 8 teams advance (Top 4 from each or something? Let's stick to Top 2 for now)
-      // Actually let's just use what's there.
+  let qualifiers: string[] = []
+
+  if (manualQualifiers && manualQualifiers.length >= 2) {
+    qualifiers = manualQualifiers
+  } else {
+    // Determine qualifying teams from group standings
+    const { data: gs } = await db
+      .from('group_standings')
+      .select('team_id, group_name, points, goals_for, goals_against')
+      .eq('tournament_id', tournamentId)
+
+    if (!gs?.length) return { error: 'No group standings found' }
+
+    // Group teams by group_name
+    const groups: Record<string, any[]> = {}
+    gs.forEach((s: any) => {
+      if (!groups[s.group_name]) groups[s.group_name] = []
+      groups[s.group_name].push(s)
+    })
+
+    // Sort each group and pick top N
+    const sortedGroups = Object.keys(groups).sort().map(name => sortGroup(groups[name]))
+    
+    // Pairing logic (e.g. A1 vs B2, B1 vs A2)
+    // For now, let's just collect all qualifiers. 
+    // If we have 2 groups and 2 qualifiers each: [A1, B2, B1, A2] -> matches 201, 202
+    if (numGroups === 2 && qualifiersPerGroup === 2) {
+      qualifiers.push(sortedGroups[0][0].team_id, sortedGroups[1][1].team_id, sortedGroups[1][0].team_id, sortedGroups[0][1].team_id)
+    } else {
+      // Generic collection
+      for (let i = 0; i < qualifiersPerGroup; i++) {
+        for (let j = 0; j < numGroups; j++) {
+          if (sortedGroups[j] && sortedGroups[j][i]) {
+            qualifiers.push(sortedGroups[j][i].team_id)
+          }
+        }
+      }
     }
-    // Standard UCL/Europa: Top 2 from each -> SF
-    qualifiers.push(grpA[0].team_id, grpB[1].team_id, grpB[0].team_id, grpA[1].team_id)
   }
 
   const teamCount = qualifiers.length
   if (teamCount < 2) return { error: 'Not enough teams to start knockouts' }
 
-  // Dates for SF1, SF2, Final (3 dates)
-  const dates = await getKnockoutDates(db, tournamentId, 3)
-  const d1 = dates[0] ?? format(addDays(new Date(), 7), 'yyyy-MM-dd')
-  const d2 = dates[1] ?? format(addDays(new Date(), 14), 'yyyy-MM-dd')
-  const d3 = dates[2] ?? format(addDays(new Date(), 21), 'yyyy-MM-dd')
-
   const finalQualifiers = shuffleTeams ? shuffle(qualifiers) : qualifiers
-
   const fixtures: any[] = []
 
-  if (teamCount === 4) {
-    // SF -> Final
+  // Determine starting round based on teamCount
+  // 8 teams -> QF (matchdays 101-104)
+  // 4 teams -> SF (matchdays 201-202)
+  // 2 teams -> Final (matchday 301)
+
+  if (teamCount === 8) {
+    const dates = await getKnockoutDates(db, tournamentId, 7) // QF(4), SF(2), Final(1)
     fixtures.push(
-      {
+      ...[0, 1, 2, 3].map(i => ({
         tournament_id: tournamentId,
-        home_team_id: finalQualifiers[0],
-        away_team_id: finalQualifiers[1],
-        matchday: 201,
-        scheduled_date: d1,
-        deadline: `${d1}T12:00:00Z`,
-        round_type: 'sf',
+        home_team_id: finalQualifiers[i * 2],
+        away_team_id: finalQualifiers[i * 2 + 1],
+        matchday: 101 + i,
+        scheduled_date: dates[i],
+        deadline: `${dates[i]}T12:00:00Z`,
+        round_type: 'qf',
         leg: 1,
         status: 'scheduled',
-      },
-      {
-        tournament_id: tournamentId,
-        home_team_id: finalQualifiers[2],
-        away_team_id: finalQualifiers[3],
-        matchday: 202,
-        scheduled_date: d2,
-        deadline: `${d2}T12:00:00Z`,
-        round_type: 'sf',
-        leg: 1,
-        status: 'scheduled',
-      },
-      {
-        tournament_id: tournamentId,
-        home_team_id: null,
-        away_team_id: null,
-        matchday: 301,
-        scheduled_date: d3,
-        deadline: `${d3}T12:00:00Z`,
-        round_type: 'final',
-        leg: 1,
-        status: 'scheduled',
-      }
+      })),
+      { tournament_id: tournamentId, home_team_id: null, away_team_id: null, matchday: 201, scheduled_date: dates[4], deadline: `${dates[4]}T12:00:00Z`, round_type: 'sf', leg: 1, status: 'scheduled' },
+      { tournament_id: tournamentId, home_team_id: null, away_team_id: null, matchday: 202, scheduled_date: dates[5], deadline: `${dates[5]}T12:00:00Z`, round_type: 'sf', leg: 1, status: 'scheduled' },
+      { tournament_id: tournamentId, home_team_id: null, away_team_id: null, matchday: 301, scheduled_date: dates[6], deadline: `${dates[6]}T12:00:00Z`, round_type: 'final', leg: 1, status: 'scheduled' }
+    )
+  } else if (teamCount === 4) {
+    const dates = await getKnockoutDates(db, tournamentId, 3)
+    fixtures.push(
+      { tournament_id: tournamentId, home_team_id: finalQualifiers[0], away_team_id: finalQualifiers[1], matchday: 201, scheduled_date: dates[0], deadline: `${dates[0]}T12:00:00Z`, round_type: 'sf', leg: 1, status: 'scheduled' },
+      { tournament_id: tournamentId, home_team_id: finalQualifiers[2], away_team_id: finalQualifiers[3], matchday: 202, scheduled_date: dates[1], deadline: `${dates[1]}T12:00:00Z`, round_type: 'sf', leg: 1, status: 'scheduled' },
+      { tournament_id: tournamentId, home_team_id: null, away_team_id: null, matchday: 301, scheduled_date: dates[2], deadline: `${dates[2]}T12:00:00Z`, round_type: 'final', leg: 1, status: 'scheduled' }
     )
   } else {
-    // Basic 2-team final for other counts or standalone
+    const dates = await getKnockoutDates(db, tournamentId, 1)
     fixtures.push({
       tournament_id: tournamentId,
       home_team_id: finalQualifiers[0],
       away_team_id: finalQualifiers[1] ?? null,
       matchday: 301,
-      scheduled_date: d1,
-      deadline: `${d1}T12:00:00Z`,
+      scheduled_date: dates[0],
+      deadline: `${dates[0]}T12:00:00Z`,
       round_type: 'final',
       leg: 1,
       status: 'scheduled',
