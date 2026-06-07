@@ -257,12 +257,23 @@ export default async function TeamProfilePage({ params }: PageProps) {
       home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
       away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
       tournament:tournaments(name, type),
-      result:results(home_score, away_score, override_reason)
+      result:results(home_score, away_score, override_reason, created_at)
     `)
     .or(teamOrFilter)
     .eq('status', 'confirmed')
     .order('scheduled_date', { ascending: false })
     .limit(6)
+
+  // Sort by date AND then result creation as a tie-breaker for same-day matches
+  const sortedRecentResults = [...(clubRecentResults ?? [])].sort((a: any, b: any) => {
+    const dateA = new Date(a.scheduled_date || 0).getTime()
+    const dateB = new Date(b.scheduled_date || 0).getTime()
+    if (dateB !== dateA) return dateB - dateA
+    
+    const resA = new Date(a.result?.created_at || 0).getTime()
+    const resB = new Date(b.result?.created_at || 0).getTime()
+    return resB - resA
+  })
 
   return (
     <div className="space-y-6">
@@ -291,9 +302,13 @@ export default async function TeamProfilePage({ params }: PageProps) {
               <div className="flex items-center gap-3 flex-wrap mt-0.5">
                 <p className="text-slate-400 text-sm">
                   Manager:{' '}
-                  <span className="text-gold font-semibold">
-                    {manager ? `@${manager.username}` : '(NO MANAGER)'}
-                  </span>
+                  {manager ? (
+                    <Link href={`/managers/${manager.id}`} className="text-gold font-semibold hover:underline">
+                      @{manager.username}
+                    </Link>
+                  ) : (
+                    <span className="text-gold font-semibold">(NO MANAGER)</span>
+                  )}
                 </p>
                 {/* Message button — shown to logged-in users who aren't the manager */}
                 {manager && currentUser && currentUser.id !== manager.id && (
@@ -438,11 +453,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
           </Link>
         </div>
 
-        {!clubRecentResults?.length ? (
+        {!sortedRecentResults?.length ? (
           <p className="text-slate-500 text-sm text-center py-4">No results yet.</p>
         ) : (
           <div className="divide-y divide-navy-border">
-            {(clubRecentResults as any[]).map((f) => {
+            {sortedRecentResults.map((f: any) => {
               const result = Array.isArray(f.result) ? f.result[0] : f.result
               if (!result) return null
               const isHome = allTeamIds.includes(f.home_team_id)
@@ -459,11 +474,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
               return (
                 <Link
                   key={f.id}
-                  href={`/results/${f.id}`}
+                  href={`/fixtures/${f.id}`}
                   className="flex items-center gap-3 py-3 hover:bg-navy-light/50 -mx-5 px-5 transition-colors"
                 >
                   {/* Outcome badge */}
-                  <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-black shrink-0 ${
+                  <span className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-black shrink-0 ${
                     won ? 'bg-green-500/20 text-green-400' : drew ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
                   }`}>
                     {outcomeLetter}

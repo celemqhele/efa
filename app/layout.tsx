@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import ThemeProvider from '@/components/ui/ThemeProvider'
 import PushNotificationInit from '@/components/ui/PushNotificationInit'
+import GlobalNotifications from '@/components/ui/GlobalNotifications'
 
 export const metadata: Metadata = {
   title: 'EFA — Efootball Federal Association',
@@ -40,6 +41,7 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <PushNotificationInit />
+          <GlobalNotifications />
         </ThemeProvider>
       </body>
     </html>
