@@ -5,11 +5,11 @@ import ExportButton from './ExportButton'
 import ExportControls from './ExportControls'
 
 interface Props {
-  searchParams: Promise<{
+  searchParams: {
     date?: string
     tournaments?: string
     types?: string
-  }>
+  }
 }
 
 const ACCENT: Record<string, string> = {
@@ -214,7 +214,7 @@ function StandingsTable({
 }
 
 export default async function ExportPage({ searchParams }: Props) {
-  const sp = await searchParams
+  const sp = searchParams
   const supabase = await createClient()
 
   const { data: tournaments } = await supabase
