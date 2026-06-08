@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import ExportButton from './ExportButton'
 import ExportControls from './ExportControls'
 
+// Reusing the robust standings builder logic
+// ... (I will need to copy buildLiveStandings, applyResult, etc., here)
+
 interface Props {
   searchParams: {
     date?: string
