@@ -37,7 +37,7 @@ export default async function AdminDashboardPage() {
   const { data: tournaments } = await supabase
     .from('tournaments')
     .select('id, name, type, status, season_id')
-    .in('status', ['active', 'upcoming'])
+    .eq('status', 'active')
     .order('created_at', { ascending: false })
 
   // Fixture counts per tournament
