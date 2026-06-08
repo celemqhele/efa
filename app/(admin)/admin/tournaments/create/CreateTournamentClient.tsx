@@ -281,27 +281,34 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
           <div>
             <label className="form-label">Type</label>
             <select
-              value={type}
-              onChange={(e) => setType(e.target.value as any)}
+              value={type === 'custom' ? 'custom' : type}
+              onChange={(e) => {
+                const val = e.target.value
+                setType(val as any)
+                if (val !== 'custom') {
+                  setCustomTypeName('')
+                }
+              }}
               className="input-field"
             >
               <option value="league">League (EFA Premier League)</option>
               <option value="ucl">UCL – Champions League</option>
               <option value="europa">Europa League</option>
               <option value="super_cup">Super Cup</option>
-              <option value="custom">Custom Competition</option>
+              <option value="custom">Other</option>
             </select>
           </div>
 
           {type === 'custom' && (
             <div>
-              <label className="form-label">Competition Type Slug</label>
+              <label className="form-label">Competition Name</label>
               <input
                 type="text"
                 value={customTypeName}
-                onChange={(e) => setCustomTypeName(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
-                placeholder="e.g. world_cup, fa_cup"
+                onChange={(e) => setCustomTypeName(e.target.value)}
+                placeholder="e.g. World Cup"
                 className="input-field"
+                required
               />
             </div>
           )}
