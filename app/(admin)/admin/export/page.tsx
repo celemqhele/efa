@@ -284,7 +284,7 @@ export default async function ExportPage({ searchParams }: Props) {
         if (!res || (res.override_reason || '').toLowerCase().includes('both absent')) return
         // Simplification: In reality need to map fixture to group
         // For export, we'll try to find any group that has both teams
-        let group = Object.keys(groupMap).find(g => groupMap[g][f.home_team_id!] && groupMap[g][f.away_team_id!])
+        const group = Object.keys(groupMap).find(g => groupMap[g][f.home_team_id!] && groupMap[g][f.away_team_id!])
         if (!group) return 
         applyResult(groupMap[group][f.home_team_id!], groupMap[group][f.away_team_id!], res.home_score, res.away_score)
       })
@@ -388,33 +388,9 @@ export default async function ExportPage({ searchParams }: Props) {
       }
 
       if (type === 'standings') {
-        if (tournament.type === 'league') {
-          const { data, error } = await supabase
-            .from('standings')
-            .select('*, team:teams(id, name, logo_league_folder, logo_team_slug)')
-            .eq('tournament_id', tournamentId)
-            .order('points', { ascending: false })
-            .order('goal_difference', { ascending: false })
-            .order('goals_for', { ascending: false })
-          if (error) console.error('Standings fetch error:', error)
-          standings = data ?? []
-        } else {
-          const { data, error } = await supabase
-            .from('group_standings')
-            .select('*, team:teams(id, name, logo_league_folder, logo_team_slug)')
-            .eq('tournament_id', tournamentId)
-            .order('group_name', { ascending: true })
-            .order('points', { ascending: false })
-            .order('goal_difference', { ascending: false })
-            .order('goals_for', { ascending: false })
-          if (error) console.error('Group Standings fetch error:', error)
-          
-          for (const row of data ?? []) {
-            const g = row.group_name
-            if (!groupStandings[g]) groupStandings[g] = []
-            groupStandings[g].push(row)
-          }
-        }
+        const built = await buildStandings(tournamentId, tournament.type)
+        standings = built.league
+        groupStandings = built.group
       }
 
       cards.push({ key: `${tournamentId}-${type}`, tournament, type, fixtures, results, standings, groupStandings })
