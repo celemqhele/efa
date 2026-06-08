@@ -82,7 +82,9 @@ export async function GET(request: Request) {
         for (const ms of matchStats ?? []) {
           const res = resultsForStats?.find(r => r.id === ms.result_id)
           const fx = last3Fx?.find(f => f.id === res?.fixture_id)
-          const isHome = fx?.home_team_id === teamId
+          if (!fx) continue
+
+          const isHome = fx.home_team_id === teamId
           
           const pos = isHome ? ms.home_possession : ms.away_possession
           const shots = isHome ? ms.home_shots : ms.away_shots
