@@ -316,16 +316,17 @@ export default async function ExportPage({ searchParams }: Props) {
 
       if (type === 'standings') {
         if (tournament.type === 'league') {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('standings')
             .select('*, team:teams(id, name, logo_league_folder, logo_team_slug)')
             .eq('tournament_id', tournamentId)
             .order('points', { ascending: false })
             .order('goal_difference', { ascending: false })
             .order('goals_for', { ascending: false })
+          if (error) console.error('Standings fetch error:', error)
           standings = data ?? []
         } else {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('group_standings')
             .select('*, team:teams(id, name, logo_league_folder, logo_team_slug)')
             .eq('tournament_id', tournamentId)
@@ -333,7 +334,8 @@ export default async function ExportPage({ searchParams }: Props) {
             .order('points', { ascending: false })
             .order('goal_difference', { ascending: false })
             .order('goals_for', { ascending: false })
-
+          if (error) console.error('Group Standings fetch error:', error)
+          
           for (const row of data ?? []) {
             const g = row.group_name
             if (!groupStandings[g]) groupStandings[g] = []
