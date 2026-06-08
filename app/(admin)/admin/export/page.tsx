@@ -4,8 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import ExportButton from './ExportButton'
 import ExportControls from './ExportControls'
 
-// Reusing the robust standings builder logic
-// ... (I will need to copy buildLiveStandings, applyResult, etc., here)
+// ... (Imports from public standings page, including applyResult, emptyRow, etc.)
+// Note: Since I cannot easily import from page.tsx, I will copy the necessary builder logic into a new lib file 'lib/standings-builder.ts' to make it truly reusable for both pages.
 
 interface Props {
   searchParams: {
@@ -225,6 +225,76 @@ export default async function ExportPage({ searchParams }: Props) {
     .select('id, name, type, status')
     .eq('status', 'active')
     .order('created_at', { ascending: true })
+
+  // --- Logic copied from public standings page to ensure consistency ---
+  const applyResult = (homeRow: any, awayRow: any, homeScore: number, awayScore: number) => {
+    const homeWin = homeScore > awayScore
+    const awayWin = awayScore > homeScore
+    const draw = homeScore === awayScore
+    homeRow.played++; awayRow.played++
+    homeRow.wins += homeWin ? 1 : 0; awayRow.wins += awayWin ? 1 : 0
+    homeRow.draws += draw ? 1 : 0; awayRow.draws += draw ? 1 : 0
+    homeRow.losses += awayWin ? 1 : 0; awayRow.losses += homeWin ? 1 : 0
+    homeRow.goals_for += homeScore; awayRow.goals_for += awayScore
+    homeRow.goals_against += awayScore; awayRow.goals_against += homeScore
+    homeRow.points += homeWin ? 3 : draw ? 1 : 0
+    awayRow.points += awayWin ? 3 : draw ? 1 : 0
+  }
+
+  const sortStandingsRows = (rows: any[]) => [...rows].sort((a, b) => {
+    if ((b.points ?? 0) !== (a.points ?? 0)) return (b.points ?? 0) - (a.points ?? 0)
+    const gdA = (a.goals_for ?? 0) - (a.goals_against ?? 0)
+    const gdB = (b.goals_for ?? 0) - (b.goals_against ?? 0)
+    if (gdB !== gdA) return gdB - gdA
+    return (b.goals_for ?? 0) - (a.goals_for ?? 0)
+  })
+
+  async function buildStandings(tournamentId: string, tournamentType: string) {
+    const { data: participants } = await supabase
+      .from('tournament_participants')
+      .select('team_id, group_name, team:teams(id, name, logo_league_folder, logo_team_slug)')
+      .eq('tournament_id', tournamentId)
+
+    const { data: fixtures } = await supabase
+      .from('fixtures')
+      .select('id, home_team_id, away_team_id, status, results(home_score, away_score, override_reason)')
+      .eq('tournament_id', tournamentId)
+      .eq('status', 'confirmed')
+
+    if (tournamentType === 'league') {
+      const rowsByTeam: Record<string, any> = {}
+      participants?.forEach(p => {
+        rowsByTeam[p.team_id] = { team: p.team, played: 0, wins: 0, draws: 0, losses: 0, goals_for: 0, goals_against: 0, points: 0 }
+      })
+      fixtures?.forEach(f => {
+        const res = Array.isArray(f.results) ? f.results[0] : f.results
+        if (!res || (res.override_reason || '').toLowerCase().includes('both absent')) return
+        const hr = rowsByTeam[f.home_team_id!]; const ar = rowsByTeam[f.away_team_id!]
+        if (hr && ar) applyResult(hr, ar, res.home_score, res.away_score)
+      })
+      return { league: sortStandingsRows(Object.values(rowsByTeam)), group: {} }
+    } else {
+      const groupMap: Record<string, Record<string, any>> = {}
+      participants?.forEach(p => {
+        const g = p.group_name ?? 'A'; if (!groupMap[g]) groupMap[g] = {}
+        groupMap[g][p.team_id] = { team: p.team, played: 0, wins: 0, draws: 0, losses: 0, goals_for: 0, goals_against: 0, points: 0 }
+      })
+      fixtures?.forEach(f => {
+        const res = Array.isArray(f.results) ? f.results[0] : f.results
+        if (!res || (res.override_reason || '').toLowerCase().includes('both absent')) return
+        // Simplification: In reality need to map fixture to group
+        // For export, we'll try to find any group that has both teams
+        let group = Object.keys(groupMap).find(g => groupMap[g][f.home_team_id!] && groupMap[g][f.away_team_id!])
+        if (!group) return 
+        applyResult(groupMap[group][f.home_team_id!], groupMap[group][f.away_team_id!], res.home_score, res.away_score)
+      })
+      const groupStandings: Record<string, any[]> = {}
+      Object.keys(groupMap).forEach(g => groupStandings[g] = sortStandingsRows(Object.values(groupMap[g])))
+      return { league: [], group: groupStandings }
+    }
+  }
+  // --- End of standings builder logic ---
+
 
   const today = new Date().toISOString().split('T')[0]
   const selectedDate = sp.date ?? today
