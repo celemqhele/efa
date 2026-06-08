@@ -9,6 +9,7 @@ export interface Database {
           username: string
           role: 'user' | 'admin'
           avatar_url: string | null
+          playstyle: string | null
           created_at: string
         }
         Insert: {
@@ -16,6 +17,7 @@ export interface Database {
           username: string
           role?: 'user' | 'admin'
           avatar_url?: string | null
+          playstyle?: string | null
           created_at?: string
         }
         Update: {
@@ -23,6 +25,7 @@ export interface Database {
           username?: string
           role?: 'user' | 'admin'
           avatar_url?: string | null
+          playstyle?: string | null
           created_at?: string
         }
         Relationships: []
