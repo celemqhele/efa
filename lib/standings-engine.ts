@@ -62,6 +62,8 @@ function applyResult(homeRow: any, awayRow: any, homeScore: number, awayScore: n
     // 0 points, 0 goals, but counts as played
     if ('form' in homeRow) homeRow.form = (homeRow.form + 'L').slice(-5)
     if ('form' in awayRow) awayRow.form = (awayRow.form + 'L').slice(-5)
+    
+    // Increment losses for double forfeit so W+D+L = P
     homeRow.losses++
     awayRow.losses++
     return
