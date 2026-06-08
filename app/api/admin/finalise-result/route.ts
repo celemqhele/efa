@@ -231,6 +231,11 @@ export async function POST(request: Request) {
 
   const bothAbsent = home_absent && away_absent
 
+  const fixture_id: string = body.fixture_id
+  const override_reason = body.override_reason
+  const screenshot_url = body.screenshot_url
+  const stats = body.stats
+
   let home_score: number
   let away_score: number
 
