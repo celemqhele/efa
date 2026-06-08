@@ -30,6 +30,7 @@ export default async function PageWrapper({ children, fullWidth = false }: PageW
         ?? 'user',
       role: 'user' as const,
       avatar_url: null,
+      playstyle: null,
       created_at: user.created_at ?? new Date().toISOString(),
     }
   }
