@@ -50,6 +50,7 @@ function emptyGroupStandingRow(tournamentId: string, groupName: string, teamId: 
     goals_for: 0,
     goals_against: 0,
     points: 0,
+    form: '',
   }
 }
 

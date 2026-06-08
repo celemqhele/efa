@@ -437,6 +437,7 @@ export interface Database {
           goals_against: number
           goal_difference: number
           points: number
+          form: string
         }
         Insert: {
           id?: string
@@ -450,6 +451,7 @@ export interface Database {
           goals_for?: number
           goals_against?: number
           points?: number
+          form?: string
         }
         Update: Partial<Database['public']['Tables']['group_standings']['Insert']>
         Relationships: []
