@@ -21,7 +21,8 @@ async function migrateManagerStats() {
     if (!teamId) continue
 
     if (log.action === 'assign_manager' || log.action === 'claim_team') {
-      const userId = log.details?.assigned_user_id || log.details?.user_id
+      const details = log.details as any
+      const userId = details?.assigned_user_id || details?.user_id
       if (!userId) continue
       if (currentTenures[teamId]) {
         currentTenures[teamId].ended_at = log.created_at
