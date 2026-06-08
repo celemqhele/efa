@@ -21,20 +21,22 @@ export default function NewsTopicExportButton({ tournaments }: Props) {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/generate-news-data?tournament_id=${tournamentId}`)
-      if (!res.ok) throw new Error('Failed to generate news data')
-      
-      const blob = await res.blob()
+      const text = await res.text()
+      if (!res.ok) throw new Error(text || 'Failed to generate news data')
+
+      const blob = new Blob([text], { type: 'text/plain' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `EFA_News_Data_${tournamentName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `EFA_News_Export_${tournamentName.replace(/\s+/g, '_')}.txt`
       document.body.appendChild(a)
       a.click()
       a.remove()
       setShowResetConfirm(false)
     } catch (err: any) {
-      alert(err.message)
+      alert('Error: ' + err.message)
     } finally {
+
       setLoading(false)
     }
   }
