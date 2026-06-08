@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { notify } from '@/lib/notifications'
 
 interface Props {
   fixtureId: string
@@ -82,7 +83,7 @@ export default function FixtureActions({
       // Refresh page to show updated status
       window.location.reload()
     } catch (err: any) {
-      alert(err.message)
+      notify('Error', err.message, 'admin')
     } finally {
       setResetLoading(false)
       setShowResetConfirm(false)

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
+import { notify } from '@/lib/notifications'
 
 interface Qualifier {
   team_id: string
@@ -70,7 +71,7 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
       router.refresh()
       setShowConfirm(false)
     } catch (err: any) {
-      alert(err.message)
+      notify('Error', err.message, 'admin')
     } finally {
       setLoading(false)
     }

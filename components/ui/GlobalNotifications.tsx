@@ -22,9 +22,20 @@ export default function GlobalNotifications() {
     // 1. Initial check on mount
     checkLatestUpdates()
 
-    // 2. Poll every 60 seconds (or use Realtime if preferred, but polling is safer for "since last visit")
+    // 2. Poll every 60 seconds
     const interval = setInterval(checkLatestUpdates, 60000)
-    return () => clearInterval(interval)
+
+    // 3. Listen for manual notifications
+    const handleManualNotif = (e: any) => {
+      const { title, message, type } = e.detail
+      setNotifications(prev => [...prev, { id: Math.random().toString(), title, message, type }].slice(0, 3))
+    }
+    window.addEventListener('show-notification', handleManualNotif)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('show-notification', handleManualNotif)
+    }
   }, [])
 
   async function checkLatestUpdates() {

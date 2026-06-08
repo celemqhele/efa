@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Trophy, FileText, X, ChevronRight } from 'lucide-react'
+import { notify } from '@/lib/notifications'
 
 interface Tournament {
   id: string
@@ -34,7 +35,7 @@ export default function NewsTopicExportButton({ tournaments }: Props) {
       a.remove()
       setShowResetConfirm(false)
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      notify('Error', err.message, 'admin')
     } finally {
 
       setLoading(false)

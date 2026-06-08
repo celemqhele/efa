@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { cropToStatsPanel, parseOcrText } from '@/lib/parse-screenshot-client'
+import { notify } from '@/lib/notifications'
 
 interface Team {
   id: string
@@ -136,8 +137,8 @@ export default function ResultSubmitClient({
   const [awayAbsent, setAwayAbsent] = useState(false)
   
   // Abandon state
-  const [homeAbandon, setHomeAbandon] = useState(false)
-  const [awayAbandon, setAwayAbandon] = useState(false)
+  const [homeForfeit, setHomeForfeit] = useState(false)
+  const [awayForfeit, setAwayForfeit] = useState(false)
 
   // Score state
   const [homeScore, setHomeScore] = useState('')
