@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
       .eq('status', 'confirmed')
       .order('scheduled_date', { ascending: false })
-      .limit(3)
+      .limit(3) as any
 
     const resultsSummary = (last3Fx ?? []).map((f: any) => {
       const res = f.result
