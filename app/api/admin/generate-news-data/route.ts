@@ -31,13 +31,18 @@ export async function GET(request: Request) {
 
   const { data: standings, error: standingsErr } = await supabase
     .from(isLeague ? 'standings' : 'group_standings')
-    .select(isLeague ? '*, team:team_id(id, name)' : '*, team:team_id(id, name)')
+    .select('*')
     .eq('tournament_id', tournament_id)
     .order('points', { ascending: false })
 
   if (standingsErr || !standings || standings.length === 0) {
     return Response.json({ error: `Standings fetch error: ${standingsErr?.message ?? 'No standings data found'}` }, { status: 404 })
   }
+
+  // 1.5. Fetch all teams to map names (prevents join issues)
+  const teamIds = standings.map((s: any) => s.team_id).filter(Boolean)
+  const { data: teams } = await supabase.from('teams').select('id, name').in('id', teamIds)
+  const teamMap = new Map((teams ?? []).map(t => [t.id, t.name]))
 
   // 2. Fetch Deep Data for each team
   const csvRows: string[][] = [
@@ -47,7 +52,7 @@ export async function GET(request: Request) {
   for (let i = 0; i < standings.length; i++) {
     const s = standings[i]
     const teamId = s.team_id
-    const teamName = s.team?.name || 'Unknown'
+    const teamName = teamMap.get(teamId) || 'Unknown'
 
     // Get last 3 confirmed fixtures
     const { data: last3Fx } = await supabase
