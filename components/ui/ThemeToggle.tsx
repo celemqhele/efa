@@ -1,15 +1,17 @@
 'use client'
 
 import { useTheme } from './ThemeProvider'
+import { Button } from './Button'
 
 export default function ThemeToggle() {
   const { theme, toggle } = useTheme()
 
   return (
-    <button
+    <Button
       onClick={toggle}
+      variant="ghost"
+      className="p-2 rounded-lg"
       aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-black/5 dark:hover:bg-white/10 dark:hover:text-slate-200 transition-colors"
     >
       {theme === 'dark' ? (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,6 +24,6 @@ export default function ThemeToggle() {
             d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
         </svg>
       )}
-    </button>
+    </Button>
   )
 }
