@@ -10,14 +10,16 @@ export async function GET(request: Request) {
   // 1. Fetch Tournament & Standings
   const { data: tournament } = await supabase
     .from('tournaments')
-    .select('name, type')
+    .select('name, type, settings')
     .eq('id', tournament_id)
     .single()
 
   if (!tournament) return Response.json({ error: 'Tournament not found' }, { status: 404 })
 
-  // Use standings or group_standings depending on type
-  const isLeague = tournament.type === 'league'
+  // Use standings or group_standings depending on settings
+  const settings = (tournament.settings as any) || {}
+  const isLeague = tournament.type === 'league' || !settings.num_groups
+
   const { data: standings } = await supabase
     .from(isLeague ? 'standings' : 'group_standings')
     .select('*, team:teams(id, name)')
