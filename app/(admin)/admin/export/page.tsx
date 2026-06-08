@@ -469,22 +469,25 @@ export default async function ExportPage({ searchParams }: Props) {
           const cardId = `export-card-${i}`
           const filename = `efa-${card.type}-${card.tournament.type}-${selectedDate}.png`
 
+import { Card } from '@/components/ui/Card'
+// ...
+
           return (
             <div key={card.key}>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                <p className="text-sm font-semibold text-text-secondary">
                   {card.tournament.name}
-                  <span className="font-normal text-slate-400"> — </span>
+                  <span className="font-normal text-text-muted"> — </span>
                   <span className="capitalize">{card.type}</span>
                   {card.type !== 'standings' && (
-                    <span className="font-normal text-slate-400 ml-1 text-xs">({formattedDate})</span>
+                    <span className="font-normal text-text-muted ml-1 text-xs">({formattedDate})</span>
                   )}
                 </p>
                 <ExportButton filename={filename} cardId={cardId} />
               </div>
 
-              <div className="overflow-x-auto pb-4">
-                <div id={cardId} style={cardStyle}>
+              <div className="overflow-x-auto pb-space-4">
+                <Card id={cardId} style={cardStyle} className="p-space-8">
                   {/* Card header */}
                   <div
                     style={{
