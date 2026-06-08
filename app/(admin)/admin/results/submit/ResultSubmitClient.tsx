@@ -134,6 +134,10 @@ export default function ResultSubmitClient({
   // Absent state
   const [homeAbsent, setHomeAbsent] = useState(false)
   const [awayAbsent, setAwayAbsent] = useState(false)
+  
+  // Abandon state
+  const [homeAbandon, setHomeAbandon] = useState(false)
+  const [awayAbandon, setAwayAbandon] = useState(false)
 
   // Score state
   const [homeScore, setHomeScore] = useState('')
@@ -328,6 +332,8 @@ export default function ResultSubmitClient({
       away_score: parseInt(awayScore),
       home_absent: homeAbsent,
       away_absent: awayAbsent,
+      home_forfeit: homeForfeit,
+      away_forfeit: awayForfeit,
       override_reason: isOverride ? overrideReason : null,
       home_team_id: mappedHomeTeamId || selectedFixture?.home_team?.id,
       away_team_id: mappedAwayTeamId || selectedFixture?.away_team?.id,
@@ -766,6 +772,35 @@ export default function ResultSubmitClient({
                   />
                   <span className="text-sm font-medium text-slate-700">
                     {selectedFixture.away_team?.name} absent
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex gap-4 mb-4">
+                <label className={`flex items-center gap-2 cursor-pointer flex-1 rounded-lg px-3 py-2 border transition-colors ${
+                  homeForfeit ? 'border-orange-400/50 bg-orange-50' : 'border-slate-200 bg-slate-50'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={homeForfeit}
+                    onChange={(e) => setHomeForfeit(e.target.checked)}
+                    className="accent-orange-500 w-4 h-4"
+                  />
+                  <span className="text-sm font-medium text-slate-700">
+                    {selectedFixture.home_team?.name} forfeit (mid-game)
+                  </span>
+                </label>
+                <label className={`flex items-center gap-2 cursor-pointer flex-1 rounded-lg px-3 py-2 border transition-colors ${
+                  awayForfeit ? 'border-orange-400/50 bg-orange-50' : 'border-slate-200 bg-slate-50'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={awayForfeit}
+                    onChange={(e) => setAwayForfeit(e.target.checked)}
+                    className="accent-orange-500 w-4 h-4"
+                  />
+                  <span className="text-sm font-medium text-slate-700">
+                    {selectedFixture.away_team?.name} forfeit (mid-game)
                   </span>
                 </label>
               </div>

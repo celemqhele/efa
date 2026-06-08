@@ -220,20 +220,21 @@ export async function POST(request: Request) {
     away_score: number
     home_absent?: boolean
     away_absent?: boolean
+    home_forfeit?: boolean
+    away_forfeit?: boolean
     override_reason?: string
-    screenshot_url?: string
-    stats?: Partial<Omit<MatchStatsInsert, 'id' | 'result_id'>>
+    // ...
   }
-
-  try {
-    body = await request.json()
-  } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
-
-  const { fixture_id, override_reason, screenshot_url, stats } = body
+  
+  // ...
   const home_absent = body.home_absent ?? false
   const away_absent = body.away_absent ?? false
+  const home_forfeit = body.home_forfeit ?? false
+  const away_forfeit = body.away_forfeit ?? false
+  
+  const is_abandoned = home_forfeit || away_forfeit
+  const abandoned_type = (home_forfeit && away_forfeit) ? 'both' : home_forfeit ? 'home' : away_forfeit ? 'away' : null
+
   const bothAbsent = home_absent && away_absent
 
   let home_score: number
@@ -305,6 +306,8 @@ export async function POST(request: Request) {
         finalised_by: user.id,
         screenshot_url: screenshot_url ?? null,
         override_reason: effectiveOverrideReason,
+        is_abandoned,
+        abandoned_type,
       },
       { onConflict: 'fixture_id' }
     )
