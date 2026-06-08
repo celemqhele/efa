@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   const { data: standings, error: standingsErr } = await supabase
     .from(isLeague ? 'standings' : 'group_standings')
-    .select(isLeague ? '*, team:teams!standings_team_id_fkey(id, name)' : '*, team:teams!group_standings_team_id_fkey(id, name)')
+    .select(isLeague ? '*, team:team_id(id, name)' : '*, team:team_id(id, name)')
     .eq('tournament_id', tournament_id)
     .order('points', { ascending: false })
 
