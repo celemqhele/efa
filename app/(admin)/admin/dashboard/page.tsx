@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
 import RecalculateStandingsButton from '@/components/ui/RecalculateStandingsButton'
+import RecalculateManagerStatsButton from '@/components/ui/RecalculateManagerStatsButton'
 import RefreshDNAButton from '@/components/ui/RefreshDNAButton'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 import DueFixturesExportButton from './DueFixturesExportButton'
@@ -233,7 +234,10 @@ export default async function AdminDashboardPage() {
                         <p className="text-slate-500 text-xs">fixtures</p>
                       </div>
                     </div>
-                    <RecalculateStandingsButton tournamentId={t.id} tournamentName={t.name} />
+                    <div className="flex items-center gap-2 mt-2">
+                      <RecalculateStandingsButton tournamentId={t.id} tournamentName={t.name} />
+                      <RecalculateManagerStatsButton tournamentId={t.id} tournamentName={t.name} />
+                    </div>
                   </div>
                 )
               })}
