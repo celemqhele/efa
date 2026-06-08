@@ -52,8 +52,8 @@ export default function ReactionsPanel({ fixtureId, initialCounts, initialUserRe
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex gap-3 flex-wrap">
+    <div className="space-y-space-3">
+      <div className="flex gap-space-3 flex-wrap">
         {EMOJI_REACTIONS.map((emoji) => {
           const isActive = userReactions.has(emoji)
           const isLoading = loading === emoji
@@ -63,14 +63,14 @@ export default function ReactionsPanel({ fixtureId, initialCounts, initialUserRe
               onClick={() => toggle(emoji)}
               disabled={!userId || isLoading}
               title={!userId ? 'Sign in to react' : undefined}
-              className={`flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl border transition-all select-none ${
+              className={`flex flex-col items-center gap-space-1 px-space-4 py-space-2 rounded-lg border transition-all select-none ${
                 isActive
-                  ? 'border-[#c9a84c]/60 bg-[#c9a84c]/10 scale-105'
-                  : 'border-slate-200 hover:border-[#c9a84c]/30 hover:bg-slate-50'
+                  ? 'border-accent/60 bg-accent/10 scale-105'
+                  : 'border-border hover:border-accent/30 hover:bg-bg-elevated'
               } ${!userId ? 'opacity-60 cursor-default' : 'cursor-pointer active:scale-95'}`}
             >
               <span className={`text-2xl transition-transform ${isLoading ? 'opacity-50' : ''}`}>{emoji}</span>
-              <span className={`text-sm font-semibold tabular-nums ${isActive ? 'text-[#c9a84c]' : 'text-slate-700'}`}>
+              <span className={`text-sm font-semibold tabular-nums ${isActive ? 'text-accent' : 'text-text-secondary'}`}>
                 {counts[emoji] ?? 0}
               </span>
             </button>
@@ -78,7 +78,7 @@ export default function ReactionsPanel({ fixtureId, initialCounts, initialUserRe
         })}
       </div>
       {!userId && (
-        <p className="text-xs text-slate-400">Sign in to react to this match.</p>
+        <p className="text-xs text-text-muted">Sign in to react to this match.</p>
       )}
     </div>
   )

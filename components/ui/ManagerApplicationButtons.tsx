@@ -34,18 +34,18 @@ export default function ManagerApplicationButtons({ applicationId }: Props) {
     }
   }
 
-  if (done) return <span className="text-xs text-slate-400 italic">Done</span>
+  if (done) return <span className="text-xs text-text-muted italic">Done</span>
 
   return (
-    <div className="space-y-1">
-      {error && <p className="text-red-500 text-xs">{error}</p>}
-      <div className="flex gap-2">
+    <div className="space-y-space-1">
+      {error && <p className="text-feedback-error text-xs">{error}</p>}
+      <div className="flex gap-space-2">
         <Button
           onClick={() => handle('approve')}
           isLoading={loading === 'approve'}
           disabled={!!loading && loading !== 'approve'}
           variant="primary"
-          className="text-xs py-1 px-3"
+          className="text-xs py-space-1 px-space-3"
         >
           Approve
         </Button>
@@ -54,7 +54,7 @@ export default function ManagerApplicationButtons({ applicationId }: Props) {
           isLoading={loading === 'deny'}
           disabled={!!loading && loading !== 'deny'}
           variant="destructive"
-          className="text-xs py-1 px-3"
+          className="text-xs py-space-1 px-space-3"
         >
           Deny
         </Button>

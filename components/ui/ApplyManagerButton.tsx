@@ -35,16 +35,16 @@ export default function ApplyManagerButton({ teamId, teamName, hasPending }: Pro
 
   if (pending) {
     return (
-      <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-600">
+      <div className="flex items-center gap-space-2 px-space-4 py-space-3 rounded-lg bg-feedback-warning/10 border border-feedback-warning/30 text-feedback-warning">
         <span className="text-sm font-medium">Application pending — awaiting admin review</span>
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-space-2">
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        <p className="text-feedback-error text-sm bg-feedback-error/10 border border-feedback-error/30 rounded-md px-space-3 py-space-2">
           {error}
         </p>
       )}

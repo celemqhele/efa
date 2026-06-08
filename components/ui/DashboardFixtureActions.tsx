@@ -66,11 +66,11 @@ export default function DashboardFixtureActions({
     : `Hi ${awayManagerName ?? 'there'}! Just a reminder that your fixture vs ${homeTeamName} is scheduled for today. Please submit your result after playing. 🎮`
 
   if (isFinished) return null
-  if (done) return <span className="text-orange-400 text-xs font-semibold">Postponed</span>
+  if (done) return <span className="text-feedback-warning text-xs font-semibold">Postponed</span>
 
   return (
-    <div className="flex flex-col items-end gap-1 shrink-0">
-      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+    <div className="flex flex-col items-end gap-space-1 shrink-0">
+      <div className="flex items-center gap-space-2 flex-wrap justify-end">
         {/* WhatsApp buttons */}
         {homeManagerPhone && (
           <WhatsAppButton phone={homeManagerPhone} message={homeMsg} size="sm" label="H" />
@@ -79,38 +79,38 @@ export default function DashboardFixtureActions({
           <WhatsAppButton phone={awayManagerPhone} message={awayMsg} size="sm" label="A" />
         )}
 
-        <Link
-          href={`/admin/results/submit?fixture=${fixtureId}`}
-          className={isAwaiting
-            ? 'btn-gold text-xs py-1 px-2.5'
-            : 'btn-outline text-xs py-1 px-2.5'}
+        <Button
+            variant={isAwaiting ? 'primary' : 'secondary'}
+            className="text-xs px-space-3 py-space-1"
         >
-          {isAwaiting ? 'Finalise' : 'Submit'}
-        </Link>
+          <Link href={`/admin/results/submit?fixture=${fixtureId}`}>
+            {isAwaiting ? 'Finalise' : 'Submit'}
+          </Link>
+        </Button>
         <Button
           variant="secondary"
           onClick={() => setShowPostpone(!showPostpone)}
-          className="text-xs py-1 px-2.5"
+          className="text-xs px-space-3 py-space-1"
         >
           Postpone
         </Button>
       </div>
       {showPostpone && (
-        <form onSubmit={handlePostpone} className="flex items-center gap-1.5 flex-wrap justify-end">
+        <form onSubmit={handlePostpone} className="flex items-center gap-space-2 flex-wrap justify-end">
           <input
             type="datetime-local"
             value={newDate}
             onChange={(e) => setNewDate(e.target.value)}
-            className="input-field text-xs py-1 px-2 w-44"
+            className="bg-bg-surface border border-border rounded-md text-xs px-space-3 py-space-1 w-44"
             required
           />
-          <Button type="submit" isLoading={loading} variant="primary" className="text-xs py-1 px-2">
+          <Button type="submit" isLoading={loading} variant="primary" className="text-xs px-space-3 py-space-1">
             {loading ? '…' : 'Save'}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => setShowPostpone(false)} className="text-xs py-1 px-2">
+          <Button type="button" variant="secondary" onClick={() => setShowPostpone(false)} className="text-xs px-space-3 py-space-1">
             ×
           </Button>
-          {error && <p className="text-red-400 text-xs w-full text-right">{error}</p>}
+          {error && <p className="text-feedback-error text-xs w-full text-right">{error}</p>}
         </form>
       )}
     </div>
