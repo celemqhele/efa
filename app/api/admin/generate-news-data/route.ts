@@ -79,9 +79,9 @@ export async function GET(request: Request) {
           .select('*')
           .in('result_id', resIds)
 
-        for (const ms of matchStats ?? []) {
-          const res = resultsForStats?.find(r => r.id === ms.result_id)
-          const fx = last3Fx?.find(f => f.id === res?.fixture_id)
+        for (const ms of (matchStats as any[] ?? [])) {
+          const res = resultsForStats?.find((r: any) => r.id === ms.result_id)
+          const fx = last3Fx?.find((f: any) => f.id === res?.fixture_id)
           if (!fx) continue
 
           const isHome = fx.home_team_id === teamId
