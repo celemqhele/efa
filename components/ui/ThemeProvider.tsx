@@ -14,24 +14,22 @@ export function useTheme() {
 }
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark')
+  const [theme, setTheme] = useState<Theme>('light')
 
   useEffect(() => {
+    // Check local storage or system preference
     const saved = localStorage.getItem('efa-theme') as Theme | null
-    if (saved === 'dark' || saved === 'light') {
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    
+    if (saved) {
       setTheme(saved)
     } else {
-      setTheme('dark')
+      setTheme(systemDark ? 'dark' : 'light')
     }
   }, [])
 
   useEffect(() => {
-    const html = document.documentElement
-    if (theme === 'dark') {
-      html.classList.add('dark')
-    } else {
-      html.classList.remove('dark')
-    }
+    document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('efa-theme', theme)
   }, [theme])
 
