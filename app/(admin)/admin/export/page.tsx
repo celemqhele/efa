@@ -337,7 +337,7 @@ export default async function ExportPage({ searchParams }: Props) {
       let fixtures: any[] = []
       let results: any[] = []
       let standings: any[] = []
-      const groupStandings: Record<string, any[]> = {}
+      let groupStandings: Record<string, any[]> = {}
 
       if (type === 'fixtures') {
         const { data } = await supabase
