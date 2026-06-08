@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from './Button'
 
 interface Props {
   teamId: string
@@ -47,13 +48,14 @@ export default function ApplyManagerButton({ teamId, teamName, hasPending }: Pro
           {error}
         </p>
       )}
-      <button
+      <Button
         onClick={handleApply}
-        disabled={loading}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-[#c9a84c]/40 bg-[#c9a84c]/5 text-[#c9a84c] font-semibold text-sm hover:bg-[#c9a84c]/10 hover:border-[#c9a84c]/60 transition-all disabled:opacity-50"
+        isLoading={loading}
+        variant="secondary"
+        className="w-full"
       >
-        {loading ? 'Submitting…' : `Apply to Manage ${teamName}`}
-      </button>
+        Apply to Manage {teamName}
+      </Button>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from './Button'
 
 export default function RecalculateManagerStatsButton({ tournamentId, tournamentName }: { tournamentId: string, tournamentName: string }) {
   const [loading, setLoading] = useState(false)
@@ -24,12 +25,13 @@ export default function RecalculateManagerStatsButton({ tournamentId, tournament
   }
 
   return (
-    <button
+    <Button
       onClick={handleRecalculate}
-      disabled={loading}
-      className="w-full text-xs px-3 py-1.5 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-colors disabled:opacity-60"
+      isLoading={loading}
+      variant="secondary"
+      className="w-full text-xs"
     >
-      {loading ? 'Recalculating...' : 'Recalculate Manager Stats'}
-    </button>
+      Recalculate Manager Stats
+    </Button>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from './Button'
 
 interface Props {
   tournamentId: string
@@ -40,38 +41,34 @@ export default function RecalculateStandingsButton({ tournamentId }: Props) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-slate-500">Rebuild from scratch?</span>
-        <button
+        <Button
           onClick={handleConfirm}
-          className="text-xs px-2.5 py-1 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+          variant="destructive"
+          className="text-xs"
         >
           Yes, recalculate
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => setStatus('idle')}
-          className="text-xs px-2.5 py-1 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 transition-colors"
+          variant="secondary"
+          className="text-xs"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      <button
+      <Button
         onClick={() => { setStatus('confirm'); setMessage('') }}
-        disabled={status === 'loading'}
-        className="btn-outline text-xs px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+        isLoading={status === 'loading'}
+        variant="secondary"
+        className="text-xs"
       >
-        {status === 'loading' ? (
-          <>
-            <span className="w-3 h-3 border border-slate-400/30 border-t-slate-400 rounded-full animate-spin" />
-            Calculating…
-          </>
-        ) : (
-          <>⟳ Recalculate Standings</>
-        )}
-      </button>
+        ⟳ Recalculate Standings
+      </Button>
       {message && (
         <span className={`text-xs ${status === 'error' ? 'text-red-400' : 'text-green-400'}`}>
           {message}

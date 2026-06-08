@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Button } from './Button'
 
 interface Props {
   applicationId: string
@@ -39,20 +40,24 @@ export default function ManagerApplicationButtons({ applicationId }: Props) {
     <div className="space-y-1">
       {error && <p className="text-red-500 text-xs">{error}</p>}
       <div className="flex gap-2">
-        <button
+        <Button
           onClick={() => handle('approve')}
-          disabled={!!loading}
-          className="btn-gold text-xs py-1 px-3 disabled:opacity-50"
+          isLoading={loading === 'approve'}
+          disabled={!!loading && loading !== 'approve'}
+          variant="primary"
+          className="text-xs py-1 px-3"
         >
-          {loading === 'approve' ? '…' : 'Approve'}
-        </button>
-        <button
+          Approve
+        </Button>
+        <Button
           onClick={() => handle('deny')}
-          disabled={!!loading}
-          className="btn-danger text-xs py-1 px-3 disabled:opacity-50"
+          isLoading={loading === 'deny'}
+          disabled={!!loading && loading !== 'deny'}
+          variant="destructive"
+          className="text-xs py-1 px-3"
         >
-          {loading === 'deny' ? '…' : 'Deny'}
-        </button>
+          Deny
+        </Button>
       </div>
     </div>
   )

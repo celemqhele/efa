@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import WhatsAppButton from './WhatsAppButton'
+import { Button } from './Button'
 
 interface Props {
   fixtureId: string
@@ -86,12 +87,13 @@ export default function DashboardFixtureActions({
         >
           {isAwaiting ? 'Finalise' : 'Submit'}
         </Link>
-        <button
+        <Button
+          variant="secondary"
           onClick={() => setShowPostpone(!showPostpone)}
-          className="btn-outline text-xs py-1 px-2.5"
+          className="text-xs py-1 px-2.5"
         >
           Postpone
-        </button>
+        </Button>
       </div>
       {showPostpone && (
         <form onSubmit={handlePostpone} className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -102,12 +104,12 @@ export default function DashboardFixtureActions({
             className="input-field text-xs py-1 px-2 w-44"
             required
           />
-          <button type="submit" disabled={loading} className="btn-gold text-xs py-1 px-2">
+          <Button type="submit" isLoading={loading} variant="primary" className="text-xs py-1 px-2">
             {loading ? '…' : 'Save'}
-          </button>
-          <button type="button" onClick={() => setShowPostpone(false)} className="btn-outline text-xs py-1 px-2">
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setShowPostpone(false)} className="text-xs py-1 px-2">
             ×
-          </button>
+          </Button>
           {error && <p className="text-red-400 text-xs w-full text-right">{error}</p>}
         </form>
       )}
