@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     .from(isLeague ? 'standings' : 'group_standings')
     .select('*, team:teams(id, name)')
     .eq('tournament_id', tournament_id)
-    .order('points', { ascending: false })
+    .order('points', { ascending: false }) as any
 
   if (!standings || standings.length === 0) {
     return Response.json({ error: 'No standings data found' }, { status: 404 })
