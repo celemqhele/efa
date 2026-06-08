@@ -112,15 +112,22 @@ export default async function TeamFixturesPage({ params }: PageProps) {
   const past = (allFixtures ?? [])
     .filter((f: any) => f.status !== 'scheduled' && f.status !== 'awaiting_confirmation')
 
-  function FixtureRow({ f }: { f: any }) {
+    function FixtureRow({ f }: { f: any }) {
     const isHome = siblingIds.includes(f.home_team_id)
     const opponent = isHome ? f.away_team : f.home_team
+    
+    // Result fetching (handles cases where results might be null)
     const result = resultsByFixture[f.id]
+    
+    // Correctly define score based on team's position (home/away)
     const myScore = isHome ? result?.home_score : result?.away_score
     const oppScore = isHome ? result?.away_score : result?.home_score
-    const won = result != null && myScore != null && oppScore != null && myScore > oppScore
-    const lost = result != null && myScore != null && oppScore != null && myScore < oppScore
-    const drew = result != null && myScore != null && oppScore != null && myScore === oppScore
+    
+    // Outcome logic: handle nulls gracefully
+    const hasResult = result != null && myScore != null && oppScore != null
+    const won = hasResult && myScore > oppScore
+    const lost = hasResult && myScore < oppScore
+    const drew = hasResult && myScore === oppScore
 
     const tournament = f.tournament
     const tournamentType = tournament?.type ?? 'unknown'
@@ -149,7 +156,7 @@ export default async function TeamFixturesPage({ params }: PageProps) {
           {isHome ? 'vs' : '@'}
         </div>
 
-        {opponent?.logo_league_folder && (
+        {opponent?.logo_league_folder ? (
           <TeamLogo
             leagueFolder={opponent.logo_league_folder}
             teamSlug={opponent.logo_team_slug}
@@ -157,6 +164,8 @@ export default async function TeamFixturesPage({ params }: PageProps) {
             alt={opponent.name}
             className="w-8 h-8 shrink-0"
           />
+        ) : (
+          <div className="w-8 h-8 rounded bg-slate-200 shrink-0 flex items-center justify-center text-[10px] text-slate-500">?</div>
         )}
 
         <div className="flex-1 min-w-0">
