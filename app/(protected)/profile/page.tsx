@@ -63,6 +63,29 @@ export default async function ProfilePage() {
 
   const pendingRequest = changeRequests.find((r: any) => r.status === 'pending') ?? null
 
+  // Fetch Tenures (Career History)
+  const { data: tenures } = await supabase
+    .from('manager_tenures' as any)
+    .select(`
+      *,
+      team:teams(id, name, logo_league_folder, logo_team_slug)
+    `)
+    .eq('manager_id', user.id)
+    .order('started_at', { ascending: false }) as any
+
+  // Calculate Aggregated Stats
+  const stats = (tenures ?? []).reduce((acc: any, t: any) => {
+    acc.played += (t.wins + t.draws + t.losses)
+    acc.wins += t.wins
+    acc.draws += t.draws
+    acc.losses += t.losses
+    acc.gf += t.goals_for
+    acc.ga += t.goals_against
+    return acc
+  }, { played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0 })
+
+  const winRate = stats.played > 0 ? Math.round((stats.wins / stats.played) * 100) : 0
+
   // Upcoming fixtures (next 5 for user's team — covers all phase rows)
   const { data: upcomingFixtures } = teamOrFilter
     ? await supabase
@@ -159,6 +182,66 @@ export default async function ProfilePage() {
 
           <p className="text-xs text-slate-500">{user.email}</p>
         </div>
+        
+        {/* Quick Career Stats */}
+        <div className="flex gap-4 sm:flex-col justify-center sm:justify-start pt-4 sm:pt-0">
+          <div className="text-center sm:text-right">
+            <p className="text-xl font-black text-slate-900">{stats.played}</p>
+            <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tighter">Matches</p>
+          </div>
+          <div className="text-center sm:text-right">
+            <p className="text-xl font-black text-[#c9a84c]">{winRate}%</p>
+            <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tighter">Win Rate</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Career History Section ────────────────────────────────────────── */}
+      <div className="card p-5 space-y-4">
+        <h2 className="section-header">
+          <span>👔</span> Management History
+        </h2>
+        
+        {(tenures ?? []).length === 0 ? (
+          <p className="text-slate-500 text-sm text-center py-4">No management history found.</p>
+        ) : (
+          <div className="space-y-3">
+            {tenures.map((tenure: any) => {
+              const isCurrent = !tenure.ended_at
+              const played = tenure.wins + tenure.draws + tenure.losses
+              const tWinRate = played > 0 ? Math.round((tenure.wins / played) * 100) : 0
+              
+              return (
+                <div key={tenure.id} className={`p-4 rounded-xl border flex items-center gap-4 ${
+                  isCurrent 
+                    ? 'bg-[#c9a84c]/5 border-[#c9a84c]/20' 
+                    : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="w-10 h-10 bg-white rounded-lg p-1 border border-slate-200 flex items-center justify-center shrink-0">
+                    {tenure.team?.logo_team_slug ? (
+                      <Image 
+                        src={getTeamLogo(tenure.team.logo_league_folder, tenure.team.logo_team_slug, 'standings_row')} 
+                        alt={tenure.team.name} width={28} height={28} className="object-contain" 
+                      />
+                    ) : <span className="text-xl">🛡️</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Link href={`/teams/${tenure.team_id}`} className="font-bold text-slate-900 hover:text-[#c9a84c] transition-colors truncate block text-sm">
+                      {tenure.team?.name || 'Unknown Club'}
+                    </Link>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      {format(new Date(tenure.started_at), 'MMM yyyy')} — {tenure.ended_at ? format(new Date(tenure.ended_at), 'MMM yyyy') : 'Present'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-black text-slate-900">{played} <span className="text-[9px] text-slate-400 font-bold">P</span></p>
+                    <p className="text-xs font-black text-[#c9a84c]">{tWinRate}% <span className="text-[9px] text-slate-400 font-bold">WR</span></p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Team Change Request ───────────────────────────────────────────── */}
@@ -178,16 +261,16 @@ export default async function ProfilePage() {
             {changeRequests.slice(0, 3).map((req: any) => {
               const statusStyle =
                 req.status === 'approved'
-                  ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                  ? 'text-green-600 bg-green-50 border-green-200'
                   : req.status === 'denied'
-                  ? 'text-red-400 bg-red-500/10 border-red-500/20'
-                  : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
+                  ? 'text-red-600 bg-red-50 border-red-200'
+                  : 'text-yellow-600 bg-yellow-50 border-yellow-200'
               return (
                 <div
                   key={req.id}
-                  className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-slate-200 bg-slate-50"
+                  className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border bg-slate-50"
                 >
-                  <span className="text-slate-400">
+                  <span className="text-slate-600">
                     {req.requested_team?.name ?? 'Unknown team'}
                   </span>
                   <span className={`px-2 py-0.5 rounded border font-semibold capitalize ${statusStyle}`}>
