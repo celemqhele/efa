@@ -10,88 +10,46 @@
   body {
     background-color: var(--color-bg-base);
     color: var(--color-text-primary);
-    transition: color var(--transition-base), background-color var(--transition-base);
-  }
-}
-
-@layer base {
-  :root {
-    --navy: #f8f9fc;
-    --navy-light: #f1f4fb;
-    --navy-card: #ffffff;
-    --navy-border: #e2e8f0;
-    --gold: #c9a84c;
-    --gold-light: #e0c06a;
-    --gold-dark: #a07830;
-    
-    --foreground-primary: #0f172a;
-    --foreground-secondary: #475569;
-    --foreground-muted: #94a3b8;
-  }
-
-  .dark {
-    --navy: #0a1128;
-    --navy-light: #0f1a3d;
-    --navy-card: #0d1635;
-    --navy-border: #1e2d5a;
-    
-    --foreground-primary: #f8fafc;
-    --foreground-secondary: #cbd5e1;
-    --foreground-muted: #94a3b8;
-  }
-
-  body {
-    background-color: var(--navy);
-    color: var(--foreground-primary);
     font-family: 'Poppins', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    @apply transition-colors duration-200;
+    transition: color var(--transition-base), background-color var(--transition-base);
   }
 }
 
 @layer components {
   .card {
-    @apply bg-navy-card border border-navy-border rounded-xl shadow-sm transition-colors duration-200;
+    @apply bg-bg-surface border border-border rounded-lg shadow-sm transition-colors duration-base;
   }
 
   .btn-gold {
-    @apply bg-gold text-[#0a1128] font-semibold px-4 py-2.5 rounded-lg
-           hover:bg-gold-light transition-all duration-200 text-sm active:scale-95;
+    @apply bg-color-accent text-bg-surface font-semibold px-4 py-2.5 rounded-lg
+           hover:bg-color-accent-hover transition-all duration-fast text-sm active:scale-95;
   }
 
   .btn-outline {
-    @apply border border-navy-border text-foreground-secondary font-medium px-4 py-2.5 rounded-lg
-           hover:border-gold/50 hover:text-gold transition-all duration-200 text-sm active:scale-95;
+    @apply border border-border text-text-secondary font-medium px-4 py-2.5 rounded-lg
+           hover:border-color-accent/50 hover:text-color-accent transition-all duration-fast text-sm active:scale-95;
   }
 
   .btn-danger {
-    @apply bg-red-500/10 border border-red-400/30 text-red-500 font-medium px-4 py-2.5 rounded-lg
-           hover:bg-red-500/20 transition-all duration-200 text-sm;
+    @apply bg-feedback-error/10 border border-feedback-error/30 text-feedback-error font-medium px-4 py-2.5 rounded-lg
+           hover:bg-feedback-error/20 transition-all duration-fast text-sm;
   }
 
   .input-field {
-    @apply w-full bg-navy-card border border-navy-border rounded-lg px-4 py-3 text-foreground-primary
-           placeholder-foreground-muted focus:outline-none focus:border-gold/60 focus:ring-1 focus:ring-gold/30
-           transition-all duration-200 text-sm;
+    @apply w-full bg-bg-surface border border-border rounded-lg px-4 py-3 text-text-primary
+           placeholder-text-muted focus:outline-none focus:border-color-accent/60 focus:ring-1 focus:ring-color-accent/30
+           transition-all duration-fast text-sm;
   }
 
   .form-label {
-    @apply block text-xs font-medium text-foreground-secondary mb-1.5 uppercase tracking-wider;
+    @apply block text-xs font-medium text-text-secondary mb-1.5 uppercase tracking-wide;
   }
 
   .section-header {
-    @apply text-lg font-bold text-foreground-primary mb-4 flex items-center gap-2;
+    @apply text-lg font-bold text-text-primary mb-4 flex items-center gap-space-2;
   }
-}
-
-@layer utilities {
-  .text-foreground-primary { color: var(--foreground-primary); }
-  .text-foreground-secondary { color: var(--foreground-secondary); }
-  .text-foreground-muted { color: var(--foreground-muted); }
-  
-  .bg-navy-card { background-color: var(--navy-card); }
-  .border-navy-border { border-color: var(--navy-border); }
 }
 
 /* Scrollbar */
@@ -100,12 +58,12 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--navy-light);
+  background: var(--color-bg-base);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--navy-border);
+  background: var(--color-border);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--gold-dark);
+  background: var(--color-accent);
 }
