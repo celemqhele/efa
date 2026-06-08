@@ -8,26 +8,26 @@ export async function GET(request: Request) {
   const supabase = await createAdminClient()
 
   // 1. Fetch Tournament & Standings
-  const { data: tournament } = await supabase
+  const { data: tournament, error: tournamentErr } = await supabase
     .from('tournaments')
     .select('name, type, settings')
     .eq('id', tournament_id)
     .single()
 
-  if (!tournament) return Response.json({ error: 'Tournament not found' }, { status: 404 })
+  if (tournamentErr || !tournament) return Response.json({ error: `Tournament fetch error: ${tournamentErr?.message}` }, { status: 404 })
 
   // Use standings or group_standings depending on settings
   const settings = (tournament.settings as any) || {}
   const isLeague = tournament.type === 'league' || !settings.num_groups
 
-  const { data: standings } = await supabase
+  const { data: standings, error: standingsErr } = await supabase
     .from(isLeague ? 'standings' : 'group_standings')
     .select('*, team:teams(id, name)')
     .eq('tournament_id', tournament_id)
     .order('points', { ascending: false }) as any
 
-  if (!standings || standings.length === 0) {
-    return Response.json({ error: 'No standings data found' }, { status: 404 })
+  if (standingsErr || !standings || standings.length === 0) {
+    return Response.json({ error: `Standings fetch error: ${standingsErr?.message ?? 'No standings data found'}` }, { status: 404 })
   }
 
   // 2. Fetch Deep Data for each team
