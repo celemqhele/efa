@@ -127,15 +127,15 @@ export async function GET(request: Request) {
      List 5 catchy headlines with a 2-sentence summary for each. Focus on drama, tactical shifts, and significant impact on the title race or relegation.`
   ])
 
-  // 4. Generate CSV String
-  const csvContent = csvRows
-    .map((row: string[]) => row.map((cell: string) => `"${(cell || '').replace(/"/g, '""')}"`).join(','))
+  // 4. Generate Text String
+  const textContent = csvRows
+    .map((row: string[]) => row.join('\t'))
     .join('\n')
 
-  return new Response(csvContent, {
+  return new Response(textContent, {
     headers: {
-      'Content-Type': 'text/csv',
-      'Content-Disposition': `attachment; filename="EFA_News_Export.csv"`,
+      'Content-Type': 'text/plain',
+      'Content-Disposition': `attachment; filename="EFA_News_Export.txt"`,
     },
   })
 }
