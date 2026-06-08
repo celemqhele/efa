@@ -87,7 +87,7 @@ function StandingsTable({
         {mode === 'group' && <div style={{ width: '20px' }} />}
       </div>
       {rows.map((s: any, i: number) => {
-        const gd = (s.goals_for ?? 0) - (s.goals_against ?? 0)
+        const gd = s.goal_difference ?? (s.goals_for ?? 0) - (s.goals_against ?? 0)
         const borderColor =
           mode === 'league'
             ? i < 12
@@ -316,138 +316,28 @@ export default async function ExportPage({ searchParams }: Props) {
 
       if (type === 'standings') {
         if (tournament.type === 'league') {
-          const [{ data: participants }, { data: confirmedFixtures }] = await Promise.all([
-            supabase
-              .from('tournament_participants')
-              .select('team_id, teams(id, name, logo_league_folder, logo_team_slug)')
-              .eq('tournament_id', tournamentId),
-            supabase
-              .from('fixtures')
-              .select('home_team_id, away_team_id, results(home_score, away_score, override_reason)')
-              .eq('tournament_id', tournamentId)
-              .eq('status', 'confirmed'),
-          ])
-
-          const map: Record<string, any> = {}
-          for (const p of participants ?? []) {
-            map[(p as any).team_id] = {
-              id: (p as any).team_id,
-              team: (p as any).teams,
-              played: 0, wins: 0, draws: 0, losses: 0,
-              goals_for: 0, goals_against: 0, points: 0,
-            }
-          }
-
-          for (const f of confirmedFixtures ?? []) {
-            const result = Array.isArray((f as any).results)
-              ? (f as any).results[0]
-              : (f as any).results
-            if (!result) continue
-            const { home_score: hs, away_score: as_, override_reason } = result
-            if ((override_reason ?? '').toLowerCase().includes('both') && (override_reason ?? '').toLowerCase().includes('absent')) continue
-
-            const homeWin = hs > as_, awayWin = as_ > hs, draw = hs === as_
-            const hr = map[(f as any).home_team_id]
-            const ar = map[(f as any).away_team_id]
-
-            if (hr) {
-              hr.played++; hr.wins += homeWin ? 1 : 0; hr.draws += draw ? 1 : 0; hr.losses += awayWin ? 1 : 0
-              hr.goals_for += hs; hr.goals_against += as_
-              hr.points += homeWin ? 3 : draw ? 1 : 0
-            }
-            if (ar) {
-              ar.played++; ar.wins += awayWin ? 1 : 0; ar.draws += draw ? 1 : 0; ar.losses += homeWin ? 1 : 0
-              ar.goals_for += as_; ar.goals_against += hs
-              ar.points += awayWin ? 3 : draw ? 1 : 0
-            }
-          }
-
-          standings = Object.values(map).sort((a: any, b: any) => {
-            if (b.points !== a.points) return b.points - a.points
-            const gdDiff = (b.goals_for - b.goals_against) - (a.goals_for - a.goals_against)
-            if (gdDiff !== 0) return gdDiff
-            return b.goals_for - a.goals_for
-          })
+          const { data } = await supabase
+            .from('standings')
+            .select('*, team:teams(id, name, logo_league_folder, logo_team_slug)')
+            .eq('tournament_id', tournamentId)
+            .order('points', { ascending: false })
+            .order('goal_difference', { ascending: false })
+            .order('goals_for', { ascending: false })
+          standings = data ?? []
         } else {
-          const [{ data: participants }, { data: confirmedFixtures }] = await Promise.all([
-            supabase
-              .from('tournament_participants')
-              .select('team_id, group_name, team:teams(id, name, logo_league_folder, logo_team_slug)')
-              .eq('tournament_id', tournamentId),
-            supabase
-              .from('fixtures')
-              .select(
-                `home_team_id, away_team_id, round_type,
-                home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-                away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-                results(home_score, away_score, override_reason)`
-              )
-              .eq('tournament_id', tournamentId)
-              .eq('status', 'confirmed')
-              .eq('round_type', 'group'),
-          ])
+          const { data } = await supabase
+            .from('group_standings')
+            .select('*, team:teams(id, name, logo_league_folder, logo_team_slug)')
+            .eq('tournament_id', tournamentId)
+            .order('group_name', { ascending: true })
+            .order('points', { ascending: false })
+            .order('goal_difference', { ascending: false })
+            .order('goals_for', { ascending: false })
 
-          const teamGroupMap: Record<string, string> = {}
-          const rowMap: Record<string, any> = {}
-
-          const ensureRow = (teamId: string, groupName: string, teamData?: any) => {
-            const key = `${groupName}:${teamId}`
-            if (!rowMap[key]) {
-              rowMap[key] = {
-                id: teamId, group_name: groupName, team_id: teamId,
-                team: teamData ?? null,
-                played: 0, wins: 0, draws: 0, losses: 0,
-                goals_for: 0, goals_against: 0, points: 0,
-              }
-              if (!groupStandings[groupName]) groupStandings[groupName] = []
-              groupStandings[groupName].push(rowMap[key])
-            } else if (!rowMap[key].team && teamData) {
-              rowMap[key].team = teamData
-            }
-            return rowMap[key]
-          }
-
-          for (const p of participants ?? []) {
-            const teamId = (p as any).team_id
-            const groupName = (p as any).group_name ?? 'A'
-            if (!teamId) continue
-            teamGroupMap[teamId] = groupName
-            ensureRow(teamId, groupName, (p as any).team ?? (p as any).teams ?? null)
-          }
-
-          for (const f of confirmedFixtures ?? []) {
-            const result = Array.isArray((f as any).results)
-              ? (f as any).results[0]
-              : (f as any).results
-            if (!result) continue
-            const { home_score: hs, away_score: as_, override_reason } = result
-            if ((override_reason ?? '').toLowerCase().includes('both') && (override_reason ?? '').toLowerCase().includes('absent')) continue
-
-            const homeTeamId = (f as any).home_team_id
-            const awayTeamId = (f as any).away_team_id
-            const groupName = teamGroupMap[homeTeamId] ?? teamGroupMap[awayTeamId] ?? 'A'
-            const homeWin = hs > as_, awayWin = as_ > hs, draw = hs === as_
-            const hr = ensureRow(homeTeamId, groupName, (f as any).home_team)
-            const ar = ensureRow(awayTeamId, groupName, (f as any).away_team)
-
-            hr.played++; ar.played++
-            hr.wins += homeWin ? 1 : 0; ar.wins += awayWin ? 1 : 0
-            hr.draws += draw ? 1 : 0; ar.draws += draw ? 1 : 0
-            hr.losses += awayWin ? 1 : 0; ar.losses += homeWin ? 1 : 0
-            hr.goals_for += hs; ar.goals_for += as_
-            hr.goals_against += as_; ar.goals_against += hs
-            hr.points += homeWin ? 3 : draw ? 1 : 0
-            ar.points += awayWin ? 3 : draw ? 1 : 0
-          }
-
-          for (const g of Object.keys(groupStandings)) {
-            groupStandings[g].sort((a: any, b: any) => {
-              if (b.points !== a.points) return b.points - a.points
-              const gdDiff = (b.goals_for - b.goals_against) - (a.goals_for - a.goals_against)
-              if (gdDiff !== 0) return gdDiff
-              if (b.goals_for !== a.goals_for) return b.goals_for - a.goals_for
-              return (a.team?.name ?? '').localeCompare(b.team?.name ?? '')
-            })
+          for (const row of data ?? []) {
+            const g = row.group_name
+            if (!groupStandings[g]) groupStandings[g] = []
+            groupStandings[g].push(row)
           }
         }
       }
