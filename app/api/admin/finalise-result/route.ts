@@ -214,19 +214,13 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  let body: {
-    fixture_id: string
-    home_score: number
-    away_score: number
-    home_absent?: boolean
-    away_absent?: boolean
-    home_forfeit?: boolean
-    away_forfeit?: boolean
-    override_reason?: string
-    // ...
+  let body: any
+  try {
+    body = await request.json()
+  } catch {
+    return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
   
-  // ...
   const home_absent = body.home_absent ?? false
   const away_absent = body.away_absent ?? false
   const home_forfeit = body.home_forfeit ?? false
