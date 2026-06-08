@@ -64,7 +64,7 @@ export async function GET(request: Request) {
 
     // Get detailed stats for last 2 matches
     const statsDetails: string[] = []
-    const fxIds = (last3Fx ?? []).slice(0, 2).map(f => f.id)
+    const fxIds = (last3Fx ?? []).slice(0, 2).map((f: any) => f.id)
     
     if (fxIds.length > 0) {
       const { data: resultsForStats } = await supabase
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
         .select('id, fixture_id')
         .in('fixture_id', fxIds)
 
-      const resIds = resultsForStats?.map(r => r.id) ?? []
+      const resIds = resultsForStats?.map((r: any) => r.id) ?? []
       if (resIds.length > 0) {
         const { data: matchStats } = await supabase
           .from('match_stats')
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
 
   // 4. Generate CSV String
   const csvContent = csvRows
-    .map(row => row.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(','))
+    .map((row: string[]) => row.map((cell: string) => `"${(cell || '').replace(/"/g, '""')}"`).join(','))
     .join('\n')
 
   return new Response(csvContent, {
