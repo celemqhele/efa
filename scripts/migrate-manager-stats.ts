@@ -67,7 +67,7 @@ async function migrateManagerStats() {
       else losses++
     }
 
-    await db.from('manager_tenures').upsert({
+    await (db.from('manager_tenures' as any)).upsert({
       ...tenure,
       wins, draws, losses, goals_for: gf, goals_against: ga
     }, { onConflict: 'manager_id,team_id,started_at' })
