@@ -3,19 +3,22 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const TROPHY_TYPE_OPTIONS = [
-  { value: 'league', label: '?? Premier League' },
-  { value: 'ucl', label: '? UCL' },
-  { value: 'europa', label: '?? Europa League' },
-  { value: 'super_cup', label: '?? Super Cup' },
+  { value: 'league', label: 'PL Premier League' },
+  { value: 'ucl', label: 'UCL' },
+  { value: 'europa', label: 'Europa League' },
+  { value: 'super_cup', label: 'Super Cup' },
 ]
 
 const TROPHY_LABEL: Record<string, string> = {
-  league: '?? League',
-  ucl: '? UCL',
-  europa: '?? Europa',
-  super_cup: '?? Super Cup',
+  league: 'PL League',
+  ucl: 'UCL',
+  europa: 'Europa',
+  super_cup: 'Super Cup',
 }
 
 interface Team {
@@ -23,6 +26,7 @@ interface Team {
   name: string
   logo_league_folder: string
   logo_team_slug: string
+  manager_id: string | null
 }
 
 interface Season {
@@ -66,6 +70,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const tournamentsForSeason = tournaments.filter((t) => t.season_id === seasonId)
 
@@ -112,6 +117,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
     setDeleting(id)
     const { error: e } = await supabase.from('trophies').delete().eq('id', id)
     setDeleting(null)
+    setDeleteId(null)
     if (e) { setError(e.message); return }
     setTrophies((prev) => prev.filter((t) => t.id !== id))
   }
@@ -126,12 +132,12 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
   const bySeason = Object.entries(bySeasonMap).sort((a, b) => b[0].localeCompare(a[0]))
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-space-6">
       {/* Add trophy form */}
-      <div className="card p-6 space-y-5">
-        <h2 className="text-lg font-bold text-slate-900">Award a Trophy</h2>
+      <Card className="p-space-6 space-y-space-5">
+        <h2 className="text-lg font-bold text-text-primary">Award a Trophy</h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-4">
           <div>
             <label className="form-label">Season</label>
             <select
@@ -139,7 +145,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
               value={seasonId}
               onChange={(e) => { setSeasonId(e.target.value); setTournamentId('') }}
             >
-              <option value="">Select season…</option>
+              <option value="">Select season</option>
               {seasons.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -166,7 +172,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
             >
-              <option value="">Select team…</option>
+              <option value="">Select team</option>
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
@@ -200,39 +206,40 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
         </div>
 
         {error && (
-          <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
+          <p className="text-feedback-error text-sm bg-feedback-error/10 border border-feedback-error/20 rounded-lg px-space-3 py-space-2">{error}</p>
         )}
         {success && (
-          <p className="text-green-400 text-sm bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">{success}</p>
+          <p className="text-feedback-success text-sm bg-feedback-success/10 border border-feedback-success/20 rounded-lg px-space-3 py-space-2">{success}</p>
         )}
 
-        <button
+        <Button
           onClick={handleAdd}
+          isLoading={saving}
           disabled={saving || !seasonId || !teamId}
-          className="btn-gold disabled:opacity-40"
+          variant="primary"
         >
-          {saving ? 'Saving…' : 'Award Trophy'}
-        </button>
-      </div>
+          Award Trophy
+        </Button>
+      </Card>
 
       {/* Existing trophies */}
       <div>
         <h2 className="section-header">Existing Trophies</h2>
 
         {bySeason.length === 0 ? (
-          <div className="card p-8 text-center text-slate-500">No trophies recorded yet.</div>
+          <Card className="p-space-8 text-center text-text-muted">No trophies recorded yet.</Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-space-4">
             {bySeason.map(([seasonName, entries]) => (
-              <div key={seasonName} className="card overflow-hidden">
-                <div className="px-5 py-3 bg-gradient-to-r from-accent/10 to-transparent border-b border-navy-border">
-                  <h3 className="font-bold text-slate-900">{seasonName}</h3>
+              <Card key={seasonName} className="overflow-hidden">
+                <div className="px-space-5 py-space-3 bg-accent-muted/20 border-b border-border">
+                  <h3 className="font-bold text-text-primary">{seasonName}</h3>
                 </div>
-                <div className="divide-y divide-navy-border/40">
+                <div className="divide-y divide-border">
                   {entries.map((trophy) => (
                     <div
                       key={trophy.id}
-                      className="flex items-center gap-4 px-5 py-3"
+                      className="flex items-center gap-space-4 px-space-5 py-space-3"
                     >
                       {trophy.team?.logo_league_folder && (
                         <Image
@@ -245,29 +252,39 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-900 text-sm truncate">{trophy.team?.name}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="font-semibold text-text-primary text-sm truncate">{trophy.team?.name}</p>
+                        <p className="text-xs text-text-muted">
                           {TROPHY_LABEL[trophy.trophy_type] ?? trophy.trophy_type}
-                          {trophy.tournament && ` · ${trophy.tournament.name}`}
-                          {' · '}{trophy.awarded_at?.slice(0, 10)}
+                          {trophy.tournament && ` â€” ${trophy.tournament.name}`}
+                          {' â€” '}{trophy.awarded_at?.slice(0, 10)}
                         </p>
                       </div>
-                      <button
-                        onClick={() => handleDelete(trophy.id)}
-                        disabled={deleting === trophy.id}
-                        className="text-xs text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-400/40 px-3 py-1 rounded-lg transition-colors disabled:opacity-40 shrink-0"
+                      <Button
+                        onClick={() => setDeleteId(trophy.id)}
+                        isLoading={deleting === trophy.id}
+                        variant="destructive"
+                        className="text-xs px-space-3 py-space-1"
                       >
-                        {deleting === trophy.id ? '…' : 'Remove'}
-                      </button>
+                        Remove
+                      </Button>
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Remove Trophy?"
+        message="Are you sure you want to remove this trophy record?"
+        confirmLabel="Remove"
+        danger
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   )
 }
-

@@ -3,6 +3,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import TeamManageActions from './TeamManageActions'
 import AddTeamForm from './AddTeamForm'
+import { Card } from '@/components/ui/Card'
 
 export const revalidate = 0
 
@@ -25,12 +26,12 @@ export default async function TeamsManagePage() {
   for (const m of managers ?? []) managerMap[m.id] = m
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-space-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Team Management</h1>
-          <p className="text-slate-400 text-sm mt-1">{(teams?.length ?? 0)} teams registered</p>
+          <h1 className="text-2xl font-bold text-text-primary">Team Management</h1>
+          <p className="text-text-muted text-sm mt-space-1">{(teams?.length ?? 0)} teams registered</p>
         </div>
       </div>
 
@@ -38,16 +39,16 @@ export default async function TeamsManagePage() {
       <AddTeamForm />
 
       {/* Teams List */}
-      <div className="card p-5">
+      <Card className="p-space-4">
         <h2 className="section-header">All Teams</h2>
 
         {/* Mobile cards (hidden on sm+) */}
-        <div className="sm:hidden space-y-3">
+        <div className="sm:hidden space-y-space-3">
           {(teams ?? []).map((team) => {
             const manager = team.manager_id ? managerMap[team.manager_id] : null
             return (
-              <div key={team.id} className="bg-slate-50 rounded-lg p-3 space-y-2 border border-slate-200">
-                <div className="flex items-center gap-3">
+              <div key={team.id} className="bg-bg-elevated rounded-lg p-space-3 space-y-space-2 border border-border">
+                <div className="flex items-center gap-space-3">
                   {team.logo_league_folder ? (
                     <Image
                       src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
@@ -56,31 +57,31 @@ export default async function TeamsManagePage() {
                       className="object-contain shrink-0"
                     />
                   ) : (
-                    <div className="w-11 h-11 rounded bg-slate-200 flex items-center justify-center text-slate-500 text-xs shrink-0">?</div>
+                    <div className="w-11 h-11 rounded bg-bg-base flex items-center justify-center text-text-muted text-xs shrink-0">?</div>
                   )}
                   <div className="min-w-0">
-                    <p className="text-slate-900 font-semibold text-sm truncate">{team.name}</p>
-                    <p className="text-slate-500 text-xs truncate">{team.logo_league_folder?.split('.')[0] ?? '—'}</p>
+                    <p className="text-text-primary font-semibold text-sm truncate">{team.name}</p>
+                    <p className="text-text-muted text-xs truncate">{team.logo_league_folder?.split('.')[0] ?? '-'}</p>
                   </div>
                   {team.abandon_count >= 3 && (
-                    <span className="ml-auto text-red-400 font-bold text-xs shrink-0">? {team.abandon_count}</span>
+                    <span className="ml-auto text-feedback-error font-bold text-xs shrink-0">âš  {team.abandon_count}</span>
                   )}
                 </div>
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-space-2 flex-wrap">
+                  <div className="flex items-center gap-space-2">
                     {manager ? (
                       <>
                         {manager.avatar_url ? (
                           <Image src={manager.avatar_url} alt="" width={20} height={20} className="rounded-full" />
                         ) : (
-                          <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-400">
+                          <div className="w-5 h-5 rounded-full bg-bg-base flex items-center justify-center text-xs text-text-muted">
                             {manager.username?.[0]?.toUpperCase()}
                           </div>
                         )}
-                        <span className="text-slate-700 text-xs">{manager.username}</span>
+                        <span className="text-text-secondary text-xs">{manager.username}</span>
                       </>
                     ) : (
-                      <span className="text-green-400 text-xs">(Available)</span>
+                      <span className="text-feedback-success text-xs">(Available)</span>
                     )}
                   </div>
                   <TeamManageActions
@@ -99,20 +100,20 @@ export default async function TeamsManagePage() {
         <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-navy-border">
-                <th className="text-left text-xs text-slate-500 pb-3 pr-4">Team</th>
-                <th className="text-left text-xs text-slate-500 pb-3 pr-4">Manager</th>
-                <th className="text-left text-xs text-slate-500 pb-3 pr-4">Abandons</th>
-                <th className="text-left text-xs text-slate-500 pb-3">Actions</th>
+              <tr className="border-b border-border">
+                <th className="text-left text-xs text-text-muted pb-space-3 pr-space-4">Team</th>
+                <th className="text-left text-xs text-text-muted pb-space-3 pr-space-4">Manager</th>
+                <th className="text-left text-xs text-text-muted pb-space-3 pr-space-4">Abandons</th>
+                <th className="text-left text-xs text-text-muted pb-space-3">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-navy-border">
+            <tbody className="divide-y divide-border">
               {(teams ?? []).map((team) => {
                 const manager = team.manager_id ? managerMap[team.manager_id] : null
                 return (
-                  <tr key={team.id} className="hover:bg-navy-light/50 transition-colors">
-                    <td className="py-3 pr-4">
-                      <div className="flex items-center gap-3">
+                  <tr key={team.id} className="hover:bg-bg-base transition-colors">
+                    <td className="py-space-3 pr-space-4">
+                      <div className="flex items-center gap-space-3">
                         {team.logo_league_folder ? (
                           <Image
                             src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
@@ -121,39 +122,39 @@ export default async function TeamsManagePage() {
                             className="object-contain shrink-0"
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded bg-slate-200 flex items-center justify-center text-slate-500 text-xs">?</div>
+                          <div className="w-12 h-12 rounded bg-bg-base flex items-center justify-center text-text-muted text-xs">?</div>
                         )}
                         <div>
-                          <p className="text-slate-900 font-semibold">{team.name}</p>
-                          <p className="text-slate-500 text-xs">{team.logo_league_folder?.split('.')[0] ?? '—'}</p>
+                          <p className="text-text-primary font-semibold">{team.name}</p>
+                          <p className="text-text-muted text-xs">{team.logo_league_folder?.split('.')[0] ?? '-'}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 pr-4">
+                    <td className="py-space-3 pr-space-4">
                       {manager ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-space-2">
                           {manager.avatar_url ? (
                             <Image src={manager.avatar_url} alt="" width={24} height={24} className="rounded-full" />
                           ) : (
-                            <div className="w-6 h-6 rounded-full bg-navy-border flex items-center justify-center text-xs text-slate-400">
+                            <div className="w-6 h-6 rounded-full bg-bg-elevated flex items-center justify-center text-xs text-text-muted">
                               {manager.username?.[0]?.toUpperCase()}
                             </div>
                           )}
-                          <span className="text-slate-900">{manager.username}</span>
+                          <span className="text-text-primary">{manager.username}</span>
                         </div>
                       ) : (
-                        <span className="text-green-400 text-xs font-medium">(Available)</span>
+                        <span className="text-feedback-success text-xs font-medium">(Available)</span>
                       )}
                     </td>
-                    <td className="py-3 pr-4">
-                      <span className={`inline-flex items-center gap-1 font-bold ${
-                        team.abandon_count >= 3 ? 'text-red-400' : 'text-slate-400'
+                    <td className="py-space-3 pr-space-4">
+                      <span className={`inline-flex items-center gap-space-1 font-bold ${
+                        team.abandon_count >= 3 ? 'text-feedback-error' : 'text-text-muted'
                       }`}>
-                        {team.abandon_count >= 3 && <span className="text-xs">?</span>}
+                        {team.abandon_count >= 3 && <span className="text-xs">âš </span>}
                         {team.abandon_count}
                       </span>
                     </td>
-                    <td className="py-3">
+                    <td className="py-space-3">
                       <TeamManageActions
                         teamId={team.id}
                         teamName={team.name}
@@ -167,8 +168,7 @@ export default async function TeamsManagePage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }
-

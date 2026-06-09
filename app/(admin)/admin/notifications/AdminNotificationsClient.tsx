@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import type { Notification } from '@/lib/supabase/types'
 import { formatDistanceToNow, parseISO } from 'date-fns'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 interface TeamChangeRequest {
   id: string
@@ -58,42 +60,42 @@ export default function AdminNotificationsClient({ pendingRequests, notification
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold text-slate-900">Admin Notifications</h1>
+    <div className="space-y-space-6">
+      <h1 className="text-xl font-bold text-text-primary">Admin Notifications</h1>
 
       {/* Pending Team Change Requests */}
-      <section className="card p-4">
+      <Card className="p-space-4">
         <h2 className="section-header">
           Pending Team Change Requests
           {pendingRequests.length > 0 && (
-            <span className="ml-2 bg-accent text-[#0a1128] text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="ml-2 bg-accent text-bg-surface text-xs font-bold px-space-2 py-0.5 rounded-full">
               {pendingRequests.length}
             </span>
           )}
         </h2>
 
         {pendingRequests.length === 0 ? (
-          <p className="text-sm text-slate-500">No pending requests.</p>
+          <p className="text-sm text-text-muted">No pending requests.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-space-3">
             {pendingRequests.map((req) => (
-              <div key={req.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div key={req.id} className="bg-bg-elevated border border-border rounded-xl p-space-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-space-4">
                   {/* User */}
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-accent font-bold text-xs">
+                  <div className="flex items-center gap-space-2 flex-1">
+                    <div className="w-8 h-8 rounded-full bg-border-subtle flex items-center justify-center text-accent font-bold text-xs">
                       {req.requesting_user?.username?.[0]?.toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">{req.requesting_user?.username}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm font-semibold text-text-primary">{req.requesting_user?.username}</p>
+                      <p className="text-xs text-text-muted">
                         {formatDistanceToNow(parseISO(req.created_at), { addSuffix: true })}
                       </p>
                     </div>
                   </div>
 
                   {/* Arrow */}
-                  <div className="flex items-center gap-3 text-sm flex-1">
+                  <div className="flex items-center gap-space-3 text-sm flex-1">
                     <div className="text-center">
                       {req.current_team?.logo_league_folder && (
                         <Image
@@ -103,9 +105,9 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                           className="object-contain mx-auto"
                         />
                       )}
-                      <p className="text-xs text-slate-400 mt-1">{req.current_team?.name ?? '—'}</p>
+                      <p className="text-xs text-text-muted mt-space-1">{req.current_team?.name ?? '-'}</p>
                     </div>
-                    <span className="text-accent">?</span>
+                    <span className="text-accent">â†’</span>
                     <div className="text-center">
                       {req.requested_team?.logo_league_folder && (
                         <Image
@@ -115,38 +117,40 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                           className="object-contain mx-auto"
                         />
                       )}
-                      <p className="text-xs text-slate-900 font-medium mt-1">{req.requested_team?.name}</p>
+                      <p className="text-xs text-text-primary font-medium mt-space-1">{req.requested_team?.name}</p>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2">
-                    <button
+                  <div className="flex gap-space-2">
+                    <Button
                       onClick={() => handleRequest(req.id, 'approve')}
-                      disabled={loading === req.id}
-                      className="btn-gold text-xs px-4 py-2 disabled:opacity-50"
+                      isLoading={loading === req.id}
+                      variant="primary"
+                      className="text-xs px-space-4 py-space-2"
                     >
-                      {loading === req.id ? '…' : 'Approve'}
-                    </button>
-                    <button
+                      Approve
+                    </Button>
+                    <Button
                       onClick={() => handleRequest(req.id, 'deny')}
-                      disabled={loading === req.id}
-                      className="btn-danger text-xs px-4 py-2 disabled:opacity-50"
+                      isLoading={loading === req.id}
+                      variant="destructive"
+                      className="text-xs px-space-4 py-space-2"
                     >
                       Deny
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </section>
+      </Card>
 
       {/* Broadcast message */}
-      <section className="card p-4">
+      <Card className="p-space-4">
         <h2 className="section-header">Send Notification to All Users</h2>
-        <div className="space-y-3">
+        <div className="space-y-space-3">
           <div>
             <label className="form-label">Title</label>
             <input
@@ -160,49 +164,50 @@ export default function AdminNotificationsClient({ pendingRequests, notification
           <div>
             <label className="form-label">Message</label>
             <textarea
-              className="input-field min-h-[80px] resize-none"
-              placeholder="Your message here…"
+              className="input-field min-h-[space-10] resize-none"
+              placeholder="Your message here"
               value={broadcastMsg.body}
               onChange={(e) => setBroadcastMsg({ ...broadcastMsg, body: e.target.value })}
             />
           </div>
-          <button
+          <Button
             onClick={sendBroadcast}
-            disabled={sending || !broadcastMsg.title || !broadcastMsg.body}
-            className="btn-gold disabled:opacity-40 text-sm"
+            isLoading={sending}
+            disabled={!broadcastMsg.title || !broadcastMsg.body}
+            variant="primary"
+            className="text-sm"
           >
-            {sending ? 'Sending…' : `Send to All ${allUsers.length} Users`}
-          </button>
+            {sending ? 'Sending...' : `Send to All ${allUsers.length} Users`}
+          </Button>
         </div>
-      </section>
+      </Card>
 
       {/* Admin's own notifications */}
-      <section className="card p-4">
+      <Card className="p-space-4">
         <h2 className="section-header">Your Notifications</h2>
         {notifications.length === 0 ? (
-          <p className="text-sm text-slate-500">No notifications.</p>
+          <p className="text-sm text-text-muted">No notifications.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-space-2">
             {notifications.map((n) => (
               <div
                 key={n.id}
-                className={`px-4 py-3 rounded-xl border transition-colors ${
+                className={`px-space-4 py-space-3 rounded-xl border transition-colors ${
                   n.read
-                    ? 'border-slate-200 bg-transparent'
-                    : 'border-accent/30 bg-accent/5 border-l-2 border-l-[var(--color-accent)]'
+                    ? 'border-border bg-transparent'
+                    : 'border-accent/30 bg-accent/5 border-l-2 border-l-accent'
                 }`}
               >
-                <p className="text-sm font-medium text-slate-900">{n.title}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{n.body}</p>
-                <p className="text-xs text-slate-600 mt-1">
+                <p className="text-sm font-medium text-text-primary">{n.title}</p>
+                <p className="text-xs text-text-muted mt-space-0.5">{n.body}</p>
+                <p className="text-xs text-text-secondary mt-space-1">
                   {formatDistanceToNow(parseISO(n.created_at), { addSuffix: true })}
                 </p>
               </div>
             ))}
           </div>
         )}
-      </section>
+      </Card>
     </div>
   )
 }
-
