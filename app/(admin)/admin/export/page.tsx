@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import ExportButton from './ExportButton'
 import ExportControls from './ExportControls'
@@ -346,94 +348,138 @@ export default async function ExportPage({ searchParams }: Props) {
         defaultTypes={selectedTypes}
       />
 
+      {/* Generated cards */}
+      {cards.map((card, i) => {
+        const accent = ACCENT[card.tournament.type] ?? 'var(--color-accent)'
+        const rowEven: React.CSSProperties = { background: 'var(--export-row-bg)', borderRadius: '8px' }
+        const rowOdd: React.CSSProperties = { background: 'transparent' }
 
-        {/* Generated cards */}
-        {cards.map((card, i) => {
-          const accent = ACCENT[card.tournament.type] ?? 'var(--color-accent)'
-          const rowEven: React.CSSProperties = { background: 'var(--export-row-bg)', borderRadius: '8px' }
-          const rowOdd: React.CSSProperties = { background: 'transparent' }
+        const allData = card.type === 'fixtures' ? card.fixtures : card.results
+        const matchdays = Array.from(new Set(allData.map((f: any) => f.matchday).filter(Boolean))).sort((a, b) => a - b)
+        const mdPrefix = matchdays.length === 1 ? `MATCHDAY ${matchdays[0]} ` : ''
 
-          const allData = card.type === 'fixtures' ? card.fixtures : card.results
-          const matchdays = Array.from(new Set(allData.map((f: any) => f.matchday).filter(Boolean))).sort((a, b) => a - b)
-          const mdPrefix = matchdays.length === 1 ? `MATCHDAY ${matchdays[0]} ` : ''
+        const typeLabel =
+          card.type === 'fixtures'
+            ? `${mdPrefix}FIXTURES`
+            : card.type === 'results'
+            ? `${mdPrefix}RESULTS`
+            : card.tournament.type === 'league'
+            ? 'LEAGUE TABLE'
+            : 'GROUP STANDINGS'
 
-          const typeLabel =
-            card.type === 'fixtures'
-              ? `${mdPrefix}FIXTURES`
-              : card.type === 'results'
-              ? `${mdPrefix}RESULTS`
-              : card.tournament.type === 'league'
-              ? 'LEAGUE TABLE'
-              : 'GROUP STANDINGS'
+        const cardId = `export-card-${i}`
+        const filename = `efa-${card.type}-${card.tournament.type}-${selectedDate}.png`
 
-          const cardId = `export-card-${i}`
-          const filename = `efa-${card.type}-${card.tournament.type}-${selectedDate}.png`
+        return (
+          <div key={card.key}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-text-secondary">
+                {card.tournament.name}
+                <span className="font-normal text-text-muted"> — </span>
+                <span className="capitalize">{card.type}</span>
+                {card.type !== 'standings' && (
+                  <span className="font-normal text-text-muted ml-1 text-xs">({formattedDate})</span>
+                )}
+              </p>
+              <ExportButton filename={filename} cardId={cardId} />
+            </div>
 
-          return (
-            <div key={card.key}>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-text-secondary">
-                  {card.tournament.name}
-                  <span className="font-normal text-text-muted"> — </span>
-                  <span className="capitalize">{card.type}</span>
-                  {card.type !== 'standings' && (
-                    <span className="font-normal text-text-muted ml-1 text-xs">({formattedDate})</span>
-                  )}
-                </p>
-                <ExportButton filename={filename} cardId={cardId} />
-              </div>
-
-              <div className="overflow-x-auto pb-space-4">
-                <Card id={cardId} style={cardStyle} className="p-space-8">
-                  {/* Card header */}
-                  <div
-                    style={{
-                      borderBottom: `3px solid ${accent}`,
-                      paddingBottom: '16px',
-                      marginBottom: '24px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div className="overflow-x-auto pb-space-4">
+              <Card id={cardId} style={cardStyle} className="p-space-8">
+                {/* Card header */}
+                <div
+                  style={{
+                    borderBottom: `3px solid ${accent}`,
+                    paddingBottom: '16px',
+                    marginBottom: '24px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div
+                      style={{
+                        width: '44px', height: '44px', borderRadius: '50%',
+                        background: accent, display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontWeight: 900, fontSize: '13px',
+                        color: '#0a1128', letterSpacing: '0.02em', flexShrink: 0,
+                      }}
+                    >
+                      EFA
+                    </div>
+                    <div>
                       <div
                         style={{
-                          width: '44px', height: '44px', borderRadius: '50%',
-                          background: accent, display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', fontWeight: 900, fontSize: '13px',
-                          color: '#0a1128', letterSpacing: '0.02em', flexShrink: 0,
+                          color: accent, fontWeight: 700, fontSize: '10px',
+                          letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px',
                         }}
                       >
-                        EFA
+                        {card.tournament.name}
                       </div>
-                      <div>
-                        <div
-                          style={{
-                            color: accent, fontWeight: 700, fontSize: '10px',
-                            letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px',
-                          }}
-                        >
-                          {card.tournament.name}
-                        </div>
-                        <div
-                          style={{
-                            color: 'var(--export-text)', fontWeight: 900, fontSize: '20px',
-                            lineHeight: 1, letterSpacing: '-0.01em',
-                          }}
-                        >
-                          {typeLabel}
-                        </div>
+                      <div
+                        style={{
+                          color: 'var(--export-text)', fontWeight: 900, fontSize: '20px',
+                          lineHeight: 1, letterSpacing: '-0.01em',
+                        }}
+                      >
+                        {typeLabel}
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* FIXTURES */}
-                  {card.type === 'fixtures' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {card.fixtures.length === 0 ? (
-                        <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
-                          No fixtures found for {formattedDate}
+                {/* FIXTURES */}
+                {card.type === 'fixtures' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {card.fixtures.length === 0 ? (
+                      <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
+                        No fixtures found for {formattedDate}
+                      </div>
+                    ) : (
+                      card.fixtures.map((f: any, fi: number) => (
+                        <div
+                          key={f.id}
+                          style={{
+                            display: 'flex', alignItems: 'center',
+                            ...(fi % 2 === 0 ? rowEven : rowOdd),
+                            padding: '10px 16px',
+                          }}
+                        >
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingRight: '10px' }}>
+                            <span style={{ color: 'var(--export-text)', fontWeight: 600, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {(f.home_team as any)?.name ?? '—'}
+                            </span>
+                            <TeamLogoInline folder={(f.home_team as any)?.logo_league_folder} slug={(f.home_team as any)?.logo_team_slug} />
+                          </div>
+                          <div style={{ color: accent, fontWeight: 900, fontSize: '11px', minWidth: '32px', textAlign: 'center', letterSpacing: '0.05em' }}>
+                            VS
+                          </div>
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '10px' }}>
+                            <TeamLogoInline folder={(f.away_team as any)?.logo_league_folder} slug={(f.away_team as any)?.logo_team_slug} />
+                            <span style={{ color: 'var(--export-text)', fontWeight: 600, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {(f.away_team as any)?.name ?? '—'}
+                            </span>
+                          </div>
                         </div>
-                      ) : (
-                        card.fixtures.map((f: any, fi: number) => (
+                      ))
+                    )}
+                    <div style={{ color: 'var(--export-muted)', fontSize: '11px', textAlign: 'center', marginTop: '10px', letterSpacing: '0.04em' }}>
+                      {formattedDate}
+                    </div>
+                  </div>
+                )}
+
+                {/* RESULTS */}
+                {card.type === 'results' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {card.results.length === 0 ? (
+                      <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
+                        No results found for {formattedDate}
+                      </div>
+                    ) : (
+                      card.results.map((f: any, fi: number) => {
+                        const r = f.result
+                        const homeWon = r && r.home_score > r.away_score
+                        const awayWon = r && r.away_score > r.home_score
+                        return (
                           <div
                             key={f.id}
                             style={{
@@ -443,151 +489,104 @@ export default async function ExportPage({ searchParams }: Props) {
                             }}
                           >
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingRight: '10px' }}>
-                              <span style={{ color: 'var(--export-text)', fontWeight: 600, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ color: homeWon ? 'var(--export-text)' : 'var(--export-muted)', fontWeight: homeWon ? 700 : 400, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {(f.home_team as any)?.name ?? '—'}
                               </span>
                               <TeamLogoInline folder={(f.home_team as any)?.logo_league_folder} slug={(f.home_team as any)?.logo_team_slug} />
                             </div>
-                            <div style={{ color: accent, fontWeight: 900, fontSize: '11px', minWidth: '32px', textAlign: 'center', letterSpacing: '0.05em' }}>
-                              VS
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '72px', justifyContent: 'center' }}>
+                              <span style={{ color: homeWon ? accent : 'var(--export-text)', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.home_score ?? '?'}</span>
+                              <span style={{ color: 'var(--export-score-divider)', fontWeight: 700, fontSize: '13px' }}>–</span>
+                              <span style={{ color: awayWon ? accent : 'var(--export-text)', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.away_score ?? '?'}</span>
                             </div>
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '10px' }}>
                               <TeamLogoInline folder={(f.away_team as any)?.logo_league_folder} slug={(f.away_team as any)?.logo_team_slug} />
-                              <span style={{ color: 'var(--export-text)', fontWeight: 600, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ color: awayWon ? 'var(--export-text)' : 'var(--export-muted)', fontWeight: awayWon ? 700 : 400, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {(f.away_team as any)?.name ?? '—'}
                               </span>
                             </div>
                           </div>
-                        ))
-                      )}
+                        )
+                      })
+                    )}
+                    {card.results.length > 0 && (
                       <div style={{ color: 'var(--export-muted)', fontSize: '11px', textAlign: 'center', marginTop: '10px', letterSpacing: '0.04em' }}>
                         {formattedDate}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                )}
 
-                  {/* RESULTS */}
-                  {card.type === 'results' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {card.results.length === 0 ? (
-                        <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
-                          No results found for {formattedDate}
-                        </div>
-                      ) : (
-                        card.results.map((f: any, fi: number) => {
-                          const r = f.result
-                          const homeWon = r && r.home_score > r.away_score
-                          const awayWon = r && r.away_score > r.home_score
-                          return (
-                            <div
-                              key={f.id}
-                              style={{
-                                display: 'flex', alignItems: 'center',
-                                ...(fi % 2 === 0 ? rowEven : rowOdd),
-                                padding: '10px 16px',
-                              }}
-                            >
-                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingRight: '10px' }}>
-                                <span style={{ color: homeWon ? 'var(--export-text)' : 'var(--export-muted)', fontWeight: homeWon ? 700 : 400, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {(f.home_team as any)?.name ?? '—'}
-                                </span>
-                                <TeamLogoInline folder={(f.home_team as any)?.logo_league_folder} slug={(f.home_team as any)?.logo_team_slug} />
+                {/* STANDINGS (league) */}
+                {card.type === 'standings' && card.tournament.type === 'league' && (
+                  <>
+                    <StandingsTable rows={card.standings} mode="league" accent={accent} />
+                    <div style={{ display: 'flex', gap: '16px', marginTop: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
+                        <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>UCL (1–12)</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
+                        <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Europa (13–20)</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* STANDINGS (group) */}
+                {card.type === 'standings' && card.tournament.type !== 'league' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    {Object.keys(card.groupStandings).length === 0 ? (
+                      <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
+                        No standings data available
+                      </div>
+                    ) : (
+                      <>
+                        {Object.entries(card.groupStandings)
+                          .sort()
+                          .map(([group, rows]) => (
+                            <div key={group}>
+                              <div
+                                style={{
+                                  color: accent, fontWeight: 700, fontSize: '11px',
+                                  letterSpacing: '0.1em', marginBottom: '10px',
+                                }}
+                              >
+                                GROUP {group}
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '72px', justifyContent: 'center' }}>
-                                <span style={{ color: homeWon ? accent : 'var(--export-text)', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.home_score ?? '?'}</span>
-                                <span style={{ color: 'var(--export-score-divider)', fontWeight: 700, fontSize: '13px' }}>–</span>
-                                <span style={{ color: awayWon ? accent : 'var(--export-text)', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.away_score ?? '?'}</span>
-                              </div>
-                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '10px' }}>
-                                <TeamLogoInline folder={(f.away_team as any)?.logo_league_folder} slug={(f.away_team as any)?.logo_team_slug} />
-                                <span style={{ color: awayWon ? 'var(--export-text)' : 'var(--export-muted)', fontWeight: awayWon ? 700 : 400, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {(f.away_team as any)?.name ?? '—'}
-                                </span>
-                              </div>
+                              <StandingsTable rows={rows} mode="group" accent={accent} />
                             </div>
-                          )
-                        })
-                      )}
-                      {card.results.length > 0 && (
-                        <div style={{ color: 'var(--export-muted)', fontSize: '11px', textAlign: 'center', marginTop: '10px', letterSpacing: '0.04em' }}>
-                          {formattedDate}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* STANDINGS (league) */}
-                  {card.type === 'standings' && card.tournament.type === 'league' && (
-                    <>
-                      <StandingsTable rows={card.standings} mode="league" accent={accent} />
-                      <div style={{ display: 'flex', gap: '16px', marginTop: '14px' }}>
+                          ))}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
-                          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>UCL (1–12)</span>
+                          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top 2 from each group qualify</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
-                          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Europa (13–20)</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                      </>
+                    )}
+                  </div>
+                )}
 
-                  {/* STANDINGS (group) */}
-                  {card.type === 'standings' && card.tournament.type !== 'league' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                      {Object.keys(card.groupStandings).length === 0 ? (
-                        <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
-                          No standings data available
-                        </div>
-                      ) : (
-                        <>
-                          {Object.entries(card.groupStandings)
-                            .sort()
-                            .map(([group, rows]) => (
-                              <div key={group}>
-                                <div
-                                  style={{
-                                    color: accent, fontWeight: 700, fontSize: '11px',
-                                    letterSpacing: '0.1em', marginBottom: '10px',
-                                  }}
-                                >
-                                  GROUP {group}
-                                </div>
-                                <StandingsTable rows={rows} mode="group" accent={accent} />
-                              </div>
-                            ))}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
-                            <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top 2 from each group qualify</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Footer */}
-                  <div
-                    style={{
-                      borderTop: '1px solid var(--export-divider)',
-                      marginTop: '24px', paddingTop: '14px',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    }}
-                  >
-                    <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px', letterSpacing: '0.06em' }}>
-                      EFA — EFOOTBALL FEDERAL ASSOCIATION
-                    </div>
-                    <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px' }}>
-                      efa-fxyk.vercel.app
-                    </div>
+                {/* Footer */}
+                <div
+                  style={{
+                    borderTop: '1px solid var(--export-divider)',
+                    marginTop: '24px', paddingTop: '14px',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}
+                >
+                  <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px', letterSpacing: '0.06em' }}>
+                    EFA — EFOOTBALL FEDERAL ASSOCIATION
+                  </div>
+                  <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px' }}>
+                    efa-fxyk.vercel.app
                   </div>
                 </div>
-              </div>
+              </Card>
             </div>
           )
         })}
       </div>
-    </>
+    </div>
   )
 }
-
