@@ -23,13 +23,13 @@
   }
 
   .btn-gold {
-    @apply bg-color-accent text-bg-surface font-semibold px-4 py-2.5 rounded-lg
-           hover:bg-color-accent-hover transition-all duration-fast text-sm active:scale-95;
+    @apply bg-accent text-bg-surface font-semibold px-4 py-2.5 rounded-lg
+           hover:bg-accent-hover transition-all duration-fast text-sm active:scale-95;
   }
 
   .btn-outline {
     @apply border border-border text-text-secondary font-medium px-4 py-2.5 rounded-lg
-           hover:border-color-accent/50 hover:text-color-accent transition-all duration-fast text-sm active:scale-95;
+           hover:border-accent/50 hover:text-accent transition-all duration-fast text-sm active:scale-95;
   }
 
   .btn-danger {
@@ -39,7 +39,7 @@
 
   .input-field {
     @apply w-full bg-bg-surface border border-border rounded-lg px-4 py-3 text-text-primary
-           placeholder-text-muted focus:outline-none focus:border-color-accent/60 focus:ring-1 focus:ring-color-accent/30
+           placeholder-text-muted focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30
            transition-all duration-fast text-sm;
   }
 
@@ -48,7 +48,7 @@
   }
 
   .section-header {
-    @apply text-lg font-bold text-text-primary mb-4 flex items-center gap-space-2;
+    @apply text-lg font-bold text-text-primary mb-4 flex items-center gap-3;
   }
 }
 
