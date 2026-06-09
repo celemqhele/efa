@@ -469,9 +469,6 @@ export default async function ExportPage({ searchParams }: Props) {
           const cardId = `export-card-${i}`
           const filename = `efa-${card.type}-${card.tournament.type}-${selectedDate}.png`
 
-import { Card } from '@/components/ui/Card'
-// ...
-
           return (
             <div key={card.key}>
               <div className="flex items-center justify-between mb-3">
