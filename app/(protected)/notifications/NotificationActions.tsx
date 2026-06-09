@@ -29,7 +29,7 @@ export function MarkAllReadButton({ disabled }: { disabled?: boolean }) {
       disabled={disabled || loading}
       className="btn-outline text-xs disabled:opacity-40 disabled:cursor-not-allowed"
     >
-      {loading ? 'Marking…' : '? Mark all read'}
+      {loading ? 'Markingâ€¦' : '? Mark all read'}
     </button>
   )
 }
@@ -182,7 +182,7 @@ export function TeamChangeRequestRow({
           <span className="text-accent">{request.requested_team?.name ?? '?'}</span>
         </p>
         <p className="text-xs text-slate-500 mt-0.5">
-          {request.current_team ? `Currently: ${request.current_team.name}` : 'No current team'} · {dateStr}
+          {request.current_team ? `Currently: ${request.current_team.name}` : 'No current team'} Â· {dateStr}
         </p>
       </div>
       <div className="flex gap-2 shrink-0">
@@ -191,14 +191,14 @@ export function TeamChangeRequestRow({
           disabled={loading !== null}
           className="px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-semibold hover:bg-green-500/30 transition-colors disabled:opacity-50"
         >
-          {loading === 'approve' ? '…' : 'Approve'}
+          {loading === 'approve' ? 'â€¦' : 'Approve'}
         </button>
         <button
           onClick={() => act('deny')}
           disabled={loading !== null}
           className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-500/30 transition-colors disabled:opacity-50"
         >
-          {loading === 'deny' ? '…' : 'Deny'}
+          {loading === 'deny' ? 'â€¦' : 'Deny'}
         </button>
       </div>
     </div>
