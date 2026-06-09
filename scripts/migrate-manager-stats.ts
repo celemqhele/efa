@@ -3,14 +3,17 @@ import { createAdminClient } from '@/lib/supabase/server'
 async function migrateManagerStats() {
   const db = await createAdminClient()
 
-  // 1. Fetch Audit Logs
-  const { data: logs } = await db
+  // 1. Fetch Audit Logs relevant to team management
+  const { data: logs, error: logError } = await db
     .from('audit_log')
     .select('*')
-    .or('action.ilike.%manager%,action.ilike.%claim%')
+    .in('action', ['assign_manager', 'claim_team', 'sack_manager', 'auto_sack_manager'])
     .order('created_at', { ascending: true })
 
-  if (!logs) return
+  if (logError) {
+    console.error('Error fetching logs:', logError)
+    return
+  }
 
   // 2. Build Tenures Timeline
   const currentTenures: Record<string, any> = {}
@@ -41,6 +44,7 @@ async function migrateManagerStats() {
   // 3. Aggregate Stats and Update Tenures
   for (const tenure of [...completedTenures, ...Object.values(currentTenures)]) {
     // Correctly filter fixtures for the team
+    console.log(`Processing tenure: ${tenure.team_id} for manager ${tenure.manager_id}`)
     const { data: fixtures } = await db
       .from('fixtures')
       .select('id, home_team_id, away_team_id, results(home_score, away_score, override_reason)')
@@ -48,6 +52,8 @@ async function migrateManagerStats() {
       .gte('scheduled_date', tenure.started_at)
       .lte('scheduled_date', tenure.ended_at || new Date().toISOString())
       .eq('status', 'confirmed')
+
+    console.log(`Found ${fixtures?.length || 0} fixtures`)
 
     let wins = 0, draws = 0, losses = 0, gf = 0, ga = 0
 
@@ -67,10 +73,17 @@ async function migrateManagerStats() {
       else losses++
     }
 
-    await (db.from('manager_tenures' as any)).upsert({
+    // Get username
+    const { data: profile } = await db.from('profiles').select('username').eq('id', tenure.manager_id).single()
+    const managerUsername = profile?.username || 'Unknown'
+
+    const { error } = await (db.from('manager_tenures' as any)).insert({
       ...tenure,
+      manager_username: managerUsername,
       wins, draws, losses, goals_for: gf, goals_against: ga
-    }, { onConflict: 'manager_id,team_id,started_at' })
+    })
+    if (error) console.error('Insert error:', error)
+    else console.log('Tenure inserted successfully')
   }
 
   console.log('Migration completed.')
