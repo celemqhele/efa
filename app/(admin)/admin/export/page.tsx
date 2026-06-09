@@ -333,46 +333,19 @@ export default async function ExportPage({ searchParams }: Props) {
   }
 
   return (
-    <>
-      <style>{`
-        html:not(.dark) .export-page {
-          --export-card-bg: #ffffff;
-          --export-row-bg: #f8fafc;
-          --export-text: #0f172a;
-          --export-muted: #64748b;
-          --export-muted-strong: #475569;
-          --export-soft-text: #64748b;
-          --export-score-divider: #94a3b8;
-          --export-divider: #e2e8f0;
-          --export-green: #16a34a;
-          --export-red: #dc2626;
-        }
-        html.dark .export-page {
-          --export-card-bg: #0a1128;
-          --export-row-bg: #0f1a3d;
-          --export-text: #ffffff;
-          --export-muted: #64748b;
-          --export-muted-strong: #475569;
-          --export-soft-text: #94a3b8;
-          --export-score-divider: #334155;
-          --export-divider: #1e2d5a;
-          --export-green: #4ade80;
-          --export-red: #f87171;
-        }
-      `}</style>
+    <div className="space-y-space-6">
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">Export</h1>
+        <p className="text-text-muted text-sm mt-space-1">Generate shareable PNG cards for WhatsApp</p>
+      </div>
 
-      <div className="export-page space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Export</h1>
-          <p className="text-slate-400 text-sm mt-1">Generate shareable PNG cards for WhatsApp</p>
-        </div>
+      <ExportControls
+        tournaments={tournaments ?? []}
+        defaultDate={selectedDate}
+        defaultTournamentIds={selectedTournamentIds}
+        defaultTypes={selectedTypes}
+      />
 
-        <ExportControls
-          tournaments={tournaments ?? []}
-          defaultDate={selectedDate}
-          defaultTournamentIds={selectedTournamentIds}
-          defaultTypes={selectedTypes}
-        />
 
         {/* Generated cards */}
         {cards.map((card, i) => {
