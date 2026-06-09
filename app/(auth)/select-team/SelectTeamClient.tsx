@@ -64,7 +64,7 @@ export default function SelectTeamClient({ clubs }: Props) {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent to-[#a07830] flex items-center justify-center mb-3">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center mb-3">
             <span className="text-bg-base font-black text-lg">EFA</span>
           </div>
           <h1 className="text-2xl font-bold text-text-primary">Choose Your Club</h1>

@@ -733,7 +733,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
       )}
 
       {/* ── H2H vs All ───────────────────────────────────────────────────── */}
-      <details className="card p-space-5 group border rounded-lg bg-bg-surface border-border">
+      <Card className="p-space-5 group">
         <summary className="section-header cursor-pointer list-none flex items-center justify-between">
           <span className="flex items-center gap-space-2">
             <span className="text-accent">⚔️</span> Head-to-Head Record
