@@ -216,6 +216,16 @@ function StandingsTable({
   )
 }
 
+type CardData = {
+  key: string
+  tournament: { id: string; name: string; type: string }
+  type: ExportType
+  fixtures: any[]
+  results: any[]
+  standings: any[]
+  groupStandings: Record<string, any[]>
+}
+
 export default async function ExportPage({ searchParams }: Props) {
   const sp = searchParams
   const supabase = await createClient()
@@ -247,29 +257,19 @@ export default async function ExportPage({ searchParams }: Props) {
   const dateStart = `${selectedDate}T00:00:00`
   const dateEnd = `${selectedDate}T23:59:59`
 
-  type CardData = {
-    key: string
-    tournament: { id: string; name: string; type: string }
-    type: ExportType
-    fixtures: any[]
-    results: any[]
-    standings: any[]
-    groupStandings: Record<string, any[]>
-  }
-
   const cards: CardData[] = []
 
   for (const tournamentId of selectedTournamentIds) {
     const tournament = tournaments?.find((t) => t.id === tournamentId)
     if (!tournament) continue
 
-    for (const type of selectedTypes) {
+    for (const cardType of selectedTypes) {
       let fixtures: any[] = []
       let results: any[] = []
       let standings: any[] = []
       let groupStandings: Record<string, any[]> = {}
 
-      if (type === 'fixtures') {
+      if (cardType === 'fixtures') {
         const { data } = await supabase
           .from('fixtures')
           .select(
@@ -285,7 +285,7 @@ export default async function ExportPage({ searchParams }: Props) {
         fixtures = data ?? []
       }
 
-      if (type === 'results') {
+      if (cardType === 'results') {
         const { data: ftFixtures } = await supabase
           .from('fixtures')
           .select(
@@ -317,13 +317,13 @@ export default async function ExportPage({ searchParams }: Props) {
           .filter((f: any) => f.result)
       }
 
-      if (type === 'standings') {
+      if (cardType === 'standings') {
         const { leagueStandings, groupStandings: gs } = await buildLiveStandings(supabase, tournamentId, tournament.type)
         standings = leagueStandings
         groupStandings = gs
       }
 
-      cards.push({ key: `${tournamentId}-${type}`, tournament, type, fixtures, results, standings, groupStandings })
+      cards.push({ key: `${tournamentId}-${cardType}`, tournament, type: cardType, fixtures, results, standings, groupStandings })
     }
   }
 
