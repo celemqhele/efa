@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/Button'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 export default function DeleteTournamentButton({ tournamentId, tournamentName }: {
   tournamentId: string
   tournamentName: string
 }) {
-  const [confirming, setConfirming] = useState(false)
+  const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -23,41 +25,35 @@ export default function DeleteTournamentButton({ tournamentId, tournamentName }:
         router.refresh()
       } else {
         const { error } = await res.json()
-        alert(`Failed to delete: ${error}`)
+        console.error(`Failed to delete: ${error}`)
       }
     } finally {
       setLoading(false)
-      setConfirming(false)
+      setOpen(false)
     }
   }
 
-  if (confirming) {
-    return (
-      <div className="flex gap-1.5">
-        <button
-          onClick={handleDelete}
-          disabled={loading}
-          className="flex-1 text-xs px-2 py-1.5 rounded border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-        >
-          {loading ? 'Deleting…' : 'Confirm delete'}
-        </button>
-        <button
-          onClick={() => setConfirming(false)}
-          className="text-xs px-2 py-1.5 rounded border border-slate-200 text-slate-400 hover:border-accent/30 transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    )
-  }
-
   return (
-    <button
-      onClick={() => setConfirming(true)}
-      className="btn-outline text-xs flex-1 text-center text-red-400 border-red-500/30 hover:border-red-500/60 hover:bg-red-500/5"
-    >
-      Delete
-    </button>
+    <>
+      <Button
+        variant="destructive"
+        className="text-xs flex-1"
+        onClick={() => setOpen(true)}
+      >
+        Delete
+      </Button>
+
+      <ConfirmDialog
+        open={open}
+        title="Delete Tournament?"
+        message={`Are you sure you want to delete "${tournamentName}"? This action cannot be undone.`}
+        confirmLabel={loading ? 'Deleting...' : 'Delete'}
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setOpen(false)}
+      />
+    </>
   )
 }
+
 

@@ -60,20 +60,20 @@ export default function SelectTeamClient({ clubs }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8">
+    <div className="min-h-screen bg-bg-base px-4 py-8">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent to-[#a07830] flex items-center justify-center mb-3">
-            <span className="text-[#0a1128] font-black text-lg">EFA</span>
+            <span className="text-bg-base font-black text-lg">EFA</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Choose Your Club</h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-text-primary">Choose Your Club</h1>
+          <p className="text-text-secondary text-sm mt-1">
             {available.length} club{available.length !== 1 ? 's' : ''} available to manage
           </p>
         </div>
 
-        <div className="card p-6 space-y-5">
+        <Card className="p-6 space-y-5">
           {/* Search */}
           <input
             type="search"
@@ -84,7 +84,7 @@ export default function SelectTeamClient({ clubs }: Props) {
           />
 
           {filtered.length === 0 && (
-            <p className="text-slate-500 text-sm text-center py-6">No clubs found.</p>
+            <p className="text-text-secondary text-sm text-center py-6">No clubs found.</p>
           )}
 
           {/* Available */}
@@ -138,24 +138,24 @@ export default function SelectTeamClient({ clubs }: Props) {
                   }}
                 />
               ) : (
-                <div className="w-14 h-14 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-bold shrink-0">
+                <div className="w-14 h-14 rounded bg-bg-base flex items-center justify-center text-text-muted text-xs font-bold shrink-0">
                   ?
                 </div>
               )}
               <div>
-                <p className="font-semibold text-slate-900">{selected.name}</p>
-                <p className="text-xs text-slate-500">Available to manage</p>
+                <p className="font-semibold text-text-primary">{selected.name}</p>
+                <p className="text-xs text-text-secondary">Available to manage</p>
               </div>
             </div>
           )}
 
           {error && (
-            <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <p className="text-feedback-error text-sm bg-feedback-error/10 border border-feedback-error/20 rounded-lg px-3 py-2">
               {error}
             </p>
           )}
 
-          <button
+          <Button
             onClick={handleConfirm}
             disabled={!selected || loading}
             className="btn-gold w-full justify-center py-3 disabled:opacity-40"
@@ -165,8 +165,8 @@ export default function SelectTeamClient({ clubs }: Props) {
               : selected
               ? `Confirm — ${selected.name}`
               : 'Select a club first'}
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
     </div>
   )
@@ -184,17 +184,18 @@ function TeamCard({
   onSelect: () => void
 }) {
   return (
-    <button
+    <Button
       onClick={onSelect}
       disabled={taken}
+      variant="ghost"
       className={`
-        flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all text-left
+        flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all text-left h-auto
         ${
           taken
-            ? 'cursor-not-allowed border-slate-200 bg-slate-50'
+            ? 'cursor-not-allowed border-border bg-bg-base'
             : isSelected
             ? 'border-accent bg-accent/10 shadow-[0_0_12px_rgba(201,168,76,0.2)]'
-            : 'border-slate-200 bg-white hover:border-accent/40 hover:bg-accent/5 cursor-pointer'
+            : 'border-border bg-bg-surface hover:border-accent/40 hover:bg-accent/5 cursor-pointer'
         }
       `}
     >
@@ -211,16 +212,17 @@ function TeamCard({
             }}
           />
         ) : (
-          <div className="w-12 h-12 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-bold">
+          <div className="w-12 h-12 rounded bg-bg-base flex items-center justify-center text-text-muted text-xs font-bold">
             ?
           </div>
         )}
       </div>
-      <span className="text-[10px] text-center leading-tight text-slate-700 font-medium line-clamp-2 w-full">
+      <span className="text-[10px] text-center leading-tight text-text-secondary font-medium line-clamp-2 w-full">
         {club.name}
       </span>
-      {taken && <span className="text-[9px] text-red-400 font-medium">Taken</span>}
-    </button>
+      {taken && <span className="text-[9px] text-feedback-error/70 font-medium">Taken</span>}
+    </Button>
   )
 }
+
 

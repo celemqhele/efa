@@ -6,6 +6,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
+import { Card } from '@/components/ui/Card'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,11 +15,11 @@ interface PageProps {
 }
 
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
-  scheduled: { label: 'Scheduled', pill: 'bg-slate-500/20 text-slate-500 border-slate-500/30' },
-  awaiting_confirmation: { label: 'Awaiting', pill: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' },
-  confirmed: { label: 'FT', pill: 'bg-green-500/20 text-green-600 border-green-500/30' },
-  completed: { label: 'FT', pill: 'bg-green-500/20 text-green-600 border-green-500/30' },
-  abandoned: { label: 'Abandoned', pill: 'bg-red-500/20 text-red-500 border-red-500/30' },
+  scheduled: { label: 'Scheduled', pill: 'bg-text-muted/20 text-text-muted border-text-muted/30' },
+  awaiting_confirmation: { label: 'Awaiting', pill: 'bg-feedback-warning/20 text-feedback-warning border-feedback-warning/30' },
+  confirmed: { label: 'FT', pill: 'bg-feedback-success/20 text-feedback-success border-feedback-success/30' },
+  completed: { label: 'FT', pill: 'bg-feedback-success/20 text-feedback-success border-feedback-success/30' },
+  abandoned: { label: 'Abandoned', pill: 'bg-feedback-error/20 text-feedback-error border-feedback-error/30' },
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -29,7 +30,7 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_ACCENT: Record<string, string> = {
-  league: 'text-[#c9a84c] border-[#c9a84c]/40 bg-[#c9a84c]/5',
+  league: 'text-accent border-accent/40 bg-accent/5',
   ucl: 'text-blue-500 border-blue-500/40 bg-blue-500/5',
   europa: 'text-orange-500 border-orange-500/40 bg-orange-500/5',
   super_cup: 'text-purple-500 border-purple-500/40 bg-purple-500/5',
@@ -104,7 +105,6 @@ export default async function TeamFixturesPage({ params }: PageProps) {
   }
 
   // Split into upcoming and past
-  const now = new Date()
   const upcoming = (allFixtures ?? [])
     .filter((f: any) => f.status === 'scheduled' || f.status === 'awaiting_confirmation')
     .reverse() // Most recent upcoming first
@@ -136,23 +136,23 @@ export default async function TeamFixturesPage({ params }: PageProps) {
 
     let resultBadge: React.ReactNode = null
     if (won) {
-      resultBadge = <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-green-500/20 text-green-600 border border-green-500/30">W</span>
+      resultBadge = <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-feedback-success/20 text-feedback-success border border-feedback-success/30">W</span>
     } else if (lost) {
-      resultBadge = <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/30">L</span>
+      resultBadge = <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-feedback-error/20 text-feedback-error border border-feedback-error/30">L</span>
     } else if (drew) {
-      resultBadge = <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-500 border border-slate-500/30">D</span>
+      resultBadge = <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted border border-text-muted/30">D</span>
     }
 
     return (
       <Link
         href={result ? `/results/${result.id}` : `/fixtures/${f.id}`}
-        className="card flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-black/[0.03] transition-all"
+        className="flex items-center gap-3 px-4 py-3 border border-border rounded-lg bg-bg-surface hover:border-accent/30 hover:bg-black/[0.03] transition-all"
       >
-        <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-slate-500 border-slate-200'}`}>
+        <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-text-muted border-border'}`}>
           {tournamentLabel}
         </div>
 
-        <div className="text-xs text-slate-500 font-mono shrink-0 w-8 text-center">
+        <div className="text-xs text-text-muted font-mono shrink-0 w-8 text-center">
           {isHome ? 'vs' : '@'}
         </div>
 
@@ -165,21 +165,21 @@ export default async function TeamFixturesPage({ params }: PageProps) {
             className="w-8 h-8 shrink-0"
           />
         ) : (
-          <div className="w-8 h-8 rounded bg-slate-200 shrink-0 flex items-center justify-center text-[10px] text-slate-500">?</div>
+          <div className="w-8 h-8 rounded bg-bg-base shrink-0 flex items-center justify-center text-[10px] text-text-muted">?</div>
         )}
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900 truncate">
+          <p className="text-sm font-semibold text-text-primary truncate">
             {opponent?.name ?? 'TBC'}
           </p>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <p className="text-[10px] text-text-muted mt-0.5">
             {formatWhen(f.scheduled_date)}
           </p>
         </div>
 
         <div className="text-right shrink-0 flex flex-col items-end gap-1">
           {result ? (
-            <span className="text-base font-black text-slate-900 tabular-nums">
+            <span className="text-base font-black text-text-primary tabular-nums">
               {myScore}–{oppScore}
             </span>
           ) : (
@@ -199,7 +199,7 @@ export default async function TeamFixturesPage({ params }: PageProps) {
       <div className="flex items-center gap-4">
         <Link 
           href={`/teams/${id}`}
-          className="w-10 h-10 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors"
+          className="w-10 h-10 rounded-lg flex items-center justify-center border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors"
         >
           ‹
         </Link>
@@ -212,23 +212,23 @@ export default async function TeamFixturesPage({ params }: PageProps) {
             className="w-12 h-12"
           />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Fixtures & Results</h1>
-            <p className="text-sm text-[#c9a84c] font-medium">{team.name}</p>
+            <h1 className="text-2xl font-bold text-text-primary">Fixtures & Results</h1>
+            <p className="text-sm text-accent font-medium">{team.name}</p>
           </div>
         </div>
       </div>
 
       {/* Upcoming */}
       <section className="space-y-3">
-        <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-gold" />
+        <h2 className="text-xs font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-accent" />
           Upcoming
-          <span className="ml-auto text-slate-400 font-normal">{upcoming.length}</span>
+          <span className="ml-auto text-text-muted font-normal">{upcoming.length}</span>
         </h2>
         {upcoming.length === 0 ? (
-          <div className="card p-8 text-center text-sm text-slate-500">
+          <Card className="p-8 text-center text-sm text-text-muted">
             No upcoming fixtures scheduled.
-          </div>
+          </Card>
         ) : (
           <div className="space-y-2">
             {upcoming.map((f: any) => <FixtureRow key={f.id} f={f} />)}
@@ -238,15 +238,15 @@ export default async function TeamFixturesPage({ params }: PageProps) {
 
       {/* Past Results */}
       <section className="space-y-3">
-        <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-green-500" />
+        <h2 className="text-xs font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-feedback-success" />
           Past Results
-          <span className="ml-auto text-slate-400 font-normal">{past.length}</span>
+          <span className="ml-auto text-text-muted font-normal">{past.length}</span>
         </h2>
         {past.length === 0 ? (
-          <div className="card p-8 text-center text-sm text-slate-500">
+          <Card className="p-8 text-center text-sm text-text-muted">
             No past results on record.
-          </div>
+          </Card>
         ) : (
           <div className="space-y-2">
             {past.map((f: any) => <FixtureRow key={f.id} f={f} />)}

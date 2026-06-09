@@ -5,6 +5,8 @@ import PageWrapper from '@/components/ui/PageWrapper'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +47,6 @@ export default async function HomePage() {
     : { data: null }
 
   // Upcoming fixtures — find next date batch for user's team (or all if no team)
-  // Build OR filter covering all of the user's team rows across phases
   const teamOrFilter = userTeamIds.length > 0
     ? userTeamIds.flatMap(id => [`home_team_id.eq.${id}`, `away_team_id.eq.${id}`]).join(',')
     : null
@@ -89,8 +90,7 @@ export default async function HomePage() {
     upcomingFixtures = (data ?? []) as any[]
   }
 
-  // Latest results — personal to the user's team(s). For not-logged-in or
-  // teamless users, fall back to "any" so the section still has content.
+  // Latest results
   let latestResults: any[] = []
   if (userTeamIds.length > 0) {
     const teamOrFilterResults = userTeamIds
@@ -148,50 +148,50 @@ export default async function HomePage() {
   return (
     <PageWrapper>
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-white dark:from-[#0f1a3d] dark:to-[#0a1128] border border-slate-200 dark:border-navy-border p-6 mb-6">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(201,168,76,0.08),transparent_70%)]" />
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-bg-surface to-bg-base border border-border p-space-6 mb-space-6 shadow-sm">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-accent),transparent_70%)] opacity-5" />
         <div className="relative">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-[#a07830] flex items-center justify-center">
-              <span className="text-[#0a1128] font-black text-sm">EFA</span>
+          <div className="flex items-center gap-space-3 mb-space-2">
+            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+              <span className="text-bg-base font-black text-sm">EFA</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Efootball Federal Association</h1>
+              <h1 className="text-xl font-bold text-text-primary">Efootball Federal Association</h1>
               <p className="text-xs text-accent">Season 2025/26 — Live</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <Link href="/standings" className="btn-gold text-xs">View Standings</Link>
-            <Link href="/fixtures" className="btn-outline text-xs">Fixtures</Link>
+          <div className="flex flex-wrap gap-space-2 mt-space-4">
+            <Button as={Link} href="/standings" variant="primary" className="text-xs px-space-4">View Standings</Button>
+            <Button as={Link} href="/fixtures" variant="secondary" className="text-xs px-space-4">Fixtures</Button>
           </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-space-6">
         {/* Left column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-space-6">
           {/* Upcoming Fixtures */}
-          <section className="card p-4">
-            <div className="flex items-center justify-between mb-3">
+          <Card className="p-space-4">
+            <div className="flex items-center justify-between mb-space-3">
               <div>
                 <h2 className="section-header mb-0">Upcoming Fixtures</h2>
                 {nextDate && (
                   <p className="text-xs text-accent mt-0.5">
                     {format(parseISO(nextDate), 'EEEE, d MMMM yyyy')}
-                    {userTeam && <span className="text-slate-500 ml-1">· {userTeam.name}</span>}
+                    {userTeam && <span className="text-text-muted ml-1">· {userTeam.name}</span>}
                   </p>
                 )}
               </div>
-              <Link href="/fixtures" className="text-xs text-accent hover:text-[#e0c06a]">View all →</Link>
+              <Link href="/fixtures" className="text-xs text-accent hover:text-accent-hover font-medium">View all →</Link>
             </div>
 
             {!upcomingFixtures.length ? (
-              <p className="text-sm text-slate-500 py-4 text-center">No upcoming fixtures</p>
+              <p className="text-sm text-text-muted py-space-4 text-center">No upcoming fixtures</p>
             ) : (
-              <div className="divide-y divide-slate-200">
+              <div className="divide-y divide-border">
                 {upcomingFixtures.map((f: any) => (
-                  <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-3 gap-3 hover:bg-black/5 -mx-4 px-4 transition-colors">
-                    <div className="flex-1 flex items-center gap-2">
+                  <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-space-3 gap-space-3 hover:bg-bg-base/50 -mx-space-4 px-space-4 transition-colors">
+                    <div className="flex-1 flex items-center gap-space-2">
                       {f.home_team?.logo_league_folder && (
                         <TeamLogo
                           leagueFolder={f.home_team.logo_league_folder}
@@ -201,29 +201,29 @@ export default async function HomePage() {
                           className="w-7 h-7 shrink-0"
                         />
                       )}
-                      <span className="text-sm font-medium text-slate-900 truncate">{f.home_team?.name}</span>
+                      <span className="text-sm font-medium text-text-primary truncate">{f.home_team?.name}</span>
                     </div>
 
                     <div className="text-center min-w-[60px]">
                       {f.results?.[0] ? (
-                        <span className="text-slate-900 font-bold text-sm">
+                        <span className="text-text-primary font-bold text-sm">
                           {f.results[0].home_score} – {f.results[0].away_score}
                         </span>
                       ) : (
                         <span className="text-xs text-accent font-medium">vs</span>
                       )}
                       <div className={`text-[10px] mt-0.5 ${
-                        f.status === 'confirmed' ? 'text-green-400' :
-                        f.status === 'awaiting_confirmation' ? 'text-yellow-400' :
-                        'text-slate-500'
+                        f.status === 'confirmed' ? 'text-feedback-success' :
+                        f.status === 'awaiting_confirmation' ? 'text-feedback-warning' :
+                        'text-text-muted'
                       }`}>
                         {f.status === 'confirmed' ? 'FT' :
                          f.status === 'awaiting_confirmation' ? 'Pending' : ''}
                       </div>
                     </div>
 
-                    <div className="flex-1 flex items-center justify-end gap-2">
-                      <span className="text-sm font-medium text-slate-900 truncate text-right">{f.away_team?.name}</span>
+                    <div className="flex-1 flex items-center justify-end gap-space-2">
+                      <span className="text-sm font-medium text-text-primary truncate text-right">{f.away_team?.name}</span>
                       {f.away_team?.logo_league_folder && (
                         <TeamLogo
                           leagueFolder={f.away_team.logo_league_folder}
@@ -238,35 +238,35 @@ export default async function HomePage() {
                 ))}
               </div>
             )}
-          </section>
+          </Card>
 
           {/* Latest Results */}
-          <section className="card p-4">
-            <div className="flex items-center justify-between mb-3">
+          <Card className="p-space-4">
+            <div className="flex items-center justify-between mb-space-3">
               <h2 className="section-header mb-0">Latest Results</h2>
-              <Link href="/results" className="text-xs text-accent hover:text-[#e0c06a]">View all →</Link>
+              <Link href="/results" className="text-xs text-accent hover:text-accent-hover font-medium">View all →</Link>
             </div>
 
             {!latestResults?.length ? (
-              <p className="text-sm text-slate-500 py-4 text-center">No results yet</p>
+              <p className="text-sm text-text-muted py-space-4 text-center">No results yet</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-space-2">
                 {latestResults.map((r: any) => {
                   const f = r.fixtures
                   if (!f) return null
                   return (
-                    <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-black/5 transition-colors border border-transparent hover:border-slate-300 dark:hover:border-slate-600">
-                      <div className="flex items-center gap-2 flex-1">
+                    <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-space-2 px-space-3 rounded-lg hover:bg-bg-base transition-colors border border-transparent hover:border-border">
+                      <div className="flex items-center gap-space-2 flex-1">
                         {f.home_team?.logo_league_folder && (
                           <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt={f.home_team.name} className="w-6 h-6 shrink-0" />
                         )}
-                        <span className="text-sm text-slate-900 font-medium truncate">{f.home_team?.name}</span>
+                        <span className="text-sm text-text-primary font-medium truncate">{f.home_team?.name}</span>
                       </div>
-                      <div className="mx-3 text-center">
-                        <span className="text-slate-900 font-bold">{r.home_score}–{r.away_score}</span>
+                      <div className="mx-space-3 text-center">
+                        <span className="text-text-primary font-bold">{r.home_score}–{r.away_score}</span>
                       </div>
-                      <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className="text-sm text-slate-900 font-medium truncate text-right">{f.away_team?.name}</span>
+                      <div className="flex items-center gap-space-2 flex-1 justify-end">
+                        <span className="text-sm text-text-primary font-medium truncate text-right">{f.away_team?.name}</span>
                         {f.away_team?.logo_league_folder && (
                           <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt={f.away_team.name} className="w-6 h-6 shrink-0" />
                         )}
@@ -276,27 +276,27 @@ export default async function HomePage() {
                 })}
               </div>
             )}
-          </section>
+          </Card>
         </div>
 
         {/* Right column */}
-        <div className="space-y-6">
+        <div className="space-y-space-6">
           {/* Mini Standings */}
           {standings && standings.length > 0 && (
-            <section className="card p-4">
-              <div className="flex items-center justify-between mb-3">
+            <Card className="p-space-4">
+              <div className="flex items-center justify-between mb-space-3">
                 <h2 className="section-header mb-0">
                   <span className="text-accent">PL</span> Top 6
                 </h2>
-                <Link href="/standings" className="text-xs text-accent">Full table →</Link>
+                <Link href="/standings" className="text-xs text-accent font-medium">Full table →</Link>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-space-1">
                 {standings.map((s: any, idx: number) => {
                   const team = s.teams
                   const isTop4 = idx < 4
                   return (
-                    <Link key={s.id} href={`/teams/${team?.id}`} className="flex items-center gap-2 py-1.5 hover:bg-black/5 rounded-lg px-1 transition-colors">
-                      <span className={`w-5 text-center text-xs font-bold ${isTop4 ? 'text-accent' : 'text-slate-500'}`}>
+                    <Link key={s.id} href={`/teams/${team?.id}`} className="flex items-center gap-space-2 py-space-1 hover:bg-bg-base rounded-lg px-space-1 transition-colors">
+                      <span className={`w-5 text-center text-xs font-bold ${isTop4 ? 'text-accent' : 'text-text-muted'}`}>
                         {idx + 1}
                       </span>
                       {team?.logo_league_folder && (
@@ -308,52 +308,52 @@ export default async function HomePage() {
                           className="w-5 h-5 shrink-0"
                         />
                       )}
-                      <span className="flex-1 text-xs text-slate-900 truncate font-medium">{team?.name}</span>
+                      <span className="flex-1 text-xs text-text-primary truncate font-medium">{team?.name}</span>
                       {s.unbeaten_run >= 3 && <span className="text-xs">🔥</span>}
-                      <span className="text-xs font-bold text-slate-900 w-5 text-right">{s.points}</span>
+                      <span className="text-xs font-bold text-text-primary w-5 text-right">{s.points}</span>
                     </Link>
                   )
                 })}
               </div>
-            </section>
+            </Card>
           )}
 
           {/* Unbeaten runs */}
           {unbeaten && unbeaten.length > 0 && (
-            <section className="card p-4">
+            <Card className="p-space-4">
               <h2 className="section-header">Unbeaten Runs</h2>
-              <div className="space-y-2">
+              <div className="space-y-space-2">
                 {unbeaten.map((u: any, i: number) => (
-                  <div key={i} className="flex items-center gap-2">
+                  <div key={i} className="flex items-center gap-space-2">
                     {u.teams?.logo_league_folder && (
                       <Image src={getTeamLogo(u.teams.logo_league_folder, u.teams.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
                     )}
-                    <span className="flex-1 text-sm text-slate-900 truncate">{u.teams?.name}</span>
-                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">
+                    <span className="flex-1 text-sm text-text-primary truncate">{u.teams?.name}</span>
+                    <span className="text-xs bg-feedback-success/20 text-feedback-success px-space-2 py-0.5 rounded font-bold">
                       {u.unbeaten_run} unbeaten
                     </span>
                   </div>
                 ))}
               </div>
-            </section>
+            </Card>
           )}
 
           {/* Quick links */}
-          <section className="card p-4">
+          <Card className="p-space-4">
             <h2 className="section-header">Quick Links</h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-space-2">
               {[
                 { href: '/hall-of-fame', label: 'Hall of Fame', icon: '🏆' },
                 { href: '/rules', label: 'Rules', icon: '📋' },
                 { href: '/calendar', label: 'Calendar', icon: '📅' },
               ].map((link) => (
-                <Link key={link.href} href={link.href} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-navy-light border border-navy-border hover:border-accent/40 transition-colors">
-                  <span className="text-xl">{link.icon}</span>
-                  <span className="text-xs text-slate-400 font-medium">{link.label}</span>
+                <Link key={link.href} href={link.href} className="flex flex-col items-center gap-space-1.5 p-space-3 rounded-lg bg-bg-elevated border border-border hover:border-accent/40 transition-colors group">
+                  <span className="text-xl group-hover:scale-110 transition-transform">{link.icon}</span>
+                  <span className="text-xs text-text-secondary font-medium">{link.label}</span>
                 </Link>
               ))}
             </div>
-          </section>
+          </Card>
         </div>
       </div>
     </PageWrapper>

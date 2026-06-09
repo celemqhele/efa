@@ -12,6 +12,8 @@ import TeamManagerAdmin from './TeamManagerAdmin'
 import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { format, parseISO } from 'date-fns'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 
 export const dynamic = 'force-dynamic'
 
@@ -276,18 +278,18 @@ export default async function TeamProfilePage({ params }: PageProps) {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-space-6">
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div className="card overflow-hidden">
-        <div className="bg-gradient-to-br from-slate-50 via-[#c9a84c]/10 to-white h-24 relative">
-          <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-24 relative">
+          <div className="absolute inset-0 bg-gradient-to-t from-bg-surface to-transparent" />
         </div>
-        <div className="px-6 pb-6 -mt-12 relative">
-          <div className="flex items-end gap-5">
-            <div className={`rounded-2xl overflow-hidden border-4 shadow-xl ${
+        <div className="px-space-6 pb-space-6 -mt-12 relative">
+          <div className="flex items-end gap-space-5">
+            <div className={`rounded-2xl overflow-hidden border-4 shadow-md ${
               team.logo_team_slug === 'tottenham'
-                ? 'border-[#132257] bg-[#ffffff] p-1.5'
-                : 'border-navy-card bg-navy'
+                ? 'border-accent-hover bg-bg-surface p-1.5'
+                : 'border-border bg-bg-base'
             }`}>
               <Image
                 src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
@@ -298,16 +300,16 @@ export default async function TeamProfilePage({ params }: PageProps) {
               />
             </div>
             <div className="pb-1 flex-1">
-              <h1 className="text-2xl font-black text-slate-900">{team.name}</h1>
-              <div className="flex items-center gap-3 flex-wrap mt-0.5">
-                <p className="text-slate-400 text-sm">
+              <h1 className="text-2xl font-black text-text-primary">{team.name}</h1>
+              <div className="flex items-center gap-space-3 flex-wrap mt-0.5">
+                <p className="text-text-muted text-sm">
                   Manager:{' '}
                   {manager ? (
-                    <Link href={`/managers/${manager.id}`} className="text-gold font-semibold hover:underline">
+                    <Link href={`/managers/${manager.id}`} className="text-accent font-semibold hover:underline">
                       @{manager.username}
                     </Link>
                   ) : (
-                    <span className="text-gold font-semibold">(NO MANAGER)</span>
+                    <span className="text-accent font-semibold">(NO MANAGER)</span>
                   )}
                 </p>
                 {/* Message button — shown to logged-in users who aren't the manager */}
@@ -323,7 +325,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
           {/* DNA Badges */}
           {dnaProfiles.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-space-4">
               {dnaCombination ? (
                 <CombinationBadge
                   combination={dnaCombination}
@@ -331,7 +333,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                   isOwnTeam={isCurrentManager}
                 />
               ) : (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-space-1.5">
                   {dnaProfiles.map((dna) => (
                     <DNABadge
                       key={dna.label}
@@ -347,7 +349,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* ── Admin Manager Controls ───────────────────────────────────────── */}
       {isAdmin && (
@@ -363,11 +365,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
       {/* ── Apply to Manage ──────────────────────────────────────────────── */}
       {currentUser && !isAdmin && !isCurrentManager && (
-        <div className="card p-5 space-y-2">
+        <Card className="p-space-5 space-y-space-2">
           <h2 className="section-header mb-1">
-            <span className="text-[#c9a84c]">🏟️</span> Management Application
+            <span className="text-accent">🏟️</span> Management Application
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-text-secondary">
             {(team as any).manager_id
               ? 'This club currently has a manager. You can still apply — if approved, the current manager will be replaced.'
               : 'This club has no manager. Apply to take charge.'}
@@ -377,23 +379,23 @@ export default async function TeamProfilePage({ params }: PageProps) {
             teamName={team.name}
             hasPending={hasPendingApplication}
           />
-        </div>
+        </Card>
       )}
 
       {/* ── Upcoming Fixtures ────────────────────────────────────────────── */}
-      <div className="card p-5">
-        <div className="flex items-center justify-between mb-4">
+      <Card className="p-space-5">
+        <div className="flex items-center justify-between mb-space-4">
           <h2 className="section-header mb-0">
-            <span className="text-gold">📅</span> Upcoming Fixtures
+            <span className="text-accent">📅</span> Upcoming Fixtures
           </h2>
-          <Link href={`/teams/${id}/fixtures`} className="text-xs text-gold hover:text-gold-light transition-colors">
+          <Link href={`/teams/${id}/fixtures`} className="text-xs text-accent hover:text-accent-hover transition-colors">
             All fixtures →
           </Link>
         </div>
         {!upcomingFixtures?.length ? (
-          <p className="text-slate-500 text-sm text-center py-4">No upcoming fixtures scheduled.</p>
+          <p className="text-text-muted text-sm text-center py-space-4">No upcoming fixtures scheduled.</p>
         ) : (
-          <div className="divide-y divide-navy-border">
+          <div className="divide-y divide-border">
             {(upcomingFixtures as any[]).map((f) => {
               const isHome = allTeamIds.includes(f.home_team?.id)
               const opponent = isHome ? f.away_team : f.home_team
@@ -404,7 +406,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                 <Link
                   key={f.id}
                   href={`/fixtures/${f.id}`}
-                  className="flex items-center gap-3 py-3 hover:bg-navy-light/50 -mx-5 px-5 transition-colors"
+                  className="flex items-center gap-space-3 py-space-3 hover:bg-bg-base/50 -mx-space-5 px-space-5 transition-colors"
                 >
                   {/* Opponent logo */}
                   {opponent?.logo_league_folder ? (
@@ -416,23 +418,23 @@ export default async function TeamProfilePage({ params }: PageProps) {
                       className="w-8 h-8 shrink-0"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded bg-navy-border flex items-center justify-center text-xs text-slate-500 shrink-0">?</div>
+                    <div className="w-8 h-8 rounded bg-bg-base flex items-center justify-center text-xs text-text-muted shrink-0">?</div>
                   )}
 
                   {/* Match info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      <span className="text-slate-500 font-normal">{isHome ? 'vs' : '@'}</span>{' '}
+                    <p className="text-sm font-semibold text-text-primary truncate">
+                      <span className="text-text-muted font-normal">{isHome ? 'vs' : '@'}</span>{' '}
                       {opponent?.name ?? 'TBD'}
                     </p>
-                    <p className="text-xs text-slate-500 truncate">{f.tournament?.name}</p>
+                    <p className="text-xs text-text-muted truncate">{f.tournament?.name}</p>
                   </div>
 
                   {/* Date + status */}
                   <div className="text-right shrink-0">
-                    <p className="text-xs font-medium text-slate-900">{dateStr}</p>
+                    <p className="text-xs font-medium text-text-primary">{dateStr}</p>
                     {f.status === 'awaiting_confirmation' && (
-                      <span className="text-[10px] text-yellow-400 font-semibold">Pending</span>
+                      <span className="text-[10px] text-feedback-warning font-semibold">Pending</span>
                     )}
                   </div>
                 </Link>
@@ -440,23 +442,23 @@ export default async function TeamProfilePage({ params }: PageProps) {
             })}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* ── Recent Results ────────────────────────────────────────────────── */}
-      <div className="card p-5">
-        <div className="flex items-center justify-between mb-4">
+      <Card className="p-space-5">
+        <div className="flex items-center justify-between mb-space-4">
           <h2 className="section-header mb-0">
-            <span className="text-gold">🏁</span> Recent Results
+            <span className="text-accent">🏁</span> Recent Results
           </h2>
-          <Link href={`/teams/${id}/fixtures`} className="text-xs text-gold hover:text-gold-light transition-colors">
+          <Link href={`/teams/${id}/fixtures`} className="text-xs text-accent hover:text-accent-hover transition-colors">
             All results →
           </Link>
         </div>
 
         {!sortedRecentResults?.length ? (
-          <p className="text-slate-500 text-sm text-center py-4">No results yet.</p>
+          <p className="text-text-muted text-sm text-center py-space-4">No results yet.</p>
         ) : (
-          <div className="divide-y divide-navy-border">
+          <div className="divide-y divide-border">
             {sortedRecentResults.map((f: any) => {
               const result = Array.isArray(f.result) ? f.result[0] : f.result
               if (!result) return null
@@ -466,7 +468,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
               const opponent = isHome ? f.away_team : f.home_team
               const won = myScore > theirScore
               const drew = myScore === theirScore
-              const outcomeColor = won ? 'text-green-400' : drew ? 'text-yellow-400' : 'text-red-400'
+              const outcomeColor = won ? 'text-feedback-success' : drew ? 'text-feedback-warning' : 'text-feedback-error'
               const outcomeLetter = won ? 'W' : drew ? 'D' : 'L'
               const dateStr = f.scheduled_date
                 ? format(parseISO(f.scheduled_date), 'EEE d MMM')
@@ -475,11 +477,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
                 <Link
                   key={f.id}
                   href={`/fixtures/${f.id}`}
-                  className="flex items-center gap-3 py-3 hover:bg-navy-light/50 -mx-5 px-5 transition-colors"
+                  className="flex items-center gap-space-3 py-space-3 hover:bg-bg-base/50 -mx-space-5 px-space-5 transition-colors"
                 >
                   {/* Outcome badge */}
                   <span className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-black shrink-0 ${
-                    won ? 'bg-green-500/20 text-green-400' : drew ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
+                    won ? 'bg-feedback-success/20 text-feedback-success' : drew ? 'bg-feedback-warning/20 text-feedback-warning' : 'bg-feedback-error/20 text-feedback-error'
                   }`}>
                     {outcomeLetter}
                   </span>
@@ -494,16 +496,16 @@ export default async function TeamProfilePage({ params }: PageProps) {
                       className="w-7 h-7 shrink-0"
                     />
                   ) : (
-                    <div className="w-7 h-7 rounded bg-navy-border flex items-center justify-center text-xs text-slate-500 shrink-0">?</div>
+                    <div className="w-7 h-7 rounded bg-bg-base flex items-center justify-center text-xs text-text-muted shrink-0">?</div>
                   )}
 
                   {/* Match info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      <span className="text-slate-500 font-normal">{isHome ? 'vs' : '@'}</span>{' '}
+                    <p className="text-sm font-semibold text-text-primary truncate">
+                      <span className="text-text-muted font-normal">{isHome ? 'vs' : '@'}</span>{' '}
                       {opponent?.name ?? 'Unknown'}
                     </p>
-                    <p className="text-xs text-slate-500 truncate">{f.tournament?.name}</p>
+                    <p className="text-xs text-text-muted truncate">{f.tournament?.name}</p>
                   </div>
 
                   {/* Score + date */}
@@ -511,26 +513,26 @@ export default async function TeamProfilePage({ params }: PageProps) {
                     <p className={`text-sm font-black tabular-nums ${outcomeColor}`}>
                       {myScore}–{theirScore}
                     </p>
-                    <p className="text-[10px] text-slate-500">{dateStr}</p>
+                    <p className="text-[10px] text-text-muted">{dateStr}</p>
                   </div>
                 </Link>
               )
             })}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* ── Season Stats ─────────────────────────────────────────────────── */}
-      <div className="card p-5">
+      <Card className="p-space-5">
         <h2 className="section-header">
-          <span className="text-gold">📊</span> Season Statistics
+          <span className="text-accent">📊</span> Season Statistics
           {currentStanding?.tournament?.name && (
-            <span className="ml-2 text-xs font-normal text-slate-400 normal-case tracking-normal">
+            <span className="ml-2 text-xs font-normal text-text-muted normal-case tracking-normal">
               {currentStanding.tournament.name}
             </span>
           )}
         </h2>
-        <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
+        <div className="grid grid-cols-4 gap-space-3 sm:grid-cols-8">
           {[
             { label: 'P', value: totalPlayed },
             { label: 'W', value: totalWins },
@@ -541,67 +543,67 @@ export default async function TeamProfilePage({ params }: PageProps) {
             { label: 'GD', value: totalGD >= 0 ? `+${totalGD}` : totalGD },
             { label: 'PTS', value: totalPoints },
           ].map(({ label, value }) => (
-            <div key={label} className="text-center p-3 rounded-lg bg-navy-border/30">
-              <p className="text-xl font-black text-slate-900">{value}</p>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">{label}</p>
+            <div key={label} className="text-center p-space-3 rounded-lg bg-border-subtle/30">
+              <p className="text-xl font-black text-text-primary">{value}</p>
+              <p className="text-xs text-text-muted font-medium mt-0.5">{label}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Clean Sheets:</span>
-            <span className="font-bold text-slate-900">{totalCleanSheets}</span>
+        <div className="mt-space-4 flex flex-wrap gap-space-4 text-sm">
+          <div className="flex items-center gap-space-2">
+            <span className="text-text-muted">Clean Sheets:</span>
+            <span className="font-bold text-text-primary">{totalCleanSheets}</span>
           </div>
           {biggestWin?.biggest_win_score && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">Biggest Win:</span>
-              <span className="font-bold text-green-400">{biggestWin.biggest_win_score}</span>
+            <div className="flex items-center gap-space-2">
+              <span className="text-text-muted">Biggest Win:</span>
+              <span className="font-bold text-feedback-success">{biggestWin.biggest_win_score}</span>
             </div>
           )}
           {unbeatenRun > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 bg-gold/20 border border-gold/30 text-gold text-xs font-bold px-2 py-0.5 rounded-full">
+            <div className="flex items-center gap-space-2">
+              <span className="inline-flex items-center gap-space-1 bg-accent-muted border border-accent/30 text-accent text-xs font-bold px-space-2 py-0.5 rounded-full">
                 🔥 {unbeatenRun}-game unbeaten run
               </span>
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* ── Form ─────────────────────────────────────────────────────────── */}
       {currentForm && (
-        <div className="card p-5">
+        <Card className="p-space-5">
           <h2 className="section-header">
-            <span className="text-gold">📈</span> Recent Form
+            <span className="text-accent">📈</span> Recent Form
           </h2>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-400">Last 6</span>
+          <div className="flex items-center gap-space-4">
+            <span className="text-sm text-text-muted">Last 6</span>
             <FormStrip form={currentForm} />
           </div>
-        </div>
+        </Card>
       )}
 
       {/* ── Trophy Cabinet ───────────────────────────────────────────────── */}
-      <div className="card p-5">
+      <Card className="p-space-5">
         <h2 className="section-header">
-          <span className="text-gold">🏆</span> Trophy Cabinet
+          <span className="text-accent">🏆</span> Trophy Cabinet
         </h2>
         {(trophies ?? []).length === 0 ? (
-          <p className="text-slate-500 text-sm">No trophies yet. Glory awaits.</p>
+          <p className="text-text-muted text-sm">No trophies yet. Glory awaits.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-3">
             {(trophies ?? []).map((trophy: any) => (
               <div
                 key={trophy.id}
-                className="flex items-center gap-3 p-3 rounded-lg border border-gold/20 bg-gold/5"
+                className="flex items-center gap-space-3 p-space-3 rounded-lg border border-accent/20 bg-accent-muted/10"
               >
                 <span className="text-3xl">{TROPHY_ICON[trophy.trophy_type] ?? '🏆'}</span>
                 <div>
-                  <p className="text-sm font-bold text-gold">
+                  <p className="text-sm font-bold text-accent">
                     {TROPHY_LABEL[trophy.trophy_type] ?? trophy.trophy_type}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-text-muted">
                     {trophy.season?.name ?? 'Unknown Season'} · {trophy.tournament?.name ?? ''}
                   </p>
                 </div>
@@ -609,15 +611,15 @@ export default async function TeamProfilePage({ params }: PageProps) {
             ))}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* ── Season History (one card per tournament) ─────────────────────── */}
       {(standings ?? []).length > 0 && (
-        <div className="card p-5">
+        <Card className="p-space-5">
           <h2 className="section-header">
-            <span className="text-gold">📋</span> Season History
+            <span className="text-accent">📋</span> Season History
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-space-3">
             {[...(standings as any[])]
               .sort((a, b) => {
                 // Active season first
@@ -626,20 +628,20 @@ export default async function TeamProfilePage({ params }: PageProps) {
                 return 0
               })
               .map((s: any) => (
-                <div key={s.id} className="p-3 rounded-lg bg-navy-border/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-semibold text-gold uppercase tracking-wider">
+                <div key={s.id} className="p-space-3 rounded-lg bg-border-subtle/30">
+                  <div className="flex items-center justify-between mb-space-2">
+                    <p className="text-xs font-semibold text-accent uppercase tracking-wider">
                       {s.tournament?.name ?? 'Tournament'}
                     </p>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    <span className={`text-[10px] font-bold px-space-2 py-0.5 rounded-full ${
                       s.tournament?.status === 'active'
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-slate-500/20 text-slate-400'
+                        ? 'bg-feedback-success/20 text-feedback-success'
+                        : 'bg-text-muted/20 text-text-muted'
                     }`}>
                       {s.tournament?.status === 'active' ? 'Current' : 'Completed'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-7 gap-2 text-center text-xs">
+                  <div className="grid grid-cols-7 gap-space-2 text-center text-xs">
                     {[
                       { label: 'P', val: s.played },
                       { label: 'W', val: s.wins },
@@ -650,75 +652,75 @@ export default async function TeamProfilePage({ params }: PageProps) {
                       { label: 'PTS', val: s.points },
                     ].map(({ label, val }) => (
                       <div key={label}>
-                        <p className="font-bold text-slate-900">{val}</p>
-                        <p className="text-slate-500">{label}</p>
+                        <p className="font-bold text-text-primary">{val}</p>
+                        <p className="text-text-muted">{label}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* ── Manager History ──────────────────────────────────────────────── */}
       {(tenures ?? []).length > 0 && (
-        <div className="card p-5">
+        <Card className="p-space-5">
           <h2 className="section-header">
-            <span className="text-gold">👔</span> Manager History
+            <span className="text-accent">👔</span> Manager History
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-space-3">
             {(tenures as any[]).map((tenure: any) => {
               const isCurrent = !tenure.ended_at
               const played = tenure.wins + tenure.draws + tenure.losses
               return (
                 <div
                   key={tenure.id}
-                  className={`rounded-xl border p-4 ${
+                  className={`rounded-xl border p-space-4 ${
                     isCurrent
-                      ? 'border-[#c9a84c]/30 bg-[#c9a84c]/5'
-                      : 'border-navy-border bg-navy-light/20'
+                      ? 'border-accent/30 bg-accent-muted/20'
+                      : 'border-border bg-bg-base/20'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-space-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
-                      isCurrent ? 'bg-[#c9a84c]/20 text-[#c9a84c]' : 'bg-navy-border text-slate-400'
+                      isCurrent ? 'bg-accent-muted text-accent' : 'bg-border text-text-muted'
                     }`}>
                       {(tenure.manager_username?.[0] ?? '?').toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-bold text-slate-900">@{tenure.manager_username}</p>
+                      <div className="flex items-center gap-space-2 flex-wrap">
+                        <p className="font-bold text-text-primary">@{tenure.manager_username}</p>
                         {isCurrent && (
-                          <span className="text-xs bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 px-1.5 py-0.5 rounded-full font-semibold">
+                          <span className="text-xs bg-accent-muted text-accent border border-accent/30 px-1.5 py-0.5 rounded-full font-semibold">
                             Current
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-text-muted mt-0.5">
                         {new Date(tenure.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         {tenure.ended_at
                           ? ` → ${new Date(tenure.ended_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
                           : ' → Present'}
                       </p>
                     </div>
-                    <div className="flex gap-4 shrink-0 text-center">
+                    <div className="flex gap-space-4 shrink-0 text-center">
                       <div>
-                        <p className="text-base font-black text-green-400">{tenure.wins}</p>
-                        <p className="text-[10px] text-slate-500 font-medium">W</p>
+                        <p className="text-base font-black text-feedback-success">{tenure.wins}</p>
+                        <p className="text-[10px] text-text-muted font-medium">W</p>
                       </div>
                       <div>
-                        <p className="text-base font-black text-yellow-400">{tenure.draws}</p>
-                        <p className="text-[10px] text-slate-500 font-medium">D</p>
+                        <p className="text-base font-black text-feedback-warning">{tenure.draws}</p>
+                        <p className="text-[10px] text-text-muted font-medium">D</p>
                       </div>
                       <div>
-                        <p className="text-base font-black text-red-400">{tenure.losses}</p>
-                        <p className="text-[10px] text-slate-500 font-medium">L</p>
+                        <p className="text-base font-black text-feedback-error">{tenure.losses}</p>
+                        <p className="text-[10px] text-text-muted font-medium">L</p>
                       </div>
                       {played > 0 && (
                         <div>
-                          <p className="text-base font-black text-slate-700">{played}</p>
-                          <p className="text-[10px] text-slate-500 font-medium">P</p>
+                          <p className="text-base font-black text-text-secondary">{played}</p>
+                          <p className="text-[10px] text-text-muted font-medium">P</p>
                         </div>
                       )}
                     </div>
@@ -727,52 +729,52 @@ export default async function TeamProfilePage({ params }: PageProps) {
               )
             })}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* ── H2H vs All ───────────────────────────────────────────────────── */}
-      <details className="card p-5 group">
+      <details className="card p-space-5 group border rounded-lg bg-bg-surface border-border">
         <summary className="section-header cursor-pointer list-none flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <span className="text-gold">⚔️</span> Head-to-Head Record
+          <span className="flex items-center gap-space-2">
+            <span className="text-accent">⚔️</span> Head-to-Head Record
           </span>
-          <span className="text-slate-500 text-xs group-open:hidden">
+          <span className="text-text-muted text-xs group-open:hidden">
             {h2hEntries.length} opponent{h2hEntries.length !== 1 ? 's' : ''} · Tap to expand
           </span>
-          <span className="text-slate-500 text-xs hidden group-open:inline">Collapse</span>
+          <span className="text-text-muted text-xs hidden group-open:inline">Collapse</span>
         </summary>
 
         {h2hEntries.length === 0 ? (
-          <p className="mt-4 text-slate-500 text-sm">No completed matches on record.</p>
+          <p className="mt-space-4 text-text-muted text-sm">No completed matches on record.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-space-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-slate-500 uppercase tracking-wider border-b border-navy-border">
-                  <th className="pb-2 pr-3">Opponent</th>
-                  <th className="pb-2 text-center pr-2">P</th>
-                  <th className="pb-2 text-center pr-2">W</th>
-                  <th className="pb-2 text-center pr-2">D</th>
-                  <th className="pb-2 text-center pr-2">L</th>
-                  <th className="pb-2 text-center">GF–GA</th>
+                <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b border-border">
+                  <th className="pb-space-2 pr-space-3">Opponent</th>
+                  <th className="pb-space-2 text-center pr-space-2">P</th>
+                  <th className="pb-space-2 text-center pr-space-2">W</th>
+                  <th className="pb-space-2 text-center pr-space-2">D</th>
+                  <th className="pb-space-2 text-center pr-space-2">L</th>
+                  <th className="pb-space-2 text-center">GF–GA</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-border/40">
+              <tbody className="divide-y divide-border/40">
                 {h2hEntries.map(([oppId, rec]) => (
-                  <tr key={oppId} className="text-slate-700 hover:bg-navy-border/20 transition-colors">
-                    <td className="py-2 pr-3 font-medium">
+                  <tr key={oppId} className="text-text-secondary hover:bg-bg-base transition-colors">
+                    <td className="py-space-2 pr-space-3 font-medium">
                       <Link
                         href={`/teams/${oppId}`}
-                        className="hover:text-gold transition-colors"
+                        className="hover:text-accent transition-colors"
                       >
                         {rec.name}
                       </Link>
                     </td>
-                    <td className="py-2 text-center">{rec.played}</td>
-                    <td className="py-2 text-center text-green-400 font-semibold">{rec.wins}</td>
-                    <td className="py-2 text-center text-yellow-400 font-semibold">{rec.draws}</td>
-                    <td className="py-2 text-center text-red-400 font-semibold">{rec.losses}</td>
-                    <td className="py-2 text-center text-slate-400">
+                    <td className="py-space-2 text-center">{rec.played}</td>
+                    <td className="py-space-2 text-center text-feedback-success font-semibold">{rec.wins}</td>
+                    <td className="py-space-2 text-center text-feedback-warning font-semibold">{rec.draws}</td>
+                    <td className="py-space-2 text-center text-feedback-error font-semibold">{rec.losses}</td>
+                    <td className="py-space-2 text-center text-text-muted">
                       {rec.gf}–{rec.ga}
                     </td>
                   </tr>
