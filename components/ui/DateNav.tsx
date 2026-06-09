@@ -39,7 +39,7 @@ export default function DateNav({ currentDate, todayKey, basePath }: Props) {
       <button
         type="button"
         onClick={() => goto(prevKey)}
-        className="px-3 py-2 text-sm font-bold rounded-lg border border-slate-200 text-slate-600 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors"
+        className="px-3 py-2 text-sm font-bold rounded-lg border border-slate-200 text-slate-600 hover:border-accent/50 hover:text-accent transition-colors"
         aria-label="Previous day"
       >
         ←
@@ -49,7 +49,7 @@ export default function DateNav({ currentDate, todayKey, basePath }: Props) {
         <button
           type="button"
           onClick={openPicker}
-          className="text-center hover:text-[#c9a84c] transition-colors px-2 py-1 rounded-lg hover:bg-black/[0.03]"
+          className="text-center hover:text-accent transition-colors px-2 py-1 rounded-lg hover:bg-black/[0.03]"
         >
           <span className="block text-base font-bold text-slate-900">
             {format(date, 'EEEE')}
@@ -70,7 +70,7 @@ export default function DateNav({ currentDate, todayKey, basePath }: Props) {
           <button
             type="button"
             onClick={() => goto(todayKey)}
-            className="ml-1 px-2 py-1 text-[10px] font-bold rounded border border-[#c9a84c]/30 text-[#c9a84c] hover:bg-[#c9a84c]/10 transition-colors uppercase tracking-wider"
+            className="ml-1 px-2 py-1 text-[10px] font-bold rounded border border-accent/30 text-accent hover:bg-accent/10 transition-colors uppercase tracking-wider"
           >
             Today
           </button>
@@ -80,7 +80,7 @@ export default function DateNav({ currentDate, todayKey, basePath }: Props) {
       <button
         type="button"
         onClick={() => goto(nextKey)}
-        className="px-3 py-2 text-sm font-bold rounded-lg border border-slate-200 text-slate-600 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors"
+        className="px-3 py-2 text-sm font-bold rounded-lg border border-slate-200 text-slate-600 hover:border-accent/50 hover:text-accent transition-colors"
         aria-label="Next day"
       >
         →
@@ -88,3 +88,4 @@ export default function DateNav({ currentDate, todayKey, basePath }: Props) {
     </div>
   )
 }
+

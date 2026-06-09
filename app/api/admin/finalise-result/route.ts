@@ -108,41 +108,35 @@ async function updateLeagueStandings(
   const awayWin = awayScore > homeScore
   const draw = homeScore === awayScore
 
-  const [{ data: hr }, { data: ar }] = await Promise.all([
-    db.from('standings').select('*').eq('tournament_id', tournamentId).eq('team_id', homeTeamId).maybeSingle(),
-    db.from('standings').select('*').eq('tournament_id', tournamentId).eq('team_id', awayTeamId).maybeSingle(),
-  ])
-
   await Promise.all([
-    db.from('standings').upsert({
-      tournament_id: tournamentId,
-      team_id: homeTeamId,
-      played: (hr?.played ?? 0) + 1,
-      wins: (hr?.wins ?? 0) + (homeWin ? 1 : 0),
-      draws: (hr?.draws ?? 0) + (draw ? 1 : 0),
-      losses: (hr?.losses ?? 0) + (awayWin ? 1 : 0),
-      goals_for: (hr?.goals_for ?? 0) + homeScore,
-      goals_against: (hr?.goals_against ?? 0) + awayScore,
-      points: (hr?.points ?? 0) + (homeWin ? 3 : draw ? 1 : 0),
-      form: (String(hr?.form ?? '') + (homeWin ? 'W' : draw ? 'D' : 'L')).slice(-5),
-      unbeaten_run: homeWin || draw ? (hr?.unbeaten_run ?? 0) + 1 : 0,
-      clean_sheets: (hr?.clean_sheets ?? 0) + (awayScore === 0 ? 1 : 0),
-    }, { onConflict: 'tournament_id,team_id' }),
-
-    db.from('standings').upsert({
-      tournament_id: tournamentId,
-      team_id: awayTeamId,
-      played: (ar?.played ?? 0) + 1,
-      wins: (ar?.wins ?? 0) + (awayWin ? 1 : 0),
-      draws: (ar?.draws ?? 0) + (draw ? 1 : 0),
-      losses: (ar?.losses ?? 0) + (homeWin ? 1 : 0),
-      goals_for: (ar?.goals_for ?? 0) + awayScore,
-      goals_against: (ar?.goals_against ?? 0) + homeScore,
-      points: (ar?.points ?? 0) + (awayWin ? 3 : draw ? 1 : 0),
-      form: (String(ar?.form ?? '') + (awayWin ? 'W' : draw ? 'D' : 'L')).slice(-5),
-      unbeaten_run: awayWin || draw ? (ar?.unbeaten_run ?? 0) + 1 : 0,
-      clean_sheets: (ar?.clean_sheets ?? 0) + (homeScore === 0 ? 1 : 0),
-    }, { onConflict: 'tournament_id,team_id' }),
+    db.rpc('update_standings_atomic', {
+      p_tournament_id: tournamentId,
+      p_team_id: homeTeamId,
+      p_played_inc: 1,
+      p_wins_inc: homeWin ? 1 : 0,
+      p_draws_inc: draw ? 1 : 0,
+      p_losses_inc: awayWin ? 1 : 0,
+      p_gf_inc: homeScore,
+      p_ga_inc: awayScore,
+      p_points_inc: homeWin ? 3 : draw ? 1 : 0,
+      p_form_char: homeWin ? 'W' : draw ? 'D' : 'L',
+      p_unbeaten_run_reset: awayWin,
+      p_clean_sheet_inc: awayScore === 0 ? 1 : 0,
+    }),
+    db.rpc('update_standings_atomic', {
+      p_tournament_id: tournamentId,
+      p_team_id: awayTeamId,
+      p_played_inc: 1,
+      p_wins_inc: awayWin ? 1 : 0,
+      p_draws_inc: draw ? 1 : 0,
+      p_losses_inc: homeWin ? 1 : 0,
+      p_gf_inc: awayScore,
+      p_ga_inc: homeScore,
+      p_points_inc: awayWin ? 3 : draw ? 1 : 0,
+      p_form_char: awayWin ? 'W' : draw ? 'D' : 'L',
+      p_unbeaten_run_reset: homeWin,
+      p_clean_sheet_inc: homeScore === 0 ? 1 : 0,
+    }),
   ])
 }
 
@@ -158,35 +152,29 @@ async function updateGroupStandings(
   const awayWin = awayScore > homeScore
   const draw = homeScore === awayScore
 
-  const [{ data: hr }, { data: ar }] = await Promise.all([
-    db.from('group_standings').select('*').eq('tournament_id', tournamentId).eq('team_id', homeTeamId).maybeSingle(),
-    db.from('group_standings').select('*').eq('tournament_id', tournamentId).eq('team_id', awayTeamId).maybeSingle(),
-  ])
-
   await Promise.all([
-    db.from('group_standings').upsert({
-      tournament_id: tournamentId,
-      team_id: homeTeamId,
-      played: (hr?.played ?? 0) + 1,
-      wins: (hr?.wins ?? 0) + (homeWin ? 1 : 0),
-      draws: (hr?.draws ?? 0) + (draw ? 1 : 0),
-      losses: (hr?.losses ?? 0) + (awayWin ? 1 : 0),
-      goals_for: (hr?.goals_for ?? 0) + homeScore,
-      goals_against: (hr?.goals_against ?? 0) + awayScore,
-      points: (hr?.points ?? 0) + (homeWin ? 3 : draw ? 1 : 0),
-    }, { onConflict: 'tournament_id,team_id' }),
-
-    db.from('group_standings').upsert({
-      tournament_id: tournamentId,
-      team_id: awayTeamId,
-      played: (ar?.played ?? 0) + 1,
-      wins: (ar?.wins ?? 0) + (awayWin ? 1 : 0),
-      draws: (ar?.draws ?? 0) + (draw ? 1 : 0),
-      losses: (ar?.losses ?? 0) + (homeWin ? 1 : 0),
-      goals_for: (ar?.goals_for ?? 0) + awayScore,
-      goals_against: (ar?.goals_against ?? 0) + homeScore,
-      points: (ar?.points ?? 0) + (awayWin ? 3 : draw ? 1 : 0),
-    }, { onConflict: 'tournament_id,team_id' }),
+    db.rpc('update_group_standings_atomic', {
+      p_tournament_id: tournamentId,
+      p_team_id: homeTeamId,
+      p_played_inc: 1,
+      p_wins_inc: homeWin ? 1 : 0,
+      p_draws_inc: draw ? 1 : 0,
+      p_losses_inc: awayWin ? 1 : 0,
+      p_gf_inc: homeScore,
+      p_ga_inc: awayScore,
+      p_points_inc: homeWin ? 3 : draw ? 1 : 0,
+    }),
+    db.rpc('update_group_standings_atomic', {
+      p_tournament_id: tournamentId,
+      p_team_id: awayTeamId,
+      p_played_inc: 1,
+      p_wins_inc: awayWin ? 1 : 0,
+      p_draws_inc: draw ? 1 : 0,
+      p_losses_inc: homeWin ? 1 : 0,
+      p_gf_inc: awayScore,
+      p_ga_inc: homeScore,
+      p_points_inc: awayWin ? 3 : draw ? 1 : 0,
+    }),
   ])
 }
 

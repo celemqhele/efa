@@ -1,4 +1,4 @@
-﻿import fs from 'fs'
+import fs from 'fs'
 import path from 'path'
 import { createClient } from '@/lib/supabase/server'
 import { getLeagueFolders } from '@/lib/logo-resolver'
@@ -28,7 +28,7 @@ export default async function CreateTournamentPage() {
     .select('id, name, logo_league_folder, logo_team_slug, manager_id')
     .order('name', { ascending: true })
 
-  // Build lookup: logo_team_slug → best DB row
+  // Build lookup: logo_team_slug ? best DB row
   const dbBySlug = new Map<string, { id: string; name: string; logo_league_folder: string; manager_id: string | null }>()
   for (const t of rawTeams ?? []) {
     if (!t.logo_team_slug) continue
@@ -126,3 +126,4 @@ export default async function CreateTournamentPage() {
     </div>
   )
 }
+

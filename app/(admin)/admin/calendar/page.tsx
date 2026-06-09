@@ -13,7 +13,7 @@ interface Props {
 }
 
 const TOURNAMENT_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  league: { bg: 'bg-[#c9a84c]/20', text: 'text-[#c9a84c]', label: 'PL' },
+  league: { bg: 'bg-accent/20', text: 'text-accent', label: 'PL' },
   ucl:    { bg: 'bg-blue-500/20',   text: 'text-blue-400',  label: 'UCL' },
   europa: { bg: 'bg-orange-500/20', text: 'text-orange-400', label: 'UEL' },
   super_cup: { bg: 'bg-purple-500/20', text: 'text-purple-400', label: 'SC' },
@@ -101,7 +101,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
             </span>
             <Link
               href={`?month=${sp.month || format(now, 'yyyy-MM')}&scope=${scope === 'mine' ? 'all' : 'mine'}`}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${scope === 'all' ? 'bg-[#c9a84c]' : 'bg-slate-300'}`}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${scope === 'all' ? 'bg-accent' : 'bg-slate-300'}`}
               scroll={false}
             >
               <span
@@ -116,7 +116,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
 
         <div className="flex items-center gap-2">
           <Link href={`?month=${prevMonth}&scope=${scope}`} className="btn-outline text-xs px-3 py-2">← Prev</Link>
-          <Link href={`?month=${format(now, 'yyyy-MM')}&scope=${scope}`} className="text-xs text-[#c9a84c] px-3 py-2">Today</Link>
+          <Link href={`?month=${format(now, 'yyyy-MM')}&scope=${scope}`} className="text-xs text-accent px-3 py-2">Today</Link>
           <Link href={`?month=${nextMonth}&scope=${scope}`} className="btn-outline text-xs px-3 py-2">Next →</Link>
         </div>
       </div>
@@ -157,10 +157,10 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
                 key={dateStr}
                 className={`bg-slate-50 min-h-[80px] p-1.5 ${
                   isBreak ? 'opacity-40' : ''
-                } ${isToday ? 'ring-1 ring-[#c9a84c] ring-inset' : ''}`}
+                } ${isToday ? 'ring-1 ring-accent ring-inset' : ''}`}
               >
                 <div className={`text-xs font-bold mb-1 ${
-                  isToday ? 'text-[#c9a84c]' : 'text-slate-500'
+                  isToday ? 'text-accent' : 'text-slate-500'
                 }`}>
                   {format(day, 'd')}
                 </div>
@@ -236,7 +236,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
                 <div className="text-center px-3">
                   {f.results?.[0]
                     ? <span className="text-slate-900 font-bold">{f.results[0].home_score}–{f.results[0].away_score}</span>
-                    : <span className="text-xs text-[#c9a84c]">vs</span>
+                    : <span className="text-xs text-accent">vs</span>
                   }
                 </div>
                 <div className="flex items-center gap-2">
@@ -256,3 +256,4 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
     </div>
   )
 }
+

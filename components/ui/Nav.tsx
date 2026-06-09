@@ -199,3 +199,4 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
     </nav>
   )
 }
+

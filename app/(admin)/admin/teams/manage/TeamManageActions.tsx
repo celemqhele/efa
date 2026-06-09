@@ -79,3 +79,4 @@ export default function TeamManageActions({ teamId, teamName, managerId, manager
     </>
   )
 }
+

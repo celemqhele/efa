@@ -35,8 +35,8 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
   // Level indicator color — greener for strong, amber for mid, red for weak
   const levelColor =
     level.startsWith('+++') ? 'text-green-500' :
-    level.startsWith('++')  ? 'text-[#c9a84c]' :
-    level === '+'           ? 'text-[#c9a84c]' :
+    level.startsWith('++')  ? 'text-accent' :
+    level === '+'           ? 'text-accent' :
                               'text-slate-400'
 
   return (
@@ -111,8 +111,8 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
                     </ul>
                   </div>
 
-                  <div className="bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl p-4">
-                    <h3 className="text-[#c9a84c] font-semibold text-xs uppercase tracking-wider mb-1.5">
+                  <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                    <h3 className="text-accent font-semibold text-xs uppercase tracking-wider mb-1.5">
                       Coach Note
                     </h3>
                     <p className="text-slate-700 text-sm leading-relaxed">{explanation.selfNote}</p>
@@ -177,3 +177,4 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
     </>
   )
 }
+

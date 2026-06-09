@@ -32,3 +32,4 @@ export default function ProfileActions({ userEmail }: { userEmail: string }) {
     </>
   )
 }
+

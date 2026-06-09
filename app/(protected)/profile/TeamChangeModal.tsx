@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useCallback } from 'react'
 import Image from 'next/image'
@@ -88,7 +88,7 @@ export default function TeamChangeModal({
   if (hasPendingRequest) {
     return (
       <div className="flex items-center gap-3 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
-        <span className="text-xl">🔄</span>
+        <span className="text-xl">??</span>
         <div>
           <p className="text-sm font-semibold text-yellow-400">Team change request pending</p>
           {pendingRequestedTeamName && (
@@ -107,7 +107,7 @@ export default function TeamChangeModal({
         onClick={() => setOpen(true)}
         className="btn-outline flex items-center gap-2"
       >
-        <span>🔄</span>
+        <span>??</span>
         {currentTeamId ? 'Request Team Change' : 'Request a Team'}
       </button>
 
@@ -127,13 +127,13 @@ export default function TeamChangeModal({
                 onClick={() => setOpen(false)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-black/10 transition-colors"
               >
-                ✕
+                ?
               </button>
             </div>
 
             {submitted ? (
               <div className="text-center py-8">
-                <div className="text-4xl mb-3">✅</div>
+                <div className="text-4xl mb-3">?</div>
                 <p className="text-slate-900 font-semibold">Request submitted!</p>
                 <p className="text-slate-400 text-sm mt-1">Awaiting admin review.</p>
               </div>
@@ -149,7 +149,7 @@ export default function TeamChangeModal({
                     type="text"
                     value={query}
                     onChange={handleQueryChange}
-                    placeholder="Search available teams…"
+                    placeholder="Search available teams�"
                     className="input-field"
                     autoFocus
                   />
@@ -162,7 +162,7 @@ export default function TeamChangeModal({
                 )}
 
                 {loading && (
-                  <div className="text-center py-4 text-slate-500 text-sm">Searching…</div>
+                  <div className="text-center py-4 text-slate-500 text-sm">Searching�</div>
                 )}
 
                 {!loading && results.length === 0 && query.trim() && (
@@ -174,7 +174,7 @@ export default function TeamChangeModal({
                     {results.map((team) => (
                       <div
                         key={team.id}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-[#c9a84c]/40 hover:bg-black/[0.03] transition-all group"
+                        className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-accent/40 hover:bg-black/[0.03] transition-all group"
                       >
                         {team.logo_league_folder ? (
                           <Image
@@ -185,7 +185,7 @@ export default function TeamChangeModal({
                             className="object-contain shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-[#c9a84c] font-bold text-sm shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-accent font-bold text-sm shrink-0">
                             {team.name.charAt(0)}
                           </div>
                         )}
@@ -197,7 +197,7 @@ export default function TeamChangeModal({
                           disabled={submitting}
                           className="btn-gold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {submitting ? '…' : 'Request'}
+                          {submitting ? '�' : 'Request'}
                         </button>
                       </div>
                     ))}
@@ -211,3 +211,4 @@ export default function TeamChangeModal({
     </>
   )
 }
+

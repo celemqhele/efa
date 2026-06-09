@@ -81,8 +81,8 @@ export default function ExportControls({
               onClick={() => toggleTournament(t.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                 tournamentIds.includes(t.id)
-                  ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
-                  : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
+                  ? 'bg-accent text-bg-surface border-accent'
+                  : 'text-text-secondary border-border hover:border-accent/50 hover:text-accent'
               }`}
             >
               {t.name}
@@ -102,8 +102,8 @@ export default function ExportControls({
               onClick={() => toggleType(t)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border capitalize transition-colors ${
                 types.includes(t)
-                  ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
-                  : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
+                  ? 'bg-accent text-bg-surface border-accent'
+                  : 'text-text-secondary border-border hover:border-accent/50 hover:text-accent'
               }`}
             >
               {t}
@@ -114,8 +114,8 @@ export default function ExportControls({
             onClick={() => setTypes(allSelected ? [] : [...TYPE_OPTIONS])}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
               allSelected
-                ? 'bg-[#c9a84c] text-[#0a1128] border-[#c9a84c]'
-                : 'text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-[#c9a84c]/50 hover:text-[#c9a84c]'
+                ? 'bg-accent text-bg-surface border-accent'
+                : 'text-text-secondary border-border hover:border-accent/50 hover:text-accent'
             }`}
           >
             All
@@ -126,10 +126,11 @@ export default function ExportControls({
       <button
         type="submit"
         disabled={!date || tournamentIds.length === 0 || types.length === 0}
-        className="w-full py-2.5 bg-[#c9a84c] text-[#0a1128] font-bold rounded-lg hover:bg-[#e0c06a] transition-colors disabled:opacity-40 text-sm"
+        className="w-full py-2.5 bg-accent text-bg-surface font-bold rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-40 text-sm"
       >
         Generate
       </button>
     </form>
   )
 }
+

@@ -77,3 +77,4 @@ export default function RecalculateStandingsButton({ tournamentId }: Props) {
     </div>
   )
 }
+

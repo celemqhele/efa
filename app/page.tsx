@@ -152,12 +152,12 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(201,168,76,0.08),transparent_70%)]" />
         <div className="relative">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#a07830] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-[#a07830] flex items-center justify-center">
               <span className="text-[#0a1128] font-black text-sm">EFA</span>
             </div>
             <div>
               <h1 className="text-xl font-bold text-slate-900">Efootball Federal Association</h1>
-              <p className="text-xs text-[#c9a84c]">Season 2025/26 — Live</p>
+              <p className="text-xs text-accent">Season 2025/26 — Live</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mt-4">
@@ -176,13 +176,13 @@ export default async function HomePage() {
               <div>
                 <h2 className="section-header mb-0">Upcoming Fixtures</h2>
                 {nextDate && (
-                  <p className="text-xs text-[#c9a84c] mt-0.5">
+                  <p className="text-xs text-accent mt-0.5">
                     {format(parseISO(nextDate), 'EEEE, d MMMM yyyy')}
                     {userTeam && <span className="text-slate-500 ml-1">· {userTeam.name}</span>}
                   </p>
                 )}
               </div>
-              <Link href="/fixtures" className="text-xs text-[#c9a84c] hover:text-[#e0c06a]">View all →</Link>
+              <Link href="/fixtures" className="text-xs text-accent hover:text-[#e0c06a]">View all →</Link>
             </div>
 
             {!upcomingFixtures.length ? (
@@ -210,7 +210,7 @@ export default async function HomePage() {
                           {f.results[0].home_score} – {f.results[0].away_score}
                         </span>
                       ) : (
-                        <span className="text-xs text-[#c9a84c] font-medium">vs</span>
+                        <span className="text-xs text-accent font-medium">vs</span>
                       )}
                       <div className={`text-[10px] mt-0.5 ${
                         f.status === 'confirmed' ? 'text-green-400' :
@@ -244,7 +244,7 @@ export default async function HomePage() {
           <section className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="section-header mb-0">Latest Results</h2>
-              <Link href="/results" className="text-xs text-[#c9a84c] hover:text-[#e0c06a]">View all →</Link>
+              <Link href="/results" className="text-xs text-accent hover:text-[#e0c06a]">View all →</Link>
             </div>
 
             {!latestResults?.length ? (
@@ -286,9 +286,9 @@ export default async function HomePage() {
             <section className="card p-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="section-header mb-0">
-                  <span className="text-[#c9a84c]">PL</span> Top 6
+                  <span className="text-accent">PL</span> Top 6
                 </h2>
-                <Link href="/standings" className="text-xs text-[#c9a84c]">Full table →</Link>
+                <Link href="/standings" className="text-xs text-accent">Full table →</Link>
               </div>
               <div className="space-y-1">
                 {standings.map((s: any, idx: number) => {
@@ -296,7 +296,7 @@ export default async function HomePage() {
                   const isTop4 = idx < 4
                   return (
                     <Link key={s.id} href={`/teams/${team?.id}`} className="flex items-center gap-2 py-1.5 hover:bg-black/5 rounded-lg px-1 transition-colors">
-                      <span className={`w-5 text-center text-xs font-bold ${isTop4 ? 'text-[#c9a84c]' : 'text-slate-500'}`}>
+                      <span className={`w-5 text-center text-xs font-bold ${isTop4 ? 'text-accent' : 'text-slate-500'}`}>
                         {idx + 1}
                       </span>
                       {team?.logo_league_folder && (
@@ -347,7 +347,7 @@ export default async function HomePage() {
                 { href: '/rules', label: 'Rules', icon: '📋' },
                 { href: '/calendar', label: 'Calendar', icon: '📅' },
               ].map((link) => (
-                <Link key={link.href} href={link.href} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-navy-light border border-navy-border hover:border-[#c9a84c]/40 transition-colors">
+                <Link key={link.href} href={link.href} className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-navy-light border border-navy-border hover:border-accent/40 transition-colors">
                   <span className="text-xl">{link.icon}</span>
                   <span className="text-xs text-slate-400 font-medium">{link.label}</span>
                 </Link>
@@ -359,3 +359,4 @@ export default async function HomePage() {
     </PageWrapper>
   )
 }
+

@@ -45,3 +45,4 @@ export default async function PageWrapper({ children, fullWidth = false }: PageW
     </div>
   )
 }
+

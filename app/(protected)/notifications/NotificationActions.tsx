@@ -1,9 +1,9 @@
-﻿'use client'
+'use client'
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-// ─── Mark All As Read ────────────────────────────────────────────────────────
+// --- Mark All As Read --------------------------------------------------------
 
 export function MarkAllReadButton({ disabled }: { disabled?: boolean }) {
   const router = useRouter()
@@ -29,12 +29,12 @@ export function MarkAllReadButton({ disabled }: { disabled?: boolean }) {
       disabled={disabled || loading}
       className="btn-outline text-xs disabled:opacity-40 disabled:cursor-not-allowed"
     >
-      {loading ? 'Marking…' : '✓ Mark all read'}
+      {loading ? 'Marking�' : '? Mark all read'}
     </button>
   )
 }
 
-// ─── Single notification click (mark read + navigate) ────────────────────────
+// --- Single notification click (mark read + navigate) ------------------------
 
 export function NotificationRow({
   notification,
@@ -89,7 +89,7 @@ export function NotificationRow({
       onClick={hasLink ? handleClick : undefined}
       className={`relative flex gap-4 px-4 py-4 transition-all ${
         !notification.read
-          ? 'border-l-[3px] border-l-[#c9a84c] bg-[#c9a84c]/[0.04]'
+          ? 'border-l-[3px] border-l-[var(--color-accent)] bg-accent/[0.04]'
           : 'border-l-[3px] border-l-transparent'
       } ${hasLink ? 'cursor-pointer hover:bg-black/[0.03]' : ''}`}
     >
@@ -110,21 +110,21 @@ export function NotificationRow({
         </div>
         <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{notification.body}</p>
         {hasLink && (
-          <span className="inline-block mt-1.5 text-[10px] text-[#c9a84c] font-medium">
-            View →
+          <span className="inline-block mt-1.5 text-[10px] text-accent font-medium">
+            View ?
           </span>
         )}
       </div>
 
       {/* Unread dot */}
       {!notification.read && (
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#c9a84c]" />
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent" />
       )}
     </div>
   )
 }
 
-// ─── Admin: Team Change Request Row ──────────────────────────────────────────
+// --- Admin: Team Change Request Row ------------------------------------------
 
 export function TeamChangeRequestRow({
   request,
@@ -164,7 +164,7 @@ export function TeamChangeRequestRow({
   if (done) {
     return (
       <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50">
-        <span className="text-lg">{result === 'approved' ? '✅' : '❌'}</span>
+        <span className="text-lg">{result === 'approved' ? '?' : '?'}</span>
         <p className="text-sm text-slate-400">
           Request {result} for{' '}
           <span className="text-slate-900 font-medium">@{request.requesting_user?.username}</span>
@@ -174,15 +174,15 @@ export function TeamChangeRequestRow({
   }
 
   return (
-    <div className="flex items-center gap-4 px-4 py-4 rounded-xl border border-slate-200 hover:border-[#c9a84c]/30 transition-colors bg-slate-50">
-      <div className="text-xl shrink-0">🔄</div>
+    <div className="flex items-center gap-4 px-4 py-4 rounded-xl border border-slate-200 hover:border-accent/30 transition-colors bg-slate-50">
+      <div className="text-xl shrink-0">??</div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-slate-900">
           @{request.requesting_user?.username ?? 'Unknown'} wants to manage{' '}
-          <span className="text-[#c9a84c]">{request.requested_team?.name ?? '?'}</span>
+          <span className="text-accent">{request.requested_team?.name ?? '?'}</span>
         </p>
         <p className="text-xs text-slate-500 mt-0.5">
-          {request.current_team ? `Currently: ${request.current_team.name}` : 'No current team'} · {dateStr}
+          {request.current_team ? `Currently: ${request.current_team.name}` : 'No current team'} � {dateStr}
         </p>
       </div>
       <div className="flex gap-2 shrink-0">
@@ -191,16 +191,17 @@ export function TeamChangeRequestRow({
           disabled={loading !== null}
           className="px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-semibold hover:bg-green-500/30 transition-colors disabled:opacity-50"
         >
-          {loading === 'approve' ? '…' : 'Approve'}
+          {loading === 'approve' ? '�' : 'Approve'}
         </button>
         <button
           onClick={() => act('deny')}
           disabled={loading !== null}
           className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-500/30 transition-colors disabled:opacity-50"
         >
-          {loading === 'deny' ? '…' : 'Deny'}
+          {loading === 'deny' ? '�' : 'Deny'}
         </button>
       </div>
     </div>
   )
 }
+

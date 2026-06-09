@@ -19,7 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_ACCENT: Record<string, string> = {
-  league: 'text-[#c9a84c] border-[#c9a84c]/40 bg-[#c9a84c]/5',
+  league: 'text-accent border-accent/40 bg-accent/5',
   ucl: 'text-blue-500 border-blue-500/40 bg-blue-500/5',
   europa: 'text-orange-500 border-orange-500/40 bg-orange-500/5',
   super_cup: 'text-purple-500 border-purple-500/40 bg-purple-500/5',
@@ -278,3 +278,4 @@ export default async function FixturesManagePage({
     </div>
   )
 }
+

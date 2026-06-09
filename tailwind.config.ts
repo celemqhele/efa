@@ -48,6 +48,18 @@ const config: Config = {
         '10': 'var(--space-10)',
         '11': 'var(--space-11)',
         '12': 'var(--space-12)',
+        'space-1': 'var(--space-1)',
+        'space-2': 'var(--space-2)',
+        'space-3': 'var(--space-3)',
+        'space-4': 'var(--space-4)',
+        'space-5': 'var(--space-5)',
+        'space-6': 'var(--space-6)',
+        'space-7': 'var(--space-7)',
+        'space-8': 'var(--space-8)',
+        'space-9': 'var(--space-9)',
+        'space-10': 'var(--space-10)',
+        'space-11': 'var(--space-11)',
+        'space-12': 'var(--space-12)',
       },
       fontSize: {
         xs: 'var(--text-xs)',
@@ -83,13 +95,9 @@ const config: Config = {
       fontFamily: {
         sans: ['Poppins', 'system-ui', 'sans-serif'],
       },
-    },
-  },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'navy-gradient': 'linear-gradient(135deg, #f8f9fc 0%, #f1f4fb 100%)',
-        'gold-gradient': 'linear-gradient(135deg, #c9a84c 0%, #e0c06a 100%)',
       },
       animation: {
         'pulse-gold': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',

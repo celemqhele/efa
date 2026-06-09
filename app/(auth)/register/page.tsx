@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 export const dynamic = 'force-dynamic'
 
@@ -6,6 +6,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -66,17 +68,17 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#a07830] flex items-center justify-center mb-3">
-            <span className="text-[#0a1128] font-black text-xl">EFA</span>
+          <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center mb-3">
+            <span className="text-bg-base font-black text-xl">EFA</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Create account</h1>
-          <p className="text-slate-400 text-sm mt-1">Join the EFA</p>
+          <h1 className="text-2xl font-bold text-text-primary">Create account</h1>
+          <p className="text-text-secondary text-sm mt-1">Join the EFA</p>
         </div>
 
-        <div className="card p-6">
+        <Card className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="form-label">Username</label>
@@ -94,7 +96,7 @@ export default function RegisterPage() {
                 pattern="[a-zA-Z0-9_]+"
                 title="Letters, numbers, and underscores only"
               />
-              <p className="text-xs text-slate-600 mt-1">Letters, numbers, underscores only</p>
+              <p className="text-xs text-text-muted mt-1">Letters, numbers, underscores only</p>
             </div>
 
             <div>
@@ -102,7 +104,7 @@ export default function RegisterPage() {
               <input
                 type="password"
                 className="input-field"
-                placeholder="••••••••"
+                placeholder="��������"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 required
@@ -115,7 +117,7 @@ export default function RegisterPage() {
               <input
                 type="password"
                 className="input-field"
-                placeholder="••••••••"
+                placeholder="��������"
                 value={form.confirm}
                 onChange={(e) => setForm({ ...form, confirm: e.target.value })}
                 required
@@ -123,28 +125,30 @@ export default function RegisterPage() {
             </div>
 
             {error && (
-              <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              <p className="text-feedback-error text-sm bg-feedback-error/10 border border-feedback-error/20 rounded-lg px-3 py-2">
                 {error}
               </p>
             )}
 
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="btn-gold w-full justify-center py-3 text-sm font-semibold disabled:opacity-50"
+              isLoading={loading}
+              className="w-full justify-center py-3"
             >
-              {loading ? 'Creating account…' : 'Create Account'}
-            </button>
-          </form>
+              Create Account
+            </Button>
+            </form>
 
-          <p className="text-center text-sm text-slate-500 mt-4">
+            <p className="text-center text-sm text-text-muted mt-4">
             Already have an account?{' '}
-            <Link href="/login" className="text-[#c9a84c] hover:text-[#e0c06a] font-medium">
+            <Link href="/login" className="text-accent hover:text-accent-hover font-medium">
               Sign in
             </Link>
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
+            </p>
+            </Card>
+            </div>
+            </div>
+            )
+            }
+
+

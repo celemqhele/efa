@@ -83,3 +83,4 @@ export default function ReactionsPanel({ fixtureId, initialCounts, initialUserRe
     </div>
   )
 }
+

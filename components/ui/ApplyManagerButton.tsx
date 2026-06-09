@@ -59,3 +59,4 @@ export default function ApplyManagerButton({ teamId, teamName, hasPending }: Pro
     </div>
   )
 }
+

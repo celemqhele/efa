@@ -19,3 +19,4 @@ export function Card({ children, className = '', variant = 'surface' }: CardProp
     </div>
   )
 }
+

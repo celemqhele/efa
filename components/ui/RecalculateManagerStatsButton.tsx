@@ -35,3 +35,4 @@ export default function RecalculateManagerStatsButton({ tournamentId, tournament
     </Button>
   )
 }
+

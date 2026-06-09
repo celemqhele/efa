@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 
 const TYPE_DOT: Record<string, string> = {
   league: 'bg-blue-400',
-  ucl: 'bg-[#c9a84c]',
+  ucl: 'bg-accent',
   europa: 'bg-orange-400',
   super_cup: 'bg-purple-400',
 }
@@ -39,3 +39,4 @@ export default function StandingsSwitcher({ tournaments, selectedId }: Props) {
     </div>
   )
 }
+

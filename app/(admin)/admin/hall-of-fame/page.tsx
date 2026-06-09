@@ -1,4 +1,4 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import HallOfFameAdmin from './HallOfFameAdmin'
@@ -43,3 +43,4 @@ export default async function AdminHallOfFamePage() {
     </div>
   )
 }
+

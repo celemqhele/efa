@@ -1,4 +1,4 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -6,28 +6,28 @@ import { MarkAllReadButton, NotificationRow, TeamChangeRequestRow } from './Noti
 
 export const revalidate = 0
 
-// ─── Notification type → emoji icon ─────────────────────────────────────────
+// --- Notification type ? emoji icon -----------------------------------------
 
 const NOTIFICATION_ICON: Record<string, string> = {
-  match_reminder: '⏰',
-  result_confirmed: '✅',
-  fixture_postponed: '📅',
-  fixtures_released: '📋',
-  sacking: '🚫',
-  team_request: '🔄',
-  team_request_approved: '✅',
-  team_request_denied: '❌',
-  team_request_reviewed: '✅',
-  deadline_warning: '⚠️',
-  super_cup: '🏆',
-  qualification: '⭐',
+  match_reminder: '?',
+  result_confirmed: '?',
+  fixture_postponed: '??',
+  fixtures_released: '??',
+  sacking: '??',
+  team_request: '??',
+  team_request_approved: '?',
+  team_request_denied: '?',
+  team_request_reviewed: '?',
+  deadline_warning: '??',
+  super_cup: '??',
+  qualification: '?',
 }
 
 function getIcon(type: string): string {
-  return NOTIFICATION_ICON[type] ?? '🔔'
+  return NOTIFICATION_ICON[type] ?? '??'
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// --- Page ---------------------------------------------------------------------
 
 export default async function NotificationsPage() {
   const supabase = await createClient()
@@ -85,12 +85,12 @@ export default async function NotificationsPage() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
 
-      {/* ── Header ────────────────────────────────────────────────────────── */}
+      {/* -- Header ---------------------------------------------------------- */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
           {hasUnread && (
-            <p className="text-sm text-[#c9a84c] mt-0.5">
+            <p className="text-sm text-accent mt-0.5">
               {unread.length} unread
             </p>
           )}
@@ -98,12 +98,12 @@ export default async function NotificationsPage() {
         <MarkAllReadButton disabled={!hasUnread} />
       </div>
 
-      {/* ── Admin: Pending Team Change Requests ──────────────────────────── */}
+      {/* -- Admin: Pending Team Change Requests ---------------------------- */}
       {isAdmin && pendingRequests && pendingRequests.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 pt-4 pb-2 border-b border-slate-200">
             <h2 className="section-header mb-0">
-              <span>🔄</span> Pending Team Requests
+              <span>??</span> Pending Team Requests
               <span className="ml-auto text-xs font-normal text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">
                 {pendingRequests.length}
               </span>
@@ -117,10 +117,10 @@ export default async function NotificationsPage() {
         </div>
       )}
 
-      {/* ── No notifications at all ───────────────────────────────────────── */}
+      {/* -- No notifications at all ----------------------------------------- */}
       {allNotifications.length === 0 && (
         <div className="card p-16 text-center">
-          <div className="text-5xl mb-4">🔔</div>
+          <div className="text-5xl mb-4">??</div>
           <p className="text-slate-400 font-medium">No notifications yet</p>
           <p className="text-slate-600 text-sm mt-1">
             You&apos;ll see match reminders, result updates, and more here.
@@ -128,11 +128,11 @@ export default async function NotificationsPage() {
         </div>
       )}
 
-      {/* ── Unread notifications ──────────────────────────────────────────── */}
+      {/* -- Unread notifications -------------------------------------------- */}
       {unread.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 pt-4 pb-2 border-b border-slate-200 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#c9a84c] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
             <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
               Unread ({unread.length})
             </h2>
@@ -145,7 +145,7 @@ export default async function NotificationsPage() {
         </div>
       )}
 
-      {/* ── Read notifications ────────────────────────────────────────────── */}
+      {/* -- Read notifications ---------------------------------------------- */}
       {read.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 pt-4 pb-2 border-b border-slate-200">
@@ -164,3 +164,4 @@ export default async function NotificationsPage() {
     </div>
   )
 }
+

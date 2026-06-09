@@ -1,4 +1,4 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
@@ -139,7 +139,7 @@ export default async function TournamentsPage() {
 
       {(tournaments?.length ?? 0) === 0 && (
         <div className="card p-16 text-center text-slate-500">
-          <p className="text-4xl mb-4">🏆</p>
+          <p className="text-4xl mb-4">??</p>
           <p className="text-lg font-medium text-slate-900 mb-2">No tournaments yet</p>
           <p className="text-sm mb-6">Create your first tournament to get started.</p>
           <Link href="/admin/tournaments/create" className="btn-gold">Create Tournament</Link>
@@ -232,3 +232,4 @@ function TournamentCard({
     </div>
   )
 }
+

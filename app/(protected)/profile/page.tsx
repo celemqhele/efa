@@ -1,4 +1,4 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
@@ -11,7 +11,7 @@ import ProfileActions from './ProfileActions'
 
 export const revalidate = 0
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --- Helpers -----------------------------------------------------------------
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null
@@ -19,7 +19,7 @@ function daysUntil(dateStr: string | null): number | null {
   return d
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// --- Page ---------------------------------------------------------------------
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -38,7 +38,7 @@ export default async function ProfilePage() {
     .single()
   const profile = profileRaw as any
 
-  // Fetch all team rows for the user — same club can appear across multiple phases
+  // Fetch all team rows for the user � same club can appear across multiple phases
   const { data: allTeamRows } = await supabase
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug')
@@ -86,7 +86,7 @@ export default async function ProfilePage() {
 
   const winRate = stats.played > 0 ? Math.round((stats.wins / stats.played) * 100) : 0
 
-  // Upcoming fixtures (next 5 for user's team — covers all phase rows)
+  // Upcoming fixtures (next 5 for user's team � covers all phase rows)
   const { data: upcomingFixtures } = teamOrFilter
     ? await supabase
         .from('fixtures')
@@ -111,7 +111,7 @@ export default async function ProfilePage() {
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
 
-      {/* ── Profile Card ─────────────────────────────────────────────────── */}
+      {/* -- Profile Card --------------------------------------------------- */}
       <div className="card p-6 flex flex-col sm:flex-row items-center sm:items-start gap-6">
         {/* Avatar */}
         <div className="shrink-0">
@@ -121,10 +121,10 @@ export default async function ProfilePage() {
               alt={profile.username}
               width={96}
               height={96}
-              className="w-24 h-24 rounded-full object-cover ring-2 ring-[#c9a84c]/60"
+              className="w-24 h-24 rounded-full object-cover ring-2 ring-accent/60"
             />
           ) : team?.logo_league_folder ? (
-            <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center ring-2 ring-[#c9a84c]/40 overflow-hidden p-2">
+            <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center ring-2 ring-accent/40 overflow-hidden p-2">
               <Image
                 src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'profile_avatar')}
                 alt={team.name}
@@ -134,8 +134,8 @@ export default async function ProfilePage() {
               />
             </div>
           ) : (
-            <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center ring-2 ring-[#c9a84c]/40">
-              <span className="text-3xl font-black text-[#c9a84c]">{initials}</span>
+            <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center ring-2 ring-accent/40">
+              <span className="text-3xl font-black text-accent">{initials}</span>
             </div>
           )}
         </div>
@@ -147,8 +147,8 @@ export default async function ProfilePage() {
               @{profile?.username ?? user.email}
             </h1>
             {profile?.role === 'admin' && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#c9a84c]/20 border border-[#c9a84c]/40 text-[#c9a84c] text-xs font-bold uppercase tracking-wider">
-                ⭐ Admin
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent/20 border border-accent/40 text-accent text-xs font-bold uppercase tracking-wider">
+                ? Admin
               </span>
             )}
           </div>
@@ -156,7 +156,7 @@ export default async function ProfilePage() {
           {team ? (
             <Link
               href={`/teams/${team.id}`}
-              className="inline-flex items-center gap-2 text-slate-700 hover:text-[#c9a84c] transition-colors group"
+              className="inline-flex items-center gap-2 text-slate-700 hover:text-accent transition-colors group"
             >
               {team.logo_league_folder && (
                 <Image
@@ -168,15 +168,15 @@ export default async function ProfilePage() {
                 />
               )}
               <span className="text-sm font-semibold group-hover:underline">{team.name}</span>
-              <span className="text-slate-500 text-xs">→</span>
+              <span className="text-slate-500 text-xs">?</span>
             </Link>
           ) : (
             <Link
               href="/select-team"
-              className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#c9a84c] transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-accent transition-colors"
             >
-              <span className="text-[#c9a84c]">+</span>
-              No team selected — select one
+              <span className="text-accent">+</span>
+              No team selected � select one
             </Link>
           )}
 
@@ -190,16 +190,16 @@ export default async function ProfilePage() {
             <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tighter">Matches</p>
           </div>
           <div className="text-center sm:text-right">
-            <p className="text-xl font-black text-[#c9a84c]">{winRate}%</p>
+            <p className="text-xl font-black text-accent">{winRate}%</p>
             <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tighter">Win Rate</p>
           </div>
         </div>
       </div>
 
-      {/* ── Career History Section ────────────────────────────────────────── */}
+      {/* -- Career History Section ------------------------------------------ */}
       <div className="card p-5 space-y-4">
         <h2 className="section-header">
-          <span>👔</span> Management History
+          <span>??</span> Management History
         </h2>
         
         {(tenures ?? []).length === 0 ? (
@@ -214,7 +214,7 @@ export default async function ProfilePage() {
               return (
                 <div key={tenure.id} className={`p-4 rounded-xl border flex items-center gap-4 ${
                   isCurrent 
-                    ? 'bg-[#c9a84c]/5 border-[#c9a84c]/20' 
+                    ? 'bg-accent/5 border-accent/20' 
                     : 'bg-slate-50 border-slate-200'
                 }`}>
                   <div className="w-10 h-10 bg-white rounded-lg p-1 border border-slate-200 flex items-center justify-center shrink-0">
@@ -223,19 +223,19 @@ export default async function ProfilePage() {
                         src={getTeamLogo(tenure.team.logo_league_folder, tenure.team.logo_team_slug, 'standings_row')} 
                         alt={tenure.team.name} width={28} height={28} className="object-contain" 
                       />
-                    ) : <span className="text-xl">🛡️</span>}
+                    ) : <span className="text-xl">???</span>}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <Link href={`/teams/${tenure.team_id}`} className="font-bold text-slate-900 hover:text-[#c9a84c] transition-colors truncate block text-sm">
+                    <Link href={`/teams/${tenure.team_id}`} className="font-bold text-slate-900 hover:text-accent transition-colors truncate block text-sm">
                       {tenure.team?.name || 'Unknown Club'}
                     </Link>
                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                      {format(new Date(tenure.started_at), 'MMM yyyy')} — {tenure.ended_at ? format(new Date(tenure.ended_at), 'MMM yyyy') : 'Present'}
+                      {format(new Date(tenure.started_at), 'MMM yyyy')} � {tenure.ended_at ? format(new Date(tenure.ended_at), 'MMM yyyy') : 'Present'}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs font-black text-slate-900">{played} <span className="text-[9px] text-slate-400 font-bold">P</span></p>
-                    <p className="text-xs font-black text-[#c9a84c]">{tWinRate}% <span className="text-[9px] text-slate-400 font-bold">WR</span></p>
+                    <p className="text-xs font-black text-accent">{tWinRate}% <span className="text-[9px] text-slate-400 font-bold">WR</span></p>
                   </div>
                 </div>
               )
@@ -244,10 +244,10 @@ export default async function ProfilePage() {
         )}
       </div>
 
-      {/* ── Team Change Request ───────────────────────────────────────────── */}
+      {/* -- Team Change Request --------------------------------------------- */}
       <div className="card p-5 space-y-3">
         <h2 className="section-header">
-          <span>🔄</span> Team Management
+          <span>??</span> Team Management
         </h2>
         <TeamChangeModal
           currentTeamId={team?.id ?? null}
@@ -283,11 +283,11 @@ export default async function ProfilePage() {
         )}
       </div>
 
-      {/* ── Upcoming Fixtures ─────────────────────────────────────────────── */}
+      {/* -- Upcoming Fixtures ----------------------------------------------- */}
       {team && (
         <div className="card p-5 space-y-4">
           <h2 className="section-header">
-            <span>📅</span> Upcoming Fixtures
+            <span>??</span> Upcoming Fixtures
           </h2>
 
           {next3.length === 0 ? (
@@ -306,7 +306,7 @@ export default async function ProfilePage() {
                   <Link
                     key={f.id}
                     href={`/fixtures/${f.id}`}
-                    className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-[#c9a84c]/40 hover:bg-black/[0.03] transition-all group"
+                    className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-accent/40 hover:bg-black/[0.03] transition-all group"
                   >
                     {opponent?.logo_league_folder && (
                       <Image
@@ -323,13 +323,13 @@ export default async function ProfilePage() {
                         <span>{opponent?.name ?? 'TBD'}</span>
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {f.tournament?.name} · {dateStr}
+                        {f.tournament?.name} � {dateStr}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
                       {days != null && days >= 0 ? (
                         days === 0 ? (
-                          <span className="text-xs font-bold text-[#c9a84c] bg-[#c9a84c]/10 px-2 py-1 rounded-lg">
+                          <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-1 rounded-lg">
                             Today
                           </span>
                         ) : (
@@ -349,9 +349,10 @@ export default async function ProfilePage() {
         </div>
       )}
 
-      {/* ── Account Security ─────────────────────────────────────────────── */}
+      {/* -- Account Security ----------------------------------------------- */}
       <ProfileActions userEmail={user.email ?? ''} />
 
     </div>
   )
 }
+

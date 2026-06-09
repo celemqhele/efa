@@ -1,4 +1,4 @@
-﻿import Image from 'next/image'
+import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
@@ -6,10 +6,10 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 export const revalidate = 300
 
 const TROPHY_ICON: Record<string, string> = {
-  league: '🏆',
-  ucl: '⭐',
-  europa: '🌍',
-  super_cup: '🏅',
+  league: '??',
+  ucl: '?',
+  europa: '??',
+  super_cup: '??',
 }
 
 const TROPHY_LABEL: Record<string, string> = {
@@ -112,7 +112,7 @@ export default async function HallOfFamePage() {
 
   return (
     <div className="space-y-10">
-      {/* ── Page Header ──────────────────────────────────────────────────── */}
+      {/* -- Page Header ---------------------------------------------------- */}
       <div className="text-center py-6">
         <p className="text-gold text-sm font-semibold uppercase tracking-widest mb-2">
           EFA Official Records
@@ -123,10 +123,10 @@ export default async function HallOfFamePage() {
         </p>
       </div>
 
-      {/* ── All-Time Records ─────────────────────────────────────────────── */}
+      {/* -- All-Time Records ----------------------------------------------- */}
       <div>
         <h2 className="section-header">
-          <span className="text-gold">🌟</span> All-Time Records
+          <span className="text-gold">??</span> All-Time Records
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Most Trophies */}
@@ -158,7 +158,7 @@ export default async function HallOfFamePage() {
           {mostPL && (
             <div className="card p-5 border-gold/20 text-center">
               <p className="text-xs font-semibold text-gold uppercase tracking-widest mb-3">
-                🏆 Most League Titles
+                ?? Most League Titles
               </p>
               <Image
                 src={getTeamLogo(
@@ -183,7 +183,7 @@ export default async function HallOfFamePage() {
           {mostUCL && (
             <div className="card p-5 border-blue-500/20 text-center">
               <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-3">
-                ⭐ Most UCL Wins
+                ? Most UCL Wins
               </p>
               <Image
                 src={getTeamLogo(
@@ -219,10 +219,10 @@ export default async function HallOfFamePage() {
                   <tr className="text-left text-xs text-slate-500 uppercase tracking-wider border-b border-navy-border">
                     <th className="pb-2 pr-4">Team</th>
                     <th className="pb-2 text-center pr-3">Total</th>
-                    <th className="pb-2 text-center pr-3">🏆 PL</th>
-                    <th className="pb-2 text-center pr-3">⭐ UCL</th>
-                    <th className="pb-2 text-center pr-3">🌍 UEL</th>
-                    <th className="pb-2 text-center">🏅 SC</th>
+                    <th className="pb-2 text-center pr-3">?? PL</th>
+                    <th className="pb-2 text-center pr-3">? UCL</th>
+                    <th className="pb-2 text-center pr-3">?? UEL</th>
+                    <th className="pb-2 text-center">?? SC</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-navy-border/40">
@@ -257,16 +257,16 @@ export default async function HallOfFamePage() {
                         {data.total}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['league'] ?? '—'}
+                        {data.byType['league'] ?? '�'}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['ucl'] ?? '—'}
+                        {data.byType['ucl'] ?? '�'}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['europa'] ?? '—'}
+                        {data.byType['europa'] ?? '�'}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['super_cup'] ?? '—'}
+                        {data.byType['super_cup'] ?? '�'}
                       </td>
                     </tr>
                   ))}
@@ -277,10 +277,10 @@ export default async function HallOfFamePage() {
         )}
       </div>
 
-      {/* ── Season Archives ───────────────────────────────────────────────── */}
+      {/* -- Season Archives ------------------------------------------------- */}
       <div>
         <h2 className="section-header">
-          <span className="text-gold">📚</span> Season Archives
+          <span className="text-gold">??</span> Season Archives
         </h2>
 
         {seasons.length === 0 ? (
@@ -364,3 +364,4 @@ export default async function HallOfFamePage() {
     </div>
   )
 }
+

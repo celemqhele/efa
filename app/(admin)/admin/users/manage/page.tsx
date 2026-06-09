@@ -1,4 +1,4 @@
-﻿import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import UserActionButtons from './UserActionButtons'
@@ -21,7 +21,7 @@ export default async function UsersManagePage() {
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug, manager_id, abandon_count')
 
-  // Build user → team map
+  // Build user ? team map
   const teamByManager: Record<string, any> = {}
   for (const team of teams ?? []) {
     if (team.manager_id) teamByManager[team.manager_id] = team
@@ -39,7 +39,7 @@ export default async function UsersManagePage() {
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
-  // Pending manager applications — use admin client to bypass RLS and see all
+  // Pending manager applications � use admin client to bypass RLS and see all
   const adminSupabase = await createAdminClient()
   const { data: managerApplications } = await adminSupabase
     .from('manager_applications' as any)
@@ -71,9 +71,9 @@ export default async function UsersManagePage() {
       {(managerApplications?.length ?? 0) > 0 && (
         <div className="card p-5">
           <h2 className="section-header">
-            <span className="text-[#c9a84c]">🏟️</span>
+            <span className="text-accent">???</span>
             Manager Applications
-            <span className="ml-auto text-xs bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 rounded-full px-2 py-0.5">
+            <span className="ml-auto text-xs bg-accent/20 text-accent border border-accent/30 rounded-full px-2 py-0.5">
               {managerApplications!.length}
             </span>
           </h2>
@@ -144,7 +144,7 @@ export default async function UsersManagePage() {
       {(changeRequests?.length ?? 0) > 0 && (
         <div className="card p-5">
           <h2 className="section-header">
-            <span className="text-yellow-400">🔄</span>
+            <span className="text-yellow-400">??</span>
             Pending Team Change Requests
             <span className="ml-auto text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-full px-2 py-0.5">
               {changeRequests!.length}
@@ -269,11 +269,11 @@ export default async function UsersManagePage() {
                         <span className={`inline-flex items-center gap-1 text-sm font-bold ${
                           team.abandon_count >= 3 ? 'text-red-400' : 'text-slate-400'
                         }`}>
-                          {team.abandon_count >= 3 && <span>⚠</span>}
+                          {team.abandon_count >= 3 && <span>?</span>}
                           {team.abandon_count}
                         </span>
                       ) : (
-                        <span className="text-slate-600">—</span>
+                        <span className="text-slate-600">�</span>
                       )}
                     </td>
                     <td className="py-3">
@@ -295,3 +295,4 @@ export default async function UsersManagePage() {
     </div>
   )
 }
+

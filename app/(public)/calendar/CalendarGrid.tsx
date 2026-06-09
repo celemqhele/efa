@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import Image from 'next/image'
 import Link from 'next/link'
@@ -34,7 +34,7 @@ const MONTH_NAMES = [
 ]
 
 function isoDate(d: Date): string {
-  // Use local date parts — toISOString() returns UTC which causes off-by-one
+  // Use local date parts � toISOString() returns UTC which causes off-by-one
   // in timezones that are behind UTC (e.g. UTC-1 at 23:00 = next UTC day).
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -52,7 +52,7 @@ function getDaysInMonth(year: number, month: number): Date[] {
   return days
 }
 
-// Monday = 0 … Sunday = 6
+// Monday = 0 � Sunday = 6
 function dayOfWeekMon(d: Date): number {
   return (d.getDay() + 6) % 7
 }
@@ -95,7 +95,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
 
   return (
     <>
-      {/* ── Desktop Grid ──────────────────────────────────────────────────── */}
+      {/* -- Desktop Grid ---------------------------------------------------- */}
       <div className="hidden sm:block">
         {/* Day headers */}
         <div className="grid grid-cols-7 gap-px mb-px">
@@ -126,7 +126,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
               <div
                 key={ds}
                 className={`relative bg-slate-50 min-h-[100px] p-2 flex flex-col gap-1.5 transition-colors ${
-                  isToday ? 'ring-1 ring-inset ring-[#c9a84c]/60 bg-[#c9a84c]/[0.04]' : ''
+                  isToday ? 'ring-1 ring-inset ring-accent/60 bg-accent/[0.04]' : ''
                 } ${isPastDay && !dayFixtures.length ? 'opacity-50' : ''}`}
               >
                 {/* Date number */}
@@ -134,7 +134,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                   <span
                     className={`text-xs font-bold ${
                       isToday
-                        ? 'w-6 h-6 rounded-full bg-[#c9a84c] text-[#0a1128] flex items-center justify-center text-[10px]'
+                        ? 'w-6 h-6 rounded-full bg-accent text-[#0a1128] flex items-center justify-center text-[10px]'
                         : 'text-slate-400'
                     }`}
                   >
@@ -154,7 +154,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                     <Link
                       key={f.id}
                       href={`/fixtures/${f.id}`}
-                      className="group block rounded-lg border border-slate-200 hover:border-[#c9a84c]/50 bg-white px-2 py-1.5 transition-all"
+                      className="group block rounded-lg border border-slate-200 hover:border-accent/50 bg-white px-2 py-1.5 transition-all"
                     >
                       <div className="flex items-center gap-1 min-w-0">
                         {f.home_team?.logo_league_folder && (
@@ -168,10 +168,10 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                         )}
                         {hasResult ? (
                           <span className="text-[10px] font-bold text-slate-900 tabular-nums mx-0.5">
-                            {f.result!.home_score}–{f.result!.away_score}
+                            {f.result!.home_score}�{f.result!.away_score}
                           </span>
                         ) : (
-                          <span className="text-[9px] font-bold text-[#c9a84c] mx-0.5">vs</span>
+                          <span className="text-[9px] font-bold text-accent mx-0.5">vs</span>
                         )}
                         {f.away_team?.logo_league_folder && (
                           <Image
@@ -202,7 +202,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
         </div>
       </div>
 
-      {/* ── Mobile List View ──────────────────────────────────────────────── */}
+      {/* -- Mobile List View ------------------------------------------------ */}
       <div className="sm:hidden space-y-3">
         {days.map((day) => {
           const ds = isoDate(day)
@@ -214,16 +214,16 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
           return (
             <div
               key={ds}
-              className={`card overflow-hidden ${isToday ? 'ring-1 ring-[#c9a84c]/50' : ''}`}
+              className={`card overflow-hidden ${isToday ? 'ring-1 ring-accent/50' : ''}`}
             >
               <div
                 className={`px-4 py-2 border-b border-slate-200 flex items-center justify-between ${
-                  isToday ? 'bg-[#c9a84c]/10' : 'bg-slate-50'
+                  isToday ? 'bg-accent/10' : 'bg-slate-50'
                 }`}
               >
                 <span
                   className={`text-sm font-bold ${
-                    isToday ? 'text-[#c9a84c]' : 'text-slate-700'
+                    isToday ? 'text-accent' : 'text-slate-700'
                   }`}
                 >
                   {day.toLocaleDateString('en-GB', {
@@ -232,7 +232,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                     month: 'short',
                   })}
                   {isToday && (
-                    <span className="ml-2 text-[10px] bg-[#c9a84c] text-[#0a1128] px-1.5 py-0.5 rounded font-black">
+                    <span className="ml-2 text-[10px] bg-accent text-[#0a1128] px-1.5 py-0.5 rounded font-black">
                       TODAY
                     </span>
                   )}
@@ -272,10 +272,10 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                     <div className="shrink-0 text-center min-w-[48px]">
                       {hasResult ? (
                         <span className="text-base font-black text-slate-900 tabular-nums">
-                          {f.result!.home_score}–{f.result!.away_score}
+                          {f.result!.home_score}�{f.result!.away_score}
                         </span>
                       ) : (
-                        <span className="text-xs font-bold text-[#c9a84c]">vs</span>
+                        <span className="text-xs font-bold text-accent">vs</span>
                       )}
                       <div
                         className={`text-[9px] px-1.5 py-0.5 rounded mt-0.5 font-semibold ${
@@ -318,3 +318,4 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
     </>
   )
 }
+

@@ -431,3 +431,4 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
     </div>
   )
 }
+

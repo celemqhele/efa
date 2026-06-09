@@ -32,8 +32,8 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
 
   const levelColor =
     level.startsWith('+++') ? 'text-green-500' :
-    level.startsWith('++')  ? 'text-[#c9a84c]' :
-    level === '+'           ? 'text-[#c9a84c]' :
+    level.startsWith('++')  ? 'text-accent' :
+    level === '+'           ? 'text-accent' :
                               'text-slate-400'
 
   // Merge content from all component profiles
@@ -53,7 +53,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
     <>
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10 text-[#c9a84c] hover:opacity-80 active:scale-95 cursor-pointer transition-opacity"
+        className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border border-accent/40 bg-accent/10 text-accent hover:opacity-80 active:scale-95 cursor-pointer transition-opacity"
       >
         <span>⚗️</span>
         <span>{name}</span>
@@ -78,7 +78,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                     <h2 className="text-slate-900 font-bold text-base">{name}</h2>
                     <span className={`font-mono font-bold text-sm ${levelColor}`}>{level}</span>
                   </div>
-                  <span className="text-[10px] font-semibold text-[#c9a84c]">
+                  <span className="text-[10px] font-semibold text-accent">
                     Hybrid Playstyle
                   </span>
                 </div>
@@ -117,8 +117,8 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                       <span>{p.label}</span>
                       <span className={`font-mono font-bold ml-0.5 ${
                         p.level.startsWith('+++') ? 'text-green-500' :
-                        p.level.startsWith('++')  ? 'text-[#c9a84c]' :
-                        p.level === '+'           ? 'text-[#c9a84c]' :
+                        p.level.startsWith('++')  ? 'text-accent' :
+                        p.level === '+'           ? 'text-accent' :
                                                     'text-slate-400'
                       }`}>{p.level}</span>
                     </span>
@@ -155,8 +155,8 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
 
                   {/* Coach notes */}
                   {selfNotes.map((n, i) => (
-                    <div key={i} className="bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl p-4">
-                      <h3 className="text-[#c9a84c] font-semibold text-xs uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <div key={i} className="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                      <h3 className="text-accent font-semibold text-xs uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${n.profile.color}`}>{n.profile.emoji}</span>
                         Coach Note — {n.profile.label}
                       </h3>
@@ -228,3 +228,4 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
     </>
   )
 }
+

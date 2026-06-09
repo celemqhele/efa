@@ -1,6 +1,7 @@
-﻿'use client'
+'use client'
 
 import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
 
 export default function AdminError({
   error,
@@ -11,8 +12,8 @@ export default function AdminError({
 }) {
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center">
-      <div className="text-5xl mb-4">⚠️</div>
-      <h2 className="text-xl font-bold text-slate-900 mb-2">Admin page error</h2>
+      <div className="text-5xl mb-4">??</div>
+      <h2 className="text-xl font-bold text-text-primary mb-2">Admin page error</h2>
       <p className="text-slate-400 text-sm mb-1">
         This admin page ran into an error.
       </p>
@@ -20,15 +21,12 @@ export default function AdminError({
         <p className="text-slate-600 text-xs mb-6 font-mono">ref: {error.digest}</p>
       )}
       <div className="flex gap-3">
-        <button
-          onClick={reset}
-          className="px-5 py-2 bg-[#c9a84c] text-[#0a1128] font-bold rounded-lg hover:bg-[#e0c06a] transition-colors text-sm"
-        >
+        <Button onClick={reset}>
           Try again
-        </button>
+        </Button>
         <Link
           href="/admin/dashboard"
-          className="px-5 py-2 border border-slate-200 text-slate-700 rounded-lg hover:border-[#c9a84c]/40 transition-colors text-sm"
+          className="px-5 py-2 border border-slate-200 text-slate-700 rounded-lg hover:border-accent/40 transition-colors text-sm"
         >
           Admin dashboard
         </Link>
@@ -36,3 +34,4 @@ export default function AdminError({
     </div>
   )
 }
+

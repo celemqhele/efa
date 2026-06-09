@@ -57,3 +57,4 @@ export default function TeamLogo({ leagueFolder, teamSlug, context, alt, classNa
     />
   )
 }
+

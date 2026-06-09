@@ -1,4 +1,4 @@
-﻿import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
+import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
 
 export const revalidate = false // static
 
@@ -13,10 +13,10 @@ export default function RulesPage() {
         </p>
       </div>
 
-      {/* ── Section 1: Official Match Rules ── */}
+      {/* -- Section 1: Official Match Rules -- */}
       <section className="card p-6 space-y-4">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-1 h-6 rounded-full bg-[#c9a84c]" />
+          <div className="w-1 h-6 rounded-full bg-accent" />
           <h2 className="text-lg font-bold text-slate-900">EFA Official Match Rules</h2>
         </div>
 
@@ -24,7 +24,7 @@ export default function RulesPage() {
           {OFFICIAL_RULES.map((item, i) => (
             <li
               key={i}
-              className="flex items-start gap-3 py-2.5 px-3 rounded-lg bg-slate-50 border border-slate-200 hover:border-[#c9a84c]/30 transition-colors"
+              className="flex items-start gap-3 py-2.5 px-3 rounded-lg bg-slate-50 border border-slate-200 hover:border-accent/30 transition-colors"
             >
               <span className="text-base leading-none mt-0.5 flex-shrink-0">{item.icon}</span>
               <span className="text-sm text-slate-200 leading-snug">{item.rule}</span>
@@ -33,7 +33,7 @@ export default function RulesPage() {
         </ul>
       </section>
 
-      {/* ── Section 2: Disconnect Rules ── */}
+      {/* -- Section 2: Disconnect Rules -- */}
       <section className="card p-6 space-y-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-1 h-6 rounded-full bg-yellow-500" />
@@ -49,13 +49,13 @@ export default function RulesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[#c9a84c] uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-accent uppercase tracking-wider">
                   Disconnect At
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[#c9a84c] uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-accent uppercase tracking-wider">
                   Restart Duration
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-[#c9a84c] uppercase tracking-wider">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-accent uppercase tracking-wider">
                   Note
                 </th>
               </tr>
@@ -68,7 +68,7 @@ export default function RulesPage() {
                     i % 2 === 0 ? '' : 'bg-slate-50/40'
                   }`}
                 >
-                  <td className="px-4 py-3 font-mono text-[#c9a84c] font-semibold text-sm whitespace-nowrap">
+                  <td className="px-4 py-3 font-mono text-accent font-semibold text-sm whitespace-nowrap">
                     {row.minute}
                   </td>
                   <td className="px-4 py-3 text-slate-900 text-sm">{row.restart}</td>
@@ -80,7 +80,7 @@ export default function RulesPage() {
         </div>
       </section>
 
-      {/* ── Section 3: Abandonment Rules ── */}
+      {/* -- Section 3: Abandonment Rules -- */}
       <section className="card p-6 space-y-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-1 h-6 rounded-full bg-red-500" />
@@ -90,11 +90,11 @@ export default function RulesPage() {
         <div className="space-y-3">
           {/* Waiting window */}
           <div className="flex gap-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-            <span className="text-xl flex-shrink-0">⏰</span>
+            <span className="text-xl flex-shrink-0">?</span>
             <div>
               <p className="text-sm font-semibold text-slate-900 mb-1">Reporting Window</p>
               <p className="text-sm text-slate-400 leading-relaxed">
-                The <span className="text-[#c9a84c] font-medium">Report Waiting</span> button is
+                The <span className="text-accent font-medium">Report Waiting</span> button is
                 available from <span className="text-slate-900 font-medium">13:00 to 14:05 SAST</span>.
                 Only use it if your opponent has not shown up for the scheduled fixture.
               </p>
@@ -104,7 +104,7 @@ export default function RulesPage() {
           {/* Outcome rules */}
           <div className="space-y-2">
             <div className="flex gap-3 p-3.5 rounded-lg bg-green-500/10 border border-green-500/20">
-              <span className="text-lg flex-shrink-0">🏠</span>
+              <span className="text-lg flex-shrink-0">??</span>
               <p className="text-sm text-slate-200 leading-snug">
                 If the <span className="text-green-400 font-semibold">home team</span> submits a
                 waiting report and the away team does not respond, the{' '}
@@ -113,7 +113,7 @@ export default function RulesPage() {
             </div>
 
             <div className="flex gap-3 p-3.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <span className="text-lg flex-shrink-0">✈️</span>
+              <span className="text-lg flex-shrink-0">??</span>
               <p className="text-sm text-slate-200 leading-snug">
                 If the <span className="text-blue-400 font-semibold">away team</span> submits a
                 waiting report and the home team does not respond, the{' '}
@@ -122,17 +122,17 @@ export default function RulesPage() {
             </div>
 
             <div className="flex gap-3 p-3.5 rounded-lg bg-slate-500/10 border border-slate-500/20">
-              <span className="text-lg flex-shrink-0">🤝</span>
+              <span className="text-lg flex-shrink-0">??</span>
               <p className="text-sm text-slate-200 leading-snug">
                 If <span className="text-slate-700 font-semibold">neither team</span> submits a
                 waiting report, the fixture is recorded as a{' '}
-                <span className="text-slate-700 font-semibold">0–0 draw with no points</span> awarded
+                <span className="text-slate-700 font-semibold">0�0 draw with no points</span> awarded
                 to either side.
               </p>
             </div>
 
             <div className="flex gap-3 p-3.5 rounded-lg bg-red-500/10 border border-red-500/20">
-              <span className="text-lg flex-shrink-0">⚠️</span>
+              <span className="text-lg flex-shrink-0">??</span>
               <p className="text-sm text-slate-200 leading-snug">
                 Any team with{' '}
                 <span className="text-red-400 font-semibold">3 or more abandonments</span> will be
@@ -144,23 +144,23 @@ export default function RulesPage() {
         </div>
       </section>
 
-      {/* ── Section 4: Matchroom Instructions ── */}
+      {/* -- Section 4: Matchroom Instructions -- */}
       <section className="card p-6 space-y-4">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-1 h-6 rounded-full bg-[#c9a84c]" />
+          <div className="w-1 h-6 rounded-full bg-accent" />
           <h2 className="text-lg font-bold text-slate-900">Matchroom Instructions</h2>
         </div>
 
-        <div className="flex gap-4 p-5 rounded-xl bg-gradient-to-r from-[#c9a84c]/10 to-transparent border border-[#c9a84c]/25">
-          <div className="text-3xl flex-shrink-0">🏠</div>
+        <div className="flex gap-4 p-5 rounded-xl bg-gradient-to-r from-accent/10 to-transparent border border-accent/25">
+          <div className="text-3xl flex-shrink-0">??</div>
           <div className="space-y-2">
             <p className="text-slate-900 font-semibold text-base">
               The Home Team ALWAYS Creates the Matchroom
             </p>
             <p className="text-sm text-slate-700 leading-relaxed">
               In eFootball, it is the responsibility of the{' '}
-              <span className="text-[#c9a84c] font-semibold">home team</span> — as listed in the
-              fixture — to open and host the matchroom. The away team joins the room created by the
+              <span className="text-accent font-semibold">home team</span> � as listed in the
+              fixture � to open and host the matchroom. The away team joins the room created by the
               home team.
             </p>
             <p className="text-sm text-slate-400 leading-relaxed">
@@ -187,7 +187,7 @@ export default function RulesPage() {
               key={i}
               className="flex items-start gap-3 py-2.5 px-3 rounded-lg bg-slate-50 border border-slate-200"
             >
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#c9a84c]/20 text-[#c9a84c] text-xs font-bold flex items-center justify-center mt-0.5">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-accent/20 text-accent text-xs font-bold flex items-center justify-center mt-0.5">
                 {i + 1}
               </span>
               <span className="text-sm text-slate-700 leading-snug">{step}</span>
@@ -203,3 +203,4 @@ export default function RulesPage() {
     </div>
   )
 }
+

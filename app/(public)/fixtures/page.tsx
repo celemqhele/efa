@@ -22,7 +22,7 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_ACCENT: Record<string, string> = {
-  league: 'text-[#c9a84c] border-[#c9a84c]/40 bg-[#c9a84c]/5',
+  league: 'text-accent border-accent/40 bg-accent/5',
   ucl: 'text-blue-500 border-blue-500/40 bg-blue-500/5',
   europa: 'text-orange-500 border-orange-500/40 bg-orange-500/5',
   super_cup: 'text-purple-500 border-purple-500/40 bg-purple-500/5',
@@ -161,7 +161,7 @@ export default async function FixturesPage() {
     return (
       <Link
         href={`/fixtures/${f.id}`}
-        className="card flex items-center gap-3 px-4 py-3 hover:border-[#c9a84c]/30 hover:bg-black/[0.03] transition-all"
+        className="card flex items-center gap-3 px-4 py-3 hover:border-accent/30 hover:bg-black/[0.03] transition-all"
       >
         <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-slate-500 border-slate-200'}`}>
           {tournamentLabel}
@@ -222,7 +222,7 @@ export default async function FixturesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">My Fixtures</h1>
           {primaryTeam && (
-            <p className="text-sm text-[#c9a84c]">{primaryTeam.name}</p>
+            <p className="text-sm text-accent">{primaryTeam.name}</p>
           )}
         </div>
       </div>
@@ -234,7 +234,7 @@ export default async function FixturesPage() {
             <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Upcoming</h2>
             <span className="text-xs text-slate-400">{upcoming.length}</span>
           </div>
-          <Link href="/results" className="text-xs text-[#c9a84c] hover:text-[#e0c06a]">
+          <Link href="/results" className="text-xs text-accent hover:text-[#e0c06a]">
             See results →
           </Link>
         </div>
@@ -251,3 +251,4 @@ export default async function FixturesPage() {
     </div>
   )
 }
+

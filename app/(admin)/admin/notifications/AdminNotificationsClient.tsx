@@ -1,4 +1,4 @@
-ï»¿'use client'
+'use client'
 
 import { useState } from 'react'
 import Image from 'next/image'
@@ -66,7 +66,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
         <h2 className="section-header">
           Pending Team Change Requests
           {pendingRequests.length > 0 && (
-            <span className="ml-2 bg-[#c9a84c] text-[#0a1128] text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="ml-2 bg-accent text-[#0a1128] text-xs font-bold px-2 py-0.5 rounded-full">
               {pendingRequests.length}
             </span>
           )}
@@ -81,7 +81,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   {/* User */}
                   <div className="flex items-center gap-2 flex-1">
-                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-[#c9a84c] font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-accent font-bold text-xs">
                       {req.requesting_user?.username?.[0]?.toUpperCase()}
                     </div>
                     <div>
@@ -103,9 +103,9 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                           className="object-contain mx-auto"
                         />
                       )}
-                      <p className="text-xs text-slate-400 mt-1">{req.current_team?.name ?? 'â€”'}</p>
+                      <p className="text-xs text-slate-400 mt-1">{req.current_team?.name ?? '—'}</p>
                     </div>
-                    <span className="text-[#c9a84c]">â†’</span>
+                    <span className="text-accent">?</span>
                     <div className="text-center">
                       {req.requested_team?.logo_league_folder && (
                         <Image
@@ -126,7 +126,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                       disabled={loading === req.id}
                       className="btn-gold text-xs px-4 py-2 disabled:opacity-50"
                     >
-                      {loading === req.id ? 'â€¦' : 'Approve'}
+                      {loading === req.id ? '…' : 'Approve'}
                     </button>
                     <button
                       onClick={() => handleRequest(req.id, 'deny')}
@@ -161,7 +161,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
             <label className="form-label">Message</label>
             <textarea
               className="input-field min-h-[80px] resize-none"
-              placeholder="Your message hereâ€¦"
+              placeholder="Your message here…"
               value={broadcastMsg.body}
               onChange={(e) => setBroadcastMsg({ ...broadcastMsg, body: e.target.value })}
             />
@@ -171,7 +171,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
             disabled={sending || !broadcastMsg.title || !broadcastMsg.body}
             className="btn-gold disabled:opacity-40 text-sm"
           >
-            {sending ? 'Sendingâ€¦' : `Send to All ${allUsers.length} Users`}
+            {sending ? 'Sending…' : `Send to All ${allUsers.length} Users`}
           </button>
         </div>
       </section>
@@ -189,7 +189,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                 className={`px-4 py-3 rounded-xl border transition-colors ${
                   n.read
                     ? 'border-slate-200 bg-transparent'
-                    : 'border-[#c9a84c]/30 bg-[#c9a84c]/5 border-l-2 border-l-[#c9a84c]'
+                    : 'border-accent/30 bg-accent/5 border-l-2 border-l-[var(--color-accent)]'
                 }`}
               >
                 <p className="text-sm font-medium text-slate-900">{n.title}</p>
@@ -205,3 +205,4 @@ export default function AdminNotificationsClient({ pendingRequests, notification
     </div>
   )
 }
+

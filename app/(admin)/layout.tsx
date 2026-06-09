@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <PageWrapper>
       <div className="mb-4 flex items-center gap-2">
-        <div className="px-2 py-0.5 bg-[#c9a84c]/20 border border-[#c9a84c]/30 rounded text-xs font-bold text-[#c9a84c] uppercase tracking-widest">
+        <div className="px-2 py-0.5 bg-accent/20 border border-accent/30 rounded text-xs font-bold text-accent uppercase tracking-widest">
           Admin Panel
         </div>
       </div>
@@ -27,3 +27,4 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     </PageWrapper>
   )
 }
+

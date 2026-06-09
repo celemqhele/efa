@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 interface Club {
   id: string | null
@@ -62,7 +64,7 @@ export default function SelectTeamClient({ clubs }: Props) {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#c9a84c] to-[#a07830] flex items-center justify-center mb-3">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent to-[#a07830] flex items-center justify-center mb-3">
             <span className="text-[#0a1128] font-black text-lg">EFA</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Choose Your Club</h1>
@@ -123,7 +125,7 @@ export default function SelectTeamClient({ clubs }: Props) {
 
           {/* Selected preview */}
           {selected && (
-            <div className="bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl p-4 flex items-center gap-4">
+            <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 flex items-center gap-4">
               {selected.logoFolder && selected.slug ? (
                 <Image
                   src={logoSrc(selected.logoFolder, selected.slug)}
@@ -191,8 +193,8 @@ function TeamCard({
           taken
             ? 'cursor-not-allowed border-slate-200 bg-slate-50'
             : isSelected
-            ? 'border-[#c9a84c] bg-[#c9a84c]/10 shadow-[0_0_12px_rgba(201,168,76,0.2)]'
-            : 'border-slate-200 bg-white hover:border-[#c9a84c]/40 hover:bg-[#c9a84c]/5 cursor-pointer'
+            ? 'border-accent bg-accent/10 shadow-[0_0_12px_rgba(201,168,76,0.2)]'
+            : 'border-slate-200 bg-white hover:border-accent/40 hover:bg-accent/5 cursor-pointer'
         }
       `}
     >
@@ -221,3 +223,4 @@ function TeamCard({
     </button>
   )
 }
+

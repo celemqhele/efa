@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -7,7 +7,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { createClient } from '@/lib/supabase/client'
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// --- Types -------------------------------------------------------------------
 
 interface Team {
   id: string
@@ -44,7 +44,7 @@ interface Props {
   prevSeasonStandings: { team_id: string; team_name: string }[] | null
 }
 
-// ─── Season card ─────────────────────────────────────────────────────────────
+// --- Season card -------------------------------------------------------------
 
 function SeasonCard({
   season,
@@ -117,7 +117,7 @@ function SeasonCard({
                 month: 'short',
                 year: 'numeric',
               })}
-              {' – '}
+              {' � '}
               {new Date(season.end_date).toLocaleDateString('en-GB', {
                 day: 'numeric',
                 month: 'short',
@@ -158,7 +158,7 @@ function SeasonCard({
               </div>
               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${allDone ? 'bg-green-500' : 'bg-[#c9a84c]'}`}
+                  className={`h-full rounded-full transition-all ${allDone ? 'bg-green-500' : 'bg-accent'}`}
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -194,7 +194,7 @@ function SeasonCard({
                     <button
                       onClick={() => handleGenerateKO(t.id)}
                       disabled={loading === `ko-${t.id}`}
-                      className="w-full text-[9px] py-0.5 px-1 rounded bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30 hover:bg-[#c9a84c]/30 transition-colors font-bold disabled:opacity-40"
+                      className="w-full text-[9px] py-0.5 px-1 rounded bg-accent/20 text-accent border border-accent/30 hover:bg-accent/30 transition-colors font-bold disabled:opacity-40"
                     >
                       {loading === `ko-${t.id}` ? '...' : 'Generate KOs'}
                     </button>
@@ -205,7 +205,7 @@ function SeasonCard({
                   key={idx}
                   className="bg-slate-50 rounded-lg px-3 py-2 text-center opacity-30"
                 >
-                  <p className="text-xs text-slate-500">—</p>
+                  <p className="text-xs text-slate-500">�</p>
                 </div>
               )
             )}
@@ -219,7 +219,7 @@ function SeasonCard({
                 disabled={loading === 'cancel'}
                 className="text-xs text-slate-500 hover:text-red-400 transition-colors px-3 py-1.5 border border-slate-700 rounded-lg disabled:opacity-40"
               >
-                {loading === 'cancel' ? 'Cancelling…' : 'Cancel Phase'}
+                {loading === 'cancel' ? 'Cancelling�' : 'Cancel Phase'}
               </button>
 
               <button
@@ -229,7 +229,7 @@ function SeasonCard({
                 title={!allDone ? `${total - done} league fixtures still remaining` : undefined}
               >
                 {loading === 'end'
-                  ? 'Ending…'
+                  ? 'Ending�'
                   : allDone
                   ? 'End Phase'
                   : `End Phase (${done}/${total})`}
@@ -242,7 +242,7 @@ function SeasonCard({
   )
 }
 
-// ─── Team picker button ───────────────────────────────────────────────────────
+// --- Team picker button -------------------------------------------------------
 
 function TeamPickerButton({
   team,
@@ -284,13 +284,13 @@ function TeamPickerButton({
         <div className="w-5 h-5 rounded bg-slate-200 shrink-0" />
       )}
       <span className="truncate flex-1">{team.name}</span>
-      {selected && !badgeText && <span className="ml-auto text-current shrink-0">✓</span>}
+      {selected && !badgeText && <span className="ml-auto text-current shrink-0">?</span>}
       {badgeText && <span className="ml-auto shrink-0 text-[9px] text-slate-500">{badgeText}</span>}
     </button>
   )
 }
 
-// ─── Start Phase Dialog ───────────────────────────────────────────────────────
+// --- Start Phase Dialog -------------------------------------------------------
 
 function StartPhaseDialog({
   allTeams,
@@ -419,20 +419,20 @@ function StartPhaseDialog({
             </p>
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-900 text-xl leading-none">
-            ×
+            �
           </button>
         </div>
 
         {/* Progress bar */}
         <div className="h-0.5 bg-slate-200">
           <div
-            className="h-full bg-[#c9a84c] transition-all"
+            className="h-full bg-accent transition-all"
             style={{ width: `${(step / 5) * 100}%` }}
           />
         </div>
 
         <div className="p-6 space-y-5">
-          {/* ── Step 1: Phase details ── */}
+          {/* -- Step 1: Phase details -- */}
           {step === 1 && (
             <div className="space-y-4">
               <div>
@@ -441,7 +441,7 @@ function StartPhaseDialog({
                   type="text"
                   value={seasonName}
                   onChange={(e) => setSeasonName(e.target.value)}
-                  placeholder="e.g. Season 1 – May 2026"
+                  placeholder="e.g. Season 1 � May 2026"
                   className="input-field"
                 />
               </div>
@@ -468,21 +468,21 @@ function StartPhaseDialog({
               <div className="bg-slate-50 rounded-xl p-4 text-xs text-slate-400 space-y-1">
                 <p className="font-medium text-slate-700">What gets generated:</p>
                 <ul className="list-disc list-inside space-y-1 mt-1">
-                  <li>EFA Premier League — 20 teams you choose, 380 fixtures (38 matchdays)</li>
-                  <li>EFA Champions League — 12 teams, 2 groups of 6, 60 group fixtures</li>
-                  <li>EFA Europa League — 8 teams, 2 groups of 4, 24 group fixtures</li>
+                  <li>EFA Premier League � 20 teams you choose, 380 fixtures (38 matchdays)</li>
+                  <li>EFA Champions League � 12 teams, 2 groups of 6, 60 group fixtures</li>
+                  <li>EFA Europa League � 8 teams, 2 groups of 4, 24 group fixtures</li>
                   <li>2 rounds per weekday, 3 per weekend / public holiday</li>
                 </ul>
               </div>
             </div>
           )}
 
-          {/* ── Step 2: League teams (exactly 20) ── */}
+          {/* -- Step 2: League teams (exactly 20) -- */}
           {step === 2 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-slate-900 font-semibold text-sm">EFA Premier League</h3>
-                <span className={`text-xs font-bold ${leagueTeamIds.length === 20 ? 'text-green-400' : 'text-[#c9a84c]'}`}>
+                <span className={`text-xs font-bold ${leagueTeamIds.length === 20 ? 'text-green-400' : 'text-accent'}`}>
                   {leagueTeamIds.length}/20
                 </span>
               </div>
@@ -508,19 +508,19 @@ function StartPhaseDialog({
             </div>
           )}
 
-          {/* ── Step 3: Assign Managers ── */}
+          {/* -- Step 3: Assign Managers -- */}
           {step === 3 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-slate-900 font-semibold text-sm">Manager Assignments</h3>
-                <span className="text-xs text-slate-500">Optional — can skip</span>
+                <span className="text-xs text-slate-500">Optional � can skip</span>
               </div>
               <p className="text-xs text-slate-500">
                 Assign managers to your selected teams. Teams without a manager can still compete.
               </p>
 
               {usersLoading ? (
-                <div className="py-8 text-center text-slate-400 text-sm">Loading users…</div>
+                <div className="py-8 text-center text-slate-400 text-sm">Loading users�</div>
               ) : (
                 <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
                   {leagueTeamObjects.map((team) => {
@@ -559,7 +559,7 @@ function StartPhaseDialog({
                               onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[team.id]; return n })}
                               className="text-[10px] text-slate-400 hover:text-red-400 transition-colors"
                             >
-                              ×
+                              �
                             </button>
                           </div>
                         ) : (
@@ -588,7 +588,7 @@ function StartPhaseDialog({
                               }
                             }}
                           >
-                            <option value="">{isAssigning ? 'Assigning…' : '— assign —'}</option>
+                            <option value="">{isAssigning ? 'Assigning�' : '� assign �'}</option>
                             {users.map((u) => (
                               <option key={u.id} value={u.id}>{u.username}</option>
                             ))}
@@ -606,7 +606,7 @@ function StartPhaseDialog({
             </div>
           )}
 
-          {/* ── Step 4: UCL & Europa draw (from league teams) ── */}
+          {/* -- Step 4: UCL & Europa draw (from league teams) -- */}
           {step === 4 && (
             <div className="space-y-6">
               {prevTeamIds.length > 0 && (
@@ -619,7 +619,7 @@ function StartPhaseDialog({
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-slate-900 font-semibold text-sm">EFA Champions League</h3>
-                  <span className={`text-xs font-bold ${uclTeamIds.length === 12 ? 'text-green-400' : 'text-[#c9a84c]'}`}>
+                  <span className={`text-xs font-bold ${uclTeamIds.length === 12 ? 'text-green-400' : 'text-accent'}`}>
                     {uclTeamIds.length}/12
                   </span>
                 </div>
@@ -634,7 +634,7 @@ function StartPhaseDialog({
                         selected={sel}
                         disabled={(!sel && uclTeamIds.length >= 12) || inEuropa}
                         badgeText={inEuropa ? 'EL' : undefined}
-                        accentClass="bg-[#c9a84c]/10 border-[#c9a84c]/40"
+                        accentClass="bg-accent/10 border-accent/40"
                         onClick={() => !inEuropa && toggleUcl(team.id)}
                       />
                     )
@@ -671,7 +671,7 @@ function StartPhaseDialog({
             </div>
           )}
 
-          {/* ── Step 5: Confirm ── */}
+          {/* -- Step 5: Confirm -- */}
           {step === 5 && (
             <div className="space-y-4">
               <h3 className="text-slate-900 font-semibold">Ready to launch</h3>
@@ -682,20 +682,20 @@ function StartPhaseDialog({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Duration</span>
-                  <span className="text-slate-900">{startDate} → {endDate} (45 days)</span>
+                  <span className="text-slate-900">{startDate} ? {endDate} (45 days)</span>
                 </div>
                 <div className="border-t border-slate-200 pt-3 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-blue-400">League teams</span>
-                    <span className="text-blue-400 font-medium">{leagueTeamIds.length} teams · 380 fixtures</span>
+                    <span className="text-blue-400 font-medium">{leagueTeamIds.length} teams � 380 fixtures</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#c9a84c]">UCL teams</span>
-                    <span className="text-[#c9a84c] font-medium">{uclTeamIds.length} teams · 60 group fixtures</span>
+                    <span className="text-accent">UCL teams</span>
+                    <span className="text-accent font-medium">{uclTeamIds.length} teams � 60 group fixtures</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-orange-400">Europa teams</span>
-                    <span className="text-orange-400 font-medium">{europaTeamIds.length} teams · 24 group fixtures</span>
+                    <span className="text-orange-400 font-medium">{europaTeamIds.length} teams � 24 group fixtures</span>
                   </div>
                 </div>
                 <div className="border-t border-slate-200 pt-3 flex justify-between font-semibold">
@@ -733,7 +733,7 @@ function StartPhaseDialog({
               disabled={loading}
               className="btn-gold text-sm px-8 disabled:opacity-50"
             >
-              {loading ? 'Generating fixtures…' : 'Launch Phase'}
+              {loading ? 'Generating fixtures�' : 'Launch Phase'}
             </button>
           )}
         </div>
@@ -742,7 +742,7 @@ function StartPhaseDialog({
   )
 }
 
-// ─── Main export ──────────────────────────────────────────────────────────────
+// --- Main export --------------------------------------------------------------
 
 export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }: Props) {
   const router = useRouter()
@@ -825,7 +825,7 @@ export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }
       {/* Phase timeline */}
       {seasons.length === 0 ? (
         <div className="card p-16 text-center">
-          <p className="text-4xl mb-4">🏆</p>
+          <p className="text-4xl mb-4">??</p>
           <p className="text-lg font-medium text-slate-900 mb-2">No phases yet</p>
           <p className="text-sm text-slate-500 mb-6">
             Start the first phase to generate all fixtures automatically.
@@ -876,3 +876,4 @@ export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }
     </div>
   )
 }
+

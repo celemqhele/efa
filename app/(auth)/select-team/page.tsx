@@ -84,3 +84,4 @@ export default async function SelectTeamPage() {
 
   return <SelectTeamClient clubs={clubs} />
 }
+

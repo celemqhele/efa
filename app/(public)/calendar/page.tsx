@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
@@ -7,7 +7,7 @@ import CalendarGrid from './CalendarGrid'
 
 export const dynamic = 'force-dynamic'
 
-// ─── Month navigation helpers ────────────────────────────────────────────────
+// --- Month navigation helpers ------------------------------------------------
 
 function parseMonthParam(param: string | undefined): { year: number; month: number } {
   if (param && /^\d{4}-\d{2}$/.test(param)) {
@@ -39,7 +39,7 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// --- Page ---------------------------------------------------------------------
 
 interface PageProps {
   searchParams: Promise<{ month?: string }>
@@ -145,23 +145,23 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
 
-      {/* ── Next Fixture Banner ───────────────────────────────────────────── */}
+      {/* -- Next Fixture Banner --------------------------------------------- */}
       {nextFixture && daysUntilNext != null && (
         <Link
           href={`/fixtures/${nextFixture.id}`}
-          className="block card p-4 sm:p-5 hover:border-[#c9a84c]/40 transition-all group"
+          className="block card p-4 sm:p-5 hover:border-accent/40 transition-all group"
         >
           <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
             {/* Countdown pill */}
-            <div className="shrink-0 text-center bg-[#c9a84c]/10 border border-[#c9a84c]/30 rounded-xl px-4 py-3 min-w-[80px]">
+            <div className="shrink-0 text-center bg-accent/10 border border-accent/30 rounded-xl px-4 py-3 min-w-[80px]">
               {daysUntilNext === 0 ? (
                 <>
-                  <p className="text-2xl font-black text-[#c9a84c] leading-none">TODAY</p>
+                  <p className="text-2xl font-black text-accent leading-none">TODAY</p>
                   <p className="text-[10px] text-slate-400 mt-1">Match day</p>
                 </>
               ) : (
                 <>
-                  <p className="text-3xl font-black text-[#c9a84c] leading-none">{daysUntilNext}</p>
+                  <p className="text-3xl font-black text-accent leading-none">{daysUntilNext}</p>
                   <p className="text-[10px] text-slate-400 mt-0.5">day{daysUntilNext !== 1 ? 's' : ''}</p>
                 </>
               )}
@@ -188,7 +188,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
                   </span>
                 </div>
 
-                <span className="text-xs font-bold text-[#c9a84c] shrink-0">vs</span>
+                <span className="text-xs font-bold text-accent shrink-0">vs</span>
 
                 {/* Away */}
                 <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
@@ -213,49 +213,49 @@ export default async function CalendarPage({ searchParams }: PageProps) {
               </p>
             </div>
 
-            <span className="text-slate-500 group-hover:text-[#c9a84c] transition-colors text-sm shrink-0">
-              →
+            <span className="text-slate-500 group-hover:text-accent transition-colors text-sm shrink-0">
+              ?
             </span>
           </div>
         </Link>
       )}
 
-      {/* ── Month Navigation ─────────────────────────────────────────────── */}
+      {/* -- Month Navigation ----------------------------------------------- */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
             {MONTH_NAMES[month - 1]} {year}
           </h1>
           {userTeam && (
-            <p className="text-sm text-[#c9a84c] mt-0.5">{userTeam.name}</p>
+            <p className="text-sm text-accent mt-0.5">{userTeam.name}</p>
           )}
         </div>
 
         <div className="flex items-center gap-2">
           <Link
             href={`/calendar?month=${monthParam(prev.year, prev.month)}`}
-            className="w-9 h-9 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors font-bold"
+            className="w-9 h-9 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400 hover:border-accent/50 hover:text-accent transition-colors font-bold"
             aria-label="Previous month"
           >
-            ‹
+            �
           </Link>
           <Link
             href="/calendar"
-            className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors text-xs font-semibold"
+            className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 hover:border-accent/50 hover:text-accent transition-colors text-xs font-semibold"
           >
             Today
           </Link>
           <Link
             href={`/calendar?month=${monthParam(next.year, next.month)}`}
-            className="w-9 h-9 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400 hover:border-[#c9a84c]/50 hover:text-[#c9a84c] transition-colors font-bold"
+            className="w-9 h-9 rounded-lg flex items-center justify-center border border-slate-200 text-slate-400 hover:border-accent/50 hover:text-accent transition-colors font-bold"
             aria-label="Next month"
           >
-            ›
+            �
           </Link>
         </div>
       </div>
 
-      {/* ── Calendar ─────────────────────────────────────────────────────── */}
+      {/* -- Calendar ------------------------------------------------------- */}
       <div className="card overflow-hidden">
         <CalendarGrid
           year={year}
@@ -265,7 +265,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
         />
       </div>
 
-      {/* ── Legend ───────────────────────────────────────────────────────── */}
+      {/* -- Legend --------------------------------------------------------- */}
       <div className="flex flex-wrap gap-4 px-1">
         {[
           { color: 'bg-green-500/30', label: 'Confirmed' },
@@ -281,7 +281,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
         ))}
       </div>
 
-      {/* ── Guest prompt ─────────────────────────────────────────────────── */}
+      {/* -- Guest prompt --------------------------------------------------- */}
       {!user && (
         <div className="card p-5 flex items-center gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
@@ -299,3 +299,4 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     </div>
   )
 }
+

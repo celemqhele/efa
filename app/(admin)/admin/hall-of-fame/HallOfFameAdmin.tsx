@@ -1,21 +1,21 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
 const TROPHY_TYPE_OPTIONS = [
-  { value: 'league', label: '🏆 Premier League' },
-  { value: 'ucl', label: '⭐ UCL' },
-  { value: 'europa', label: '🌍 Europa League' },
-  { value: 'super_cup', label: '🏅 Super Cup' },
+  { value: 'league', label: '?? Premier League' },
+  { value: 'ucl', label: '? UCL' },
+  { value: 'europa', label: '?? Europa League' },
+  { value: 'super_cup', label: '?? Super Cup' },
 ]
 
 const TROPHY_LABEL: Record<string, string> = {
-  league: '🏆 League',
-  ucl: '⭐ UCL',
-  europa: '🌍 Europa',
-  super_cup: '🏅 Super Cup',
+  league: '?? League',
+  ucl: '? UCL',
+  europa: '?? Europa',
+  super_cup: '?? Super Cup',
 }
 
 interface Team {
@@ -139,7 +139,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
               value={seasonId}
               onChange={(e) => { setSeasonId(e.target.value); setTournamentId('') }}
             >
-              <option value="">Select season…</option>
+              <option value="">Select season�</option>
               {seasons.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -166,7 +166,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
             >
-              <option value="">Select team…</option>
+              <option value="">Select team�</option>
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
@@ -211,7 +211,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
           disabled={saving || !seasonId || !teamId}
           className="btn-gold disabled:opacity-40"
         >
-          {saving ? 'Saving…' : 'Award Trophy'}
+          {saving ? 'Saving�' : 'Award Trophy'}
         </button>
       </div>
 
@@ -225,7 +225,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
           <div className="space-y-4">
             {bySeason.map(([seasonName, entries]) => (
               <div key={seasonName} className="card overflow-hidden">
-                <div className="px-5 py-3 bg-gradient-to-r from-[#c9a84c]/10 to-transparent border-b border-navy-border">
+                <div className="px-5 py-3 bg-gradient-to-r from-accent/10 to-transparent border-b border-navy-border">
                   <h3 className="font-bold text-slate-900">{seasonName}</h3>
                 </div>
                 <div className="divide-y divide-navy-border/40">
@@ -248,8 +248,8 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
                         <p className="font-semibold text-slate-900 text-sm truncate">{trophy.team?.name}</p>
                         <p className="text-xs text-slate-500">
                           {TROPHY_LABEL[trophy.trophy_type] ?? trophy.trophy_type}
-                          {trophy.tournament && ` · ${trophy.tournament.name}`}
-                          {' · '}{trophy.awarded_at?.slice(0, 10)}
+                          {trophy.tournament && ` � ${trophy.tournament.name}`}
+                          {' � '}{trophy.awarded_at?.slice(0, 10)}
                         </p>
                       </div>
                       <button
@@ -257,7 +257,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
                         disabled={deleting === trophy.id}
                         className="text-xs text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-400/40 px-3 py-1 rounded-lg transition-colors disabled:opacity-40 shrink-0"
                       >
-                        {deleting === trophy.id ? '…' : 'Remove'}
+                        {deleting === trophy.id ? '�' : 'Remove'}
                       </button>
                     </div>
                   ))}
@@ -270,3 +270,4 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
     </div>
   )
 }
+

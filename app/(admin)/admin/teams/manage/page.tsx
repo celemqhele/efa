@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import TeamManageActions from './TeamManageActions'
@@ -60,10 +60,10 @@ export default async function TeamsManagePage() {
                   )}
                   <div className="min-w-0">
                     <p className="text-slate-900 font-semibold text-sm truncate">{team.name}</p>
-                    <p className="text-slate-500 text-xs truncate">{team.logo_league_folder?.split('.')[0] ?? '—'}</p>
+                    <p className="text-slate-500 text-xs truncate">{team.logo_league_folder?.split('.')[0] ?? '�'}</p>
                   </div>
                   {team.abandon_count >= 3 && (
-                    <span className="ml-auto text-red-400 font-bold text-xs shrink-0">⚠ {team.abandon_count}</span>
+                    <span className="ml-auto text-red-400 font-bold text-xs shrink-0">? {team.abandon_count}</span>
                   )}
                 </div>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -125,7 +125,7 @@ export default async function TeamsManagePage() {
                         )}
                         <div>
                           <p className="text-slate-900 font-semibold">{team.name}</p>
-                          <p className="text-slate-500 text-xs">{team.logo_league_folder?.split('.')[0] ?? '—'}</p>
+                          <p className="text-slate-500 text-xs">{team.logo_league_folder?.split('.')[0] ?? '�'}</p>
                         </div>
                       </div>
                     </td>
@@ -149,7 +149,7 @@ export default async function TeamsManagePage() {
                       <span className={`inline-flex items-center gap-1 font-bold ${
                         team.abandon_count >= 3 ? 'text-red-400' : 'text-slate-400'
                       }`}>
-                        {team.abandon_count >= 3 && <span className="text-xs">⚠</span>}
+                        {team.abandon_count >= 3 && <span className="text-xs">?</span>}
                         {team.abandon_count}
                       </span>
                     </td>
@@ -171,3 +171,4 @@ export default async function TeamsManagePage() {
     </div>
   )
 }
+
