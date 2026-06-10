@@ -1,5 +1,6 @@
 'use client'
 
+// File encoding: UTF-8
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
