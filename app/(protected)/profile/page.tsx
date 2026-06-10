@@ -38,7 +38,7 @@ export default async function ProfilePage() {
     .single()
   const profile = profileRaw as any
 
-  // Fetch all team rows for the user — same club can appear across multiple phases
+  // Fetch all team rows for the user â€” same club can appear across multiple phases
   const { data: allTeamRows } = await supabase
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug')
@@ -86,7 +86,7 @@ export default async function ProfilePage() {
 
   const winRate = stats.played > 0 ? Math.round((stats.wins / stats.played) * 100) : 0
 
-  // Upcoming fixtures (next 5 for user's team — covers all phase rows)
+  // Upcoming fixtures (next 5 for user's team â€” covers all phase rows)
   const { data: upcomingFixtures } = teamOrFilter
     ? await supabase
         .from('fixtures')
@@ -176,7 +176,7 @@ export default async function ProfilePage() {
               className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-accent transition-colors"
             >
               <span className="text-accent">+</span>
-              No team selected — select one
+              No team selected â€” select one
             </Link>
           )}
 
@@ -230,7 +230,7 @@ export default async function ProfilePage() {
                       {tenure.team?.name || 'Unknown Club'}
                     </Link>
                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                      {format(new Date(tenure.started_at), 'MMM yyyy')} — {tenure.ended_at ? format(new Date(tenure.ended_at), 'MMM yyyy') : 'Present'}
+                      {format(new Date(tenure.started_at), 'MMM yyyy')} â€” {tenure.ended_at ? format(new Date(tenure.ended_at), 'MMM yyyy') : 'Present'}
                     </p>
                   </div>
                   <div className="text-right">
@@ -323,7 +323,7 @@ export default async function ProfilePage() {
                         <span>{opponent?.name ?? 'TBD'}</span>
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {f.tournament?.name} · {dateStr}
+                        {f.tournament?.name} Â· {dateStr}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
