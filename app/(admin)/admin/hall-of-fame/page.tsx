@@ -28,8 +28,8 @@ export default async function AdminHallOfFamePage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-black text-slate-900">Hall of Fame</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-black text-foreground-primary">Hall of Fame</h1>
+        <p className="text-text-muted text-sm mt-1">
           Manually award or remove trophies for any season.
         </p>
       </div>

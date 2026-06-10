@@ -3,7 +3,12 @@
 import { useState } from 'react'
 import { Button } from './Button'
 
-export default function RecalculateManagerStatsButton({ tournamentId, tournamentName }: { tournamentId: string, tournamentName: string }) {
+interface Props {
+  tournamentId: string
+  tournamentName: string
+}
+
+export default function RecalculateManagerStatsButton({ tournamentId, tournamentName }: Props) {
   const [status, setStatus] = useState<'idle' | 'confirm' | 'loading' | 'done' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
@@ -14,11 +19,11 @@ export default function RecalculateManagerStatsButton({ tournamentId, tournament
       const res = await fetch('/api/admin/recalculate-manager-stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tournamentId }),
+        body: JSON.stringify({}),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed')
-      setMessage('✓ Stats updated')
+      setMessage(`✓ ${data.tenuresProcessed ?? 'Stats'} updated`)
       setStatus('done')
     } catch (err: any) {
       setMessage(err.message)
@@ -29,7 +34,7 @@ export default function RecalculateManagerStatsButton({ tournamentId, tournament
   if (status === 'confirm') {
     return (
       <div className="flex items-center gap-space-2 flex-wrap">
-        <span className="text-[10px] text-text-muted">Rebuild manager stats?</span>
+        <span className="text-[10px] text-text-muted">Rebuild all manager stats?</span>
         <Button
           onClick={handleRecalculate}
           variant="destructive"

@@ -40,7 +40,7 @@ export default function RecalculateStandingsButton({ tournamentId }: Props) {
   if (status === 'confirm') {
     return (
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-slate-500">Rebuild from scratch?</span>
+        <span className="text-xs text-text-muted">Rebuild from scratch?</span>
         <Button
           onClick={handleConfirm}
           variant="destructive"

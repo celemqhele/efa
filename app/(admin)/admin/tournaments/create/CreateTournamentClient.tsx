@@ -217,7 +217,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             type="button"
             onClick={() => setSeasonMode('existing')}
             className={`px-4 py-2 rounded-lg text-sm border transition-colors ${
-              seasonMode === 'existing' ? 'bg-gold text-navy border-gold' : 'bg-navy-light text-slate-700 border-navy-border'
+              seasonMode === 'existing' ? 'bg-gold text-navy border-gold' : 'bg-navy-light text-foreground-secondary border-navy-border'
             }`}
           >
             Existing Season
@@ -226,7 +226,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             type="button"
             onClick={() => setSeasonMode('new')}
             className={`px-4 py-2 rounded-lg text-sm border transition-colors ${
-              seasonMode === 'new' ? 'bg-gold text-navy border-gold' : 'bg-navy-light text-slate-700 border-navy-border'
+              seasonMode === 'new' ? 'bg-gold text-navy border-gold' : 'bg-navy-light text-foreground-secondary border-navy-border'
             }`}
           >
             Create New Season
@@ -404,7 +404,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             )}
           </div>
           {type !== 'league' && (
-            <p className="mt-3 text-xs text-slate-400">
+            <p className="mt-3 text-xs text-text-muted">
               Total teams required: <strong className="text-gold">{numGroups * teamsPerGroup}</strong>
             </p>
           )}
@@ -416,7 +416,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         <div className="card p-5">
           <h2 className="section-header">
             Teams
-            <span className="ml-auto text-sm font-normal text-slate-400">
+            <span className="ml-auto text-sm font-normal text-text-muted">
               {selectedSlugs.length} selected
             </span>
           </h2>
@@ -449,8 +449,8 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                   onClick={() => toggleTeam(team.logo_team_slug)}
                   className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${
                     isSelected
-                      ? 'bg-gold/10 border-gold/40 text-slate-900'
-                      : 'bg-navy-light border-navy-border text-slate-700 hover:border-gold/20'
+                      ? 'bg-gold/10 border-gold/40 text-foreground-primary'
+                      : 'bg-navy-light border-navy-border text-foreground-secondary hover:border-gold/20'
                   }`}
                 >
                   {team.logo_league_folder ? (
@@ -477,7 +477,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
 
           {selectedSlugs.length > 0 && (
             <div className="mt-4 pt-4 border-t border-navy-border">
-              <p className="text-xs text-slate-400 mb-2">Selected Teams</p>
+              <p className="text-xs text-text-muted mb-2">Selected Teams</p>
               <div className="flex flex-wrap gap-2">
                 {selectedSlugs.map((slug) => {
                   const team = allTeams.find((t) => t.logo_team_slug === slug)
@@ -490,11 +490,11 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                           alt={team.name} width={18} height={18} className="object-contain"
                         />
                       )}
-                      <span className="text-xs text-slate-900">{team.name}</span>
+                      <span className="text-xs text-foreground-primary">{team.name}</span>
                       <button
                         type="button"
                         onClick={() => toggleTeam(slug)}
-                        className="text-slate-400 hover:text-slate-900 text-xs ml-0.5"
+                        className="text-text-muted hover:text-foreground-primary text-xs ml-0.5"
                       >
                         ×
                       </button>
@@ -510,7 +510,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
       {type === 'super_cup' && (
         <div className="card p-5">
           <h2 className="section-header">Super Cup Teams</h2>
-          <p className="text-slate-400 text-sm mb-4">Select exactly 2 teams for the Super Cup.</p>
+          <p className="text-text-muted text-sm mb-4">Select exactly 2 teams for the Super Cup.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {allTeams.map((team) => {
               const isSelected = selectedSlugs.includes(team.logo_team_slug)
@@ -528,10 +528,10 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                   disabled={!isSelected && selectedSlugs.length >= 2}
                   className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${
                     isSelected
-                      ? 'bg-gold/10 border-gold/40 text-slate-900'
+                      ? 'bg-gold/10 border-gold/40 text-foreground-primary'
                       : selectedSlugs.length >= 2
-                        ? 'bg-navy-light border-navy-border text-slate-600 cursor-not-allowed'
-                        : 'bg-navy-light border-navy-border text-slate-700 hover:border-gold/20'
+                        ? 'bg-navy-light border-navy-border text-foreground-muted cursor-not-allowed'
+                        : 'bg-navy-light border-navy-border text-foreground-secondary hover:border-gold/20'
                   }`}
                 >
                   {team.logo_league_folder ? (
@@ -556,9 +556,9 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         <div className="card p-5">
           <h2 className="section-header">
             Manager Assignments
-            <span className="ml-auto text-sm font-normal text-slate-400">Optional</span>
+            <span className="ml-auto text-sm font-normal text-text-muted">Optional</span>
           </h2>
-          <p className="text-slate-400 text-xs mb-4">
+          <p className="text-text-muted text-xs mb-4">
             Assign managers to selected teams. Teams can compete without a manager.
           </p>
           <div className="space-y-1.5">
@@ -581,7 +581,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                       className="object-contain shrink-0"
                     />
                   )}
-                  <span className="text-xs font-medium text-slate-900 truncate flex-1 min-w-0">{team.name}</span>
+                  <span className="text-xs font-medium text-foreground-primary truncate flex-1 min-w-0">{team.name}</span>
 
                   {assignErr && (
                     <span className="text-[10px] text-red-400 truncate max-w-[100px] shrink-0" title={assignErr}>
@@ -596,14 +596,14 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                         type="button"
                         title="Change manager"
                         onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[slug]; return n })}
-                        className="text-[10px] text-slate-400 hover:text-red-400 transition-colors"
+                        className="text-[10px] text-text-muted hover:text-red-400 transition-colors"
                       >
                         ×
                       </button>
                     </div>
                   ) : (
                     <select
-                      className="text-xs border border-navy-border rounded-md px-2 py-1 bg-white text-slate-700 max-w-[160px] shrink-0"
+                      className="text-xs border border-navy-border rounded-md px-2 py-1 bg-bg-surface text-foreground-secondary max-w-[160px] shrink-0"
                       value=""
                       disabled={isAssigning}
                       onChange={async (e) => {

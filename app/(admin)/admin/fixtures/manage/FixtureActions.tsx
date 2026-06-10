@@ -175,9 +175,9 @@ export default function FixtureActions({
       {/* ── Reset Confirmation Modal ────────────────────────────────────────── */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scale-in">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Reset Fixture?</h3>
-            <p className="text-sm text-slate-500 mb-6">
+          <div className="bg-bg-surface rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scale-in">
+            <h3 className="text-lg font-bold text-foreground-primary mb-2">Reset Fixture?</h3>
+            <p className="text-sm text-text-muted mb-6">
               This will delete the current result and all submissions. 
               The fixture status will return to <span className="font-bold">Scheduled</span> and standings will be recalculated.
             </p>
@@ -185,7 +185,7 @@ export default function FixtureActions({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
+                className="flex-1 px-4 py-2 text-sm font-medium text-text-muted hover:text-foreground-secondary transition-colors"
               >
                 Cancel
               </button>

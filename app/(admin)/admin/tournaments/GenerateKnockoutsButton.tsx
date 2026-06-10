@@ -89,9 +89,9 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
 
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-left">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Generate Knockout Bracket</h3>
-            <p className="text-xs text-slate-500 mb-4">
+          <div className="bg-bg-surface rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+            <h3 className="text-lg font-bold text-foreground-primary mb-2">Generate Knockout Bracket</h3>
+            <p className="text-xs text-text-muted mb-4">
               Review the qualifying teams for {tournamentName}. 
               All remaining matches will be created as TBC placeholders.
             </p>
@@ -99,19 +99,19 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
             {previewLoading ? (
               <div className="py-8 text-center">
                 <div className="w-8 h-8 border-4 border-gold/20 border-t-gold rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-xs text-slate-400">Loading standings...</p>
+                <p className="text-xs text-text-muted">Loading standings...</p>
               </div>
             ) : qualifiers.length > 0 ? (
               <div className="space-y-2 mb-6 max-h-60 overflow-y-auto pr-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Qualifying Teams</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Qualifying Teams</p>
                 {qualifiers.map((q, idx) => (
                   <div key={q.team_id} className="flex items-center gap-3 p-2 rounded-lg bg-navy-light border border-navy-border">
-                    <span className="text-[10px] font-bold text-slate-400 w-4">{idx + 1}</span>
+                    <span className="text-[10px] font-bold text-text-muted w-4">{idx + 1}</span>
                     <Image
                       src={getTeamLogo(q.team.logo_league_folder, q.team.logo_team_slug, 'standings_row')}
                       alt={q.team.name} width={20} height={20} className="object-contain"
                     />
-                    <span className="text-xs font-medium text-slate-900 flex-1 truncate">{q.team.name}</span>
+                    <span className="text-xs font-medium text-foreground-primary flex-1 truncate">{q.team.name}</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold border border-gold/20 font-bold">
                       Group {q.group_name}
                     </span>
@@ -124,17 +124,17 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
               </div>
             )}
 
-            <div className="flex items-center gap-3 mb-6 p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-3 mb-6 p-3 bg-bg-surface rounded-xl border border-border">
               <input
                 type="checkbox"
                 id="shuffle"
                 checked={shuffle}
                 onChange={(e) => setShuffle(e.target.checked)}
-                className="w-4 h-4 text-gold border-slate-300 rounded focus:ring-gold"
+                className="w-4 h-4 text-gold border-border rounded focus:ring-gold"
               />
-              <label htmlFor="shuffle" className="text-sm font-medium text-slate-700">
+              <label htmlFor="shuffle" className="text-sm font-medium text-foreground-secondary">
                 Shuffle qualifying teams?
-                <span className="block text-[10px] text-slate-400 font-normal mt-0.5">
+                <span className="block text-[10px] text-text-muted font-normal mt-0.5">
                   If checked, pairings will be randomized instead of Group A1 vs B2, etc.
                 </span>
               </label>
@@ -143,7 +143,7 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
             <div className="flex gap-3">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors"
+                className="flex-1 px-4 py-2 text-sm font-medium text-text-muted hover:text-foreground-secondary transition-colors"
               >
                 Cancel
               </button>

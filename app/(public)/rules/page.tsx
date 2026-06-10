@@ -7,8 +7,8 @@ export default function RulesPage() {
     <div className="space-y-8 max-w-3xl mx-auto">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">EFA Rule Book</h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <h1 className="text-2xl font-bold text-foreground-primary">EFA Rule Book</h1>
+        <p className="text-sm text-text-muted mt-1">
           Official match rules, disconnect protocols, and platform guidelines.
         </p>
       </div>
@@ -17,14 +17,14 @@ export default function RulesPage() {
       <section className="card p-6 space-y-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-1 h-6 rounded-full bg-accent" />
-          <h2 className="text-lg font-bold text-slate-900">EFA Official Match Rules</h2>
+          <h2 className="text-lg font-bold text-foreground-primary">EFA Official Match Rules</h2>
         </div>
 
         <ul className="space-y-2">
           {OFFICIAL_RULES.map((item, i) => (
             <li
               key={i}
-              className="flex items-start gap-3 py-2.5 px-3 rounded-lg bg-slate-50 border border-slate-200 hover:border-accent/30 transition-colors"
+              className="flex items-start gap-3 py-2.5 px-3 rounded-lg bg-bg-surface border border-border hover:border-accent/30 transition-colors"
             >
               <span className="text-base leading-none mt-0.5 flex-shrink-0">{item.icon}</span>
               <span className="text-sm text-slate-200 leading-snug">{item.rule}</span>
@@ -37,18 +37,18 @@ export default function RulesPage() {
       <section className="card p-6 space-y-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-1 h-6 rounded-full bg-yellow-500" />
-          <h2 className="text-lg font-bold text-slate-900">Disconnect Rules</h2>
+          <h2 className="text-lg font-bold text-foreground-primary">Disconnect Rules</h2>
         </div>
-        <p className="text-sm text-slate-400 leading-relaxed">
+        <p className="text-sm text-text-muted leading-relaxed">
           If a disconnect occurs during a match, the restart duration is determined by the minute
           the disconnect happened. Aggregate score from the abandoned segment is always carried
           forward.
         </p>
 
-        <div className="overflow-x-auto rounded-lg border border-slate-200">
+        <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
+              <tr className="bg-bg-surface border-b border-border">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-accent uppercase tracking-wider">
                   Disconnect At
                 </th>
@@ -64,15 +64,15 @@ export default function RulesPage() {
               {DISCONNECT_RULES.map((row, i) => (
                 <tr
                   key={i}
-                  className={`border-b border-slate-200/60 hover:bg-black/[0.03] transition-colors ${
-                    i % 2 === 0 ? '' : 'bg-slate-50/40'
+                  className={`border-b border-border/60 hover:bg-black/[0.03] transition-colors ${
+                    i % 2 === 0 ? '' : 'bg-bg-surface/40'
                   }`}
                 >
                   <td className="px-4 py-3 font-mono text-accent font-semibold text-sm whitespace-nowrap">
                     {row.minute}
                   </td>
-                  <td className="px-4 py-3 text-slate-900 text-sm">{row.restart}</td>
-                  <td className="px-4 py-3 text-slate-400 text-sm">{row.note}</td>
+                  <td className="px-4 py-3 text-foreground-primary text-sm">{row.restart}</td>
+                  <td className="px-4 py-3 text-text-muted text-sm">{row.note}</td>
                 </tr>
               ))}
             </tbody>
@@ -84,18 +84,18 @@ export default function RulesPage() {
       <section className="card p-6 space-y-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-1 h-6 rounded-full bg-red-500" />
-          <h2 className="text-lg font-bold text-slate-900">Abandonment Rules</h2>
+          <h2 className="text-lg font-bold text-foreground-primary">Abandonment Rules</h2>
         </div>
 
         <div className="space-y-3">
           {/* Waiting window */}
-          <div className="flex gap-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
+          <div className="flex gap-3 p-4 rounded-lg bg-bg-surface border border-border">
             <span className="text-xl flex-shrink-0">?</span>
             <div>
-              <p className="text-sm font-semibold text-slate-900 mb-1">Reporting Window</p>
-              <p className="text-sm text-slate-400 leading-relaxed">
+              <p className="text-sm font-semibold text-foreground-primary mb-1">Reporting Window</p>
+              <p className="text-sm text-text-muted leading-relaxed">
                 The <span className="text-accent font-medium">Report Waiting</span> button is
-                available from <span className="text-slate-900 font-medium">13:00 to 14:05 SAST</span>.
+                available from <span className="text-foreground-primary font-medium">13:00 to 14:05 SAST</span>.
                 Only use it if your opponent has not shown up for the scheduled fixture.
               </p>
             </div>
@@ -121,12 +121,12 @@ export default function RulesPage() {
               </p>
             </div>
 
-            <div className="flex gap-3 p-3.5 rounded-lg bg-slate-500/10 border border-slate-500/20">
+            <div className="flex gap-3 p-3.5 rounded-lg bg-bg-surface0/10 border border-slate-500/20">
               <span className="text-lg flex-shrink-0">??</span>
               <p className="text-sm text-slate-200 leading-snug">
-                If <span className="text-slate-700 font-semibold">neither team</span> submits a
+                If <span className="text-foreground-secondary font-semibold">neither team</span> submits a
                 waiting report, the fixture is recorded as a{' '}
-                <span className="text-slate-700 font-semibold">0–0 draw with no points</span> awarded
+                <span className="text-foreground-secondary font-semibold">0–0 draw with no points</span> awarded
                 to either side.
               </p>
             </div>
@@ -148,22 +148,22 @@ export default function RulesPage() {
       <section className="card p-6 space-y-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-1 h-6 rounded-full bg-accent" />
-          <h2 className="text-lg font-bold text-slate-900">Matchroom Instructions</h2>
+          <h2 className="text-lg font-bold text-foreground-primary">Matchroom Instructions</h2>
         </div>
 
         <div className="flex gap-4 p-5 rounded-xl bg-gradient-to-r from-accent/10 to-transparent border border-accent/25">
           <div className="text-3xl flex-shrink-0">??</div>
           <div className="space-y-2">
-            <p className="text-slate-900 font-semibold text-base">
+            <p className="text-foreground-primary font-semibold text-base">
               The Home Team ALWAYS Creates the Matchroom
             </p>
-            <p className="text-sm text-slate-700 leading-relaxed">
+            <p className="text-sm text-foreground-secondary leading-relaxed">
               In eFootball, it is the responsibility of the{' '}
               <span className="text-accent font-semibold">home team</span> — as listed in the
               fixture — to open and host the matchroom. The away team joins the room created by the
               home team.
             </p>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <p className="text-sm text-text-muted leading-relaxed">
               Make sure you check the fixture card to confirm which team is home before
               your scheduled kick-off time. Failure to create the matchroom as the home team may
               result in a waiting report being filed against you.
@@ -173,7 +173,7 @@ export default function RulesPage() {
 
         {/* Quick checklist */}
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
             Before every match
           </p>
           {[
@@ -185,19 +185,19 @@ export default function RulesPage() {
           ].map((step, i) => (
             <div
               key={i}
-              className="flex items-start gap-3 py-2.5 px-3 rounded-lg bg-slate-50 border border-slate-200"
+              className="flex items-start gap-3 py-2.5 px-3 rounded-lg bg-bg-surface border border-border"
             >
               <span className="flex-shrink-0 w-5 h-5 rounded-full bg-accent/20 text-accent text-xs font-bold flex items-center justify-center mt-0.5">
                 {i + 1}
               </span>
-              <span className="text-sm text-slate-700 leading-snug">{step}</span>
+              <span className="text-sm text-foreground-secondary leading-snug">{step}</span>
             </div>
           ))}
         </div>
       </section>
 
       {/* Footer note */}
-      <p className="text-center text-xs text-slate-600 pb-4">
+      <p className="text-center text-xs text-foreground-muted pb-4">
         Rules last updated by EFA administration. All decisions by admins are final.
       </p>
     </div>

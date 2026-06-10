@@ -63,10 +63,10 @@ export default function ChangePasswordModal({ userEmail, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-slate-900 font-bold">Change Password</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-900 text-xl leading-none">×</button>
+      <div className="w-full max-w-sm bg-bg-surface border border-border rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-foreground-primary font-bold">Change Password</h2>
+          <button onClick={onClose} className="text-text-muted hover:text-foreground-primary text-xl leading-none">×</button>
         </div>
 
         {success ? (

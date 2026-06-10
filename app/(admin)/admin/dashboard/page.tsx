@@ -351,7 +351,7 @@ export default async function AdminDashboardPage() {
                           </div>
                         </div>
 
-                        <span className={`text-xs px-2 py-0.5 rounded border shrink-0 w-40 text-center ${statusCls}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded border shrink-0 min-w-[90px] text-center ${statusCls}`}>
                           {fx.status.replaceAll('_', ' ')}
                         </span>
                         <div className="shrink-0">{actions}</div>

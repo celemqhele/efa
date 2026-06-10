@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns'
 import FixtureActions from './FixtureActions'
 import DateNav from '@/components/ui/DateNav'
 import { getAppTodayKey, getAppDayUtcRange, APP_TIME_ZONE } from '@/lib/app-time'
+import ScheduleRoundPanel from './ScheduleRoundPanel'
 
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
@@ -26,7 +27,7 @@ const TYPE_ACCENT: Record<string, string> = {
 }
 
 const STATUS_COLOURS: Record<string, string> = {
-  scheduled: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+  scheduled: 'text-text-muted bg-slate-500/10 border-slate-500/20',
   awaiting_confirmation: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
   confirmed: 'text-green-400 bg-green-500/10 border-green-500/20',
   completed: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
@@ -97,16 +98,18 @@ export default async function FixturesManagePage({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">Fixture Management</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-foreground-primary">Fixture Management</h1>
+        <p className="text-text-muted text-sm mt-1">
           {(fixtures?.length ?? 0)} fixture{(fixtures?.length ?? 0) === 1 ? '' : 's'} on {format(parseISO(selectedDate), 'EEE d MMM yyyy')}
         </p>
       </div>
 
       <DateNav currentDate={selectedDate} todayKey={todayKey} basePath="/admin/fixtures/manage" />
 
+      <ScheduleRoundPanel />
+
       {orderedTypes.length === 0 ? (
-        <div className="card p-12 text-center text-slate-500">
+        <div className="card p-12 text-center text-text-muted">
           <p className="text-4xl mb-3">📅</p>
           <p>No fixtures scheduled for this day.</p>
         </div>
@@ -120,10 +123,10 @@ export default async function FixturesManagePage({
             return (
               <section key={type} className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded border ${TYPE_ACCENT[type] ?? 'text-slate-500 border-slate-200'}`}>
+                  <h2 className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded border ${TYPE_ACCENT[type] ?? 'text-text-muted border-border'}`}>
                     {TYPE_LABELS[type] ?? tournamentMeta?.name ?? type}
                   </h2>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-text-muted">
                     {sectionFixtures.length} {sectionFixtures.length === 1 ? 'fixture' : 'fixtures'}
                   </span>
                 </div>
@@ -144,12 +147,12 @@ export default async function FixturesManagePage({
                         <div key={fx.id} className="px-4 py-3 space-y-2">
                           <div className="flex items-center gap-2 flex-wrap">
                             {time && (
-                              <span className="text-slate-400 text-xs font-bold font-mono">{time}</span>
+                              <span className="text-text-muted text-xs font-bold font-mono">{time}</span>
                             )}
                             {round && (
-                              <span className="text-slate-500 text-[10px] font-semibold uppercase">{round}</span>
+                              <span className="text-text-muted text-[10px] font-semibold uppercase">{round}</span>
                             )}
-                            <span className="text-slate-500 text-[10px]">MD{fx.matchday}</span>
+                            <span className="text-text-muted text-[10px]">MD{fx.matchday}</span>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>
                               {fx.status.replaceAll('_', ' ')}
                             </span>
@@ -157,9 +160,9 @@ export default async function FixturesManagePage({
                               <span className="text-orange-400 text-[10px]">Postponed</span>
                             )}
                           </div>
-                          <p className="text-slate-100 text-sm font-semibold">
+                          <p className="text-foreground-primary text-sm font-semibold">
                             {homeTeam?.name ?? 'TBC'}
-                            <span className="text-slate-400 font-normal mx-1.5">
+                            <span className="text-text-muted font-normal mx-1.5">
                               {result ? `${result.home_score}–${result.away_score}` : 'vs'}
                             </span>
                             {awayTeam?.name ?? 'TBC'}
@@ -183,12 +186,12 @@ export default async function FixturesManagePage({
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-navy-border bg-navy-light/50">
-                          <th className="text-left text-xs text-slate-500 py-3 px-4 w-20">Time</th>
-                          <th className="text-left text-xs text-slate-500 py-3 px-4">Home</th>
-                          <th className="text-center text-xs text-slate-500 py-3 px-2">Score</th>
-                          <th className="text-left text-xs text-slate-500 py-3 px-4">Away</th>
-                          <th className="text-left text-xs text-slate-500 py-3 px-4">Status</th>
-                          <th className="text-left text-xs text-slate-500 py-3 px-4">Actions</th>
+                          <th className="text-left text-xs text-text-muted py-3 px-4 w-20">Time</th>
+                          <th className="text-left text-xs text-text-muted py-3 px-4">Home</th>
+                          <th className="text-center text-xs text-text-muted py-3 px-2">Score</th>
+                          <th className="text-left text-xs text-text-muted py-3 px-4">Away</th>
+                          <th className="text-left text-xs text-text-muted py-3 px-4">Status</th>
+                          <th className="text-left text-xs text-text-muted py-3 px-4">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-navy-border">
@@ -204,8 +207,8 @@ export default async function FixturesManagePage({
                           return (
                             <tr key={fx.id} className="hover:bg-navy-light/40 transition-colors">
                               <td className="py-3 px-4">
-                                <div className="text-slate-100 font-bold font-mono text-sm">{time ?? '—'}</div>
-                                <div className="text-slate-500 text-[10px] uppercase">
+                                <div className="text-foreground-primary font-bold font-mono text-sm">{time ?? '—'}</div>
+                                <div className="text-text-muted text-[10px] uppercase">
                                   {round ?? `MD${fx.matchday}`}
                                 </div>
                               </td>
@@ -219,16 +222,16 @@ export default async function FixturesManagePage({
                                       className="object-contain shrink-0"
                                     />
                                   )}
-                                  <span className="text-slate-100 font-medium">{homeTeam?.name}</span>
+                                  <span className="text-foreground-primary font-medium">{homeTeam?.name}</span>
                                 </div>
                               </td>
                               <td className="py-3 px-2 text-center">
                                 {result ? (
-                                  <span className="text-slate-100 font-bold text-base">
+                                  <span className="text-foreground-primary font-bold text-base">
                                     {result.home_score} – {result.away_score}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-500">vs</span>
+                                  <span className="text-text-muted">vs</span>
                                 )}
                               </td>
                               <td className="py-3 px-4">
@@ -241,7 +244,7 @@ export default async function FixturesManagePage({
                                       className="object-contain shrink-0"
                                     />
                                   )}
-                                  <span className="text-slate-100 font-medium">{awayTeam?.name}</span>
+                                  <span className="text-foreground-primary font-medium">{awayTeam?.name}</span>
                                 </div>
                               </td>
                               <td className="py-3 px-4">

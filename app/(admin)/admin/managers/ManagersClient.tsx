@@ -147,10 +147,10 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
       {/* Team list */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-text-muted">
             {managedCount} / {localTeams.length} clubs managed
           </p>
-          <div className="flex items-center gap-3 text-xs text-slate-500">
+          <div className="flex items-center gap-3 text-xs text-text-muted">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-green-400 inline-block" /> Managed
             </span>
@@ -172,7 +172,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl border text-left transition-all ${
                   isSelected
                     ? 'border-gold bg-gold/10 shadow-[0_0_12px_rgba(201,168,76,0.15)]'
-                    : 'border-slate-200 bg-white hover:border-gold/40 hover:bg-gold/5'
+                    : 'border-border bg-bg-surface hover:border-gold/40 hover:bg-gold/5'
                 }`}
               >
                 <div className="w-10 h-10 shrink-0 flex items-center justify-center rounded-lg">
@@ -185,12 +185,12 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                       onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3' }}
                     />
                   ) : (
-                    <span className="text-slate-300 text-xs font-bold">?</span>
+                    <span className="text-text-muted text-xs font-bold">?</span>
                   )}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-slate-900 text-sm font-semibold truncate">{team.name}</p>
+                  <p className="text-foreground-primary text-sm font-semibold truncate">{team.name}</p>
                   {manager ? (
                     <div className="flex items-center gap-1.5">
                       <p className="text-green-600 text-xs truncate">{manager.username}</p>
@@ -199,7 +199,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                       )}
                     </div>
                   ) : (
-                    <p className="text-slate-400 text-xs italic">No manager</p>
+                    <p className="text-text-muted text-xs italic">No manager</p>
                   )}
                 </div>
 
@@ -213,14 +213,14 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
       {/* Detail panel */}
       <div className="lg:sticky lg:top-20 self-start">
         {!selectedTeam ? (
-          <div className="card p-12 text-center text-slate-400">
+          <div className="card p-12 text-center text-text-muted">
             <p className="text-4xl mb-3">👔</p>
             <p className="text-sm">Select a club to manage its manager.</p>
           </div>
         ) : (
           <div className="card p-5 space-y-5">
             {/* Team header */}
-            <div className="flex items-center gap-4 pb-4 border-b border-slate-200">
+            <div className="flex items-center gap-4 pb-4 border-b border-border">
               <div className="w-14 h-14 shrink-0 flex items-center justify-center rounded-xl">
                 {selectedTeam.logo_league_folder && selectedTeam.logo_team_slug ? (
                   <Image
@@ -231,12 +231,12 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                     onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3' }}
                   />
                 ) : (
-                  <span className="text-slate-300 text-lg font-bold">?</span>
+                  <span className="text-text-muted text-lg font-bold">?</span>
                 )}
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900">{selectedTeam.name}</h2>
-                <p className="text-slate-400 text-sm">
+                <h2 className="text-lg font-bold text-foreground-primary">{selectedTeam.name}</h2>
+                <p className="text-text-muted text-sm">
                   {selectedTeam.manager_id ? 'Has a manager' : 'Vacant — no manager'}
                 </p>
               </div>
@@ -251,9 +251,9 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
             {/* Current manager */}
             {selectedTeam.manager_id && managerProfile ? (
               <div className="space-y-3">
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Current Manager</p>
+                <p className="text-xs text-text-muted font-medium uppercase tracking-wide">Current Manager</p>
 
-                <div className="rounded-xl px-4 py-3 border border-slate-200 space-y-3">
+                <div className="rounded-xl px-4 py-3 border border-border space-y-3">
                   {/* Manager info row */}
                   <div className="flex items-center gap-3">
                     {managerProfile.avatar_url ? (
@@ -261,7 +261,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                         src={managerProfile.avatar_url}
                         alt={managerProfile.username}
                         width={40} height={40}
-                        className="rounded-full object-contain bg-white"
+                        className="rounded-full object-contain bg-bg-surface"
                       />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center shrink-0">
@@ -271,8 +271,8 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-900 font-semibold">{managerProfile.username}</p>
-                      <p className="text-slate-400 text-xs capitalize">{managerProfile.role}</p>
+                      <p className="text-foreground-primary font-semibold">{managerProfile.username}</p>
+                      <p className="text-text-muted text-xs capitalize">{managerProfile.role}</p>
                     </div>
                     <button
                       onClick={() => handleSack(selectedTeam.id)}
@@ -287,7 +287,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                   <div className="pt-2 border-t border-slate-100">
                     {editingWa ? (
                       <div className="space-y-2">
-                        <label className="text-xs text-slate-500 font-medium">
+                        <label className="text-xs text-text-muted font-medium">
                           WhatsApp number (international, digits only)
                         </label>
                         <input
@@ -326,7 +326,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                             />
                             <button
                               onClick={() => openEditWa(managerProfile.whatsapp_number)}
-                              className="text-xs text-slate-400 hover:text-slate-600 underline"
+                              className="text-xs text-text-muted hover:text-foreground-secondary underline"
                             >
                               Edit
                             </button>
@@ -334,7 +334,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                         ) : (
                           <button
                             onClick={() => openEditWa(null)}
-                            className="text-xs text-slate-400 hover:text-[#25D366] border border-dashed border-slate-300 hover:border-[#25D366]/50 rounded-lg px-3 py-1.5 transition-colors"
+                            className="text-xs text-text-muted hover:text-[#25D366] border border-dashed border-border hover:border-[#25D366]/50 rounded-lg px-3 py-1.5 transition-colors"
                           >
                             + Add WhatsApp number
                           </button>
@@ -346,10 +346,10 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Assign a Manager</p>
+                <p className="text-xs text-text-muted font-medium uppercase tracking-wide">Assign a Manager</p>
 
                 {freeUsers.length === 0 && (
-                  <p className="text-slate-500 text-sm text-center py-4">
+                  <p className="text-text-muted text-sm text-center py-4">
                     All registered users are already managing a team.
                   </p>
                 )}
@@ -359,24 +359,24 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                       key={user.id}
                       onClick={() => handleAssign(selectedTeam.id, user.id)}
                       disabled={loading}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-gold/50 hover:bg-gold/5 transition-all text-left disabled:opacity-50"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-bg-surface hover:border-gold/50 hover:bg-gold/5 transition-all text-left disabled:opacity-50"
                     >
                       {user.avatar_url ? (
                         <Image
                           src={user.avatar_url}
                           alt={user.username}
                           width={32} height={32}
-                          className="rounded-full object-contain bg-slate-100 shrink-0"
+                          className="rounded-full object-contain bg-bg-elevated shrink-0"
                         />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
-                          <span className="text-slate-500 text-xs font-bold">
+                        <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">
+                          <span className="text-text-muted text-xs font-bold">
                             {user.username[0].toUpperCase()}
                           </span>
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-slate-900 text-sm font-medium">{user.username}</p>
+                        <p className="text-foreground-primary text-sm font-medium">{user.username}</p>
                         <p className="text-green-600 text-xs">Available</p>
                       </div>
                       <span className="text-gold text-xs font-semibold shrink-0">Assign →</span>
@@ -386,7 +386,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                   {busyUsers.length > 0 && (
                     <>
                       {freeUsers.length > 0 && (
-                        <p className="text-xs text-slate-400 font-medium uppercase tracking-wide pt-2 pb-1">
+                        <p className="text-xs text-text-muted font-medium uppercase tracking-wide pt-2 pb-1">
                           Already managing a club
                         </p>
                       )}
@@ -395,25 +395,25 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                         return (
                           <div
                             key={user.id}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-100 bg-bg-surface opacity-60 cursor-not-allowed"
                           >
                             {user.avatar_url ? (
                               <Image
                                 src={user.avatar_url}
                                 alt={user.username}
                                 width={32} height={32}
-                                className="rounded-full object-contain bg-slate-100 shrink-0"
+                                className="rounded-full object-contain bg-bg-elevated shrink-0"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
-                                <span className="text-slate-500 text-xs font-bold">
+                              <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">
+                                <span className="text-text-muted text-xs font-bold">
                                   {user.username[0].toUpperCase()}
                                 </span>
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="text-slate-700 text-sm font-medium">{user.username}</p>
-                              <p className="text-slate-400 text-xs truncate">
+                              <p className="text-foreground-secondary text-sm font-medium">{user.username}</p>
+                              <p className="text-text-muted text-xs truncate">
                                 Manages {theirTeam?.name ?? 'a team'} — sack first
                               </p>
                             </div>

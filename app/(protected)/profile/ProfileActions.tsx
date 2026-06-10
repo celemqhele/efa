@@ -19,7 +19,7 @@ export default function ProfileActions({ userEmail }: { userEmail: string }) {
         <h2 className="section-header">
           <span>🔐</span> Account Security
         </h2>
-        <p className="text-slate-500 text-xs">
+        <p className="text-text-muted text-xs">
           To reset a forgotten password, contact an admin — they can reset it to a default via the database.
         </p>
         <button

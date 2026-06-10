@@ -57,12 +57,12 @@ export default async function ResultDetailPage({ params }: Props) {
     const awayPct = 100 - homePct
     return (
       <div className="space-y-1">
-        <div className="flex justify-between text-xs text-slate-400">
-          <span className="font-semibold text-slate-900">{homeVal}</span>
+        <div className="flex justify-between text-xs text-text-muted">
+          <span className="font-semibold text-foreground-primary">{homeVal}</span>
           <span>{label}</span>
-          <span className="font-semibold text-slate-900">{awayVal}</span>
+          <span className="font-semibold text-foreground-primary">{awayVal}</span>
         </div>
-        <div className="flex h-1.5 rounded-full overflow-hidden bg-slate-200">
+        <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-elevated">
           <div className="bg-[#c9a84c] transition-all" style={{ width: `${homePct}%` }} />
           <div className="bg-blue-500 transition-all" style={{ width: `${awayPct}%` }} />
         </div>
@@ -73,7 +73,7 @@ export default async function ResultDetailPage({ params }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       {/* Back */}
-      <Link href="/results" className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
+      <Link href="/results" className="text-xs text-text-muted hover:text-foreground-secondary flex items-center gap-1">
         ← Results
       </Link>
 
@@ -87,7 +87,7 @@ export default async function ResultDetailPage({ params }: Props) {
               {tournament?.name}
             </span>
             {fixture?.matchday && (
-              <span className="text-xs text-slate-600">· Matchday {fixture.matchday}</span>
+              <span className="text-xs text-foreground-muted">· Matchday {fixture.matchday}</span>
             )}
           </div>
 
@@ -109,19 +109,19 @@ export default async function ResultDetailPage({ params }: Props) {
                   className="object-contain"
                 />
               )}
-              <span className="text-sm font-bold text-slate-900 text-center leading-tight">{home?.name}</span>
-              <span className="text-xs text-slate-500">{home?.manager?.username ?? 'NO MANAGER'}</span>
+              <span className="text-sm font-bold text-foreground-primary text-center leading-tight">{home?.name}</span>
+              <span className="text-xs text-text-muted">{home?.manager?.username ?? 'NO MANAGER'}</span>
             </Link>
 
             {/* Score */}
             <div className="text-center">
-              <div className="text-5xl font-black text-slate-900 tabular-nums">
+              <div className="text-5xl font-black text-foreground-primary tabular-nums">
                 {result.home_score}
-                <span className="text-slate-400 mx-2">–</span>
+                <span className="text-text-muted mx-2">–</span>
                 {result.away_score}
               </div>
               {fixture?.scheduled_date && (
-                <div className="text-xs text-slate-500 mt-2">
+                <div className="text-xs text-text-muted mt-2">
                   {format(parseISO(fixture.scheduled_date), 'EEE d MMM yyyy')}
                 </div>
               )}
@@ -138,8 +138,8 @@ export default async function ResultDetailPage({ params }: Props) {
                   className="object-contain"
                 />
               )}
-              <span className="text-sm font-bold text-slate-900 text-center leading-tight">{away?.name}</span>
-              <span className="text-xs text-slate-500">{away?.manager?.username ?? 'NO MANAGER'}</span>
+              <span className="text-sm font-bold text-foreground-primary text-center leading-tight">{away?.name}</span>
+              <span className="text-xs text-text-muted">{away?.manager?.username ?? 'NO MANAGER'}</span>
             </Link>
           </div>
         </div>
@@ -183,13 +183,13 @@ export default async function ResultDetailPage({ params }: Props) {
           </div>
 
           {/* Key: home=gold, away=blue */}
-          <div className="flex justify-between mt-4 pt-3 border-t border-slate-200">
+          <div className="flex justify-between mt-4 pt-3 border-t border-border">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-1.5 rounded-full bg-[#c9a84c]" />
-              <span className="text-xs text-slate-400">{home?.name}</span>
+              <span className="text-xs text-text-muted">{home?.name}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-400">{away?.name}</span>
+              <span className="text-xs text-text-muted">{away?.name}</span>
               <div className="w-3 h-1.5 rounded-full bg-blue-500" />
             </div>
           </div>
@@ -203,7 +203,7 @@ export default async function ResultDetailPage({ params }: Props) {
           <img
             src={result.screenshot_url}
             alt="Match screenshot"
-            className="w-full rounded-lg border border-slate-200"
+            className="w-full rounded-lg border border-border"
           />
         </div>
       )}

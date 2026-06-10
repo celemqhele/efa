@@ -242,6 +242,9 @@ export interface Database {
           postponed_from: string | null
           deadline: string | null
           matchroom_code: string | null
+          assigned_day: string | null
+          window_start: string | null
+          window_end: string | null
           created_at: string
         }
         Insert: {
@@ -258,6 +261,9 @@ export interface Database {
           postponed_from?: string | null
           deadline?: string | null
           matchroom_code?: string | null
+          assigned_day?: string | null
+          window_start?: string | null
+          window_end?: string | null
           created_at?: string
         }
         Update: {
@@ -274,6 +280,9 @@ export interface Database {
           postponed_from?: string | null
           deadline?: string | null
           matchroom_code?: string | null
+          assigned_day?: string | null
+          window_start?: string | null
+          window_end?: string | null
           created_at?: string
         }
         Relationships: []
@@ -790,6 +799,48 @@ export interface Database {
         }
         Relationships: []
       }
+      manager_tenures: {
+        Row: {
+          id: string
+          team_id: string
+          manager_id: string
+          manager_username: string
+          started_at: string
+          ended_at: string | null
+          wins: number
+          draws: number
+          losses: number
+          goals_for: number
+          goals_against: number
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          manager_id: string
+          manager_username: string
+          started_at: string
+          ended_at?: string | null
+          wins?: number
+          draws?: number
+          losses?: number
+          goals_for?: number
+          goals_against?: number
+        }
+        Update: {
+          id?: string
+          team_id?: string
+          manager_id?: string
+          manager_username?: string
+          started_at?: string
+          ended_at?: string | null
+          wins?: number
+          draws?: number
+          losses?: number
+          goals_for?: number
+          goals_against?: number
+        }
+        Relationships: []
+      }
     }
     Views: {}
     Functions: {}
@@ -816,3 +867,4 @@ export type TeamChangeRequest = Database['public']['Tables']['team_change_reques
 export type WaitingReport = Database['public']['Tables']['waiting_reports']['Row']
 export type KnockoutRound = Database['public']['Tables']['knockout_rounds']['Row']
 export type TournamentParticipant = Database['public']['Tables']['tournament_participants']['Row']
+export type ManagerTenure = Database['public']['Tables']['manager_tenures']['Row']

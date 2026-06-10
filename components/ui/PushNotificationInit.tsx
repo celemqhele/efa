@@ -73,15 +73,15 @@ export default function PushNotificationInit() {
       <div className="card border border-gold/40 p-4 shadow-2xl shadow-black/40 flex items-start gap-3 animate-slide-up">
         <span className="text-2xl shrink-0">🔔</span>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-slate-900 text-sm">Enable match notifications</p>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="font-bold text-foreground-primary text-sm">Enable match notifications</p>
+          <p className="text-xs text-text-muted mt-0.5">
             Get notified when it&apos;s matchday, when your opponent messages you, and when reminders are due.
           </p>
           <div className="flex gap-2 mt-3">
             <button onClick={handleAllow} className="btn-gold text-xs px-4 py-1.5">
               Allow
             </button>
-            <button onClick={handleDismiss} className="text-xs text-slate-500 hover:text-slate-700 px-2">
+            <button onClick={handleDismiss} className="text-xs text-text-muted hover:text-foreground-secondary px-2">
               Not now
             </button>
           </div>

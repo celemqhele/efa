@@ -35,7 +35,7 @@ function StatBar({
 
   return (
     <div className="space-y-1">
-      <div className="flex justify-between text-xs text-slate-400">
+      <div className="flex justify-between text-xs text-text-muted">
         <span className="font-semibold text-foreground-primary">{h}</span>
         <span className="uppercase tracking-wider">{label}</span>
         <span className="font-semibold text-foreground-primary">{a}</span>
@@ -46,7 +46,7 @@ function StatBar({
           style={{ width: `${homePct}%` }}
         />
         <div
-          className="bg-slate-500 transition-all duration-500"
+          className="bg-bg-surface0 transition-all duration-500"
           style={{ width: `${awayPct}%` }}
         />
       </div>
@@ -71,7 +71,7 @@ function ProbabilityBar({
     <div className="space-y-3">
       <div className="flex justify-between text-sm font-semibold">
         <span className="text-gold">{home}%</span>
-        <span className="text-slate-400">{draw}% Draw</span>
+        <span className="text-text-muted">{draw}% Draw</span>
         <span className="text-foreground-secondary">{away}%</span>
       </div>
       <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
@@ -91,7 +91,7 @@ function ProbabilityBar({
           title={`${awayName} win ${away}%`}
         />
       </div>
-      <div className="flex justify-between text-xs text-slate-500">
+      <div className="flex justify-between text-xs text-text-muted">
         <span>{homeName}</span>
         <span>{awayName}</span>
       </div>
@@ -297,7 +297,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             {tournament?.name ?? 'Match'} · Matchday {fixture.matchday}
           </span>
           {fixture.scheduled_date && (
-            <p className="text-slate-400 text-xs mt-1">
+            <p className="text-text-muted text-xs mt-1">
               {new Date(fixture.scheduled_date).toLocaleDateString('en-GB', {
                 weekday: 'short',
                 day: 'numeric',
@@ -322,7 +322,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               />
               <div className="text-center">
                 <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
-                <p className="text-xs text-slate-500">{homeManager?.username ?? '—'}</p>
+                <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
 
@@ -331,7 +331,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               <span className="text-5xl font-black text-foreground-primary tabular-nums">
                 {result.home_score}
               </span>
-              <span className="text-2xl font-bold text-slate-500">–</span>
+              <span className="text-2xl font-bold text-text-muted">–</span>
               <span className="text-5xl font-black text-foreground-primary tabular-nums">
                 {result.away_score}
               </span>
@@ -348,7 +348,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               />
               <div className="text-center">
                 <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
-                <p className="text-xs text-slate-500">{awayManager?.username ?? '—'}</p>
+                <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
               </div>
             </Link>
           </div>
@@ -365,12 +365,12 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               />
               <div className="text-center">
                 <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
-                <p className="text-xs text-slate-500">{homeManager?.username ?? '—'}</p>
+                <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
 
             <div className="text-center">
-              <span className="text-3xl font-black text-slate-600">VS</span>
+              <span className="text-3xl font-black text-foreground-muted">VS</span>
             </div>
 
             <Link href={`/teams/${awayTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
@@ -383,7 +383,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               />
               <div className="text-center">
                 <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
-                <p className="text-xs text-slate-500">{awayManager?.username ?? '—'}</p>
+                <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
               </div>
             </Link>
           </div>
@@ -408,7 +408,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       {!hasResult && (
         <>
           {/* Matchroom Instructions */}
-          <div className="card p-5 border-gold/30 bg-gradient-to-br from-white to-slate-50">
+          <div className="card p-5 border-gold/30 bg-gradient-to-br from-bg-surface to-slate-50">
             <h2 className="section-header">
               <span className="text-gold">🎮</span> Matchroom Instructions
             </h2>
@@ -436,7 +436,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                   {awayManager && (
                     <p className="text-foreground-primary font-semibold">@{awayManager.username}</p>
                   )}
-                  <p className="text-slate-400 text-sm mt-1">
+                  <p className="text-text-muted text-sm mt-1">
                     You join the matchroom
                   </p>
                 </div>
@@ -471,7 +471,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               <span className="text-gold">⚔️</span> Head to Head (Last 5)
             </h2>
             {h2hList.length === 0 ? (
-              <p className="text-slate-500 text-sm">No previous meetings.</p>
+              <p className="text-text-muted text-sm">No previous meetings.</p>
             ) : (
               <div className="space-y-2">
                 {h2hList.map((f: any) => {
@@ -499,7 +499,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                             className="object-contain shrink-0"
                           />
                         )}
-                        <span className="text-xs text-slate-400 truncate">{hTeam.name}</span>
+                        <span className="text-xs text-text-muted">{hTeam.name}</span>
                       </Link>
 
                       {/* Score — links to that fixture */}
@@ -509,7 +509,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
 
                       {/* Away team — clickable logo */}
                       <Link href={`/teams/${aTeam.id}`} className="flex items-center justify-end gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
-                        <span className="text-xs text-slate-400 truncate text-right">{aTeam.name}</span>
+                        <span className="text-xs text-text-muted text-right">{aTeam.name}</span>
                         {aTeam.logo_league_folder && (
                           <Image
                             src={getTeamLogo(aTeam.logo_league_folder, aTeam.logo_team_slug, 'standings_row')}
@@ -536,7 +536,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
                   {homeTeam.name}
                 </p>
                 {homeDNA.length > 0 ? (
@@ -551,11 +551,11 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-slate-600 text-xs">Not enough data</p>
+                  <p className="text-foreground-muted text-xs">Not enough data</p>
                 )}
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
                   {awayTeam.name}
                 </p>
                 {awayDNA.length > 0 ? (
@@ -570,7 +570,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-slate-600 text-xs">Not enough data</p>
+                  <p className="text-foreground-muted text-xs">Not enough data</p>
                 )}
               </div>
             </div>
@@ -583,11 +583,11 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             </h2>
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-slate-400 truncate min-w-0">{homeTeam.name}</span>
+                <span className="text-sm text-text-muted truncate min-w-0">{homeTeam.name}</span>
                 <FormStrip form={(homeStanding?.form ?? '').slice(-6)} />
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-slate-400 truncate min-w-0">{awayTeam.name}</span>
+                <span className="text-sm text-text-muted truncate min-w-0">{awayTeam.name}</span>
                 <FormStrip form={(awayStanding?.form ?? '').slice(-6)} />
               </div>
             </div>
@@ -617,7 +617,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 <StatBar label="Interceptions" home={matchStats.home_interceptions} away={matchStats.away_interceptions} />
                 <StatBar label="Tackles" home={matchStats.home_tackles} away={matchStats.away_tackles} />
               </div>
-              <div className="flex justify-between text-xs text-slate-500 mt-3 pt-3 border-t border-navy-border">
+              <div className="flex justify-between text-xs text-text-muted mt-3 pt-3 border-t border-navy-border">
                 <span className="font-semibold text-foreground-secondary">{homeTeam.name}</span>
                 <span className="font-semibold text-foreground-secondary">{awayTeam.name}</span>
               </div>
@@ -661,23 +661,23 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           {confirmationStatus === 'pending' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">{homeTeam.name}</span>
+                <span className="text-text-muted">{homeTeam.name}</span>
                 {conf1 ? (
                   <span className="text-green-400 font-semibold">
                     Submitted: {conf1.home_score}–{conf1.away_score}
                   </span>
                 ) : (
-                  <span className="text-slate-600">Pending</span>
+                  <span className="text-foreground-muted">Pending</span>
                 )}
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">{awayTeam.name}</span>
+                <span className="text-text-muted">{awayTeam.name}</span>
                 {conf2 ? (
                   <span className="text-green-400 font-semibold">
                     Submitted: {conf2.home_score}–{conf2.away_score}
                   </span>
                 ) : (
-                  <span className="text-slate-600">Pending</span>
+                  <span className="text-foreground-muted">Pending</span>
                 )}
               </div>
             </div>
@@ -714,8 +714,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           <span className="flex items-center gap-2">
             <span className="text-gold">⚡</span> Disconnect Rules
           </span>
-          <span className="text-slate-500 text-xs group-open:hidden">Tap to expand</span>
-          <span className="text-slate-500 text-xs hidden group-open:inline">Collapse</span>
+          <span className="text-text-muted text-xs group-open:hidden">Tap to expand</span>
+          <span className="text-text-muted text-xs hidden group-open:inline">Collapse</span>
         </summary>
 
         <div className="mt-4 space-y-4">
@@ -740,7 +740,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-slate-500 uppercase tracking-wider border-b border-navy-border">
+                  <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b border-navy-border">
                     <th className="pb-2 pr-4">Minute of DC</th>
                     <th className="pb-2 pr-4">Restart</th>
                     <th className="pb-2">Note</th>
@@ -751,7 +751,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                     <tr key={i} className="text-foreground-secondary">
                       <td className="py-2 pr-4 font-semibold text-gold">{rule.minute}</td>
                       <td className="py-2 pr-4">{rule.restart}</td>
-                      <td className="py-2 text-slate-500">{rule.note}</td>
+                      <td className="py-2 text-text-muted">{rule.note}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -765,13 +765,13 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       <div className="card p-5">
         <h2 className="section-header">
           <span className="text-gold">💬</span> Banter Board
-          <span className="text-slate-500 text-sm font-normal ml-auto">
+          <span className="text-text-muted text-sm font-normal ml-auto">
             {comments.length} comment{comments.length !== 1 ? 's' : ''}
           </span>
         </h2>
 
         {topLevel.length === 0 ? (
-          <p className="text-slate-500 text-sm">
+          <p className="text-text-muted text-sm">
             No comments yet. Be the first to drop some banter.
           </p>
         ) : (
@@ -791,7 +791,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                         <span className="text-xs font-semibold text-gold">
                           @{comment.author?.username ?? 'Unknown'}
                         </span>
-                        <span className="text-xs text-slate-600">
+                        <span className="text-xs text-foreground-muted">
                           {new Date(comment.created_at).toLocaleDateString('en-GB', {
                             day: 'numeric',
                             month: 'short',
@@ -807,7 +807,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                     <div className="ml-11 space-y-2">
                       {commentReplies.map((reply: any) => (
                         <div key={reply.id} className="flex gap-3">
-                          <div className="w-6 h-6 rounded-full bg-navy-border flex items-center justify-center text-xs font-bold text-slate-400 shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-navy-border flex items-center justify-center text-xs font-bold text-text-muted shrink-0">
                             {reply.author?.username?.[0]?.toUpperCase() ?? '?'}
                           </div>
                           <div className="flex-1 p-2.5 rounded-lg bg-navy-border/20 border border-navy-border/50">
@@ -815,14 +815,14 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                               <span className="text-xs font-semibold text-foreground-secondary">
                                 @{reply.author?.username ?? 'Unknown'}
                               </span>
-                              <span className="text-xs text-slate-600">
+                              <span className="text-xs text-foreground-muted">
                                 {new Date(reply.created_at).toLocaleDateString('en-GB', {
                                   day: 'numeric',
                                   month: 'short',
                                 })}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-400">{reply.content}</p>
+                            <p className="text-xs text-text-muted">{reply.content}</p>
                           </div>
                         </div>
                       ))}

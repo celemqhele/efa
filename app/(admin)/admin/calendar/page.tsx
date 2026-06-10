@@ -92,11 +92,11 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold text-slate-900">{monthLabel}</h1>
+          <h1 className="text-xl font-bold text-foreground-primary">{monthLabel}</h1>
           
           {/* Scope Toggle */}
-          <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
-            <span className={`text-xs font-medium ${scope === 'mine' ? 'text-slate-900' : 'text-slate-400'}`}>
+          <div className="flex items-center gap-2 bg-bg-elevated px-3 py-1.5 rounded-full border border-border shadow-sm">
+            <span className={`text-xs font-medium ${scope === 'mine' ? 'text-foreground-primary' : 'text-text-muted'}`}>
               My Team
             </span>
             <Link
@@ -105,10 +105,10 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
               scroll={false}
             >
               <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${scope === 'all' ? 'translate-x-4' : 'translate-x-1'}`}
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-bg-surface transition-transform ${scope === 'all' ? 'translate-x-4' : 'translate-x-1'}`}
               />
             </Link>
-            <span className={`text-xs font-medium ${scope === 'all' ? 'text-slate-900' : 'text-slate-400'}`}>
+            <span className={`text-xs font-medium ${scope === 'all' ? 'text-foreground-primary' : 'text-text-muted'}`}>
               All Teams
             </span>
           </div>
@@ -128,7 +128,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
             {c.label}
           </span>
         ))}
-        <span className="text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-500 font-bold">Break</span>
+        <span className="text-xs px-2 py-0.5 rounded bg-bg-elevated text-text-muted font-bold">Break</span>
       </div>
 
       {/* Calendar grid */}
@@ -136,14 +136,14 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
         {/* Day headers */}
         <div className="grid grid-cols-7 mb-1">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-            <div key={d} className="text-center text-xs text-slate-500 font-medium py-2">{d}</div>
+            <div key={d} className="text-center text-xs text-text-muted font-medium py-2">{d}</div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-px bg-slate-200">
+        <div className="grid grid-cols-7 gap-px bg-bg-elevated">
           {/* Padding */}
           {Array.from({ length: startPad }).map((_, i) => (
-            <div key={`pad-${i}`} className="bg-slate-50 min-h-[80px]" />
+            <div key={`pad-${i}`} className="bg-bg-surface min-h-[80px]" />
           ))}
 
           {days.map((day) => {
@@ -155,18 +155,18 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
             return (
               <div
                 key={dateStr}
-                className={`bg-slate-50 min-h-[80px] p-1.5 ${
+                className={`bg-bg-surface min-h-[80px] p-1.5 ${
                   isBreak ? 'opacity-40' : ''
                 } ${isToday ? 'ring-1 ring-accent ring-inset' : ''}`}
               >
                 <div className={`text-xs font-bold mb-1 ${
-                  isToday ? 'text-accent' : 'text-slate-500'
+                  isToday ? 'text-accent' : 'text-text-muted'
                 }`}>
                   {format(day, 'd')}
                 </div>
 
                 {isBreak && (
-                  <div className="text-[9px] text-slate-600 bg-slate-200 rounded px-1 py-0.5">
+                  <div className="text-[9px] text-foreground-muted bg-bg-elevated rounded px-1 py-0.5">
                     Break
                   </div>
                 )}
@@ -209,7 +209,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
                     )
                   })}
                   {dayFixtures.length > 4 && (
-                    <div className="text-[9px] text-slate-500 px-1">
+                    <div className="text-[9px] text-text-muted px-1">
                       +{dayFixtures.length - 4} more
                     </div>
                   )}
@@ -226,21 +226,21 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
           <h2 className="section-header">Today's Fixtures</h2>
           <div className="space-y-2">
             {(byDate[format(now, 'yyyy-MM-dd')] ?? []).map((f: any) => (
-              <div key={f.id} className="flex items-center justify-between py-2 border-b border-slate-200 last:border-0">
+              <div key={f.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                 <div className="flex items-center gap-2">
                   {f.home_team?.logo_league_folder && (
                     <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
                   )}
-                  <span className="text-sm text-slate-900">{f.home_team?.name}</span>
+                  <span className="text-sm text-foreground-primary">{f.home_team?.name}</span>
                 </div>
                 <div className="text-center px-3">
                   {f.results?.[0]
-                    ? <span className="text-slate-900 font-bold">{f.results[0].home_score}–{f.results[0].away_score}</span>
+                    ? <span className="text-foreground-primary font-bold">{f.results[0].home_score}–{f.results[0].away_score}</span>
                     : <span className="text-xs text-accent">vs</span>
                   }
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-900">{f.away_team?.name}</span>
+                  <span className="text-sm text-foreground-primary">{f.away_team?.name}</span>
                   {f.away_team?.logo_league_folder && (
                     <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
                   )}

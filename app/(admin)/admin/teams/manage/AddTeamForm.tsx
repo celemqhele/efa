@@ -87,7 +87,7 @@ export default function AddTeamForm() {
               className="input-field"
               required
             />
-            <p className="text-slate-500 text-xs mt-1">Used for logo path lookup</p>
+            <p className="text-text-muted text-xs mt-1">Used for logo path lookup</p>
           </div>
 
           {error && (

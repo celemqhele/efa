@@ -89,17 +89,17 @@ export default function TeamManagerAdmin({
       )}
 
       {managerId ? (
-        <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-3 bg-bg-surface border border-border rounded-xl px-4 py-3">
           {managerAvatar ? (
-            <Image src={managerAvatar} alt={managerUsername ?? ''} width={40} height={40} className="rounded-full object-contain bg-white shrink-0" />
+            <Image src={managerAvatar} alt={managerUsername ?? ''} width={40} height={40} className="rounded-full object-contain bg-bg-surface shrink-0" />
           ) : (
             <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center shrink-0">
               <span className="text-gold font-bold">{(managerUsername ?? '?')[0].toUpperCase()}</span>
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-slate-900 font-semibold">@{managerUsername}</p>
-            <p className="text-slate-400 text-xs">Current manager</p>
+            <p className="text-foreground-primary font-semibold">@{managerUsername}</p>
+            <p className="text-text-muted text-xs">Current manager</p>
           </div>
           <button
             onClick={handleSack}
@@ -111,7 +111,7 @@ export default function TeamManagerAdmin({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-sm text-slate-500 mb-3">No manager assigned. Pick a user to assign:</p>
+          <p className="text-sm text-text-muted mb-3">No manager assigned. Pick a user to assign:</p>
 
           <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
             {freeUsers.map((user) => (
@@ -119,40 +119,40 @@ export default function TeamManagerAdmin({
                 key={user.id}
                 onClick={() => handleAssign(user.id)}
                 disabled={loading}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-gold/50 hover:bg-gold/5 transition-all text-left disabled:opacity-50"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-bg-surface hover:border-gold/50 hover:bg-gold/5 transition-all text-left disabled:opacity-50"
               >
                 {user.avatar_url ? (
-                  <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-contain bg-slate-100 shrink-0" />
+                  <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-contain bg-bg-elevated shrink-0" />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
-                    <span className="text-slate-500 text-xs font-bold">{user.username[0].toUpperCase()}</span>
+                  <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">
+                    <span className="text-text-muted text-xs font-bold">{user.username[0].toUpperCase()}</span>
                   </div>
                 )}
-                <span className="text-slate-900 text-sm font-medium flex-1">{user.username}</span>
+                <span className="text-foreground-primary text-sm font-medium flex-1">{user.username}</span>
                 <span className="text-gold text-xs font-semibold">Assign →</span>
               </button>
             ))}
 
             {busyUsers.length > 0 && (
               <>
-                <p className="text-xs text-slate-400 uppercase tracking-wide font-medium pt-2 pb-1">
+                <p className="text-xs text-text-muted uppercase tracking-wide font-medium pt-2 pb-1">
                   Already managing a club
                 </p>
                 {busyUsers.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-100 bg-slate-50 opacity-60"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-100 bg-bg-surface opacity-60"
                   >
                     {user.avatar_url ? (
-                      <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-contain bg-slate-100 shrink-0" />
+                      <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-contain bg-bg-elevated shrink-0" />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
-                        <span className="text-slate-500 text-xs font-bold">{user.username[0].toUpperCase()}</span>
+                      <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">
+                        <span className="text-text-muted text-xs font-bold">{user.username[0].toUpperCase()}</span>
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-700 text-sm font-medium">{user.username}</p>
-                      <p className="text-slate-400 text-xs truncate">Manages {managedTeamByUser[user.id]} — sack first</p>
+                      <p className="text-foreground-secondary text-sm font-medium">{user.username}</p>
+                      <p className="text-text-muted text-xs truncate">Manages {managedTeamByUser[user.id]} — sack first</p>
                     </div>
                   </div>
                 ))}
@@ -160,7 +160,7 @@ export default function TeamManagerAdmin({
             )}
 
             {freeUsers.length === 0 && busyUsers.length === 0 && (
-              <p className="text-slate-500 text-sm text-center py-4">No registered users.</p>
+              <p className="text-text-muted text-sm text-center py-4">No registered users.</p>
             )}
           </div>
         </div>

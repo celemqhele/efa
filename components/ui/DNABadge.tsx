@@ -37,7 +37,7 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
     level.startsWith('+++') ? 'text-green-500' :
     level.startsWith('++')  ? 'text-accent' :
     level === '+'           ? 'text-accent' :
-                              'text-slate-400'
+                              'text-text-muted'
 
   return (
     <>
@@ -56,16 +56,16 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full sm:max-w-lg bg-slate-50 border border-slate-200 rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[85vh] flex flex-col"
+            className="w-full sm:max-w-lg bg-bg-surface border border-border rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[85vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-3 shrink-0">
+            <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{emoji}</span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-slate-900 font-bold text-base">{label}</h2>
+                    <h2 className="text-foreground-primary font-bold text-base">{label}</h2>
                     <span className={`font-mono font-bold text-sm ${levelColor}`}>{level}</span>
                   </div>
                   <span className={`inline-block mt-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${color}`}>
@@ -75,7 +75,7 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="text-slate-400 hover:text-slate-700 text-xl leading-none shrink-0 mt-0.5"
+                className="text-text-muted hover:text-foreground-secondary text-xl leading-none shrink-0 mt-0.5"
               >
                 ×
               </button>
@@ -84,26 +84,26 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
             {/* Body */}
             <div className="overflow-y-auto p-5 space-y-5">
               {/* Style match level */}
-              <div className="flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3 bg-bg-elevated border border-border rounded-xl px-4 py-3">
                 <span className={`font-mono font-bold text-lg ${levelColor}`}>{level}</span>
                 <div>
-                  <p className="text-slate-900 text-sm font-semibold">{levelInfo.short}</p>
-                  <p className="text-slate-500 text-xs mt-0.5">{levelInfo.detail}</p>
+                  <p className="text-foreground-primary text-sm font-semibold">{levelInfo.short}</p>
+                  <p className="text-text-muted text-xs mt-0.5">{levelInfo.detail}</p>
                 </div>
               </div>
 
               {/* About */}
-              <p className="text-slate-600 text-sm leading-relaxed">{explanation.about}</p>
+              <p className="text-foreground-muted text-sm leading-relaxed">{explanation.about}</p>
 
               {isOwnTeam ? (
                 <>
                   <div>
-                    <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
+                    <h3 className="text-foreground-primary font-semibold text-xs uppercase tracking-wider mb-2">
                       Your Tendencies
                     </h3>
                     <ul className="space-y-1.5">
                       {explanation.tendencies.map((t, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className="text-green-500 shrink-0 mt-0.5">✓</span>
                           {t}
                         </li>
@@ -115,16 +115,16 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
                     <h3 className="text-accent font-semibold text-xs uppercase tracking-wider mb-1.5">
                       Coach Note
                     </h3>
-                    <p className="text-slate-700 text-sm leading-relaxed">{explanation.selfNote}</p>
+                    <p className="text-foreground-secondary text-sm leading-relaxed">{explanation.selfNote}</p>
                   </div>
 
                   <div>
-                    <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
+                    <h3 className="text-foreground-primary font-semibold text-xs uppercase tracking-wider mb-2">
                       Vulnerabilities to Watch
                     </h3>
                     <ul className="space-y-1.5">
                       {explanation.weaknesses.map((w, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
                           {w}
                         </li>
@@ -135,12 +135,12 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
               ) : (
                 <>
                   <div>
-                    <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
+                    <h3 className="text-foreground-primary font-semibold text-xs uppercase tracking-wider mb-2">
                       What to Expect
                     </h3>
                     <ul className="space-y-1.5">
                       {explanation.tendencies.map((t, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className="text-blue-400 shrink-0 mt-0.5">›</span>
                           {t}
                         </li>
@@ -154,7 +154,7 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
                     </h3>
                     <ul className="space-y-1.5">
                       {explanation.weaknesses.map((w, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className="text-red-400 shrink-0 mt-0.5">⚡</span>
                           {perspectivize(w, false)}
                         </li>
@@ -166,7 +166,7 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
             </div>
 
             {/* Footer */}
-            <div className="px-5 py-3 border-t border-slate-200 shrink-0">
+            <div className="px-5 py-3 border-t border-border shrink-0">
               <button onClick={() => setOpen(false)} className="w-full btn-outline text-sm py-2">
                 Close
               </button>

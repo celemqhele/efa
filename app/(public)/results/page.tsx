@@ -46,10 +46,10 @@ export default async function ResultsPage() {
   if (!user) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">My Results</h1>
+        <h1 className="text-2xl font-bold text-foreground-primary">My Results</h1>
         <div className="card p-12 text-center space-y-3">
           <p className="text-4xl">🏆</p>
-          <p className="text-slate-500 text-sm">Log in to see your team&apos;s past results.</p>
+          <p className="text-text-muted text-sm">Log in to see your team&apos;s past results.</p>
           <Link href="/login" className="btn-gold inline-block text-sm">Log in</Link>
         </div>
       </div>
@@ -68,10 +68,10 @@ export default async function ResultsPage() {
   if (teamIds.length === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">My Results</h1>
+        <h1 className="text-2xl font-bold text-foreground-primary">My Results</h1>
         <div className="card p-12 text-center space-y-3">
           <p className="text-4xl">🎯</p>
-          <p className="text-slate-500 text-sm">You don&apos;t have a team yet.</p>
+          <p className="text-text-muted text-sm">You don&apos;t have a team yet.</p>
           <Link href="/select-team" className="btn-gold inline-block text-sm">Pick a team</Link>
         </div>
       </div>
@@ -155,7 +155,7 @@ export default async function ResultsPage() {
       )
     } else if (drew) {
       resultBadge = (
-        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-500 border border-slate-500/30">
+        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-500/20 text-text-muted border border-slate-500/30">
           D
         </span>
       )
@@ -166,11 +166,11 @@ export default async function ResultsPage() {
         href={`/fixtures/${f.id}`}
         className="card flex items-center gap-3 px-4 py-3 hover:border-accent/30 hover:bg-black/[0.03] transition-all"
       >
-        <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-slate-500 border-slate-200'}`}>
+        <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-text-muted border-border'}`}>
           {tournamentLabel}
         </div>
 
-        <div className="text-xs text-slate-500 font-mono shrink-0 w-8 text-center">
+        <div className="text-xs text-text-muted font-mono shrink-0 w-8 text-center">
           {isHome ? 'vs' : '@'}
         </div>
 
@@ -185,21 +185,21 @@ export default async function ResultsPage() {
         )}
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900 truncate">
+          <p className="text-sm font-semibold text-foreground-primary">
             {opponent?.name ?? 'TBC'}
           </p>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <p className="text-[10px] text-text-muted mt-0.5">
             {formatWhen(f.scheduled_date)}
           </p>
         </div>
 
         <div className="text-right shrink-0 flex flex-col items-end gap-1">
           {result ? (
-            <span className="text-base font-black text-slate-900 tabular-nums">
+            <span className="text-base font-black text-foreground-primary tabular-nums">
               {myScore}–{oppScore}
             </span>
           ) : (
-            <span className="text-xs text-slate-500 italic">No score</span>
+            <span className="text-xs text-text-muted italic">No score</span>
           )}
           {resultBadge}
         </div>
@@ -221,7 +221,7 @@ export default async function ResultsPage() {
           />
         )}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Results</h1>
+          <h1 className="text-2xl font-bold text-foreground-primary">My Results</h1>
           {primaryTeam && (
             <p className="text-sm text-accent">{primaryTeam.name}</p>
           )}
@@ -233,15 +233,15 @@ export default async function ResultsPage() {
         <div className="card p-3 flex items-center gap-4 justify-around">
           <div className="text-center">
             <div className="text-2xl font-black text-green-600">{wins}</div>
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">Wins</div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted">Wins</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-black text-slate-500">{draws}</div>
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">Draws</div>
+            <div className="text-2xl font-black text-text-muted">{draws}</div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted">Draws</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-black text-red-500">{losses}</div>
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">Losses</div>
+            <div className="text-[10px] uppercase tracking-wider text-text-muted">Losses</div>
           </div>
         </div>
       )}
@@ -250,15 +250,15 @@ export default async function ResultsPage() {
       <section className="space-y-3">
         <div className="flex items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-2">
-            <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Past Results</h2>
-            <span className="text-xs text-slate-400">{fixtures?.length ?? 0}</span>
+            <h2 className="text-xs font-black uppercase tracking-widest text-text-muted">Past Results</h2>
+            <span className="text-xs text-text-muted">{fixtures?.length ?? 0}</span>
           </div>
           <Link href="/fixtures" className="text-xs text-accent hover:text-[#e0c06a]">
             See upcoming →
           </Link>
         </div>
         {!fixtures?.length ? (
-          <div className="card p-8 text-center text-sm text-slate-500">
+          <div className="card p-8 text-center text-sm text-text-muted">
             No results yet.
           </div>
         ) : (

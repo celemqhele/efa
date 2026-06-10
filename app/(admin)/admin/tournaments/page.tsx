@@ -17,7 +17,7 @@ const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
 const STATUS_COLOURS: Record<string, string> = {
   upcoming: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
   active: 'text-green-400 bg-green-500/10 border-green-500/20',
-  completed: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+  completed: 'text-text-muted bg-bg-surface0/10 border-slate-500/20',
 }
 
 export default async function TournamentsPage() {
@@ -67,8 +67,8 @@ export default async function TournamentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Tournaments</h1>
-          <p className="text-slate-400 text-sm mt-1">{(tournaments?.length ?? 0)} total tournaments</p>
+          <h1 className="text-2xl font-bold text-foreground-primary">Tournaments</h1>
+          <p className="text-text-muted text-sm mt-1">{(tournaments?.length ?? 0)} total tournaments</p>
         </div>
         <Link href="/admin/tournaments/create" className="btn-gold">
           + Create Tournament
@@ -120,7 +120,7 @@ export default async function TournamentsPage() {
       {/* Completed */}
       {grouped.completed.length > 0 && (
         <section>
-          <h2 className="section-header text-slate-400">
+          <h2 className="section-header text-text-muted">
             Completed
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-70">
@@ -138,9 +138,9 @@ export default async function TournamentsPage() {
       )}
 
       {(tournaments?.length ?? 0) === 0 && (
-        <div className="card p-16 text-center text-slate-500">
+        <div className="card p-16 text-center text-text-muted">
           <p className="text-4xl mb-4">??</p>
-          <p className="text-lg font-medium text-slate-900 mb-2">No tournaments yet</p>
+          <p className="text-lg font-medium text-foreground-primary mb-2">No tournaments yet</p>
           <p className="text-sm mb-6">Create your first tournament to get started.</p>
           <Link href="/admin/tournaments/create" className="btn-gold">Create Tournament</Link>
         </div>
@@ -160,7 +160,7 @@ function TournamentCard({
   fixtureCount: number
   completedCount: number
 }) {
-  const typeInfo = TYPE_LABELS[tournament.type] ?? { label: tournament.type, colour: 'text-slate-400 bg-slate-500/10 border-slate-500/20' }
+  const typeInfo = TYPE_LABELS[tournament.type] ?? { label: tournament.type, colour: 'text-text-muted bg-bg-surface0/10 border-slate-500/20' }
   const statusCls = STATUS_COLOURS[tournament.status] ?? STATUS_COLOURS.completed
   const progress = fixtureCount > 0 ? Math.round((completedCount / fixtureCount) * 100) : 0
 
@@ -168,9 +168,9 @@ function TournamentCard({
     <div className="card p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-slate-900 font-bold text-base truncate">{tournament.name}</h3>
+          <h3 className="text-foreground-primary font-bold text-base truncate">{tournament.name}</h3>
           {tournament.season && (
-            <p className="text-slate-500 text-xs mt-0.5">{tournament.season.name}</p>
+            <p className="text-text-muted text-xs mt-0.5">{tournament.season.name}</p>
           )}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
@@ -182,21 +182,21 @@ function TournamentCard({
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="bg-navy-light rounded-lg py-2">
           <p className="text-gold font-bold text-lg">{participantCount}</p>
-          <p className="text-slate-500 text-xs">Teams</p>
+          <p className="text-text-muted text-xs">Teams</p>
         </div>
         <div className="bg-navy-light rounded-lg py-2">
-          <p className="text-slate-900 font-bold text-lg">{fixtureCount}</p>
-          <p className="text-slate-500 text-xs">Fixtures</p>
+          <p className="text-foreground-primary font-bold text-lg">{fixtureCount}</p>
+          <p className="text-text-muted text-xs">Fixtures</p>
         </div>
         <div className="bg-navy-light rounded-lg py-2">
           <p className="text-green-400 font-bold text-lg">{completedCount}</p>
-          <p className="text-slate-500 text-xs">Played</p>
+          <p className="text-text-muted text-xs">Played</p>
         </div>
       </div>
 
       {fixtureCount > 0 && (
         <div>
-          <div className="flex justify-between text-xs text-slate-500 mb-1">
+          <div className="flex justify-between text-xs text-text-muted mb-1">
             <span>Progress</span>
             <span>{progress}%</span>
           </div>

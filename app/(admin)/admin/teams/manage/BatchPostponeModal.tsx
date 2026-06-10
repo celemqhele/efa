@@ -119,13 +119,13 @@ export default function BatchPostponeModal({ teamId, teamName, onClose }: Props)
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+      <div className="w-full max-w-md bg-bg-surface border border-border rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <div>
-            <h2 className="text-slate-900 font-bold">Batch Postpone</h2>
-            <p className="text-slate-500 text-xs mt-0.5">{teamName}</p>
+            <h2 className="text-foreground-primary font-bold">Batch Postpone</h2>
+            <p className="text-text-muted text-xs mt-0.5">{teamName}</p>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-900 text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-text-muted hover:text-foreground-primary text-xl leading-none">×</button>
         </div>
 
         {/* Step 1 — Range & reason */}
@@ -194,23 +194,23 @@ export default function BatchPostponeModal({ teamId, teamName, onClose }: Props)
             {previewFixtures.length === 0 ? (
               <div className="text-center py-6">
                 <p className="text-3xl mb-2">📭</p>
-                <p className="text-slate-500 text-sm">No scheduled fixtures found in that date range.</p>
+                <p className="text-text-muted text-sm">No scheduled fixtures found in that date range.</p>
               </div>
             ) : (
               <>
-                <p className="text-slate-700 text-sm font-medium">
+                <p className="text-foreground-secondary text-sm font-medium">
                   {previewFixtures.length} fixture{previewFixtures.length !== 1 ? 's' : ''} will be postponed:
                 </p>
 
                 <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
                   {previewFixtures.map((fx) => (
                     <div key={fx.id} className="flex items-center gap-2 bg-navy-light rounded-lg px-3 py-2 border border-navy-border text-xs">
-                      <span className="text-slate-500 shrink-0">MD{fx.matchday}</span>
-                      <span className="text-slate-900 font-medium flex-1 truncate">
+                      <span className="text-text-muted shrink-0">MD{fx.matchday}</span>
+                      <span className="text-foreground-primary font-medium flex-1 truncate">
                         {(fx.home_team as any)?.name} vs {(fx.away_team as any)?.name}
                       </span>
                       {fx.scheduled_date && (
-                        <span className="text-slate-400 shrink-0">{fx.scheduled_date.slice(0, 10)}</span>
+                        <span className="text-text-muted shrink-0">{fx.scheduled_date.slice(0, 10)}</span>
                       )}
                     </div>
                   ))}
@@ -226,7 +226,7 @@ export default function BatchPostponeModal({ teamId, teamName, onClose }: Props)
                     className="input-field"
                     required
                   />
-                  <p className="text-slate-400 text-xs mt-1">
+                  <p className="text-text-muted text-xs mt-1">
                     Fixtures spread starting this date, max 3 per day.
                   </p>
                 </div>
@@ -265,10 +265,10 @@ export default function BatchPostponeModal({ teamId, teamName, onClose }: Props)
         {step === 3 && (
           <div className="p-8 text-center space-y-3">
             <p className="text-3xl">✅</p>
-            <p className="text-slate-900 font-semibold">
+            <p className="text-foreground-primary font-semibold">
               {resultCount} fixture{resultCount !== 1 ? 's' : ''} rescheduled
             </p>
-            <p className="text-slate-400 text-sm">
+            <p className="text-text-muted text-sm">
               Spread from {rescheduleFrom}, max 3 per day.
             </p>
             <button onClick={onClose} className="btn-gold text-sm px-6 mt-2">

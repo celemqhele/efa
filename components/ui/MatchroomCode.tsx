@@ -43,7 +43,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
       {isHomeManager ? (
         /* Home manager — can edit */
         <div className="space-y-3">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-text-muted">
             Create the matchroom in eFootball, then paste the room code here so your opponent can find it.
           </p>
           {editing ? (
@@ -68,7 +68,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
             <div className="flex items-center gap-3">
               <div className="flex-1 px-4 py-3 rounded-xl bg-gold/10 dark:bg-gold/5 border border-gold/30 text-center">
                 <p className="text-2xl font-black text-gold tracking-[0.2em] font-mono">{code}</p>
-                <p className="text-[10px] text-slate-400 mt-1">Share this with your opponent</p>
+                <p className="text-[10px] text-text-muted mt-1">Share this with your opponent</p>
               </div>
               <div className="flex flex-col gap-2">
                 <button onClick={copy} className="btn-outline text-xs">
@@ -90,7 +90,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
         /* Away team / spectator — read only */
         code ? (
           <div className="space-y-2">
-            <p className="text-xs text-slate-400">Room code set by the home team:</p>
+            <p className="text-xs text-text-muted">Room code set by the home team:</p>
             <div className="flex items-center gap-3">
               <div className="flex-1 px-4 py-3 rounded-xl bg-gold/10 dark:bg-gold/5 border border-gold/30 text-center">
                 <p className="text-2xl font-black text-gold tracking-[0.2em] font-mono">{code}</p>
@@ -102,7 +102,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
           </div>
         ) : (
           <div className="py-4 text-center border-2 border-dashed border-navy-border rounded-xl">
-            <p className="text-slate-500 text-sm">Waiting for home team to set the matchroom code…</p>
+            <p className="text-text-muted text-sm">Waiting for home team to set the matchroom code…</p>
           </div>
         )
       )}

@@ -88,7 +88,7 @@ export default async function NotificationsPage() {
       {/* -- Header ---------------------------------------------------------- */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
+          <h1 className="text-2xl font-bold text-foreground-primary">Notifications</h1>
           {hasUnread && (
             <p className="text-sm text-accent mt-0.5">
               {unread.length} unread
@@ -101,10 +101,10 @@ export default async function NotificationsPage() {
       {/* -- Admin: Pending Team Change Requests ---------------------------- */}
       {isAdmin && pendingRequests && pendingRequests.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2 border-b border-slate-200">
+          <div className="px-4 pt-4 pb-2 border-b border-border">
             <h2 className="section-header mb-0">
               <span>??</span> Pending Team Requests
-              <span className="ml-auto text-xs font-normal text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">
+              <span className="ml-auto text-xs font-normal text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full">
                 {pendingRequests.length}
               </span>
             </h2>
@@ -121,8 +121,8 @@ export default async function NotificationsPage() {
       {allNotifications.length === 0 && (
         <div className="card p-16 text-center">
           <div className="text-5xl mb-4">??</div>
-          <p className="text-slate-400 font-medium">No notifications yet</p>
-          <p className="text-slate-600 text-sm mt-1">
+          <p className="text-text-muted font-medium">No notifications yet</p>
+          <p className="text-foreground-muted text-sm mt-1">
             You&apos;ll see match reminders, result updates, and more here.
           </p>
         </div>
@@ -131,9 +131,9 @@ export default async function NotificationsPage() {
       {/* -- Unread notifications -------------------------------------------- */}
       {unread.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2 border-b border-slate-200 flex items-center gap-2">
+          <div className="px-4 pt-4 pb-2 border-b border-border flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+            <h2 className="text-sm font-bold text-foreground-primary uppercase tracking-wider">
               Unread ({unread.length})
             </h2>
           </div>
@@ -148,8 +148,8 @@ export default async function NotificationsPage() {
       {/* -- Read notifications ---------------------------------------------- */}
       {read.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2 border-b border-slate-200">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+          <div className="px-4 pt-4 pb-2 border-b border-border">
+            <h2 className="text-sm font-bold text-text-muted uppercase tracking-wider">
               Earlier ({read.length})
             </h2>
           </div>

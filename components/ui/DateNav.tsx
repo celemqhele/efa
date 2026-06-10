@@ -39,7 +39,7 @@ export default function DateNav({ currentDate, todayKey, basePath }: Props) {
       <button
         type="button"
         onClick={() => goto(prevKey)}
-        className="px-3 py-2 text-sm font-bold rounded-lg border border-slate-200 text-slate-600 hover:border-accent/50 hover:text-accent transition-colors"
+        className="px-3 py-2 text-sm font-bold rounded-lg border border-border text-foreground-muted hover:border-accent/50 hover:text-accent transition-colors"
         aria-label="Previous day"
       >
         ←
@@ -51,10 +51,10 @@ export default function DateNav({ currentDate, todayKey, basePath }: Props) {
           onClick={openPicker}
           className="text-center hover:text-accent transition-colors px-2 py-1 rounded-lg hover:bg-black/[0.03]"
         >
-          <span className="block text-base font-bold text-slate-900">
+          <span className="block text-base font-bold text-foreground-primary">
             {format(date, 'EEEE')}
           </span>
-          <span className="block text-xs text-slate-500">
+          <span className="block text-xs text-text-muted">
             {format(date, 'd MMM yyyy')}
           </span>
         </button>
@@ -80,7 +80,7 @@ export default function DateNav({ currentDate, todayKey, basePath }: Props) {
       <button
         type="button"
         onClick={() => goto(nextKey)}
-        className="px-3 py-2 text-sm font-bold rounded-lg border border-slate-200 text-slate-600 hover:border-accent/50 hover:text-accent transition-colors"
+        className="px-3 py-2 text-sm font-bold rounded-lg border border-border text-foreground-muted hover:border-accent/50 hover:text-accent transition-colors"
         aria-label="Next day"
       >
         →

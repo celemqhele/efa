@@ -34,7 +34,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
     level.startsWith('+++') ? 'text-green-500' :
     level.startsWith('++')  ? 'text-accent' :
     level === '+'           ? 'text-accent' :
-                              'text-slate-400'
+                              'text-text-muted'
 
   // Merge content from all component profiles
   const allTendencies = profiles.flatMap((p) => {
@@ -66,16 +66,16 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full sm:max-w-lg bg-slate-50 border border-slate-200 rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[85vh] flex flex-col"
+            className="w-full sm:max-w-lg bg-bg-surface border border-border rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[85vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-3 shrink-0">
+            <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">⚗️</span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-slate-900 font-bold text-base">{name}</h2>
+                    <h2 className="text-foreground-primary font-bold text-base">{name}</h2>
                     <span className={`font-mono font-bold text-sm ${levelColor}`}>{level}</span>
                   </div>
                   <span className="text-[10px] font-semibold text-accent">
@@ -85,7 +85,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="text-slate-400 hover:text-slate-700 text-xl leading-none shrink-0 mt-0.5"
+                className="text-text-muted hover:text-foreground-secondary text-xl leading-none shrink-0 mt-0.5"
               >
                 ×
               </button>
@@ -94,17 +94,17 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
             {/* Body */}
             <div className="overflow-y-auto p-5 space-y-5">
               {/* Combined level */}
-              <div className="flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3 bg-bg-elevated border border-border rounded-xl px-4 py-3">
                 <span className={`font-mono font-bold text-lg ${levelColor}`}>{level}</span>
                 <div>
-                  <p className="text-slate-900 text-sm font-semibold">{levelInfo.short}</p>
-                  <p className="text-slate-500 text-xs mt-0.5">{levelInfo.detail}</p>
+                  <p className="text-foreground-primary text-sm font-semibold">{levelInfo.short}</p>
+                  <p className="text-text-muted text-xs mt-0.5">{levelInfo.detail}</p>
                 </div>
               </div>
 
               {/* Component profiles */}
               <div>
-                <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
+                <h3 className="text-foreground-primary font-semibold text-xs uppercase tracking-wider mb-2">
                   Built From
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
@@ -119,7 +119,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                         p.level.startsWith('+++') ? 'text-green-500' :
                         p.level.startsWith('++')  ? 'text-accent' :
                         p.level === '+'           ? 'text-accent' :
-                                                    'text-slate-400'
+                                                    'text-text-muted'
                       }`}>{p.level}</span>
                     </span>
                   ))}
@@ -127,7 +127,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
               </div>
 
               {/* About */}
-              <p className="text-slate-600 text-sm leading-relaxed">
+              <p className="text-foreground-muted text-sm leading-relaxed">
                 {isOwnTeam
                   ? `Your game doesn't fit a single mould — it's a compound identity. The ${name} style emerges from the combination of ${profiles.map((p) => p.label).join(' and ')}, making your approach genuinely difficult to prepare for.`
                   : `This team doesn't fit a single mould. The ${name} style is a compound identity — a combination of ${profiles.map((p) => p.label).join(' and ')} that makes them genuinely unpredictable.`
@@ -138,12 +138,12 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                 <>
                   {/* Tendencies */}
                   <div>
-                    <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
+                    <h3 className="text-foreground-primary font-semibold text-xs uppercase tracking-wider mb-2">
                       Combined Tendencies
                     </h3>
                     <ul className="space-y-1.5">
                       {allTendencies.map((t, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className={`shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${t.profile.color}`}>
                             {t.profile.emoji}
                           </span>
@@ -160,18 +160,18 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${n.profile.color}`}>{n.profile.emoji}</span>
                         Coach Note — {n.profile.label}
                       </h3>
-                      <p className="text-slate-700 text-sm leading-relaxed">{n.text}</p>
+                      <p className="text-foreground-secondary text-sm leading-relaxed">{n.text}</p>
                     </div>
                   ))}
 
                   {/* Vulnerabilities */}
                   <div>
-                    <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
+                    <h3 className="text-foreground-primary font-semibold text-xs uppercase tracking-wider mb-2">
                       Vulnerabilities to Watch
                     </h3>
                     <ul className="space-y-1.5">
                       {allWeaknesses.map((w, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
                           {w.text}
                         </li>
@@ -183,12 +183,12 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                 <>
                   {/* What to expect */}
                   <div>
-                    <h3 className="text-slate-900 font-semibold text-xs uppercase tracking-wider mb-2">
+                    <h3 className="text-foreground-primary font-semibold text-xs uppercase tracking-wider mb-2">
                       What to Expect
                     </h3>
                     <ul className="space-y-1.5">
                       {allTendencies.map((t, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className={`shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${t.profile.color}`}>
                             {t.profile.emoji}
                           </span>
@@ -205,7 +205,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                     </h3>
                     <ul className="space-y-1.5">
                       {allWeaknesses.map((w, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className="text-red-400 shrink-0 mt-0.5">⚡</span>
                           {perspectivize(w.text, false)}
                         </li>
@@ -217,7 +217,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
             </div>
 
             {/* Footer */}
-            <div className="px-5 py-3 border-t border-slate-200 shrink-0">
+            <div className="px-5 py-3 border-t border-border shrink-0">
               <button onClick={() => setOpen(false)} className="w-full btn-outline text-sm py-2">
                 Close
               </button>

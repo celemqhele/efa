@@ -117,8 +117,8 @@ export default async function HallOfFamePage() {
         <p className="text-gold text-sm font-semibold uppercase tracking-widest mb-2">
           EFA Official Records
         </p>
-        <h1 className="text-4xl font-black text-slate-900">Hall of Fame</h1>
-        <p className="text-slate-400 text-sm mt-2">
+        <h1 className="text-4xl font-black text-foreground-primary">Hall of Fame</h1>
+        <p className="text-text-muted text-sm mt-2">
           Champions, records, and legends of the EFA
         </p>
       </div>
@@ -146,11 +146,11 @@ export default async function HallOfFamePage() {
                 height={64}
                 className="object-contain mx-auto mb-2"
               />
-              <p className="font-bold text-slate-900">{mostTotal[1].team.name}</p>
+              <p className="font-bold text-foreground-primary">{mostTotal[1].team.name}</p>
               <p className="text-3xl font-black text-gold mt-1">
                 {mostTotal[1].total}
               </p>
-              <p className="text-xs text-slate-500">trophies</p>
+              <p className="text-xs text-text-muted">trophies</p>
             </div>
           )}
 
@@ -171,11 +171,11 @@ export default async function HallOfFamePage() {
                 height={64}
                 className="object-contain mx-auto mb-2"
               />
-              <p className="font-bold text-slate-900">{mostPL[1].team.name}</p>
+              <p className="font-bold text-foreground-primary">{mostPL[1].team.name}</p>
               <p className="text-3xl font-black text-gold mt-1">
                 {mostPL[1].byType['league']}
               </p>
-              <p className="text-xs text-slate-500">league titles</p>
+              <p className="text-xs text-text-muted">league titles</p>
             </div>
           )}
 
@@ -196,11 +196,11 @@ export default async function HallOfFamePage() {
                 height={64}
                 className="object-contain mx-auto mb-2"
               />
-              <p className="font-bold text-slate-900">{mostUCL[1].team.name}</p>
+              <p className="font-bold text-foreground-primary">{mostUCL[1].team.name}</p>
               <p className="text-3xl font-black text-blue-400 mt-1">
                 {mostUCL[1].byType['ucl']}
               </p>
-              <p className="text-xs text-slate-500">UCL titles</p>
+              <p className="text-xs text-text-muted">UCL titles</p>
             </div>
           )}
         </div>
@@ -208,15 +208,15 @@ export default async function HallOfFamePage() {
         {/* Full all-time table */}
         {allTimeRecords.length > 0 && (
           <details className="mt-4 card p-5 group">
-            <summary className="cursor-pointer list-none flex items-center justify-between text-sm font-semibold text-slate-700 group-open:text-slate-900">
+            <summary className="cursor-pointer list-none flex items-center justify-between text-sm font-semibold text-foreground-secondary group-open:text-foreground-primary">
               <span>Full Trophy Cabinet Rankings</span>
-              <span className="text-slate-500 text-xs group-open:hidden">Tap to expand</span>
-              <span className="text-slate-500 text-xs hidden group-open:inline">Collapse</span>
+              <span className="text-text-muted text-xs group-open:hidden">Tap to expand</span>
+              <span className="text-text-muted text-xs hidden group-open:inline">Collapse</span>
             </summary>
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-slate-500 uppercase tracking-wider border-b border-navy-border">
+                  <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b border-navy-border">
                     <th className="pb-2 pr-4">Team</th>
                     <th className="pb-2 text-center pr-3">Total</th>
                     <th className="pb-2 text-center pr-3">?? PL</th>
@@ -229,14 +229,14 @@ export default async function HallOfFamePage() {
                   {allTimeRecords.map(([tid, data], idx) => (
                     <tr
                       key={tid}
-                      className="text-slate-700 hover:bg-navy-border/20 transition-colors"
+                      className="text-foreground-secondary hover:bg-navy-border/20 transition-colors"
                     >
                       <td className="py-2.5 pr-4">
                         <Link
                           href={`/teams/${tid}`}
                           className="flex items-center gap-2 hover:text-gold transition-colors"
                         >
-                          <span className="text-slate-600 text-xs w-5 shrink-0">
+                          <span className="text-foreground-muted text-xs w-5 shrink-0">
                             #{idx + 1}
                           </span>
                           <Image
@@ -284,7 +284,7 @@ export default async function HallOfFamePage() {
         </h2>
 
         {seasons.length === 0 ? (
-          <div className="card p-8 text-center text-slate-500">
+          <div className="card p-8 text-center text-text-muted">
             No season results recorded yet. History is being written.
           </div>
         ) : (
@@ -300,8 +300,8 @@ export default async function HallOfFamePage() {
                 <div key={seasonName} className="card overflow-hidden">
                   {/* Season Header */}
                   <div className="px-5 py-3 bg-gradient-to-r from-gold/10 to-transparent border-b border-navy-border flex items-center justify-between">
-                    <h3 className="font-black text-slate-900 text-lg">{seasonName}</h3>
-                    <span className="text-xs text-slate-500">
+                    <h3 className="font-black text-foreground-primary text-lg">{seasonName}</h3>
+                    <span className="text-xs text-text-muted">
                       {seasonTrophies.length} title{seasonTrophies.length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -318,7 +318,7 @@ export default async function HallOfFamePage() {
                         >
                           <p
                             className={`text-xs font-bold uppercase tracking-widest mb-3 ${
-                              winner ? TROPHY_TEXT[type] : 'text-slate-600'
+                              winner ? TROPHY_TEXT[type] : 'text-foreground-muted'
                             }`}
                           >
                             {TROPHY_ICON[type]} {TROPHY_LABEL[type]}
@@ -338,17 +338,17 @@ export default async function HallOfFamePage() {
                                   height={64}
                                   className="object-contain mx-auto mb-2"
                                 />
-                                <p className="font-bold text-slate-900 text-sm leading-snug">
+                                <p className="font-bold text-foreground-primary text-sm leading-snug">
                                   {winner.team.name}
                                 </p>
-                                <p className="text-xs text-slate-500 mt-0.5">
+                                <p className="text-xs text-text-muted mt-0.5">
                                   {winner.tournament?.name}
                                 </p>
                               </Link>
                             </>
                           ) : (
                             <div className="py-4">
-                              <p className="text-slate-600 text-xs">Not awarded</p>
+                              <p className="text-foreground-muted text-xs">Not awarded</p>
                             </div>
                           )}
                         </div>
