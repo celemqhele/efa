@@ -68,7 +68,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   const [numRounds, setNumRounds] = useState(2)
   const [qualifiersPerGroup, setQualifiersPerGroup] = useState(2)
 
-  // Team selection — using logo_team_slug as the unique key
+  // Team selection â€” using logo_team_slug as the unique key
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])
   const [teamSearch, setTeamSearch] = useState('')
 
@@ -145,7 +145,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
     // Validation for groups
     if (type !== 'league' && type !== 'super_cup') {
       if (selectedSlugs.length !== numGroups * teamsPerGroup) {
-        return setError(`Team count (${selectedSlugs.length}) does not match Group settings (${numGroups} groups × ${teamsPerGroup} teams = ${numGroups * teamsPerGroup}).`)
+        return setError(`Team count (${selectedSlugs.length}) does not match Group settings (${numGroups} groups Ã— ${teamsPerGroup} teams = ${numGroups * teamsPerGroup}).`)
       }
     }
 
@@ -292,7 +292,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
               className="input-field"
             >
               <option value="league">League (EFA Premier League)</option>
-              <option value="ucl">UCL – Champions League</option>
+              <option value="ucl">UCL â€“ Champions League</option>
               <option value="europa">Europa League</option>
               <option value="super_cup">Super Cup</option>
               <option value="custom">Other</option>
@@ -424,7 +424,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4 text-sm text-blue-300">
               Auto-populated from <strong>{activeLeagueName}</strong> standings.
               {type === 'ucl' && ` Top ${UCL_SPOTS} teams.`}
-              {type === 'europa' && ` Positions ${UCL_SPOTS + 1}–${UCL_SPOTS + EUROPA_SPOTS}.`}
+              {type === 'europa' && ` Positions ${UCL_SPOTS + 1}â€“${UCL_SPOTS + EUROPA_SPOTS}.`}
             </div>
           )}
 
@@ -495,7 +495,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                         onClick={() => toggleTeam(slug)}
                         className="text-slate-400 hover:text-slate-900 text-xs ml-0.5"
                       >
-                        ×
+                        Ã—
                       </button>
                     </div>
                   )
@@ -597,7 +597,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                         onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[slug]; return n })}
                         className="text-[10px] text-slate-400 hover:text-red-400 transition-colors"
                       >
-                        ×
+                        Ã—
                       </button>
                     </div>
                   ) : (
@@ -635,7 +635,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                         }
                       }}
                     >
-                      <option value="">{isAssigning ? 'Assigning…' : '— assign manager —'}</option>
+                      <option value="">{isAssigning ? 'Assigningâ€¦' : 'â€” assign manager â€”'}</option>
                       {users.map((u) => (
                         <option key={u.id} value={u.id}>{u.username}</option>
                       ))}
