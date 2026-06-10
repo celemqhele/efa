@@ -17,13 +17,14 @@ export default async function SelectTeamPage() {
   const supabase = await createClient()
 
   // Fetch all team rows from DB — covers all phases/tournaments
-  const { data: rawTeams } = await supabase
+  const { data: _rawTeams } = await supabase
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug, manager_id')
+  const rawTeams = (_rawTeams ?? []) as any[]
 
   // Build lookup: logo_team_slug → best DB row (prefer managed row to detect "taken")
   const dbBySlug = new Map<string, { id: string; name: string; logo_league_folder: string; manager_id: string | null }>()
-  for (const t of rawTeams ?? []) {
+  for (const t of rawTeams) {
     if (!t.logo_team_slug) continue
     const existing = dbBySlug.get(t.logo_team_slug)
     if (!existing || (!existing.manager_id && t.manager_id)) {

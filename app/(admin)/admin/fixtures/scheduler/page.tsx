@@ -1,8 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import FixtureScheduler from './FixtureScheduler'
 
-export default async function SchedulerPage({ searchParams }: { searchParams: { tournamentId: string } }) {
-  const supabase = createAdminClient()
+export default async function SchedulerPage({ searchParams }: { searchParams: Promise<{ tournamentId: string }> }) {
+  const supabase = await createAdminClient()
   const { tournamentId } = await searchParams
 
   const { count } = await supabase

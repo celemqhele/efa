@@ -126,7 +126,7 @@ export default function RulesPage() {
               <p className="text-sm text-slate-200 leading-snug">
                 If <span className="text-slate-700 font-semibold">neither team</span> submits a
                 waiting report, the fixture is recorded as a{' '}
-                <span className="text-slate-700 font-semibold">0–0 draw with no points</span> awarded
+                <span className="text-slate-700 font-semibold">0â€“0 draw with no points</span> awarded
                 to either side.
               </p>
             </div>
@@ -159,8 +159,8 @@ export default function RulesPage() {
             </p>
             <p className="text-sm text-slate-700 leading-relaxed">
               In eFootball, it is the responsibility of the{' '}
-              <span className="text-accent font-semibold">home team</span> — as listed in the
-              fixture — to open and host the matchroom. The away team joins the room created by the
+              <span className="text-accent font-semibold">home team</span> â€” as listed in the
+              fixture â€” to open and host the matchroom. The away team joins the room created by the
               home team.
             </p>
             <p className="text-sm text-slate-400 leading-relaxed">

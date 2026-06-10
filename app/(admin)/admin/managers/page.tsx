@@ -18,9 +18,9 @@ export default async function ManageManagersPage() {
   ])
 
   // Deduplicate teams by logo slug — same club can appear across multiple phases
-  type TeamRow = NonNullable<typeof rawTeams>[number]
+  type TeamRow = any
   const seen = new Map<string, TeamRow>()
-  for (const team of rawTeams ?? []) {
+  for (const team of (rawTeams ?? []) as any[]) {
     const key =
       team.logo_league_folder && team.logo_team_slug
         ? `${team.logo_league_folder}|${team.logo_team_slug}`

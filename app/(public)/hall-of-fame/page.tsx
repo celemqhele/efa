@@ -257,16 +257,16 @@ export default async function HallOfFamePage() {
                         {data.total}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['league'] ?? '—'}
+                        {data.byType['league'] ?? 'â€”'}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['ucl'] ?? '—'}
+                        {data.byType['ucl'] ?? 'â€”'}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['europa'] ?? '—'}
+                        {data.byType['europa'] ?? 'â€”'}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['super_cup'] ?? '—'}
+                        {data.byType['super_cup'] ?? 'â€”'}
                       </td>
                     </tr>
                   ))}

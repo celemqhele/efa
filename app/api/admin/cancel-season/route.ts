@@ -5,8 +5,9 @@ export async function POST(request: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single()
+  const { data: _profile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single() as any
+  const profile = _profile as any
   if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
   const { season_id } = await request.json()
@@ -15,10 +16,11 @@ export async function POST(request: Request) {
   const adminSupabase = await createAdminClient()
 
   // Get all tournaments in this season
-  const { data: tournaments } = await adminSupabase
+  const { data: _tournaments } = await adminSupabase
     .from('tournaments')
     .select('id')
     .eq('season_id', season_id)
+  const tournaments = (_tournaments ?? []) as any[]
 
   const tournamentIds = (tournaments ?? []).map((t) => t.id)
 
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
   // Delete the season
   await adminSupabase.from('seasons').delete().eq('id', season_id)
 
-  await adminSupabase.from('audit_log').insert({
+  await (adminSupabase.from('audit_log') as any).insert({
     admin_id: user.id,
     action: 'cancel_season',
     target_type: 'season',

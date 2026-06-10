@@ -16,11 +16,12 @@ export async function POST(request: Request) {
   }
 
   // Check admin role
-  const { data: adminProfile, error: profileError } = await supabase
+  const { data: _adminProfile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .single()
+    .single() as any
+  const adminProfile = _adminProfile as any
 
   if (profileError || !adminProfile || adminProfile.role !== 'admin') {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
@@ -71,18 +72,17 @@ export async function POST(request: Request) {
   const adminSupabase = await createAdminClient()
 
   // 1. Resolve all team IDs (create them if they don't exist)
+  const db = (table: string) => adminSupabase.from(table) as any
+
   const resolvedTeamIds: string[] = []
   for (const team of teams) {
     if (team.id) {
       resolvedTeamIds.push(team.id)
-      // If manager_id provided but team doesn't have one, update it
       if (team.manager_id) {
-        await adminSupabase.from('teams').update({ manager_id: team.manager_id }).eq('id', team.id).is('manager_id', null)
+        await db('teams').update({ manager_id: team.manager_id }).eq('id', team.id).is('manager_id', null)
       }
     } else {
-      // Check if team already exists by slug (double check)
-      const { data: existing } = await adminSupabase
-        .from('teams')
+      const { data: existing } = await db('teams')
         .select('id')
         .eq('logo_team_slug', team.logo_team_slug)
         .eq('logo_league_folder', team.logo_league_folder)
@@ -91,12 +91,10 @@ export async function POST(request: Request) {
       if (existing) {
         resolvedTeamIds.push(existing.id)
         if (team.manager_id) {
-          await adminSupabase.from('teams').update({ manager_id: team.manager_id }).eq('id', existing.id).is('manager_id', null)
+          await db('teams').update({ manager_id: team.manager_id }).eq('id', existing.id).is('manager_id', null)
         }
       } else {
-        // Create new team
-        const { data: newTeam, error: createErr } = await adminSupabase
-          .from('teams')
+        const { data: newTeam, error: createErr } = await db('teams')
           .insert({
             name: team.name,
             logo_league_folder: team.logo_league_folder,
@@ -117,10 +115,8 @@ export async function POST(request: Request) {
 
   let resolvedSeasonId: string | null = season_id ?? null
 
-  // Create season if season_name provided but no season_id
   if (!resolvedSeasonId && season_name) {
-    const { data: newSeason, error: seasonError } = await adminSupabase
-      .from('seasons')
+    const { data: newSeason, error: seasonError } = await db('seasons')
       .insert({
         name: season_name,
         base_league: base_league ?? 'default',
@@ -139,16 +135,13 @@ export async function POST(request: Request) {
     resolvedSeasonId = newSeason.id
   }
 
-  // Combine settings
   const settings = {
     start_date,
     end_date,
     ...customSettings,
   }
 
-  // Create tournament
-  const { data: tournament, error: tournamentError } = await adminSupabase
-    .from('tournaments')
+  const { data: tournament, error: tournamentError } = await db('tournaments')
     .insert({
       season_id: resolvedSeasonId,
       name,
@@ -168,21 +161,18 @@ export async function POST(request: Request) {
 
   const tournament_id = tournament.id
 
-  // Insert tournament participants
   const participantRows = resolvedTeamIds.map((team_id) => ({
     tournament_id,
     team_id,
   }))
 
-  const { error: participantsError } = await adminSupabase
-    .from('tournament_participants')
+  const { error: participantsError } = await db('tournament_participants')
     .insert(participantRows)
 
   if (participantsError) {
     return Response.json({ error: participantsError.message }, { status: 500 })
   }
 
-  // Create standings rows for league type
   if (type === 'league') {
     const standingRows = resolvedTeamIds.map((team_id) => ({
       tournament_id,
@@ -199,18 +189,15 @@ export async function POST(request: Request) {
       clean_sheets: 0,
     }))
 
-    const { error: standingsError } = await adminSupabase
-      .from('standings')
+    const { error: standingsError } = await db('standings')
       .insert(standingRows)
 
     if (standingsError) {
-      // Non-fatal but worth logging
       console.error('Failed to create standings:', standingsError.message)
     }
   }
 
-  // Audit log
-  await adminSupabase.from('audit_log').insert({
+  await db('audit_log').insert({
     admin_id: user.id,
     action: 'create_tournament',
     target_type: 'tournament',

@@ -38,7 +38,7 @@ export default async function TournamentsPage() {
     .select('tournament_id')
 
   const participantCounts: Record<string, number> = {}
-  for (const p of participants ?? []) {
+  for (const p of (participants ?? []) as any[]) {
     participantCounts[p.tournament_id] = (participantCounts[p.tournament_id] ?? 0) + 1
   }
 
@@ -49,7 +49,7 @@ export default async function TournamentsPage() {
 
   const fixtureCounts: Record<string, number> = {}
   const completedCounts: Record<string, number> = {}
-  for (const f of fixtures ?? []) {
+  for (const f of (fixtures ?? []) as any[]) {
     fixtureCounts[f.tournament_id] = (fixtureCounts[f.tournament_id] ?? 0) + 1
     if (f.status === 'completed') {
       completedCounts[f.tournament_id] = (completedCounts[f.tournament_id] ?? 0) + 1
@@ -57,9 +57,9 @@ export default async function TournamentsPage() {
   }
 
   const grouped = {
-    active: (tournaments ?? []).filter((t) => t.status === 'active'),
-    upcoming: (tournaments ?? []).filter((t) => t.status === 'upcoming'),
-    completed: (tournaments ?? []).filter((t) => t.status === 'completed'),
+    active: ((tournaments ?? []) as any[]).filter((t: any) => t.status === 'active'),
+    upcoming: ((tournaments ?? []) as any[]).filter((t: any) => t.status === 'upcoming'),
+    completed: ((tournaments ?? []) as any[]).filter((t: any) => t.status === 'completed'),
   }
 
   return (

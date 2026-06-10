@@ -21,7 +21,8 @@ export async function POST(request: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const { data: _profile } = await supabase.from('profiles').select('role').eq('id', user.id).single() as any
+  const profile = _profile as any
   if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
   let body: { team_id: string; from_date: string; to_date: string; reason: string; reschedule_from?: string }
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
 
   // All scheduled fixtures for the team in the date range — pull both teams' managers
   // so we can notify them after the update.
-  const { data: affectedFixtures } = await adminSupabase
+  const { data: _affectedFixtures } = await adminSupabase
     .from('fixtures')
     .select(`
       id, scheduled_date, home_team_id, away_team_id, matchday, tournament_id,
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
     .lte('scheduled_date', to_date)
     .eq('status', 'scheduled')
     .order('scheduled_date', { ascending: true })
+  const affectedFixtures = (_affectedFixtures ?? []) as any[]
 
   if (!affectedFixtures?.length) {
     return Response.json({ success: true, postponed: 0, message: 'No scheduled fixtures in that date range.' })
@@ -63,15 +65,16 @@ export async function POST(request: Request) {
 
   // Existing future fixtures for the team so we don't pile new dates onto already-busy days
   const futureStart = reschedule_from ?? to_date
-  const { data: futureFixtures } = await adminSupabase
+  const { data: _futureFixtures } = await adminSupabase
     .from('fixtures')
     .select('scheduled_date')
     .or(`home_team_id.eq.${team_id},away_team_id.eq.${team_id}`)
     .gt('scheduled_date', futureStart)
     .in('status', ['scheduled', 'awaiting_confirmation'])
+  const futureFixtures = (_futureFixtures ?? []) as any[]
 
   const dateCounts = new Map<string, number>()
-  for (const fx of futureFixtures ?? []) {
+  for (const fx of futureFixtures) {
     const d = String(fx.scheduled_date ?? '').slice(0, 10)
     if (d) dateCounts.set(d, (dateCounts.get(d) ?? 0) + 1)
   }
@@ -115,8 +118,8 @@ export async function POST(request: Request) {
   // Apply DB updates. Matchday stays untouched.
   await Promise.all(
     updates.map(({ id, scheduled_date, deadline }) =>
-      adminSupabase
-        .from('fixtures')
+      (adminSupabase
+        .from('fixtures') as any)
         .update({ scheduled_date, deadline, is_postponed: true })
         .eq('id', id)
     )
@@ -169,13 +172,13 @@ export async function POST(request: Request) {
     }
 
     if (inAppRows.length > 0) {
-      await adminSupabase.from('notifications').insert(inAppRows)
+      await (adminSupabase.from('notifications') as any).insert(inAppRows)
     }
   } catch {
     // ignore notification errors
   }
 
-  await adminSupabase.from('audit_log').insert({
+  await (adminSupabase.from('audit_log') as any).insert({
     admin_id: user.id,
     action: 'batch_postpone',
     target_type: 'team',

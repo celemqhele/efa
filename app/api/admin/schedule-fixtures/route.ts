@@ -4,7 +4,7 @@ import { findMatchDay, findTimeWindow, DaySchedule } from '@/lib/scheduling'
 import { addDays, format, parseISO, startOfDay, nextDay } from 'date-fns'
 
 export async function POST(request: Request) {
-  const supabase = createAdminClient()
+  const supabase = await createAdminClient()
   const { tournamentId, startDate } = await request.json()
 
   // 1. Get all fixtures

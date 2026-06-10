@@ -8,19 +8,20 @@ import { format } from 'date-fns'
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default async function ManagerProfilePage({ params }: PageProps) {
   const supabase = await createClient()
-  const { id } = params
+  const { id } = await params
 
   // 1. Fetch Profile
-  const { data: profile } = await supabase
+  const { data: _profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', id)
-    .single()
+    .single() as any
+  const profile = _profile as any
 
   if (!profile) notFound()
 

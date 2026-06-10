@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -15,7 +15,7 @@ export default async function ResultDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: result } = await supabase
+  const { data: _result } = await supabase
     .from('results')
     .select(`
       *,
@@ -34,7 +34,8 @@ export default async function ResultDetailPage({ params }: Props) {
       )
     `)
     .eq('id', id)
-    .single()
+    .single() as any
+  const result = _result as any
 
   if (!result) notFound()
 

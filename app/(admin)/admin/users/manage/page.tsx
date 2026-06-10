@@ -12,19 +12,21 @@ export default async function UsersManagePage() {
   const supabase = await createClient()
 
   // All profiles
-  const { data: profiles } = await supabase
+  const { data: _profiles } = await supabase
     .from('profiles')
     .select('id, username, role, avatar_url, created_at')
     .order('created_at', { ascending: false })
+  const profiles = (_profiles ?? []) as any[]
 
   // All teams (to find which team each user manages)
-  const { data: teams } = await supabase
+  const { data: _teams } = await supabase
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug, manager_id, abandon_count')
+  const teams = (_teams ?? []) as any[]
 
   // Build user -> team map
   const teamByManager: Record<string, any> = {}
-  for (const team of teams ?? []) {
+  for (const team of teams) {
     if (team.manager_id) teamByManager[team.manager_id] = team
   }
 
@@ -54,7 +56,7 @@ export default async function UsersManagePage() {
 
   // Build profile lookup for resolving manager usernames in applications
   const profileMap: Record<string, string> = {}
-  for (const p of profiles ?? []) {
+  for (const p of profiles) {
     profileMap[p.id] = p.username ?? ''
   }
 

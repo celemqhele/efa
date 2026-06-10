@@ -85,11 +85,12 @@ export default async function StandingsPage({ searchParams }: PageProps) {
   const params = await searchParams
   const selectedTournamentId = params.tournament ?? null
 
-  const { data: tournaments } = await supabase
+  const { data: _tournaments } = await supabase
     .from('tournaments')
     .select('id, name, type, status')
     .eq('status', 'active')
     .order('created_at', { ascending: true })
+  const tournaments = (_tournaments ?? []) as any[]
 
   const requestedTournament = selectedTournamentId
     ? tournaments?.find((t) => t.id === selectedTournamentId)

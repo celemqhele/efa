@@ -3,8 +3,8 @@ const nextConfig = {
   images: {
     formats: ['image/webp'],
   },
+  serverExternalPackages: ['sharp', 'tesseract.js'],
   experimental: {
-    serverComponentsExternalPackages: ['sharp', 'tesseract.js'],
     serverActions: {
       bodySizeLimit: '10mb',
     },

@@ -63,7 +63,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   // Apply scope filter
   const rawFixtures = (fixtures ?? []) as any[]
   const processedFixtures = scope === 'mine'
-    ? (userTeam ? rawFixtures.filter((f) => f.home_team?.id === userTeam.id || f.away_team?.id === userTeam.id) : [])
+    ? (userTeam ? rawFixtures.filter((f: any) => (f.home_team as any)?.id === (userTeam as any).id || (f.away_team as any)?.id === (userTeam as any).id) : [])
     : rawFixtures
 
   // Index processed fixtures by date

@@ -4,9 +4,11 @@ interface CardProps {
   children: React.ReactNode
   className?: string
   variant?: 'surface' | 'elevated'
+  id?: string
+  style?: React.CSSProperties
 }
 
-export function Card({ children, className = '', variant = 'surface' }: CardProps) {
+export function Card({ children, className = '', variant = 'surface', id, style }: CardProps) {
   const baseStyles = 'border rounded-lg transition-colors duration-base'
   const variants = {
     surface: 'bg-bg-surface border-border',
@@ -14,7 +16,7 @@ export function Card({ children, className = '', variant = 'surface' }: CardProp
   }
 
   return (
-    <div className={`${baseStyles} ${variants[variant]} ${className}`}>
+    <div id={id} style={style} className={`${baseStyles} ${variants[variant]} ${className}`}>
       {children}
     </div>
   )

@@ -53,7 +53,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
       body: broadcastMsg.body,
     }))
 
-    await supabase.from('notifications').insert(inserts)
+    await (supabase as any).from('notifications').insert(inserts)
     setBroadcastMsg({ title: '', body: '' })
     setSending(false)
     router.refresh()

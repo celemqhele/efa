@@ -27,7 +27,7 @@ export default async function SeasonsPage() {
 
   const doneSts = new Set(['confirmed', 'abandoned_home', 'abandoned_away', 'abandoned_both'])
 
-  for (const f of fixtureCounts ?? []) {
+  for (const f of (fixtureCounts ?? []) as any[]) {
     const tid = f.tournament_id
     totalMap[tid] = (totalMap[tid] ?? 0) + 1
     if (doneSts.has(f.status)) doneMap[tid] = (doneMap[tid] ?? 0) + 1

@@ -8,7 +8,7 @@ export default async function AdminHallOfFamePage() {
 
   const [{ data: teams }, { data: seasons }, { data: tournaments }, { data: trophiesRaw }] =
     await Promise.all([
-      supabase.from('teams').select('id, name, logo_league_folder, logo_team_slug').order('name'),
+      supabase.from('teams').select('*').order('name'),
       supabase.from('seasons').select('id, name').order('created_at', { ascending: false }),
       supabase
         .from('tournaments')

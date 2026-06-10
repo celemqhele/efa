@@ -1,5 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database } from './supabase/types'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type StandingsRow = {
   id: string
@@ -82,7 +81,7 @@ export function applyResultToRow(homeRow: any, awayRow: any, homeScore: number, 
   awayRow.points += awayWin ? 3 : draw ? 1 : 0
 }
 
-export async function buildLiveStandings(supabase: SupabaseClient<Database>, tournamentId: string, tournamentType: string) {
+export async function buildLiveStandings(supabase: SupabaseClient, tournamentId: string, tournamentType: string) {
   const { data: participants } = await supabase
     .from('tournament_participants')
     .select('team_id, group_name, team:teams(id, name, logo_league_folder, logo_team_slug)')

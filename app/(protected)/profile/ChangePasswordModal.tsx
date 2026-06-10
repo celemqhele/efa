@@ -66,7 +66,7 @@ export default function ChangePasswordModal({ userEmail, onClose }: Props) {
       <div className="w-full max-w-sm bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-slate-900 font-bold">Change Password</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-900 text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-900 text-xl leading-none">Ã—</button>
         </div>
 
         {success ? (
@@ -121,7 +121,7 @@ export default function ChangePasswordModal({ userEmail, onClose }: Props) {
                 Cancel
               </button>
               <button type="submit" disabled={loading} className="btn-gold text-sm flex-1 disabled:opacity-50">
-                {loading ? 'Updating…' : 'Update Password'}
+                {loading ? 'Updatingâ€¦' : 'Update Password'}
               </button>
             </div>
           </form>

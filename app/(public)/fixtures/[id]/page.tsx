@@ -1,4 +1,4 @@
-﻿import { notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -13,7 +13,7 @@ import ReactionsPanel from '@/components/ui/ReactionsPanel'
 export const revalidate = 30
 
 interface PageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ function ProbabilityBar({
 
 export default async function FixtureDetailPage({ params }: PageProps) {
   const supabase = await createClient()
-  const { id } = params
+  const { id } = await params
 
   // Current user
   const {
@@ -111,7 +111,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   } = await supabase.auth.getUser()
 
   // Fixture with teams + tournament
-  const { data: fixture } = await supabase
+  const { data: _fixture } = await supabase
     .from('fixtures')
     .select(
       `*,
@@ -120,34 +120,38 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       away_team:teams!fixtures_away_team_id_fkey(*, manager:profiles!teams_manager_id_fkey(*))`
     )
     .eq('id', id)
-    .single()
+    .single() as any
+  const fixture = _fixture as any
 
   if (!fixture) notFound()
 
   // Result + match stats
-  const { data: result } = await supabase
+  const { data: _result } = await supabase
     .from('results')
     .select('*, match_stats(*)')
     .eq('fixture_id', id)
-    .maybeSingle()
+    .maybeSingle() as any
+  const result = _result as any
 
-  const matchStats = (result as any)?.match_stats ?? null
+  const matchStats = result?.match_stats ?? null
 
   // Standings for both teams in this tournament
-  const [{ data: homeStanding }, { data: awayStanding }] = await Promise.all([
+  const [homeStandingRaw, awayStandingRaw] = await Promise.all([
     supabase
       .from('standings')
       .select('*')
       .eq('tournament_id', fixture.tournament_id)
       .eq('team_id', fixture.home_team_id)
-      .maybeSingle(),
+      .maybeSingle() as any,
     supabase
       .from('standings')
       .select('*')
       .eq('tournament_id', fixture.tournament_id)
       .eq('team_id', fixture.away_team_id)
-      .maybeSingle(),
+      .maybeSingle() as any,
   ])
+  const homeStanding = homeStandingRaw?.data as any
+  const awayStanding = awayStandingRaw?.data as any
 
   // H2H last 5
   const { data: h2hFixtures } = await supabase
@@ -179,13 +183,14 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     ).length,
   }
 
-  const probability = calculateProbability(homeStanding as any, awayStanding as any, h2hRecord)
+  const probability = calculateProbability(homeStanding, awayStanding, h2hRecord)
 
   // Result confirmations
-  const { data: confirmations } = await supabase
+  const { data: _confirmations } = await supabase
     .from('result_confirmations')
     .select('*')
     .eq('fixture_id', id)
+  const confirmations = (_confirmations ?? []) as any[]
 
   // Comments + profiles
   const { data: commentsRaw } = await supabase
@@ -205,61 +210,46 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     .eq('fixture_id', id)
 
   // Reactions
-  const { data: reactionsRaw } = await supabase
+  const { data: _reactionsRaw } = await supabase
     .from('reactions')
     .select('emoji, user_id')
     .eq('fixture_id', id)
+  const reactionsRaw = (_reactionsRaw ?? []) as any[]
 
   const reactionCounts: Record<string, number> = {}
   const userReactionEmojis: string[] = []
-  for (const r of reactionsRaw ?? []) {
+  for (const r of reactionsRaw) {
     reactionCounts[r.emoji] = (reactionCounts[r.emoji] ?? 0) + 1
     if (user && r.user_id === user.id) userReactionEmojis.push(r.emoji)
   }
 
   // DNA for both teams (only if match stats available from previous games)
+  const homeTeamFixtures = (await supabase
+    .from('fixtures')
+    .select('id')
+    .eq('home_team_id', fixture.home_team_id)).data as any[] ?? []
+  const homeFixtureResults = (await supabase
+    .from('results')
+    .select('id')
+    .in('fixture_id', homeTeamFixtures.map((f: any) => f.id))).data as any[] ?? []
   const { data: homeMatchStatsList } = await supabase
     .from('match_stats')
     .select('*')
-    .in(
-      'result_id',
-      (
-        await supabase
-          .from('results')
-          .select('id')
-          .in(
-            'fixture_id',
-            (
-              await supabase
-                .from('fixtures')
-                .select('id')
-                .eq('home_team_id', fixture.home_team_id)
-            ).data?.map((f) => f.id) ?? []
-          )
-      ).data?.map((r) => r.id) ?? []
-    )
+    .in('result_id', homeFixtureResults.map((r: any) => r.id))
     .limit(10)
 
+  const awayTeamFixtures = (await supabase
+    .from('fixtures')
+    .select('id')
+    .eq('away_team_id', fixture.away_team_id)).data as any[] ?? []
+  const awayFixtureResults = (await supabase
+    .from('results')
+    .select('id')
+    .in('fixture_id', awayTeamFixtures.map((f: any) => f.id))).data as any[] ?? []
   const { data: awayMatchStatsList } = await supabase
     .from('match_stats')
     .select('*')
-    .in(
-      'result_id',
-      (
-        await supabase
-          .from('results')
-          .select('id')
-          .in(
-            'fixture_id',
-            (
-              await supabase
-                .from('fixtures')
-                .select('id')
-                .eq('away_team_id', fixture.away_team_id)
-            ).data?.map((f) => f.id) ?? []
-          )
-      ).data?.map((r) => r.id) ?? []
-    )
+    .in('result_id', awayFixtureResults.map((r: any) => r.id))
     .limit(10)
 
   const homeDNA =

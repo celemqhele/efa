@@ -149,7 +149,7 @@ export default function TeamChangeModal({
                     type="text"
                     value={query}
                     onChange={handleQueryChange}
-                    placeholder="Search available teams…"
+                    placeholder="Search available teamsâ€¦"
                     className="input-field"
                     autoFocus
                   />
@@ -162,7 +162,7 @@ export default function TeamChangeModal({
                 )}
 
                 {loading && (
-                  <div className="text-center py-4 text-slate-500 text-sm">Searching…</div>
+                  <div className="text-center py-4 text-slate-500 text-sm">Searchingâ€¦</div>
                 )}
 
                 {!loading && results.length === 0 && query.trim() && (
@@ -197,7 +197,7 @@ export default function TeamChangeModal({
                           disabled={submitting}
                           className="btn-gold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {submitting ? '…' : 'Request'}
+                          {submitting ? 'â€¦' : 'Request'}
                         </button>
                       </div>
                     ))}

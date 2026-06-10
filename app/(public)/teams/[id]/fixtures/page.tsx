@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/Card'
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
@@ -56,14 +56,15 @@ function formatWhen(dateStr: string | null): string {
 
 export default async function TeamFixturesPage({ params }: PageProps) {
   const supabase = await createClient()
-  const { id } = params
+  const { id } = await params
 
   // Get the team details
-  const { data: team } = await supabase
+  const { data: _team } = await supabase
     .from('teams')
     .select('*')
     .eq('id', id)
-    .single()
+    .single() as any
+  const team = _team as any
 
   if (!team) notFound()
 

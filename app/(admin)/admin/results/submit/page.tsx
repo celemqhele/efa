@@ -6,9 +6,11 @@ export const revalidate = 0
 export default async function ResultSubmitPage({
   searchParams,
 }: {
-  searchParams: { fixture?: string }
+  searchParams: Promise<{ fixture?: string }>
 }) {
   const supabase = await createClient()
+
+  const resolvedSearchParams = await searchParams
 
   // Fixtures needing admin action
   const { data: pendingFixtures } = await supabase
@@ -27,8 +29,8 @@ export default async function ResultSubmitPage({
     .from('result_confirmations')
     .select('fixture_id, home_score, away_score, submitted_by, confirmed_at')
 
-  const confirmationsByFixture: Record<string, typeof allConfirmations> = {}
-  for (const c of allConfirmations ?? []) {
+  const confirmationsByFixture: Record<string, any[]> = {}
+  for (const c of (allConfirmations ?? []) as any[]) {
     if (!confirmationsByFixture[c.fixture_id]) confirmationsByFixture[c.fixture_id] = []
     confirmationsByFixture[c.fixture_id]!.push(c)
   }
@@ -61,7 +63,7 @@ export default async function ResultSubmitPage({
         confirmationsByFixture={confirmationsByFixture as any}
         teamNameMappings={teamNameMappings ?? []}
         allTeams={allTeams ?? []}
-        defaultFixtureId={searchParams.fixture}
+        defaultFixtureId={resolvedSearchParams.fixture}
       />
     </div>
   )

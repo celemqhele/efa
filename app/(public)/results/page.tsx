@@ -56,12 +56,13 @@ export default async function ResultsPage() {
     )
   }
 
-  const { data: userTeams } = await supabase
+  const { data: _userTeams } = await supabase
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug')
     .eq('manager_id', user.id)
+  const userTeams = (_userTeams ?? []) as any[]
 
-  const teams = userTeams ?? []
+  const teams = userTeams
   const teamIds = teams.map((t) => t.id)
 
   if (teamIds.length === 0) {

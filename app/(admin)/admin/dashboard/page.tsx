@@ -42,7 +42,7 @@ export default async function AdminDashboardPage() {
     .order('created_at', { ascending: false })
 
   // Fixture counts per tournament
-  const tournamentIds = (tournaments ?? []).map((t) => t.id)
+  const tournamentIds = ((tournaments ?? []) as any[]).map((t) => t.id)
   const { data: fixtureCounts } = tournamentIds.length
     ? await supabase
         .from('fixtures')
@@ -51,7 +51,7 @@ export default async function AdminDashboardPage() {
     : { data: [] }
 
   const countMap: Record<string, number> = {}
-  for (const f of fixtureCounts ?? []) {
+  for (const f of (fixtureCounts ?? []) as any[]) {
     countMap[f.tournament_id] = (countMap[f.tournament_id] ?? 0) + 1
   }
 
@@ -75,8 +75,8 @@ export default async function AdminDashboardPage() {
     .from('result_confirmations')
     .select('fixture_id, home_score, away_score, submitted_by')
 
-  const conflictMap: Record<string, typeof allConfirmations> = {}
-  for (const c of allConfirmations ?? []) {
+  const conflictMap: Record<string, any[]> = {}
+  for (const c of (allConfirmations ?? []) as any[]) {
     if (!conflictMap[c.fixture_id]) conflictMap[c.fixture_id] = []
     conflictMap[c.fixture_id]!.push(c)
   }
@@ -132,12 +132,12 @@ export default async function AdminDashboardPage() {
     .order('abandon_count', { ascending: false })
 
   // Manager profiles for flagged teams
-  const managerIds = (flaggedTeams ?? []).filter((t) => t.manager_id).map((t) => t.manager_id!)
+  const managerIds = ((flaggedTeams ?? []) as any[]).filter((t: any) => t.manager_id).map((t: any) => t.manager_id!)
   const { data: flaggedManagers } = managerIds.length
     ? await supabase.from('profiles').select('id, username').in('id', managerIds)
     : { data: [] }
   const managerMap: Record<string, string> = {}
-  for (const m of flaggedManagers ?? []) managerMap[m.id] = m.username
+  for (const m of (flaggedManagers ?? []) as any[]) managerMap[m.id] = m.username
 
   // Recent audit log
   const { data: auditLog } = await supabase
@@ -214,7 +214,7 @@ export default async function AdminDashboardPage() {
               {(tournaments ?? []).length === 0 && (
                 <p className="text-slate-500 text-sm">No active tournaments.</p>
               )}
-              {(tournaments ?? []).map((t) => {
+              {((tournaments ?? []) as any[]).map((t: any) => {
                 const typeInfo = TYPE_LABELS[t.type] ?? { label: t.type, colour: 'text-slate-400 bg-slate-500/10 border-slate-500/20' }
                 const statusCls = t.status === 'active'
                   ? 'text-green-400 bg-green-500/10 border-green-500/20'
@@ -380,7 +380,7 @@ export default async function AdminDashboardPage() {
             <p className="text-slate-500 text-sm">No pending confirmations.</p>
           ) : (
             <div className="space-y-2">
-              {pendingConfirmations!.map((fx: any) => (
+              {((pendingConfirmations ?? []) as any[]).map((fx: any) => (
                 <div key={fx.id} className="flex items-center justify-between gap-2 bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
                   <div className="flex-1 min-w-0">
                     <p className="text-foreground-primary text-sm font-medium truncate">
@@ -414,7 +414,7 @@ export default async function AdminDashboardPage() {
             <p className="text-slate-500 text-sm">No pending requests.</p>
           ) : (
             <div className="space-y-3">
-              {changeRequests!.map((req: any) => (
+              {((changeRequests ?? []) as any[]).map((req: any) => (
                 <div key={req.id} className="bg-navy-light rounded-lg px-3 py-3 border border-navy-border">
                   <div className="flex items-center gap-2 mb-2">
                     {req.requesting_user?.avatar_url ? (
@@ -454,7 +454,7 @@ export default async function AdminDashboardPage() {
             <p className="text-slate-500 text-sm">No flagged teams.</p>
           ) : (
             <div className="space-y-2">
-              {flaggedTeams!.map((team) => (
+              {((flaggedTeams ?? []) as any[]).map((team: any) => (
                 <div key={team.id} className="flex items-center gap-3 bg-navy-light rounded-lg px-3 py-2.5 border border-red-500/20">
                   {team.logo_league_folder && (
                     <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={32} height={32} className="object-contain shrink-0" />
@@ -484,7 +484,7 @@ export default async function AdminDashboardPage() {
             <p className="text-slate-500 text-sm">No audit entries.</p>
           ) : (
             <div className="space-y-1.5">
-              {auditLog!.map((entry: any) => (
+              {((auditLog ?? []) as any[]).map((entry: any) => (
                 <div key={entry.id} className="flex items-start gap-3 text-xs py-2 border-b border-navy-border last:border-0">
                   <div className="shrink-0 w-1.5 h-1.5 rounded-full bg-gold mt-1.5" />
                   <div className="flex-1 min-w-0">

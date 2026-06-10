@@ -29,17 +29,22 @@
 
   .btn-outline {
     @apply border border-border text-text-secondary font-medium px-4 py-2.5 rounded-lg
-           hover:border-accent/50 hover:text-accent transition-all duration-fast text-sm active:scale-95;
+            hover:border-accent hover:text-accent transition-all duration-fast text-sm active:scale-95;
   }
 
   .btn-danger {
-    @apply bg-feedback-error/10 border border-feedback-error/30 text-feedback-error font-medium px-4 py-2.5 rounded-lg
-           hover:bg-feedback-error/20 transition-all duration-fast text-sm;
+    @apply font-medium px-4 py-2.5 rounded-lg transition-all duration-fast text-sm;
+    color: var(--color-feedback-error);
+    border: 1px solid color-mix(in srgb, var(--color-feedback-error) 30%, transparent);
+    background-color: color-mix(in srgb, var(--color-feedback-error) 10%, transparent);
+  }
+  .btn-danger:hover {
+    background-color: color-mix(in srgb, var(--color-feedback-error) 20%, transparent);
   }
 
   .input-field {
     @apply w-full bg-bg-surface border border-border rounded-lg px-4 py-3 text-text-primary
-           placeholder-text-muted focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30
+           placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
            transition-all duration-fast text-sm;
   }
 

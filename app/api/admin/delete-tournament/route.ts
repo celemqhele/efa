@@ -9,8 +9,9 @@ export async function DELETE(request: Request) {
 
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const db = (table: string) => supabase.from(table) as any
+
+  const { data: profile } = await db('profiles')
     .select('role')
     .eq('id', user.id)
     .single()
@@ -30,22 +31,21 @@ export async function DELETE(request: Request) {
   }
 
   const adminSupabase = await createAdminClient()
+  const adminDb = (table: string) => adminSupabase.from(table) as any
 
-  // Delete in dependency order
-  await adminSupabase.from('fixtures').delete().eq('tournament_id', tournament_id)
-  await adminSupabase.from('standings').delete().eq('tournament_id', tournament_id)
-  await (adminSupabase.from('group_standings') as any).delete().eq('tournament_id', tournament_id)
-  await adminSupabase.from('tournament_participants').delete().eq('tournament_id', tournament_id)
-  await adminSupabase.from('trophies').delete().eq('tournament_id', tournament_id)
+  await adminDb('fixtures').delete().eq('tournament_id', tournament_id)
+  await adminDb('standings').delete().eq('tournament_id', tournament_id)
+  await adminDb('group_standings').delete().eq('tournament_id', tournament_id)
+  await adminDb('tournament_participants').delete().eq('tournament_id', tournament_id)
+  await adminDb('trophies').delete().eq('tournament_id', tournament_id)
 
-  const { error } = await adminSupabase
-    .from('tournaments')
+  const { error } = await adminDb('tournaments')
     .delete()
     .eq('id', tournament_id)
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
 
-  await adminSupabase.from('audit_log').insert({
+  await adminDb('audit_log').insert({
     admin_id: user.id,
     action: 'delete_tournament',
     target_type: 'tournament',

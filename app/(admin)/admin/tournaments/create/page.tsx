@@ -30,7 +30,7 @@ export default async function CreateTournamentPage() {
 
   // Build lookup: logo_team_slug ? best DB row
   const dbBySlug = new Map<string, { id: string; name: string; logo_league_folder: string; manager_id: string | null }>()
-  for (const t of rawTeams ?? []) {
+  for (const t of (rawTeams ?? []) as any[]) {
     if (!t.logo_team_slug) continue
     // If multiple rows exist for a slug, prefer the one with a manager for status display, 
     // or just keep the first one found.
@@ -92,7 +92,7 @@ export default async function CreateTournamentPage() {
   const allClubs = Array.from(clubMap.values()).sort((a, b) => a.name.localeCompare(b.name))
 
   // Active league tournament + standings for UCL/Europa auto-population
-  const { data: activeLeague } = await supabase
+  const { data: activeLeague } = await (supabase as any)
     .from('tournaments')
     .select('id, name')
     .eq('type', 'league')
@@ -101,11 +101,11 @@ export default async function CreateTournamentPage() {
     .maybeSingle()
 
   let leagueStandings: { team_id: string; points: number; rank?: number }[] = []
-  if (activeLeague) {
+  if ((activeLeague as any)?.id) {
     const { data: standings } = await supabase
       .from('standings')
       .select('team_id, points')
-      .eq('tournament_id', activeLeague.id)
+      .eq('tournament_id', (activeLeague as any).id)
       .order('points', { ascending: false })
     leagueStandings = standings ?? []
   }

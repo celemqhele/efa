@@ -8,11 +8,11 @@ import { buildLiveStandings, goalDifference } from '@/lib/standings-core'
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     date?: string
     tournaments?: string
     types?: string
-  }
+  }>
 }
 
 const ACCENT: Record<string, string> = {
@@ -227,14 +227,15 @@ type CardData = {
 }
 
 export default async function ExportPage({ searchParams }: Props) {
-  const sp = searchParams
+  const sp = await searchParams
   const supabase = await createClient()
 
-  const { data: tournaments } = await supabase
+  const { data: _tournaments } = await supabase
     .from('tournaments')
     .select('id, name, type, status')
     .eq('status', 'active')
     .order('created_at', { ascending: true })
+  const tournaments = (_tournaments ?? []) as any[]
 
   const today = new Date().toISOString().split('T')[0]
   const selectedDate = sp.date ?? today
@@ -371,8 +372,7 @@ export default async function ExportPage({ searchParams }: Props) {
         const cardId = `export-card-${i}`
         const filename = `efa-${card.type}-${card.tournament.type}-${selectedDate}.png`
 
-        return (
-          <div key={card.key}>
+        return <div key={card.key}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-text-secondary">
                 {card.tournament.name}
@@ -585,9 +585,9 @@ export default async function ExportPage({ searchParams }: Props) {
                 </div>
               </Card>
             </div>
-          )
+          </div>
         })}
-      </div>
     </div>
   )
 }
+

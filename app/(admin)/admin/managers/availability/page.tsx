@@ -1,11 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import AvailabilityManager from './AvailabilityManager'
 
-export default async function ManagerAvailabilityPage({ searchParams }: { searchParams: { managerId: string } }) {
+export default async function ManagerAvailabilityPage({ searchParams }: { searchParams: Promise<{ managerId: string }> }) {
   const supabase = await createAdminClient()
   const { managerId } = await searchParams
 
-  const { data: avail } = await supabase
+  const { data: avail } = await (supabase as any)
     .from('manager_availability')
     .select('*')
     .eq('profile_id', managerId)

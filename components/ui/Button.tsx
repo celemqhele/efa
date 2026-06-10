@@ -4,6 +4,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'destructive'
   isLoading?: boolean
   as?: 'button' | 'a' | any
+  href?: string
 }
 
 export function Button({ 

@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/Button'
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 const TROPHY_ICON: Record<string, string> = {
@@ -37,14 +37,15 @@ const TROPHY_LABEL: Record<string, string> = {
 
 export default async function TeamProfilePage({ params }: PageProps) {
   const supabase = await createClient()
-  const { id } = params
+  const { id } = await params
 
   // Team with manager
-  const { data: team } = await supabase
+  const { data: _team } = await supabase
     .from('teams')
     .select('*, manager:profiles!teams_manager_id_fkey(*)')
     .eq('id', id)
-    .single()
+    .single() as any
+  const team = _team as any
 
   if (!team) notFound()
 
@@ -72,18 +73,19 @@ export default async function TeamProfilePage({ params }: PageProps) {
   const managedTeamByUser: Record<string, string> = {}
 
   if (currentUser) {
-    const { data: currentProfile } = await supabase
-      .from('profiles').select('role').eq('id', currentUser.id).single()
+    const { data: _currentProfile } = await supabase
+      .from('profiles').select('role').eq('id', currentUser.id).single() as any
+    const currentProfile = _currentProfile as any
     isAdmin = currentProfile?.role === 'admin'
     isCurrentManager = (team as any).manager_id === currentUser.id
 
     if (isAdmin) {
-      const [{ data: profiles }, { data: allTeams }] = await Promise.all([
+      const [{ data: _profiles }, { data: _allTeams }] = await Promise.all([
         supabase.from('profiles').select('id, username, avatar_url').order('username'),
-        supabase.from('teams').select('name, manager_id').not('manager_id', 'is', null),
+        supabase.from('teams').select('name, manager_id').not('manager_id', 'is', null) as any,
       ])
-      allProfiles = profiles ?? []
-      for (const t of allTeams ?? []) {
+      allProfiles = (_profiles ?? []) as any[]
+      for (const t of (_allTeams ?? []) as any[]) {
         if (t.manager_id && !managedTeamByUser[t.manager_id]) {
           managedTeamByUser[t.manager_id] = t.name
         }
@@ -109,10 +111,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
     .order('awarded_at', { ascending: false })
 
   // Standings across all tournaments — across ALL sibling team rows so Phase 1 history shows
-  const { data: standings } = await supabase
+  const { data: _standings } = await supabase
     .from('standings')
     .select('*, tournament:tournaments(*)')
     .in('team_id', siblingIds)
+  const standings = (_standings ?? []) as any[]
 
   // Active standings (from active tournaments)
   const activeStandings = (standings ?? []).filter(
@@ -148,7 +151,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
     .order('started_at', { ascending: false }) as any
 
   // H2H records vs all opponents
-  const { data: allFixtures } = await supabase
+  const { data: _allFixtures } = await supabase
     .from('fixtures')
     .select(
       `id, home_team_id, away_team_id,
@@ -158,6 +161,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
     )
     .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
     .not('status', 'eq', 'scheduled')
+  const allFixtures = (_allFixtures ?? []) as any[]
 
   // Build H2H map keyed by opponent id
   const h2hMap: Record<
@@ -203,18 +207,20 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
     if (!last5Fixtures?.length) return []
 
-    const { data: dnaResults } = await supabase
+    const { data: _dnaResults } = await supabase
       .from('results')
       .select('id, fixture_id, home_score, away_score')
       .in('fixture_id', last5Fixtures.map((f: any) => f.id))
+    const dnaResults = (_dnaResults ?? []) as any[]
 
     if (!dnaResults?.length) return []
 
     const resultIds = dnaResults.map((r: any) => r.id)
-    const { data: dnaStatsList } = await supabase
+    const { data: _dnaStatsList } = await supabase
       .from('match_stats')
       .select('*')
       .in('result_id', resultIds)
+    const dnaStatsList = (_dnaStatsList ?? []) as any[]
 
     const resultMap: Record<string, { fixture_id: string; home_score: number; away_score: number }> = {}
     for (const r of dnaResults) resultMap[r.id] = r
@@ -734,6 +740,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
       {/* ── H2H vs All ───────────────────────────────────────────────────── */}
       <Card className="p-space-5 group">
+        <details>
         <summary className="section-header cursor-pointer list-none flex items-center justify-between">
           <span className="flex items-center gap-space-2">
             <span className="text-accent">⚔️</span> Head-to-Head Record
@@ -784,6 +791,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
           </div>
         )}
       </details>
+      </Card>
     </div>
   )
 }
