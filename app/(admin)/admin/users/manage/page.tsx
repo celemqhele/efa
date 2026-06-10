@@ -39,7 +39,7 @@ export default async function UsersManagePage() {
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
-  // Pending manager applications — use admin client to bypass RLS and see all
+  // Pending manager applications â€” use admin client to bypass RLS and see all
   const adminSupabase = await createAdminClient()
   const { data: managerApplications } = await adminSupabase
     .from('manager_applications' as any)
@@ -273,7 +273,7 @@ export default async function UsersManagePage() {
                           {team.abandon_count}
                         </span>
                       ) : (
-                        <span className="text-slate-600">—</span>
+                        <span className="text-slate-600">â€”</span>
                       )}
                     </td>
                     <td className="py-3">
