@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "fix-encoding": "node scripts/fix-encoding.js",
+    "prebuild": "npm run fix-encoding",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
