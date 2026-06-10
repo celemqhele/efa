@@ -57,6 +57,11 @@
   }
 }
 
+/* Team logos — white outline for visibility on dark backgrounds */
+img[src^="/logos/"] {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.7));
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

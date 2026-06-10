@@ -25,36 +25,19 @@ export default function TeamLogo({ leagueFolder, teamSlug, context, alt, classNa
   const src = getTeamLogo(leagueFolder, teamSlug, context)
   const size = SIZE_PX[context]
 
-  if (teamSlug === 'tottenham') {
-    return (
-      <div className={`dark:bg-[#ffffff] dark:rounded-full dark:border-2 dark:border-[#132257] dark:overflow-hidden dark:p-0.5 inline-flex items-center justify-center ${className}`}>
-        <Image
-          src={src}
-          alt={alt}
-          width={size}
-          height={size}
-          className="object-contain w-full h-full"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement
-            target.parentElement!.style.display = 'none'
-          }}
-        />
-      </div>
-    )
-  }
-
   return (
-    <Image
-      src={src}
-      alt={alt}
-      width={size}
-      height={size}
-      className={`object-contain ${className}`}
-      onError={(e) => {
-        const target = e.target as HTMLImageElement
-        target.style.display = 'none'
-      }}
-    />
+    <div className={`inline-flex items-center justify-center ${className}`}>
+      <Image
+        src={src}
+        alt={alt}
+        width={size}
+        height={size}
+        className="object-contain w-full h-full [filter:drop-shadow(0_0_2px_rgba(255,255,255,0.7))]"
+        onError={(e) => {
+          const target = e.target as HTMLImageElement
+          target.parentElement!.style.display = 'none'
+        }}
+      />
+    </div>
   )
 }
-

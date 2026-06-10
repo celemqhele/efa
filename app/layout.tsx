@@ -34,10 +34,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <head>
-        {/* Prevent flash of wrong theme */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('efa-theme');var s=window.matchMedia('(prefers-color-scheme: dark)').matches;if(!t&&s||t==='dark')document.documentElement.setAttribute('data-theme','dark');else document.documentElement.setAttribute('data-theme','light')}catch(e){}})()` }} />
       </head>
       <body className="font-sans antialiased min-h-screen">
         <ThemeProvider>
