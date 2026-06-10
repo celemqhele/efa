@@ -3,6 +3,32 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
+      manager_availability: {
+        Row: {
+          profile_id: string
+          profile_type: 'EVERYDAY' | 'WEEKDAYS' | 'WEEKENDS' | 'CUSTOM'
+          schedule: Json
+          updated_at: string
+        }
+        Insert: {
+          profile_id: string
+          profile_type: 'EVERYDAY' | 'WEEKDAYS' | 'WEEKENDS' | 'CUSTOM'
+          schedule: Json
+          updated_at?: string
+        }
+        Update: {
+          profile_id?: string
+          profile_type?: 'EVERYDAY' | 'WEEKDAYS' | 'WEEKENDS' | 'CUSTOM'
+          schedule?: Json
+          updated_at?: string
+        }
+        Relationships: [{
+          foreignKey: 'manager_availability_profile_id_fkey'
+          columns: ['profile_id']
+          referencedRelation: 'profiles'
+          referencedColumns: ['id']
+        }]
+      }
       profiles: {
         Row: {
           id: string
