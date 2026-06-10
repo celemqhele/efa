@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 // --- Mark All As Read --------------------------------------------------------
 
@@ -24,13 +26,14 @@ export function MarkAllReadButton({ disabled }: { disabled?: boolean }) {
   }
 
   return (
-    <button
+    <Button
       onClick={handleMarkAll}
       disabled={disabled || loading}
-      className="btn-outline text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+      variant="ghost"
+      className="text-xs"
     >
-      {loading ? 'Marking…' : '? Mark all read'}
-    </button>
+      {loading ? 'Marking…' : '✓ Mark all read'}
+    </Button>
   )
 }
 
@@ -89,29 +92,29 @@ export function NotificationRow({
       onClick={hasLink ? handleClick : undefined}
       className={`relative flex gap-4 px-4 py-4 transition-all ${
         !notification.read
-          ? 'border-l-[3px] border-l-[var(--color-accent)] bg-accent/[0.04]'
+          ? 'border-l-[3px] border-l-accent bg-accent/5'
           : 'border-l-[3px] border-l-transparent'
-      } ${hasLink ? 'cursor-pointer hover:bg-black/[0.03]' : ''}`}
+      } ${hasLink ? 'cursor-pointer hover:bg-bg-base' : ''}`}
     >
       {/* Icon */}
-      <div className="shrink-0 w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-base mt-0.5">
+      <div className="shrink-0 w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-base mt-0.5">
         {icon}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className={`text-sm leading-snug ${notification.read ? 'text-slate-500' : 'text-slate-900 font-semibold'}`}>
+          <p className={`text-sm leading-snug ${notification.read ? 'text-text-muted' : 'text-text-primary font-semibold'}`}>
             {notification.title}
           </p>
-          <span className="text-[10px] text-slate-500 shrink-0 mt-0.5 whitespace-nowrap">
+          <span className="text-[10px] text-text-muted shrink-0 mt-0.5 whitespace-nowrap">
             {timeAgo(notification.created_at)}
           </span>
         </div>
-        <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{notification.body}</p>
+        <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">{notification.body}</p>
         {hasLink && (
           <span className="inline-block mt-1.5 text-[10px] text-accent font-medium">
-            View ?
+            View details
           </span>
         )}
       </div>
@@ -163,45 +166,46 @@ export function TeamChangeRequestRow({
 
   if (done) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50">
-        <span className="text-lg">{result === 'approved' ? '?' : '?'}</span>
-        <p className="text-sm text-slate-400">
+      <div className="flex items-center gap-space-3 px-space-4 py-space-3 rounded-xl border border-border bg-bg-base">
+        <span className="text-lg">{result === 'approved' ? '✅' : '❌'}</span>
+        <p className="text-sm text-text-muted">
           Request {result} for{' '}
-          <span className="text-slate-900 font-medium">@{request.requesting_user?.username}</span>
+          <span className="text-text-primary font-medium">@{request.requesting_user?.username}</span>
         </p>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center gap-4 px-4 py-4 rounded-xl border border-slate-200 hover:border-accent/30 transition-colors bg-slate-50">
-      <div className="text-xl shrink-0">??</div>
+    <div className="flex items-center gap-space-4 px-space-4 py-space-4 rounded-xl border border-border hover:border-accent/30 transition-colors bg-bg-surface">
+      <div className="text-xl shrink-0">🔄</div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-900">
+        <p className="text-sm font-semibold text-text-primary">
           @{request.requesting_user?.username ?? 'Unknown'} wants to manage{' '}
           <span className="text-accent">{request.requested_team?.name ?? '?'}</span>
         </p>
-        <p className="text-xs text-slate-500 mt-0.5">
+        <p className="text-xs text-text-secondary mt-space-0.5">
           {request.current_team ? `Currently: ${request.current_team.name}` : 'No current team'} · {dateStr}
         </p>
       </div>
-      <div className="flex gap-2 shrink-0">
-        <button
+      <div className="flex gap-space-2 shrink-0">
+        <Button
           onClick={() => act('approve')}
-          disabled={loading !== null}
-          className="px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-semibold hover:bg-green-500/30 transition-colors disabled:opacity-50"
+          isLoading={loading === 'approve'}
+          variant="primary"
+          className="text-xs px-space-3 py-space-1.5"
         >
-          {loading === 'approve' ? '…' : 'Approve'}
-        </button>
-        <button
+          Approve
+        </Button>
+        <Button
           onClick={() => act('deny')}
-          disabled={loading !== null}
-          className="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-500/30 transition-colors disabled:opacity-50"
+          isLoading={loading === 'deny'}
+          variant="destructive"
+          className="text-xs px-space-3 py-space-1.5"
         >
-          {loading === 'deny' ? '…' : 'Deny'}
-        </button>
+          Deny
+        </Button>
       </div>
     </div>
   )
 }
-
