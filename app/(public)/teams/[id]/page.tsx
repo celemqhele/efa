@@ -294,8 +294,10 @@ export default async function TeamProfilePage({ params }: PageProps) {
               avgInterceptions: teamStats.avg_interceptions,
               avgPasses: teamStats.avg_passes,
               avgSaves: teamStats.avg_saves,
-              avgCrosses: teamStats.avg_crosses,
-              recentStreak: { wins: streakWins, draws: streakDraws, losses: streakLosses },
+          avgCrosses: teamStats.avg_crosses,
+          avgCorners: teamStats.avg_corners,
+          avgFreeKicks: teamStats.avg_free_kicks,
+          recentStreak: { wins: streakWins, draws: streakDraws, losses: streakLosses },
               cleanSheets,
               totalGames: n,
             })

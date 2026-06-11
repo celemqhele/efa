@@ -17,6 +17,8 @@ interface StateInput {
   avgPasses: number
   avgSaves: number
   avgCrosses: number
+  avgCorners: number
+  avgFreeKicks: number
   recentStreak: { wins: number; draws: number; losses: number }
   cleanSheets: number
   totalGames: number
