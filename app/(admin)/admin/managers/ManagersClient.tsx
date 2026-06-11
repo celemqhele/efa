@@ -24,13 +24,14 @@ interface Props {
   teams: Team[]
   profiles: Profile[]
   managedTeamByUser: Record<string, Team>
+  hasAvailabilityIds: string[]
 }
 
 function logoSrc(folder: string, slug: string) {
   return `/logos/${folder}/128x128/${slug}.png`
 }
 
-export default function ManagersClient({ teams, profiles, managedTeamByUser }: Props) {
+export default function ManagersClient({ teams, profiles, managedTeamByUser, hasAvailabilityIds }: Props) {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -344,13 +345,18 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                   </div>
 
                   {/* Availability link */}
-                  <div className="pt-2">
+                  <div className="pt-2 flex items-center gap-2">
                     <a
                       href={`/admin/managers/availability?managerId=${managerProfile.id}`}
                       className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-gold border border-dashed border-border hover:border-gold/50 rounded-lg px-3 py-1.5 transition-colors"
                     >
                       Set Availability Schedule
                     </a>
+                    {!hasAvailabilityIds.includes(managerProfile.id) && (
+                      <span className="text-[10px] text-feedback-warning font-semibold bg-feedback-warning/10 border border-feedback-warning/30 px-2 py-0.5 rounded-full">
+                        Not set
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

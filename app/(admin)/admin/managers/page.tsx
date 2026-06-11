@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import ManagersClient from './ManagersClient'
 
 export default async function ManageManagersPage() {
@@ -16,6 +16,13 @@ export default async function ManageManagersPage() {
       .select('id, username, avatar_url, role, whatsapp_number')
       .order('username', { ascending: true }),
   ])
+
+  // Fetch which managers have availability set
+  const adminSupabase = await createAdminClient()
+  const { data: availRows } = await adminSupabase
+    .from('manager_availability')
+    .select('profile_id')
+  const hasAvailability = new Set((availRows ?? []).map((r: any) => r.profile_id))
 
   // Deduplicate teams by logo slug — same club can appear across multiple phases
   type TeamRow = any
@@ -50,6 +57,7 @@ export default async function ManageManagersPage() {
         teams={teams}
         profiles={rawProfiles ?? []}
         managedTeamByUser={managedTeamByUser}
+        hasAvailabilityIds={Array.from(hasAvailability)}
       />
     </div>
   )

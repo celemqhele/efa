@@ -1,44 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { findMatchDay, findTimeWindow, DaySchedule } from '@/lib/scheduling'
-import { addDays, format, parseISO } from 'date-fns'
-
-const ALL_DAYS: DaySchedule[] = [
-  { day: 'MON', available: true, start: '00:00', end: '23:59' },
-  { day: 'TUE', available: true, start: '00:00', end: '23:59' },
-  { day: 'WED', available: true, start: '00:00', end: '23:59' },
-  { day: 'THU', available: true, start: '00:00', end: '23:59' },
-  { day: 'FRI', available: true, start: '00:00', end: '23:59' },
-  { day: 'SAT', available: true, start: '00:00', end: '23:59' },
-  { day: 'SUN', available: true, start: '00:00', end: '23:59' },
-]
-
-const DEFAULT_SAT_EVENING: DaySchedule[] = [
-  { day: 'MON', available: false, start: null, end: null },
-  { day: 'TUE', available: false, start: null, end: null },
-  { day: 'WED', available: false, start: null, end: null },
-  { day: 'THU', available: false, start: null, end: null },
-  { day: 'FRI', available: false, start: null, end: null },
-  { day: 'SAT', available: true, start: '18:00', end: '19:00' },
-  { day: 'SUN', available: false, start: null, end: null },
-]
-
-function resolveAvailability(schedule: DaySchedule[] | undefined, opponentSchedule: DaySchedule[] | undefined): DaySchedule[] {
-  if (schedule && schedule.length > 0) return schedule
-  if (opponentSchedule && opponentSchedule.length > 0) return opponentSchedule
-  return DEFAULT_SAT_EVENING
-}
-
-function getDateForDay(dayName: string, refDate: Date): string {
-  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
-  const targetDay = days.indexOf(dayName)
-  let d = refDate
-  for (let i = 0; i < 7; i++) {
-    if (d.getDay() === targetDay) break
-    d = addDays(d, 1)
-  }
-  return format(d, 'yyyy-MM-dd')
-}
+import { findMatchDay, findTimeWindow, resolveAvailability, getDateForDay, DaySchedule } from '@/lib/scheduling'
+import { parseISO } from 'date-fns'
 
 export async function POST(request: Request) {
   const supabase = await createAdminClient()

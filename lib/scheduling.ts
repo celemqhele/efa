@@ -1,4 +1,5 @@
 import { Database } from './supabase/types'
+import { addDays, format } from 'date-fns'
 
 export type ManagerAvailability = Database['public']['Tables']['manager_availability']['Row']
 export type DaySchedule = {
@@ -9,6 +10,46 @@ export type DaySchedule = {
 }
 
 const HOME_BIAS = 0.3
+
+export const ALL_DAYS_FULL: DaySchedule[] = [
+  { day: 'MON', available: true, start: '00:00', end: '23:59' },
+  { day: 'TUE', available: true, start: '00:00', end: '23:59' },
+  { day: 'WED', available: true, start: '00:00', end: '23:59' },
+  { day: 'THU', available: true, start: '00:00', end: '23:59' },
+  { day: 'FRI', available: true, start: '00:00', end: '23:59' },
+  { day: 'SAT', available: true, start: '00:00', end: '23:59' },
+  { day: 'SUN', available: true, start: '00:00', end: '23:59' },
+]
+
+export const DEFAULT_SAT_EVENING: DaySchedule[] = [
+  { day: 'MON', available: false, start: null, end: null },
+  { day: 'TUE', available: false, start: null, end: null },
+  { day: 'WED', available: false, start: null, end: null },
+  { day: 'THU', available: false, start: null, end: null },
+  { day: 'FRI', available: false, start: null, end: null },
+  { day: 'SAT', available: true, start: '18:00', end: '19:00' },
+  { day: 'SUN', available: false, start: null, end: null },
+]
+
+export function resolveAvailability(
+  schedule: DaySchedule[] | undefined | null,
+  opponentSchedule: DaySchedule[] | undefined | null,
+): DaySchedule[] {
+  if (schedule && schedule.length > 0) return schedule
+  if (opponentSchedule && opponentSchedule.length > 0) return opponentSchedule
+  return DEFAULT_SAT_EVENING
+}
+
+export function getDateForDay(dayName: string, refDate: Date): string {
+  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+  const targetDay = days.indexOf(dayName)
+  let d = refDate
+  for (let i = 0; i < 7; i++) {
+    if (d.getDay() === targetDay) break
+    d = addDays(d, 1)
+  }
+  return format(d, 'yyyy-MM-dd')
+}
 
 // Helpers
 const toMinutes = (time: string): number => {
@@ -77,8 +118,7 @@ export function findMatchDay(homeSchedule: DaySchedule[], awaySchedule: DaySched
   }
 
   const roundedMeet = Math.round(meetPoint)
-  const allDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
-  
+
   // Find closest available day
   const availableDays = [...new Set([...homeDays, ...awayDays])].map(d => ({day: d, num: dayNumber(d)}))
   

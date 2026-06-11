@@ -1,5 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { generateLeagueFixtures, generateGroupFixtures, type GeneratedFixture } from '@/lib/fixture-generator'
+import { findMatchDay, findTimeWindow, resolveAvailability, getDateForDay, type DaySchedule } from '@/lib/scheduling'
+import { parseISO } from 'date-fns'
 import type { Database } from '@/lib/supabase/types'
 
 type FixtureInsert = Database['public']['Tables']['fixtures']['Insert']
@@ -198,6 +200,74 @@ export async function POST(request: Request) {
 
   if (insertError) {
     return Response.json({ error: insertError.message }, { status: 500 })
+  }
+
+  // ── Auto-schedule fixtures based on manager availability ──
+  const { data: insertedFixtures } = await adminSupabase
+    .from('fixtures')
+    .select(`
+      id, matchday, scheduled_date,
+      home_team:teams!fixtures_home_team_id_fkey(manager_id),
+      away_team:teams!fixtures_away_team_id_fkey(manager_id)
+    `)
+    .eq('tournament_id', tournament_id)
+
+  if (insertedFixtures && insertedFixtures.length > 0) {
+    const managerIds = [
+      ...new Set(
+        insertedFixtures.flatMap((f: any) => [
+          (f.home_team as any)?.manager_id,
+          (f.away_team as any)?.manager_id,
+        ]).filter(Boolean),
+      ),
+    ] as string[]
+
+    const availMap: Record<string, DaySchedule[]> = {}
+    if (managerIds.length > 0) {
+      const { data: availabilities } = await adminSupabase
+        .from('manager_availability')
+        .select('*')
+        .in('profile_id', managerIds)
+
+      for (const a of availabilities ?? []) {
+        availMap[a.profile_id] = a.schedule as DaySchedule[]
+      }
+    }
+
+    const seasonStart = settings?.start_date as string | undefined
+
+    for (const fx of insertedFixtures as any[]) {
+      const homeMgr = (fx.home_team as any)?.manager_id
+      const awayMgr = (fx.away_team as any)?.manager_id
+
+      const rawHome = homeMgr ? availMap[homeMgr] : undefined
+      const rawAway = awayMgr ? availMap[awayMgr] : undefined
+
+      const hAvail = resolveAvailability(rawHome, rawAway)
+      const aAvail = resolveAvailability(rawAway, rawHome)
+
+      const dayName = findMatchDay(hAvail, aAvail)
+      const window = findTimeWindow(hAvail, aAvail, dayName)
+
+      const refDate = fx.scheduled_date && seasonStart
+        ? parseISO(String(fx.scheduled_date))
+        : seasonStart
+          ? parseISO(seasonStart)
+          : new Date()
+
+      const scheduledDate = seasonStart ? getDateForDay(dayName, refDate) : ''
+
+      await adminSupabase
+        .from('fixtures')
+        .update({
+          assigned_day: dayName,
+          window_start: window.start,
+          window_end: window.end,
+          scheduled_date: scheduledDate ? `${scheduledDate}T${window.start}:00` : fx.scheduled_date,
+          deadline: scheduledDate ? `${scheduledDate}T${window.end}:00` : fx.deadline,
+        })
+        .eq('id', fx.id)
+    }
   }
 
   // Notify all participants
