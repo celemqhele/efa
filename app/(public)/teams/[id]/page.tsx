@@ -255,93 +255,107 @@ export default async function TeamProfilePage({ params }: PageProps) {
       if (mgrFixtureIds.length > 0) {
         const { data: _mgrResults } = await supabase
           .from('results')
-          .select('id, fixture_id, home_score, away_score')
+          .select('id, fixture_id, home_score, away_score, is_abandoned, abandoned_type')
           .in('fixture_id', mgrFixtureIds)
         const mgrResults = (_mgrResults ?? []) as any[]
         const mgrResultIds = mgrResults.map((r: any) => r.id)
 
-        if (mgrResultIds.length > 0) {
-          const { data: _mgrStats } = await supabase
-            .from('match_stats')
-            .select('*')
-            .in('result_id', mgrResultIds)
-          const mgrStats = (_mgrStats ?? []) as any[]
+        const { data: _mgrStats } = await supabase
+          .from('match_stats')
+          .select('*')
+          .in('result_id', mgrResultIds)
+        const mgrStats = (_mgrStats ?? []) as any[]
 
-          const resultMap: Record<string, any> = {}
-          for (const r of mgrResults) resultMap[r.id] = r
+        const statsByResultId: Record<string, any> = {}
+        for (const ms of mgrStats) statsByResultId[ms.result_id] = ms
 
-          const managerGames: Array<{ stats: any; isHome: boolean; goalsAgainst: number }> = []
-          let totalGF = 0, totalGA = 0, cleanSheets = 0
+        const resultByFixtureId: Record<string, any> = {}
+        for (const r of mgrResults) resultByFixtureId[r.fixture_id] = r
+
+        const managerGames: Array<{ stats: any; isHome: boolean; goalsAgainst: number; myScore: number; theirScore: number }> = []
+        let totalGF = 0, totalGA = 0, cleanSheets = 0
+
+        for (const fixture of uniqueFixtures) {
+          const result = resultByFixtureId[fixture.id]
+          if (!result) continue
+          const isHomeTeam = managedTeamIds.includes(fixture.home_team_id)
+          const myScore = isHomeTeam ? result.home_score : result.away_score
+          const theirScore = isHomeTeam ? result.away_score : result.home_score
+
+          totalGF += myScore
+          totalGA += theirScore
+          if (theirScore === 0) cleanSheets++
+
+          const ms = statsByResultId[result.id]
+
+          managerGames.push({
+            stats: ms ?? {},
+            isHome: isHomeTeam,
+            goalsAgainst: theirScore,
+            myScore,
+            theirScore,
+          })
+        }
+
+        if (managerGames.length >= MIN_DNA_GAMES) {
+          const teamStats = buildTeamStatsMixed(managerGames)
+          dnaProfiles = getTeamDNA(teamStats)
+          dnaCombination = getTeamCombination(dnaProfiles)
+
+          // Actual consecutive streak (most-recent-first, stop when outcome changes)
+          let streakType: 'W' | 'D' | 'L' | null = null
           let streakWins = 0, streakDraws = 0, streakLosses = 0
-
-          for (const ms of mgrStats) {
-            const result = resultMap[ms.result_id]
-            if (!result) continue
-            const fixture = (uniqueFixtures as any[]).find((f: any) => f.id === result.fixture_id)
-            if (!fixture) continue
-            const isHomeTeam = managedTeamIds.includes(fixture.home_team_id)
-            const myScore = isHomeTeam ? result.home_score : result.away_score
-            const theirScore = isHomeTeam ? result.away_score : result.home_score
-
-            totalGF += myScore
-            totalGA += theirScore
-            if (theirScore === 0) cleanSheets++
-            if (myScore > theirScore) streakWins++
-            else if (myScore === theirScore) streakDraws++
+          for (const game of managerGames) {
+            const gResult = game.myScore > game.theirScore ? 'W' : game.myScore === game.theirScore ? 'D' : 'L'
+            if (streakType === null) {
+              streakType = gResult
+            } else if (gResult !== streakType) {
+              break
+            }
+            if (gResult === 'W') streakWins++
+            else if (gResult === 'D') streakDraws++
             else streakLosses++
-
-            managerGames.push({
-              stats: ms,
-              isHome: isHomeTeam,
-              goalsAgainst: theirScore,
-            })
           }
 
-          if (managerGames.length >= MIN_DNA_GAMES) {
-            const teamStats = buildTeamStatsMixed(managerGames)
-            dnaProfiles = getTeamDNA(teamStats)
-            dnaCombination = getTeamCombination(dnaProfiles)
+          const n = managerGames.length
+          teamStates = detectTeamStates({
+            avgGoalsScored: totalGF / n,
+            avgGoalsConceded: totalGA / n,
+            avgPossession: teamStats.avg_possession,
+            avgShots: teamStats.avg_shots,
+            avgShotsOnTarget: teamStats.avg_shots_on_target,
+            avgFouls: teamStats.avg_fouls,
+            avgTackles: teamStats.avg_tackles,
+            avgInterceptions: teamStats.avg_interceptions,
+            avgPasses: teamStats.avg_passes,
+            avgSaves: teamStats.avg_saves,
+            avgCrosses: teamStats.avg_crosses,
+            avgCorners: teamStats.avg_corners,
+            avgFreeKicks: teamStats.avg_free_kicks,
+            recentStreak: { wins: streakWins, draws: streakDraws, losses: streakLosses },
+            cleanSheets,
+            totalGames: n,
+          })
 
-            const n = managerGames.length
-            teamStates = detectTeamStates({
-              avgGoalsScored: totalGF / n,
-              avgGoalsConceded: totalGA / n,
-              avgPossession: teamStats.avg_possession,
-              avgShots: teamStats.avg_shots,
-              avgShotsOnTarget: teamStats.avg_shots_on_target,
-              avgFouls: teamStats.avg_fouls,
-              avgTackles: teamStats.avg_tackles,
-              avgInterceptions: teamStats.avg_interceptions,
-              avgPasses: teamStats.avg_passes,
-              avgSaves: teamStats.avg_saves,
-          avgCrosses: teamStats.avg_crosses,
-          avgCorners: teamStats.avg_corners,
-          avgFreeKicks: teamStats.avg_free_kicks,
-          recentStreak: { wins: streakWins, draws: streakDraws, losses: streakLosses },
-              cleanSheets,
-              totalGames: n,
-            })
-
-            managerNotes = generateManagerNotes({
-              avgGoalsScored: totalGF / n,
-              avgGoalsConceded: totalGA / n,
-              avgPossession: teamStats.avg_possession,
-              avgShots: teamStats.avg_shots,
-              avgShotsOnTarget: teamStats.avg_shots_on_target,
-              avgFouls: teamStats.avg_fouls,
-              avgTackles: teamStats.avg_tackles,
-              avgInterceptions: teamStats.avg_interceptions,
-              avgPasses: teamStats.avg_passes,
-              avgSuccessfulPasses: teamStats.avg_successful_passes,
-              avgCrosses: teamStats.avg_crosses,
-              avgSaves: teamStats.avg_saves,
-              avgCorners: teamStats.avg_corners,
-              avgFreeKicks: teamStats.avg_free_kicks,
-              avgOffsides: teamStats.avg_offsides,
-              recentStreak: { wins: streakWins, draws: streakDraws, losses: streakLosses },
-              totalGames: n,
-            })
-          }
+          managerNotes = generateManagerNotes({
+            avgGoalsScored: totalGF / n,
+            avgGoalsConceded: totalGA / n,
+            avgPossession: teamStats.avg_possession,
+            avgShots: teamStats.avg_shots,
+            avgShotsOnTarget: teamStats.avg_shots_on_target,
+            avgFouls: teamStats.avg_fouls,
+            avgTackles: teamStats.avg_tackles,
+            avgInterceptions: teamStats.avg_interceptions,
+            avgPasses: teamStats.avg_passes,
+            avgSuccessfulPasses: teamStats.avg_successful_passes,
+            avgCrosses: teamStats.avg_crosses,
+            avgSaves: teamStats.avg_saves,
+            avgCorners: teamStats.avg_corners,
+            avgFreeKicks: teamStats.avg_free_kicks,
+            avgOffsides: teamStats.avg_offsides,
+            recentStreak: { wins: streakWins, draws: streakDraws, losses: streakLosses },
+            totalGames: n,
+          })
         }
       }
     }

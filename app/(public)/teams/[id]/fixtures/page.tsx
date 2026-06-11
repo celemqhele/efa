@@ -85,7 +85,7 @@ export default async function TeamFixturesPage({ params }: PageProps) {
   const { data: allFixtures } = await supabase
     .from('fixtures')
     .select(`
-      id, matchday, scheduled_date, status, round_type, leg,
+      id, matchday, scheduled_date, status, round_type, leg, home_team_id, away_team_id,
       tournament:tournaments(id, name, type, status),
       home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
       away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
@@ -115,8 +115,12 @@ export default async function TeamFixturesPage({ params }: PageProps) {
     .filter((f: any) => f.status !== 'scheduled' && f.status !== 'awaiting_confirmation')
 
     function FixtureRow({ f }: { f: any }) {
-    const isHome = siblingIds.includes(f.home_team_id)
-    const opponent = isHome ? f.away_team : f.home_team
+    // Safely extract joined team data (Supabase sometimes returns arrays)
+    const homeTeam = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team
+    const awayTeam = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team
+    
+    const isHome = homeTeam ? siblingIds.includes(homeTeam.id) : siblingIds.includes(f.home_team_id)
+    const opponent = isHome ? awayTeam : homeTeam
     
     // Result fetching (handles cases where results might be null)
     const result = resultsByFixture[f.id]
