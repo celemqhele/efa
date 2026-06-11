@@ -218,19 +218,39 @@ export default async function TeamProfilePage({ params }: PageProps) {
     const managedTeamIds = [...new Set((tenures ?? []).map((t: any) => t.team_id))]
 
     if (managedTeamIds.length > 0) {
-      const managedOrFilter = managedTeamIds
-        .flatMap((tid: string) => [`home_team_id.eq.${tid}`, `away_team_id.eq.${tid}`])
-        .join(',')
+      // Fetch fixtures per tenure with date-range filtering
+      const mgrFixtures: any[] = []
+      const VALID_STATUSES = ['confirmed', 'abandoned_home', 'abandoned_away', 'abandoned_both']
 
-      const { data: mgrFixtures } = await supabase
-        .from('fixtures')
-        .select('id, home_team_id, scheduled_date')
-        .or(managedOrFilter)
-        .eq('status', 'confirmed')
-        .order('scheduled_date', { ascending: false })
-        .limit(10)
+      for (const tenure of (tenures ?? [])) {
+        let query = supabase
+          .from('fixtures')
+          .select('id, home_team_id, scheduled_date')
+          .or(`home_team_id.eq.${tenure.team_id},away_team_id.eq.${tenure.team_id}`)
+          .in('status', VALID_STATUSES)
+          .gte('scheduled_date', tenure.started_at)
+          .order('scheduled_date', { ascending: false })
+          .limit(10)
 
-      const mgrFixtureIds = (mgrFixtures ?? []).map((f: any) => f.id)
+        if (tenure.ended_at) {
+          query = query.lte('scheduled_date', tenure.ended_at)
+        }
+
+        const { data } = await query
+        if (data) mgrFixtures.push(...data)
+      }
+
+      // Deduplicate by id and sort, take top 10
+      const seen = new Set<string>()
+      const uniqueFixtures = mgrFixtures.filter((f: any) => {
+        if (seen.has(f.id)) return false
+        seen.add(f.id)
+        return true
+      }).sort(
+        (a: any, b: any) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime()
+      ).slice(0, 10)
+
+      const mgrFixtureIds = uniqueFixtures.map((f: any) => f.id)
 
       if (mgrFixtureIds.length > 0) {
         const { data: _mgrResults } = await supabase
@@ -257,7 +277,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
           for (const ms of mgrStats) {
             const result = resultMap[ms.result_id]
             if (!result) continue
-            const fixture = (mgrFixtures as any[]).find((f: any) => f.id === result.fixture_id)
+            const fixture = (uniqueFixtures as any[]).find((f: any) => f.id === result.fixture_id)
             if (!fixture) continue
             const isHomeTeam = managedTeamIds.includes(fixture.home_team_id)
             const myScore = isHomeTeam ? result.home_score : result.away_score
@@ -376,7 +396,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
         </div>
         <div className="px-space-6 pb-space-6 -mt-12 relative">
           <div className="flex items-end gap-space-5">
-            <div className="rounded-2xl overflow-hidden border-4 shadow-md border-border bg-bg-base">
+            <div className="border-4 shadow-md border-border bg-bg-base">
               <Image
                 src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
                 alt={team.name}
