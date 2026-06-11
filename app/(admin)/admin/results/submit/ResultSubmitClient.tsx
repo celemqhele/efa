@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { cropToStatsPanel, parseOcrText } from '@/lib/parse-screenshot-client'
 import { notify } from '@/lib/notifications'
+import ForfeitBalanceBadge from '@/components/ui/ForfeitBalanceBadge'
 
 interface Team {
   id: string
@@ -143,6 +144,21 @@ export default function ResultSubmitClient({
   // Forfeit balance state
   const [forfeitBalances, setForfeitBalances] = useState<any[]>([])
   const [balanceLoading, setBalanceLoading] = useState(false)
+
+  async function handleUseForfeitBalance(balanceId: string) {
+    const res = await fetch('/api/admin/forfeit-balances/use', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ balance_id: balanceId }),
+    })
+    if (res.ok) {
+      setForfeitBalances((prev) =>
+        prev.map((x: any) =>
+          x.id === balanceId ? { ...x, remaining: x.remaining - 1 } : x
+        ).filter((x: any) => x.remaining > 0)
+      )
+    }
+  }
 
   // Score state
   const [homeScore, setHomeScore] = useState('')
@@ -610,6 +626,14 @@ export default function ResultSubmitClient({
                       />
                     )}
                     <p className="text-foreground-primary text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.home_team?.name}</p>
+                    <div className="mt-1 flex justify-center">
+                      <ForfeitBalanceBadge
+                        teamId={selectedFixture.home_team?.id ?? ''}
+                        teamName={selectedFixture.home_team?.name ?? ''}
+                        balances={forfeitBalances}
+                        onUse={handleUseForfeitBalance}
+                      />
+                    </div>
                   </div>
                   <div className="text-center">
                     <p className="text-text-muted text-xs">MD{selectedFixture.matchday}</p>
@@ -626,6 +650,14 @@ export default function ResultSubmitClient({
                       />
                     )}
                     <p className="text-foreground-primary text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.away_team?.name}</p>
+                    <div className="mt-1 flex justify-center">
+                      <ForfeitBalanceBadge
+                        teamId={selectedFixture.away_team?.id ?? ''}
+                        teamName={selectedFixture.away_team?.name ?? ''}
+                        balances={forfeitBalances}
+                        onUse={handleUseForfeitBalance}
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="flex rounded-lg overflow-hidden border border-navy-border self-center sm:self-auto shrink-0">
@@ -751,47 +783,6 @@ export default function ResultSubmitClient({
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Forfeit Balances */}
-            {forfeitBalances.length > 0 && (
-              <div className="card p-4">
-                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
-                  Pending Forfeit Penalties
-                </h3>
-                <div className="space-y-2">
-                  {forfeitBalances.map((b: any) => (
-                    <div key={b.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-orange-500/20 bg-orange-500/5">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-foreground-primary font-medium truncate">{b.half_time_note}</p>
-                        <p className="text-[10px] text-text-muted">
-                          {b.forfeiting_team?.name ?? 'Unknown'} forfeited — {b.remaining} remaining
-                        </p>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          const res = await fetch('/api/admin/forfeit-balances/use', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ balance_id: b.id }),
-                          })
-                          if (res.ok) {
-                            setForfeitBalances((prev) =>
-                              prev.map((x: any) =>
-                                x.id === b.id ? { ...x, remaining: x.remaining - 1 } : x
-                              ).filter((x: any) => x.remaining > 0)
-                            )
-                          }
-                        }}
-                        disabled={b.remaining <= 0}
-                        className="shrink-0 px-2.5 py-1 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-40"
-                      >
-                        Use
-                      </button>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 
