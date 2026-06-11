@@ -82,22 +82,22 @@ const DNA_PROFILES: Array<{
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
       return tally(
         // Primary: complete control + clean sheet
-        hi(s.avg_possession,        40, 44, 62),    // 55%+
-        hi(s.avg_passes,            40, 124, 164),  // 148+
-        hi(s.avg_shots_on_target,   40, 3,  8),     // 6+
-        lo(s.avg_saves,             35, 1,  5),     // 2↓ (GK rarely tested)
-        gaLo(s.avg_goals_against,   35, 0,  1.6),   // 0.7↓
+        hi(s.avg_possession,        40, 44, 62),
+        hi(s.avg_passes,            40, 124, 164),
+        hi(s.avg_shots_on_target,   40, 3,  8),
+        lo(s.avg_saves,             35, 1,  5),
+        gaLo(s.avg_goals_against,   35, 0,  1.6),
         // Secondary: technical quality + output
-        hi(pa,                      25, 0.70, 0.87),// 79%+
-        hi(s.avg_shots,             20, 7,  15),    // 10+
-        hi(s.avg_corners,           20, 2,  7),     // 4+
+        hi(pa,                      25, 0.70, 0.87),
+        hi(s.avg_shots,             20, 7,  15),
+        hi(s.avg_corners,           20, 2,  7),
         // Tertiary: context stats
-        hi(s.avg_interceptions,     10, 18, 34),    // 25+
-        mid(s.avg_fouls,            10, 2,  3),     // ~2
-        mid(s.avg_offsides,         10, 1.5, 2),    // ~1-2
-        mid(s.avg_crosses,          10, 2.5, 4),    // moderate
-        mid(s.avg_free_kicks,       10, 1.5, 2),    // moderate
-        hi(s.avg_tackles,           10, 3,  8),     // moderate+
+        hi(s.avg_interceptions,      5, 18, 34),
+        mid(s.avg_fouls,             5, 2,  3),
+        mid(s.avg_offsides,          5, 1.5, 2),
+        mid(s.avg_crosses,           5, 2.5, 4),
+        mid(s.avg_free_kicks,        5, 1.5, 2),
+        hi(s.avg_tackles,            5, 3,  8),
       )
     },
   },
@@ -110,22 +110,22 @@ const DNA_PROFILES: Array<{
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
       return tally(
         // Primary: patient possession + accuracy + no crosses
-        hi(s.avg_possession,        40, 48, 66),    // 56%+
-        hi(s.avg_passes,            40, 132, 172),  // 152+
-        hi(pa,                      40, 0.74, 0.90),// 81%+
-        lo(s.avg_crosses,           35, 0,  4),     // 1↓ (central play only)
+        hi(s.avg_possession,        40, 48, 66),
+        hi(s.avg_passes,            40, 132, 172),
+        hi(pa,                      40, 0.74, 0.90),
+        lo(s.avg_crosses,           35, 0,  4),
         // Secondary: clean and technical
-        lo(s.avg_fouls,             25, 0,  3),     // 1↓
-        gaLo(s.avg_goals_against,   20, 0,  1.8),   // 0.9↓
-        hi(s.avg_shots,             20, 6,  13),    // 9
-        hi(s.avg_shots_on_target,   20, 3,  7),     // 5
+        lo(s.avg_fouls,             25, 0,  3),
+        gaLo(s.avg_goals_against,   20, 0,  1.8),
+        hi(s.avg_shots,             20, 6,  13),
+        hi(s.avg_shots_on_target,   20, 3,  7),
         // Tertiary
-        lo(s.avg_saves,             10, 1,  5),     // 2↓
-        lo(s.avg_free_kicks,        10, 0,  3),     // 1↓
-        hi(s.avg_corners,           10, 1,  5),     // 3
-        hi(s.avg_interceptions,     10, 18, 32),    // 24+
-        mid(s.avg_tackles,          10, 5,  5),     // ~5
-        mid(s.avg_offsides,         10, 1,  2),     // ~1
+        lo(s.avg_saves,              5, 1,  5),
+        lo(s.avg_free_kicks,         5, 0,  3),
+        hi(s.avg_corners,            5, 1,  5),
+        hi(s.avg_interceptions,      5, 18, 32),
+        mid(s.avg_tackles,           5, 5,  5),
+        mid(s.avg_offsides,          5, 1,  2),
       )
     },
   },
@@ -138,22 +138,22 @@ const DNA_PROFILES: Array<{
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
       return tally(
         // Primary: intense physical press (KEY: fouls are HIGH vs Disciplined Pressers)
-        hi(s.avg_tackles,           40, 5,  11),    // 8+
-        hi(s.avg_interceptions,     40, 22, 36),    // 30+
-        hi(s.avg_fouls,             35, 1.5, 5.5),  // 3+ (physical, fouls more)
-        mid(s.avg_possession,       30, 49, 12),    // ~49% moderate
+        hi(s.avg_tackles,           40, 5,  11),
+        hi(s.avg_interceptions,     40, 22, 36),
+        hi(s.avg_fouls,             40, 2.0, 5.5),
+        mid(s.avg_possession,       30, 49, 12),
         // Secondary: attacking threat from press
-        hi(s.avg_shots,             20, 7,  14),    // 10
-        hi(s.avg_offsides,          20, 0.5, 4),    // 2+ (high line)
-        hi(s.avg_corners,           20, 2,  7),     // 4+
+        hi(s.avg_shots,             20, 7,  14),
+        hi(s.avg_offsides,          20, 0.5, 4),
+        hi(s.avg_corners,           20, 2,  7),
         // Tertiary
-        hi(s.avg_shots_on_target,   10, 3,  7),     // 5
-        mid(s.avg_passes,           10, 135, 25),   // ~135
-        mid(pa,                     10, 0.75, 0.10),// ~75%
-        gaLo(s.avg_goals_against,   10, 0,  2.0),   // ~1.0
-        mid(s.avg_saves,            10, 3,  3),     // ~3
-        mid(s.avg_crosses,          10, 2,  3),     // ~2
-        mid(s.avg_free_kicks,       10, 2,  2),     // ~2
+        hi(s.avg_shots_on_target,   10, 3,  7),
+        mid(s.avg_passes,           10, 135, 25),
+        mid(pa,                     10, 0.75, 0.10),
+        gaLo(s.avg_goals_against,   10, 0,  2.0),
+        mid(s.avg_saves,            10, 3,  3),
+        mid(s.avg_crosses,          10, 2,  3),
+        mid(s.avg_free_kicks,       10, 2,  2),
       )
     },
   },
@@ -166,22 +166,22 @@ const DNA_PROFILES: Array<{
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
       return tally(
         // Primary: high press wins WITHOUT fouling (KEY differentiator: lo fouls)
-        hi(s.avg_interceptions,     40, 22, 36),    // 30+
-        hi(s.avg_tackles,           40, 4,  10),    // 7+
-        lo(s.avg_fouls,             40, 0,  3),     // 1↓ (smart, not dirty)
+        hi(s.avg_interceptions,     40, 22, 36),
+        hi(s.avg_tackles,           40, 4,  10),
+        lo(s.avg_fouls,             40, 0,  2.5),
         // Secondary
-        mid(s.avg_possession,       25, 48, 10),    // ~48%
-        hi(s.avg_shots,             20, 7,  13),    // 9
-        lo(s.avg_free_kicks,        20, 0,  3),     // 1↓ (few fouls = few FKs given)
+        mid(s.avg_possession,       25, 48, 10),
+        hi(s.avg_shots,             25, 7,  13),
+        lo(s.avg_free_kicks,        25, 0,  3),
         // Tertiary
-        hi(s.avg_shots_on_target,   10, 3,  7),     // 5
-        mid(pa,                     10, 0.76, 0.10),// ~76%
-        mid(s.avg_passes,           10, 133, 25),   // ~133
-        gaLo(s.avg_goals_against,   10, 0,  2.0),   // ~1.0
-        mid(s.avg_saves,            10, 3,  3),     // ~3
-        mid(s.avg_crosses,          10, 2,  3),     // ~2
-        mid(s.avg_offsides,         10, 1,  2),     // ~1
-        mid(s.avg_corners,          10, 3,  3),     // ~3
+        hi(s.avg_shots_on_target,   15, 3,  7),
+        mid(pa,                     10, 0.76, 0.10),
+        mid(s.avg_passes,           10, 133, 25),
+        gaLo(s.avg_goals_against,   10, 0,  2.0),
+        mid(s.avg_saves,            10, 3,  3),
+        mid(s.avg_crosses,          10, 2,  3),
+        mid(s.avg_offsides,         10, 1,  2),
+        mid(s.avg_corners,          10, 3,  3),
       )
     },
   },
@@ -194,22 +194,22 @@ const DNA_PROFILES: Array<{
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
       return tally(
         // Primary: low possession + high output on the break
-        lo(s.avg_possession,        40, 36, 54),    // 45%↓
-        hi(s.avg_shots,             40, 7,  14),    // 10+
-        hi(s.avg_offsides,          35, 0.5, 4),    // 2+ (forwards running in behind)
-        hi(s.avg_saves,             30, 2,  6),     // 4+ (GK busy = they defend deep)
+        lo(s.avg_possession,        40, 36, 54),
+        hi(s.avg_shots,             40, 7,  14),
+        hi(s.avg_offsides,          40, 0.3, 4),
+        hi(s.avg_saves,             30, 2,  6),
         // Secondary: direct play
-        lo(s.avg_passes,            25, 100, 140),  // 122↓
-        lo(pa,                      20, 0.64, 0.82),// 73%↓ (direct passes = lower acc)
-        gaLo(s.avg_goals_against,   20, 0,  2.2),   // ~1.2
+        lo(s.avg_passes,            25, 100, 140),
+        lo(pa,                      25, 0.64, 0.82),
+        gaLo(s.avg_goals_against,   25, 0,  2.2),
         // Tertiary
-        hi(s.avg_shots_on_target,   10, 3,  7),     // 5
-        mid(s.avg_fouls,            10, 2,  3),     // ~2
-        hi(s.avg_interceptions,     10, 18, 32),    // 26
-        hi(s.avg_tackles,           10, 3,  8),     // 6
-        mid(s.avg_corners,          10, 3,  3),     // ~3
-        mid(s.avg_free_kicks,       10, 2,  2),     // ~2
-        mid(s.avg_crosses,          10, 2,  3),     // ~2
+        hi(s.avg_shots_on_target,   10, 3,  7),
+        mid(s.avg_fouls,            10, 2,  3),
+        hi(s.avg_interceptions,     10, 18, 32),
+        hi(s.avg_tackles,           10, 3,  8),
+        mid(s.avg_corners,          10, 3,  3),
+        mid(s.avg_free_kicks,       10, 2,  2),
+        mid(s.avg_crosses,          10, 2,  3),
       )
     },
   },
@@ -222,22 +222,22 @@ const DNA_PROFILES: Array<{
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
       return tally(
         // Primary: very direct + GK under pressure
-        lo(s.avg_possession,        40, 34, 52),    // 42%↓
-        lo(s.avg_passes,            40, 96, 138),   // 115↓
-        lo(pa,                      35, 0.60, 0.80),// 70%↓ (long balls = low accuracy)
-        hi(s.avg_saves,             35, 3,  7),     // 5+ (GK very busy)
+        lo(s.avg_possession,        40, 34, 52),
+        lo(s.avg_passes,            40, 96, 138),
+        lo(pa,                      35, 0.60, 0.80),
+        hi(s.avg_saves,             35, 3,  7),
         // Secondary: passive + direct shape
-        lo(s.avg_corners,           20, 0,  5),     // 2↓ (don't attack wide)
-        lo(s.avg_offsides,          20, 0,  3),     // 1↓ (not timing runs)
-        lo(s.avg_shots,             15, 4,  13),    // 8↓ (few chances)
+        lo(s.avg_corners,           20, 0,  5),
+        lo(s.avg_offsides,          20, 0,  3),
+        lo(s.avg_shots,             15, 4,  13),
         // Tertiary
-        hi(s.avg_interceptions,     10, 18, 32),    // 27
-        hi(s.avg_tackles,           10, 3,  8),     // 6
-        mid(s.avg_fouls,            10, 2,  3),     // ~2
-        gaLo(s.avg_goals_against,   10, 0,  3.0),   // ~1.4 (concede more)
-        mid(s.avg_shots_on_target,  10, 4,  3),     // ~4
-        mid(s.avg_crosses,          10, 2,  3),     // ~2
-        mid(s.avg_free_kicks,       10, 2,  2),     // ~2
+        hi(s.avg_interceptions,     10, 18, 32),
+        hi(s.avg_tackles,           10, 3,  8),
+        mid(s.avg_fouls,            10, 2,  3),
+        gaLo(s.avg_goals_against,   10, 0,  3.0),
+        mid(s.avg_shots_on_target,  10, 4,  3),
+        mid(s.avg_crosses,          10, 2,  3),
+        mid(s.avg_free_kicks,       10, 2,  2),
       )
     },
   },
@@ -250,22 +250,22 @@ const DNA_PROFILES: Array<{
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
       return tally(
         // Primary: physical + direct (KEY: high fouls AND high free kicks AND tackles)
-        hi(s.avg_fouls,             40, 1.5, 5.5),  // 3+
-        hi(s.avg_tackles,           40, 5,  11),    // 8+
-        hi(s.avg_free_kicks,        35, 1.5, 5.5),  // 3+ (win AND give fouls)
-        lo(s.avg_passes,            35, 100, 142),  // 120↓ (direct play)
+        hi(s.avg_fouls,             40, 1.5, 5.5),
+        hi(s.avg_tackles,           40, 5,  11),
+        hi(s.avg_free_kicks,        35, 1.5, 5.5),
+        lo(s.avg_passes,            35, 100, 142),
         // Secondary: low possession + poor passing accuracy
-        lo(s.avg_possession,        25, 38, 54),    // 46%↓
-        lo(pa,                      25, 0.62, 0.80),// 71%↓
-        hi(s.avg_saves,             20, 2,  6),     // 4
+        lo(s.avg_possession,        25, 38, 54),
+        lo(pa,                      25, 0.62, 0.80),
+        hi(s.avg_saves,             20, 2,  6),
         // Tertiary
-        hi(s.avg_shots,             10, 7,  13),    // 9
-        hi(s.avg_shots_on_target,   10, 3,  7),     // 5
-        hi(s.avg_interceptions,     10, 18, 30),    // 25
-        mid(s.avg_offsides,         10, 1,  2),     // ~1
-        mid(s.avg_corners,          10, 3,  3),     // ~3
-        mid(s.avg_crosses,          10, 2,  3),     // ~2
-        gaLo(s.avg_goals_against,   10, 0,  2.5),   // ~1.3
+        hi(s.avg_shots,             10, 7,  13),
+        hi(s.avg_shots_on_target,   10, 3,  7),
+        hi(s.avg_interceptions,     10, 18, 30),
+        mid(s.avg_offsides,         10, 1,  2),
+        mid(s.avg_corners,          10, 3,  3),
+        mid(s.avg_crosses,          10, 2,  3),
+        gaLo(s.avg_goals_against,   10, 0,  2.5),
       )
     },
   },
@@ -278,22 +278,22 @@ const DNA_PROFILES: Array<{
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
       return tally(
         // Primary: wide delivery volume (both corners AND crosses high)
-        hi(s.avg_crosses,           45, 2,  7),     // 4+
-        hi(s.avg_corners,           45, 3,  8),     // 5+
+        hi(s.avg_crosses,           45, 2,  7),
+        hi(s.avg_corners,           45, 3,  8),
         // Secondary: attacking output from width
-        hi(s.avg_shots,             25, 7,  14),    // 10
-        hi(s.avg_shots_on_target,   20, 3,  7),     // 5
-        mid(s.avg_passes,           20, 135, 25),   // ~135
-        mid(s.avg_possession,       20, 50, 10),    // ~50%
+        hi(s.avg_shots,             25, 7,  14),
+        hi(s.avg_shots_on_target,   25, 3,  7),
+        mid(s.avg_passes,           20, 135, 25),
+        mid(s.avg_possession,       20, 50, 10),
         // Tertiary: context
-        mid(pa,                     10, 0.75, 0.10),// ~75%
-        mid(s.avg_fouls,            10, 2,  3),     // ~2
-        mid(s.avg_offsides,         10, 1,  2),     // ~1
-        mid(s.avg_free_kicks,       10, 2,  2),     // ~2
-        hi(s.avg_interceptions,     10, 18, 30),    // 24
-        hi(s.avg_tackles,           10, 3,  7),     // 5
-        mid(s.avg_saves,            10, 3,  3),     // ~3
-        gaLo(s.avg_goals_against,   10, 0,  2.0),   // ~1.1
+        mid(pa,                     15, 0.75, 0.10),
+        mid(s.avg_fouls,            15, 2,  3),
+        mid(s.avg_offsides,         10, 1,  2),
+        mid(s.avg_free_kicks,       10, 2,  2),
+        hi(s.avg_interceptions,     10, 18, 30),
+        hi(s.avg_tackles,           10, 3,  7),
+        mid(s.avg_saves,            10, 3,  3),
+        gaLo(s.avg_goals_against,   10, 0,  2.0),
       )
     },
   },
@@ -306,22 +306,22 @@ const DNA_PROFILES: Array<{
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
       return tally(
         // Primary: dead-ball volume (KEY: corners AND free kicks both high)
-        hi(s.avg_corners,           45, 3,  8),     // 5+
-        hi(s.avg_free_kicks,        45, 2,  6),     // 3+
-        hi(s.avg_fouls,             35, 1.5, 5),    // 3 (win fouls in dangerous areas)
-        hi(s.avg_crosses,           30, 1.5, 6),    // 3+ (dead-ball deliveries)
+        hi(s.avg_corners,           45, 3,  8),
+        hi(s.avg_free_kicks,        50, 2,  6),
+        hi(s.avg_fouls,             35, 1.5, 5),
+        hi(s.avg_crosses,           20, 1.5, 6),
         // Secondary
-        hi(s.avg_shots,             20, 7,  13),    // 10
-        hi(s.avg_shots_on_target,   15, 3,  7),     // 5
-        gaLo(s.avg_goals_against,   15, 0,  2.0),   // ~1.1
+        hi(s.avg_shots,             20, 7,  13),
+        hi(s.avg_shots_on_target,   15, 3,  7),
+        gaLo(s.avg_goals_against,   15, 0,  2.0),
         // Tertiary
-        mid(s.avg_possession,       10, 49, 10),    // ~49%
-        mid(s.avg_passes,           10, 128, 25),   // ~128
-        mid(pa,                     10, 0.73, 0.10),// ~73%
-        mid(s.avg_offsides,         10, 1,  2),     // ~1
-        hi(s.avg_interceptions,     10, 18, 30),    // 24
-        hi(s.avg_tackles,           10, 3,  7),     // 5
-        mid(s.avg_saves,            10, 3,  3),     // ~3
+        mid(s.avg_possession,       15, 49, 10),
+        mid(s.avg_passes,           10, 128, 25),
+        mid(pa,                     10, 0.73, 0.10),
+        mid(s.avg_offsides,         10, 1,  2),
+        hi(s.avg_interceptions,     10, 18, 30),
+        hi(s.avg_tackles,           10, 3,  7),
+        mid(s.avg_saves,            10, 3,  3),
       )
     },
   },
@@ -332,27 +332,26 @@ const DNA_PROFILES: Array<{
     color: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
-      // Shot accuracy: low ratio = shoot from anywhere. Computed from always-captured stats.
       const sa = s.avg_shots > 0 ? s.avg_shots_on_target / s.avg_shots : 0.5
       return tally(
         // Primary: shoot often + accept low conversion rate
-        hi(s.avg_shots,             45, 9,  18),    // 13+
-        lo(sa,                      40, 0.28, 0.64),// low SoT/shots ratio
+        hi(s.avg_shots,             45, 9,  18),
+        lo(sa,                      40, 0.28, 0.64),
         // Secondary
-        hi(s.avg_offsides,          25, 0.5, 4),    // 2+ (aggressive forward intent)
-        hi(s.avg_shots_on_target,   20, 3,  8),     // 5 (SoT ok, just ratio is low)
-        mid(s.avg_possession,       20, 50, 10),    // ~50%
-        hi(s.avg_corners,           20, 2,  7),     // 4 (shots generate corners)
+        hi(s.avg_offsides,          25, 0.5, 4),
+        hi(s.avg_shots_on_target,   20, 3,  8),
+        mid(s.avg_possession,       20, 50, 10),
+        hi(s.avg_corners,           20, 2,  7),
         // Tertiary
-        mid(s.avg_passes,           10, 130, 25),   // ~130
-        mid(pa,                     10, 0.74, 0.10),// ~74%
-        mid(s.avg_fouls,            10, 2,  3),     // ~2
-        hi(s.avg_interceptions,     10, 18, 30),    // 24
-        hi(s.avg_tackles,           10, 3,  7),     // 5
-        mid(s.avg_saves,            10, 3,  3),     // ~3
-        gaLo(s.avg_goals_against,   10, 0,  2.0),   // ~1.0
-        mid(s.avg_free_kicks,       10, 2,  2),     // ~2
-        mid(s.avg_crosses,          10, 2,  3),     // ~2
+        mid(s.avg_passes,           10, 130, 25),
+        mid(pa,                     10, 0.74, 0.10),
+        mid(s.avg_fouls,            15, 2,  3),
+        hi(s.avg_interceptions,     15, 18, 30),
+        hi(s.avg_tackles,           10, 3,  7),
+        mid(s.avg_saves,            10, 3,  3),
+        gaLo(s.avg_goals_against,   10, 0,  2.0),
+        mid(s.avg_free_kicks,       10, 2,  2),
+        mid(s.avg_crosses,          10, 2,  3),
       )
     },
   },
@@ -365,6 +364,35 @@ const DNA_PROFILES: Array<{
     score: () => 0.25,
   },
 ]
+
+// ── Overlap Penalty System (Refinement A) ────────────────────────────────────
+// Mutual exclusivity pairs: when both profiles score well, each is penalized
+// proportionally to the overlap (score_a * score_b * factor).
+const OVERLAP_PAIRS: Array<[string, string, number]> = [
+  ['Gegenpressing', 'Disciplined Pressers', 0.4],
+  ['Elite Dominators', 'Tiki-Taka', 0.3],
+  ['Quick Counter', 'Long Ball Counter', 0.35],
+  ['The Grinders', 'Set-Piece Specialists', 0.3],
+  ['Out Wide', 'Set-Piece Specialists', 0.25],
+  ['Quick Counter', 'Shoot-on-Sight', 0.2],
+  ['The Grinders', 'Gegenpressing', 0.2],
+]
+
+function applyOverlapPenalties<T extends { label: string; s: number }>(scored: T[]): T[] {
+  const map = new Map(scored.map(p => [p.label, p]))
+  for (const [a, b, factor] of OVERLAP_PAIRS) {
+    const pA = map.get(a)
+    const pB = map.get(b)
+    if (pA && pB && pA.s > 0 && pB.s > 0) {
+      const total = pA.s + pB.s
+      if (total <= 0) continue
+      const overlap = pA.s * pB.s * factor
+      pA.s = Math.max(0, pA.s - overlap * (pA.s / total))
+      pB.s = Math.max(0, pB.s - overlap * (pB.s / total))
+    }
+  }
+  return scored
+}
 
 // ── Score → level ────────────────────────────────────────────────────────────
 export function scoreToLevel(s: number): string {
@@ -588,15 +616,117 @@ export function getTeamCombination(profiles: DNAProfile[]): DNACombination | nul
   return { name, level: scoreToLevel(avgScore), score: avgScore }
 }
 
+const HYBRID_DESCRIPTIONS: Record<string, string> = {
+  'Disciplined Pressers|Elite Dominators':
+    'Combines elite technical control with organized defensive pressing — a team that suffocates opponents both on and off the ball.',
+  'Disciplined Pressers|Gegenpressing':
+    'The complete pressing package: high-intensity counter-pressing backed by disciplined positional intelligence.',
+  'Disciplined Pressers|Long Ball Counter':
+    'A pragmatic defensive unit that presses with intelligence and attacks with directness — safety first, then speed.',
+  'Disciplined Pressers|Out Wide':
+    'Structured pressing combined with expansive width — squeezes centrally while attacking the flanks.',
+  'Disciplined Pressers|Quick Counter':
+    'Calculated transitions from a disciplined defensive base — wins the ball smartly, then strikes with speed.',
+  'Disciplined Pressers|Set-Piece Specialists':
+    'Tactical pressing that funnels opponents into set-piece situations — wins fouls and corners through smart positioning.',
+  'Disciplined Pressers|Shoot-on-Sight':
+    'Presses with discipline and shoots without hesitation — wins the ball back intelligently, then tests the keeper early and often.',
+  'Disciplined Pressers|The Grinders':
+    'Intelligent pressing meets raw physicality — reads the game to intercept, then imposes physical dominance on the transition.',
+  'Disciplined Pressers|Tiki-Taka':
+    'Positional play and positional pressing — controls the ball patiently and wins it back through intelligent pressing traps.',
+  'Elite Dominators|Gegenpressing':
+    'Unrelenting: elite technical security combined with immediate counter-pressing aggression — leaves no breathing room.',
+  'Elite Dominators|Long Ball Counter':
+    'A calculated split personality — dominates possession when it suits, bypasses the midfield when it doesn\'t.',
+  'Elite Dominators|Out Wide':
+    'Controls the centre and attacks the flanks — uses possession dominance to create wide overloads and crossing opportunities.',
+  'Elite Dominators|Quick Counter':
+    'Dual-threat: can dominate the ball or hit on the break. Opponents must defend both control and explosiveness.',
+  'Elite Dominators|Set-Piece Specialists':
+    'Every attacking avenue covered: open-play dominance, set-piece routines, and dead-ball precision. Complete tactical arsenal.',
+  'Elite Dominators|Shoot-on-Sight':
+    'Relentless attacking machine — controls possession and shoots from everywhere. Defences are under constant pressure.',
+  'Elite Dominators|The Grinders':
+    'Technical superiority backed by physical intimidation — dominates the ball and dominates the duels. Overwhelming.',
+  'Elite Dominators|Tiki-Taka':
+    'Pure orchestral control — patient, precise passing combined with dominant ball retention. The opponents chase shadows.',
+  'Gegenpressing|Long Ball Counter':
+    'Chaotic directness: presses high to win the ball, then goes long immediately. Unpredictable and disorienting for opponents.',
+  'Gegenpressing|Out Wide':
+    'High-intensity pressing combined with wide attacking patterns — wins the ball in midfield and immediately exploits the flanks.',
+  'Gegenpressing|Quick Counter':
+    'Vertical pressing meets vertical transition — wins the ball high and attacks the goal with minimal touches.',
+  'Gegenpressing|Set-Piece Specialists':
+    'Presses aggressively, drawing fouls in dangerous areas — set-pieces become the payoff for high-energy pressing.',
+  'Gegenpressing|Shoot-on-Sight':
+    'Trigger-happy aggressive: wins the ball through high press and shoots on sight. High energy, high volume, high chaos.',
+  'Gegenpressing|The Grinders':
+    'Heavy metal football — relentless pressing combined with physical combat. Exhausting to play against and equally exhausting to play.',
+  'Gegenpressing|Tiki-Taka':
+    'A modern total football hybrid: presses with Gegenpressing intensity, builds with Tiki-Taka patience. Rare and demanding.',
+  'Long Ball Counter|Out Wide':
+    'Defends deep and attacks wide — clears to the flanks and delivers crosses from deep positions.',
+  'Long Ball Counter|Quick Counter':
+    'Direct transitions from a deep block — absorbs pressure and hits opponents with long passes into attacking space.',
+  'Long Ball Counter|Set-Piece Specialists':
+    'Old-school direct football with set-piece emphasis — long balls to target men, knockdowns, and dead-ball danger.',
+  'Long Ball Counter|Shoot-on-Sight':
+    'Route one chaos — goes long immediately and shoots early. Direct, physical, and unpredictable.',
+  'Long Ball Counter|The Grinders':
+    'The ultimate low-block spoilers — defends deep, goes long, and makes every phase of play a physical battle.',
+  'Long Ball Counter|Tiki-Taka':
+    'False patience: appears to build from the back but goes long at the first sign of pressure. Deceptive directness.',
+  'Out Wide|Quick Counter':
+    'Flying wingers on the break — wins the ball deep and floods the flanks with attacking runners.',
+  'Out Wide|Set-Piece Specialists':
+    'Cross and corner specialists — wide deliveries and set-piece routines are the primary attacking methods.',
+  'Out Wide|Shoot-on-Sight':
+    'Wide and ruthless — attacks the flanks and shoots from every angle. Fullbacks and wingers bombard the box.',
+  'Out Wide|The Grinders':
+    'Physical width: strong, aggressive wide players who deliver crosses under physical pressure and contest every aerial duel.',
+  'Out Wide|Tiki-Taka':
+    'Expansive possession — keeps the ball patiently while stretching the pitch wide. Combines positional-play security with width.',
+  'Quick Counter|Set-Piece Specialists':
+    'Counter-attacks at speed, dead-ball precision when the break isn\'t on. Two completely different but equally effective weapons.',
+  'Quick Counter|Shoot-on-Sight':
+    'Shock and awe on the break: wins the ball deep, transitions instantly, and shoots without hesitation.',
+  'Quick Counter|The Grinders':
+    'Combative counter-attacking: wins the ball through physical duels, then hits opponents with explosive transitions.',
+  'Quick Counter|Tiki-Taka':
+    'Fluid attack — capable of patient build-up or explosive transition. Keeps opponents guessing about the next move.',
+  'Set-Piece Specialists|Shoot-on-Sight':
+    'Dead ball shooters — every free kick, corner, and long-range shot is a genuine scoring opportunity.',
+  'Set-Piece Specialists|The Grinders':
+    'A set-piece machine: wins fouls through physical play, then punishes opponents from dead-ball situations.',
+  'Set-Piece Specialists|Tiki-Taka':
+    'Complete technicians — patient in build-up, precise in delivery, and deadly from set-pieces.',
+  'Shoot-on-Sight|The Grinders':
+    'Brute force with volume shooting — physical, direct, and constantly firing at goal from all distances.',
+  'Shoot-on-Sight|Tiki-Taka':
+    'Unusual but effective: keeps the ball patiently, then shoots the moment a half-chance appears. Controlled chaos.',
+  'The Grinders|Tiki-Taka':
+    'Beautiful brutality — combines technical quality with physical dominance. An ox that can dance.',
+}
+
+export function generateHybridDescription(profiles: DNAProfile[]): string | null {
+  if (profiles.length < 2) return null
+  const key = profiles.map((p) => p.label).sort().join('|')
+  return HYBRID_DESCRIPTIONS[key] ?? null
+}
+
+export const MIN_DNA_GAMES = 3
+
 // ── Public API ───────────────────────────────────────────────────────────────
 export function getTeamDNA(stats: TeamStats): DNAProfile[] {
-  const scored = DNA_PROFILES
-    .map((p) => ({ ...p, s: p.score(stats) }))
-    .sort((a, b) => b.s - a.s)
+  const scored = applyOverlapPenalties(
+    DNA_PROFILES.map((p) => ({ ...p, s: p.score(stats) }))
+  ).sort((a, b) => b.s - a.s)
 
-  // Return all profiles scoring >= 0.45, up to 3 labels; always at least 1
-  const strong = scored.filter((p) => p.s >= 0.45).slice(0, 3)
-  const result = strong.length > 0 ? strong : [scored[0]]
+  // Always show the top profile; add any secondaries >= 0.30 (soft tier)
+  const primary = scored[0]
+  const secondaries = scored.slice(1).filter((p) => p.s >= 0.30)
+  const result = [primary, ...secondaries].slice(0, 3)
 
   return result.map(({ label, emoji, color, s }) => ({
     label,

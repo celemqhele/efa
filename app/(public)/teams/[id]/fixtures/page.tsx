@@ -75,7 +75,8 @@ export default async function TeamFixturesPage({ params }: PageProps) {
     .eq('logo_league_folder', team.logo_league_folder)
     .eq('logo_team_slug', team.logo_team_slug)
   
-  const siblingIds = (siblingTeams ?? []).map((t: any) => t.id)
+  const siblingIdsAll = (siblingTeams ?? []).map((t: any) => t.id)
+  const siblingIds = siblingIdsAll.length > 0 ? siblingIdsAll : [id]
   const teamOrFilter = siblingIds
     .flatMap((tid) => [`home_team_id.eq.${tid}`, `away_team_id.eq.${tid}`])
     .join(',')

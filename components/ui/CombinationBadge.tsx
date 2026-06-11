@@ -108,10 +108,14 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                   Built From
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
-                  {profiles.map((p) => (
+                  {profiles.map((p, i) => (
                     <span
                       key={p.label}
-                      className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${p.color}`}
+                      className={`inline-flex items-center gap-1 rounded-full border ${p.color} ${
+                        i === 0
+                          ? 'text-sm font-bold px-3 py-1.5'
+                          : 'text-xs font-medium px-2.5 py-1'
+                      }`}
                     >
                       <span>{p.emoji}</span>
                       <span>{p.label}</span>
@@ -121,6 +125,16 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                         p.level === '+'           ? 'text-accent' :
                                                     'text-text-muted'
                       }`}>{p.level}</span>
+                      {i === 0 && (
+                        <span className="ml-1 text-[10px] uppercase tracking-wider font-bold text-foreground-primary bg-foreground-primary/10 px-1.5 py-0.5 rounded">
+                          Primary
+                        </span>
+                      )}
+                      {i > 0 && (
+                        <span className="ml-1 text-[10px] uppercase tracking-wider font-bold text-text-muted bg-text-muted/10 px-1.5 py-0.5 rounded">
+                          Secondary
+                        </span>
+                      )}
                     </span>
                   ))}
                 </div>

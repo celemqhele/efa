@@ -5,9 +5,15 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
-import { getTeamDNA, getTeamCombination, buildTeamStatsMixed } from '@/lib/dna-engine'
+import { getTeamDNA, getTeamCombination, buildTeamStatsMixed, MIN_DNA_GAMES } from '@/lib/dna-engine'
+import type { DNAProfile, DNACombination } from '@/lib/dna-engine'
 import DNABadge from '@/components/ui/DNABadge'
 import CombinationBadge from '@/components/ui/CombinationBadge'
+import { detectTeamStates } from '@/lib/team-states'
+import type { TeamState } from '@/lib/team-states'
+import TeamStateBadges from '@/components/ui/TeamStateBadge'
+import { generateManagerNotes } from '@/lib/manager-notes'
+import type { ManagerNote } from '@/lib/manager-notes'
 import TeamManagerAdmin from './TeamManagerAdmin'
 import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
@@ -195,53 +201,129 @@ export default async function TeamProfilePage({ params }: PageProps) {
     (a, b) => b[1].played - a[1].played
   )
 
-  // DNA — last 5 confirmed fixtures with correct home/away attribution
-  const dnaProfiles = await (async () => {
-    const { data: last5Fixtures } = await supabase
-      .from('fixtures')
-      .select('id, home_team_id')
-      .or(`home_team_id.eq.${id},away_team_id.eq.${id}`)
-      .eq('status', 'confirmed')
-      .order('scheduled_date', { ascending: false })
-      .limit(5)
+  // ── Manager-scoped DNA + Team States + Manager Notes ──────────────────────
+  const managerId = (manager as any)?.id
 
-    if (!last5Fixtures?.length) return []
+  let dnaProfiles: DNAProfile[] = []
+  let dnaCombination: DNACombination | null = null
+  let teamStates: TeamState[] = []
+  let managerNotes: ManagerNote[] = []
 
-    const { data: _dnaResults } = await supabase
-      .from('results')
-      .select('id, fixture_id, home_score, away_score')
-      .in('fixture_id', last5Fixtures.map((f: any) => f.id))
-    const dnaResults = (_dnaResults ?? []) as any[]
+  if (managerId) {
+    const { data: tenures } = await supabase
+      .from('manager_tenures')
+      .select('team_id, started_at, ended_at')
+      .eq('manager_id', managerId)
 
-    if (!dnaResults?.length) return []
+    const managedTeamIds = [...new Set((tenures ?? []).map((t: any) => t.team_id))]
 
-    const resultIds = dnaResults.map((r: any) => r.id)
-    const { data: _dnaStatsList } = await supabase
-      .from('match_stats')
-      .select('*')
-      .in('result_id', resultIds)
-    const dnaStatsList = (_dnaStatsList ?? []) as any[]
+    if (managedTeamIds.length > 0) {
+      const managedOrFilter = managedTeamIds
+        .flatMap((tid: string) => [`home_team_id.eq.${tid}`, `away_team_id.eq.${tid}`])
+        .join(',')
 
-    const resultMap: Record<string, { fixture_id: string; home_score: number; away_score: number }> = {}
-    for (const r of dnaResults) resultMap[r.id] = r
+      const { data: mgrFixtures } = await supabase
+        .from('fixtures')
+        .select('id, home_team_id, scheduled_date')
+        .or(managedOrFilter)
+        .eq('status', 'confirmed')
+        .order('scheduled_date', { ascending: false })
+        .limit(10)
 
-    const dnaGames = (dnaStatsList ?? []).flatMap((ms: any) => {
-      const result = resultMap[ms.result_id]
-      if (!result) return []
-      const fixture = last5Fixtures.find((f: any) => f.id === result.fixture_id)
-      if (!fixture) return []
-      const isHomeTeam = (fixture as any).home_team_id === id
-      return [{
-        stats: ms,
-        isHome: isHomeTeam,
-        goalsAgainst: isHomeTeam ? result.away_score : result.home_score,
-      }]
-    })
+      const mgrFixtureIds = (mgrFixtures ?? []).map((f: any) => f.id)
 
-    return dnaGames.length >= 1 ? getTeamDNA(buildTeamStatsMixed(dnaGames)) : []
-  })()
+      if (mgrFixtureIds.length > 0) {
+        const { data: _mgrResults } = await supabase
+          .from('results')
+          .select('id, fixture_id, home_score, away_score')
+          .in('fixture_id', mgrFixtureIds)
+        const mgrResults = (_mgrResults ?? []) as any[]
+        const mgrResultIds = mgrResults.map((r: any) => r.id)
 
-  const dnaCombination = getTeamCombination(dnaProfiles)
+        if (mgrResultIds.length > 0) {
+          const { data: _mgrStats } = await supabase
+            .from('match_stats')
+            .select('*')
+            .in('result_id', mgrResultIds)
+          const mgrStats = (_mgrStats ?? []) as any[]
+
+          const resultMap: Record<string, any> = {}
+          for (const r of mgrResults) resultMap[r.id] = r
+
+          const managerGames: Array<{ stats: any; isHome: boolean; goalsAgainst: number }> = []
+          let totalGF = 0, totalGA = 0, cleanSheets = 0
+          let streakWins = 0, streakDraws = 0, streakLosses = 0
+
+          for (const ms of mgrStats) {
+            const result = resultMap[ms.result_id]
+            if (!result) continue
+            const fixture = (mgrFixtures as any[]).find((f: any) => f.id === result.fixture_id)
+            if (!fixture) continue
+            const isHomeTeam = managedTeamIds.includes(fixture.home_team_id)
+            const myScore = isHomeTeam ? result.home_score : result.away_score
+            const theirScore = isHomeTeam ? result.away_score : result.home_score
+
+            totalGF += myScore
+            totalGA += theirScore
+            if (theirScore === 0) cleanSheets++
+            if (myScore > theirScore) streakWins++
+            else if (myScore === theirScore) streakDraws++
+            else streakLosses++
+
+            managerGames.push({
+              stats: ms,
+              isHome: isHomeTeam,
+              goalsAgainst: theirScore,
+            })
+          }
+
+          if (managerGames.length >= MIN_DNA_GAMES) {
+            const teamStats = buildTeamStatsMixed(managerGames)
+            dnaProfiles = getTeamDNA(teamStats)
+            dnaCombination = getTeamCombination(dnaProfiles)
+
+            const n = managerGames.length
+            teamStates = detectTeamStates({
+              avgGoalsScored: totalGF / n,
+              avgGoalsConceded: totalGA / n,
+              avgPossession: teamStats.avg_possession,
+              avgShots: teamStats.avg_shots,
+              avgShotsOnTarget: teamStats.avg_shots_on_target,
+              avgFouls: teamStats.avg_fouls,
+              avgTackles: teamStats.avg_tackles,
+              avgInterceptions: teamStats.avg_interceptions,
+              avgPasses: teamStats.avg_passes,
+              avgSaves: teamStats.avg_saves,
+              avgCrosses: teamStats.avg_crosses,
+              recentStreak: { wins: streakWins, draws: streakDraws, losses: streakLosses },
+              cleanSheets,
+              totalGames: n,
+            })
+
+            managerNotes = generateManagerNotes({
+              avgGoalsScored: totalGF / n,
+              avgGoalsConceded: totalGA / n,
+              avgPossession: teamStats.avg_possession,
+              avgShots: teamStats.avg_shots,
+              avgShotsOnTarget: teamStats.avg_shots_on_target,
+              avgFouls: teamStats.avg_fouls,
+              avgTackles: teamStats.avg_tackles,
+              avgInterceptions: teamStats.avg_interceptions,
+              avgPasses: teamStats.avg_passes,
+              avgSuccessfulPasses: teamStats.avg_successful_passes,
+              avgCrosses: teamStats.avg_crosses,
+              avgSaves: teamStats.avg_saves,
+              avgCorners: teamStats.avg_corners,
+              avgFreeKicks: teamStats.avg_free_kicks,
+              avgOffsides: teamStats.avg_offsides,
+              recentStreak: { wins: streakWins, draws: streakDraws, losses: streakLosses },
+              totalGames: n,
+            })
+          }
+        }
+      }
+    }
+  }
 
   // Upcoming fixtures for this club
   const { data: upcomingFixtures } = await supabase
@@ -286,7 +368,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
   return (
     <div className="space-y-space-6">
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <Card className="overflow-hidden">
+      <Card>
         <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-24 relative">
           <div className="absolute inset-0 bg-gradient-to-t from-bg-surface to-transparent" />
         </div>
@@ -350,8 +432,37 @@ export default async function TeamProfilePage({ params }: PageProps) {
               )}
             </div>
           )}
+
+          {/* Team State Badges */}
+          {teamStates.length > 0 && (
+            <div className="mt-space-3">
+              <TeamStateBadges states={teamStates} />
+            </div>
+          )}
         </div>
       </Card>
+
+      {/* Manager Observations Card */}
+      {managerNotes.length > 0 && (
+        <Card className="p-space-5">
+          <h2 className="section-header mb-space-3">
+            <span className="text-accent">📋</span> Manager Observations
+          </h2>
+          <div className="space-y-space-2">
+            {managerNotes.map((note, i) => {
+              const dotColor = note.type === 'positive' ? 'bg-feedback-success'
+                : note.type === 'negative' ? 'bg-feedback-error'
+                : 'bg-text-muted'
+              return (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
+                  <p className="text-text-secondary">{note.text}</p>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* ── Admin Manager Controls ───────────────────────────────────────── */}
       {isAdmin && (
@@ -464,7 +575,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
             {sortedRecentResults.map((f: any) => {
               const result = Array.isArray(f.result) ? f.result[0] : f.result
               if (!result) return null
-              const isHome = allTeamIds.includes(f.home_team_id)
+              const isHome = siblingIds.includes(f.home_team_id)
               const myScore = isHome ? result.home_score : result.away_score
               const theirScore = isHome ? result.away_score : result.home_score
               const opponent = isHome ? f.away_team : f.home_team
