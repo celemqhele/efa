@@ -38,7 +38,7 @@ export default async function PageWrapper({ children, fullWidth = false }: PageW
   return (
     <div className="min-h-screen bg-navy">
       <Nav profile={profile} unreadCount={unreadCount} />
-      <main className={fullWidth ? '' : 'max-w-7xl mx-auto px-4 pt-space-8 pb-space-8'}>
+      <main className={fullWidth ? '' : 'max-w-7xl mx-auto px-4 pt-space-12 pb-space-8'}>
         {children}
       </main>
       <div className="h-20 lg:h-8" /> {/* Bottom spacing for mobile */}
