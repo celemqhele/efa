@@ -617,16 +617,15 @@ export default function ResultSubmitClient({
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center justify-center gap-4">
                   <div className="text-center">
-                    {selectedFixture.home_team?.logo_league_folder && (
-                      <Image
-                        src={getTeamLogo(selectedFixture.home_team.logo_league_folder, selectedFixture.home_team.logo_team_slug, 'fixture_card')}
-                        alt={selectedFixture.home_team.name}
-                        width={48} height={48}
-                        className="object-contain mx-auto"
-                      />
-                    )}
-                    <p className="text-foreground-primary text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.home_team?.name}</p>
-                    <div className="mt-1 flex justify-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      {selectedFixture.home_team?.logo_league_folder && (
+                        <Image
+                          src={getTeamLogo(selectedFixture.home_team.logo_league_folder, selectedFixture.home_team.logo_team_slug, 'fixture_card')}
+                          alt={selectedFixture.home_team.name}
+                          width={48} height={48}
+                          className="object-contain"
+                        />
+                      )}
                       <ForfeitBalanceBadge
                         teamId={selectedFixture.home_team?.id ?? ''}
                         teamName={selectedFixture.home_team?.name ?? ''}
@@ -634,6 +633,7 @@ export default function ResultSubmitClient({
                         onUse={handleUseForfeitBalance}
                       />
                     </div>
+                    <p className="text-foreground-primary text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.home_team?.name}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-text-muted text-xs">MD{selectedFixture.matchday}</p>
@@ -641,16 +641,15 @@ export default function ResultSubmitClient({
                     <p className="text-text-muted text-xs truncate max-w-[90px]">{selectedFixture.tournament?.name}</p>
                   </div>
                   <div className="text-center">
-                    {selectedFixture.away_team?.logo_league_folder && (
-                      <Image
-                        src={getTeamLogo(selectedFixture.away_team.logo_league_folder, selectedFixture.away_team.logo_team_slug, 'fixture_card')}
-                        alt={selectedFixture.away_team.name}
-                        width={48} height={48}
-                        className="object-contain mx-auto"
-                      />
-                    )}
-                    <p className="text-foreground-primary text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.away_team?.name}</p>
-                    <div className="mt-1 flex justify-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      {selectedFixture.away_team?.logo_league_folder && (
+                        <Image
+                          src={getTeamLogo(selectedFixture.away_team.logo_league_folder, selectedFixture.away_team.logo_team_slug, 'fixture_card')}
+                          alt={selectedFixture.away_team.name}
+                          width={48} height={48}
+                          className="object-contain"
+                        />
+                      )}
                       <ForfeitBalanceBadge
                         teamId={selectedFixture.away_team?.id ?? ''}
                         teamName={selectedFixture.away_team?.name ?? ''}
@@ -658,6 +657,7 @@ export default function ResultSubmitClient({
                         onUse={handleUseForfeitBalance}
                       />
                     </div>
+                    <p className="text-foreground-primary text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.away_team?.name}</p>
                   </div>
                 </div>
                 <div className="flex rounded-lg overflow-hidden border border-navy-border self-center sm:self-auto shrink-0">

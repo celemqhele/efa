@@ -33,17 +33,22 @@ export default function ForfeitBalanceBadge({ teamId, balances, onUse }: Props) 
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  if (teamBalances.length === 0) return null
-
   return (
     <div ref={ref} className="relative inline-flex">
-      <button
-        onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-orange-500/20 border-orange-500/40 text-orange-400 hover:bg-orange-500/30 transition-colors"
-      >
-        <span>⚖</span>
-        <span>{total} forfeit{total !== 1 ? 's' : ''}</span>
-      </button>
+      {teamBalances.length === 0 ? (
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-navy-border text-text-muted opacity-60">
+          <span>⚖</span>
+          <span>0</span>
+        </span>
+      ) : (
+        <button
+          onClick={() => setOpen(!open)}
+          className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-orange-500/20 border-orange-500/40 text-orange-400 hover:bg-orange-500/30 transition-colors"
+        >
+          <span>⚖</span>
+          <span>{total} forfeit{total !== 1 ? 's' : ''}</span>
+        </button>
+      )}
 
       {open && (
         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-72 p-3 rounded-lg bg-bg-elevated border border-border shadow-lg z-50 space-y-2">
