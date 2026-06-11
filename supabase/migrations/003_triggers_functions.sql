@@ -296,12 +296,15 @@ BEGIN
     updated_at = now();
 
   -- Update abandon_count on teams if applicable
-  IF NEW.is_abandoned AND NEW.abandoned_type = 'home' THEN
-    UPDATE teams SET abandon_count = abandon_count + 1
-    WHERE id = v_fixture.home_team_id;
-  ELSIF NEW.is_abandoned AND NEW.abandoned_type = 'away' THEN
-    UPDATE teams SET abandon_count = abandon_count + 1
-    WHERE id = v_fixture.away_team_id;
+  IF NEW.is_abandoned THEN
+    IF NEW.abandoned_type IN ('home', 'both') THEN
+      UPDATE teams SET abandon_count = abandon_count + 1
+      WHERE id = v_fixture.home_team_id;
+    END IF;
+    IF NEW.abandoned_type IN ('away', 'both') THEN
+      UPDATE teams SET abandon_count = abandon_count + 1
+      WHERE id = v_fixture.away_team_id;
+    END IF;
   END IF;
 
   -- Update fixture status

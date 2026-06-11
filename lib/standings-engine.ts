@@ -60,9 +60,63 @@ function emptyGroupStandingRow(tournamentId: string, groupName: string, teamId: 
   }
 }
 
-function applyResult(homeRow: any, awayRow: any, homeScore: number, awayScore: number, isDoubleForfeit: boolean = false, homeAbsent: boolean = false, awayAbsent: boolean = false) {
+function applyResult(
+  homeRow: any, awayRow: any,
+  homeScore: number, awayScore: number,
+  isDoubleForfeit: boolean = false,
+  homeAbsent: boolean = false,
+  awayAbsent: boolean = false,
+  homeForfeit: boolean = false,
+  awayForfeit: boolean = false,
+) {
   homeRow.played++
   awayRow.played++
+
+  // Forfeit (mid-game quit): actual scores GF/GA count, forfeiting team gets L + absent++ -3GD
+  if (homeForfeit && awayForfeit) {
+    // Both forfeited: no goals counted
+    homeRow.absent++
+    awayRow.absent++
+    homeRow.gd_penalty -= 3
+    awayRow.gd_penalty -= 3
+    return
+  }
+
+  if (homeForfeit) {
+    homeRow.losses++
+    awayRow.wins++
+    homeRow.goals_for += homeScore
+    homeRow.goals_against += awayScore
+    awayRow.goals_for += awayScore
+    awayRow.goals_against += homeScore
+    awayRow.points += 3
+    homeRow.absent++
+    homeRow.gd_penalty -= 3
+    if ('form' in awayRow) awayRow.form = (awayRow.form + 'W').slice(-5)
+    if ('form' in homeRow) homeRow.form = (homeRow.form + 'L').slice(-5)
+    if ('unbeaten_run' in awayRow) awayRow.unbeaten_run++
+    if ('unbeaten_run' in homeRow) homeRow.unbeaten_run = 0
+    if ('clean_sheets' in awayRow) awayRow.clean_sheets += homeScore === 0 ? 1 : 0
+    return
+  }
+
+  if (awayForfeit) {
+    homeRow.wins++
+    awayRow.losses++
+    homeRow.goals_for += homeScore
+    homeRow.goals_against += awayScore
+    awayRow.goals_for += awayScore
+    awayRow.goals_against += homeScore
+    homeRow.points += 3
+    awayRow.absent++
+    awayRow.gd_penalty -= 3
+    if ('form' in homeRow) homeRow.form = (homeRow.form + 'W').slice(-5)
+    if ('form' in awayRow) awayRow.form = (awayRow.form + 'L').slice(-5)
+    if ('unbeaten_run' in homeRow) homeRow.unbeaten_run++
+    if ('unbeaten_run' in awayRow) awayRow.unbeaten_run = 0
+    if ('clean_sheets' in homeRow) homeRow.clean_sheets += awayScore === 0 ? 1 : 0
+    return
+  }
 
   if (isDoubleForfeit) {
     // 0 points, 0 goals, but counts as played
@@ -272,13 +326,18 @@ export async function recalculateStandings(tournamentId: string) {
 
       const reason = String(result.override_reason ?? '').toLowerCase()
       const isDoubleForfeit = reason.includes('both') && reason.includes('absent')
-      const isForfeit = result.is_abandoned === true
       const isAbsent = reason.includes('absent') && !isDoubleForfeit
+      const homeForfeit = result.is_abandoned === true && result.abandoned_type === 'home'
+      const awayForfeit = result.is_abandoned === true && result.abandoned_type === 'away'
+      const bothForfeit = result.is_abandoned === true && result.abandoned_type === 'both'
 
-      const homeAbsent = isAbsent && (homeScore === 0 && awayScore === 3)
-      const awayAbsent = isAbsent && (homeScore === 3 && awayScore === 0)
+      const homeAbsent = isAbsent && (homeScore === 0 && awayScore === 3) && !homeForfeit && !bothForfeit
+      const awayAbsent = isAbsent && (homeScore === 3 && awayScore === 0) && !awayForfeit && !bothForfeit
 
-      applyResult(getRow(fixture.home_team_id), getRow(fixture.away_team_id), homeScore, awayScore, isDoubleForfeit, homeAbsent, awayAbsent)
+      const effectiveHomeScore = bothForfeit ? 0 : homeScore
+      const effectiveAwayScore = bothForfeit ? 0 : awayScore
+
+      applyResult(getRow(fixture.home_team_id), getRow(fixture.away_team_id), effectiveHomeScore, effectiveAwayScore, isDoubleForfeit, homeAbsent, awayAbsent, homeForfeit, awayForfeit || bothForfeit)
     }
 
     const { error: deleteErr } = await db.from('standings').delete().eq('tournament_id', tournamentId)
@@ -333,11 +392,16 @@ export async function recalculateStandings(tournamentId: string) {
 
       const reason = String(result.override_reason ?? '').toLowerCase()
       const isDoubleForfeit = reason.includes('both') && reason.includes('absent')
-      const isForfeit = result.is_abandoned === true
       const isAbsent = reason.includes('absent') && !isDoubleForfeit
+      const homeForfeit = result.is_abandoned === true && result.abandoned_type === 'home'
+      const awayForfeit = result.is_abandoned === true && result.abandoned_type === 'away'
+      const bothForfeit = result.is_abandoned === true && result.abandoned_type === 'both'
 
-      const homeAbsent = isAbsent && (homeScore === 0 && awayScore === 3)
-      const awayAbsent = isAbsent && (homeScore === 3 && awayScore === 0)
+      const homeAbsent = isAbsent && (homeScore === 0 && awayScore === 3) && !homeForfeit && !bothForfeit
+      const awayAbsent = isAbsent && (homeScore === 3 && awayScore === 0) && !awayForfeit && !bothForfeit
+
+      const effectiveHomeScore = bothForfeit ? 0 : homeScore
+      const effectiveAwayScore = bothForfeit ? 0 : awayScore
 
       const homeGroup = groupByTeam[fixture.home_team_id] ?? participantGroupByTeam[fixture.home_team_id]
       const awayGroup = groupByTeam[fixture.away_team_id] ?? participantGroupByTeam[fixture.away_team_id] ?? homeGroup
@@ -345,11 +409,13 @@ export async function recalculateStandings(tournamentId: string) {
       applyResult(
         getGroupRow(fixture.home_team_id, homeGroup),
         getGroupRow(fixture.away_team_id, awayGroup),
-        homeScore,
-        awayScore,
+        effectiveHomeScore,
+        effectiveAwayScore,
         isDoubleForfeit,
         homeAbsent,
-        awayAbsent
+        awayAbsent,
+        homeForfeit,
+        awayForfeit || bothForfeit
       )
     }
 

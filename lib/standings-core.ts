@@ -54,9 +54,51 @@ export function emptyStandingsRow(teamId: string, team: any, groupName?: string 
   }
 }
 
-export function applyResultToRow(homeRow: any, awayRow: any, homeScore: number, awayScore: number, isDoubleForfeit: boolean = false, homeAbsent: boolean = false, awayAbsent: boolean = false) {
+export function applyResultToRow(
+  homeRow: any, awayRow: any,
+  homeScore: number, awayScore: number,
+  isDoubleForfeit: boolean = false,
+  homeAbsent: boolean = false,
+  awayAbsent: boolean = false,
+  homeForfeit: boolean = false,
+  awayForfeit: boolean = false,
+) {
   homeRow.played++
   awayRow.played++
+
+  if (homeForfeit && awayForfeit) {
+    homeRow.absent++
+    awayRow.absent++
+    homeRow.gd_penalty -= 3
+    awayRow.gd_penalty -= 3
+    return
+  }
+
+  if (homeForfeit) {
+    homeRow.losses++
+    awayRow.wins++
+    homeRow.goals_for += homeScore
+    homeRow.goals_against += awayScore
+    awayRow.goals_for += awayScore
+    awayRow.goals_against += homeScore
+    awayRow.points += 3
+    homeRow.absent++
+    homeRow.gd_penalty -= 3
+    return
+  }
+
+  if (awayForfeit) {
+    homeRow.wins++
+    awayRow.losses++
+    homeRow.goals_for += homeScore
+    homeRow.goals_against += awayScore
+    awayRow.goals_for += awayScore
+    awayRow.goals_against += homeScore
+    homeRow.points += 3
+    awayRow.absent++
+    awayRow.gd_penalty -= 3
+    return
+  }
 
   if (isDoubleForfeit) {
     homeRow.absent++
@@ -132,12 +174,18 @@ export async function buildLiveStandings(supabase: SupabaseClient, tournamentId:
       const reason = String(res.override_reason ?? '').toLowerCase()
       const isBothAbsent = reason.includes('both') && reason.includes('absent')
       const isAbsent = reason.includes('absent') && !isBothAbsent
-      const homeAbsent = isAbsent && (res.home_score === 0 && res.away_score === 3)
-      const awayAbsent = isAbsent && (res.home_score === 3 && res.away_score === 0)
-      
+      const homeForfeit = res.is_abandoned === true && (res.abandoned_type === 'home' || res.abandoned_type === 'both')
+      const awayForfeit = res.is_abandoned === true && (res.abandoned_type === 'away' || res.abandoned_type === 'both')
+      const bothForfeit = res.is_abandoned === true && res.abandoned_type === 'both'
+      const homeAbsent = isAbsent && (res.home_score === 0 && res.away_score === 3) && !homeForfeit
+      const awayAbsent = isAbsent && (res.home_score === 3 && res.away_score === 0) && !awayForfeit
+
+      const effectiveHomeScore = bothForfeit ? 0 : (res.home_score ?? 0)
+      const effectiveAwayScore = bothForfeit ? 0 : (res.away_score ?? 0)
+
       const hr = getRow(f.home_team_id!)
       const ar = getRow(f.away_team_id!)
-      if (hr && ar) applyResultToRow(hr, ar, res.home_score, res.away_score, isBothAbsent, homeAbsent, awayAbsent)
+      if (hr && ar) applyResultToRow(hr, ar, effectiveHomeScore, effectiveAwayScore, isBothAbsent, homeAbsent, awayAbsent, homeForfeit, awayForfeit)
     })
 
     return {
@@ -166,18 +214,24 @@ export async function buildLiveStandings(supabase: SupabaseClient, tournamentId:
     const res = Array.isArray(f.results) ? f.results[0] : f.results
     if (!res) return
 
-    const reason = String(res.override_reason ?? '').toLowerCase()
-    const isBothAbsent = reason.includes('both') && reason.includes('absent')
-    const isAbsent = reason.includes('absent') && !isBothAbsent
-    const homeAbsent = isAbsent && (res.home_score === 0 && res.away_score === 3)
-    const awayAbsent = isAbsent && (res.home_score === 3 && res.away_score === 0)
+      const reason = String(res.override_reason ?? '').toLowerCase()
+      const isBothAbsent = reason.includes('both') && reason.includes('absent')
+      const isAbsent = reason.includes('absent') && !isBothAbsent
+      const homeForfeit = res.is_abandoned === true && (res.abandoned_type === 'home' || res.abandoned_type === 'both')
+      const awayForfeit = res.is_abandoned === true && (res.abandoned_type === 'away' || res.abandoned_type === 'both')
+      const bothForfeit = res.is_abandoned === true && res.abandoned_type === 'both'
+      const homeAbsent = isAbsent && (res.home_score === 0 && res.away_score === 3) && !homeForfeit
+      const awayAbsent = isAbsent && (res.home_score === 3 && res.away_score === 0) && !awayForfeit
 
-    const hgn = teamGroupMap[f.home_team_id!] || 'A'
-    const agn = teamGroupMap[f.away_team_id!] || hgn
-    
-    const hr = getGroupRow(f.home_team_id!, hgn)
-    const ar = getGroupRow(f.away_team_id!, agn)
-    if (hr && ar) applyResultToRow(hr, ar, res.home_score, res.away_score, isBothAbsent, homeAbsent, awayAbsent)
+      const effectiveHomeScore = bothForfeit ? 0 : (res.home_score ?? 0)
+      const effectiveAwayScore = bothForfeit ? 0 : (res.away_score ?? 0)
+
+      const hgn = teamGroupMap[f.home_team_id!] || 'A'
+      const agn = teamGroupMap[f.away_team_id!] || hgn
+      
+      const hr = getGroupRow(f.home_team_id!, hgn)
+      const ar = getGroupRow(f.away_team_id!, agn)
+      if (hr && ar) applyResultToRow(hr, ar, effectiveHomeScore, effectiveAwayScore, isBothAbsent, homeAbsent, awayAbsent, homeForfeit, awayForfeit)
   })
 
   const groupStandings: Record<string, any[]> = {}
