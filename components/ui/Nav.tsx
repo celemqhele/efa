@@ -45,8 +45,8 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
         <div className="flex items-center justify-between h-space-8">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-space-2 shrink-0">
-            <div className="w-space-8 h-space-8 rounded-full bg-accent flex items-center justify-center">
-              <span className="text-bg-base font-black text-xs">EFA</span>
+            <div className="w-space-6 h-space-6 rounded-full bg-accent flex items-center justify-center">
+              <span className="text-bg-base font-black text-[10px]">EFA</span>
             </div>
             <span className="font-bold text-text-primary hidden sm:block text-sm">
               Efootball Federal Association

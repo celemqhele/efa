@@ -140,6 +140,10 @@ export default function ResultSubmitClient({
   const [homeForfeit, setHomeForfeit] = useState(false)
   const [awayForfeit, setAwayForfeit] = useState(false)
 
+  // Forfeit balance state
+  const [forfeitBalances, setForfeitBalances] = useState<any[]>([])
+  const [balanceLoading, setBalanceLoading] = useState(false)
+
   // Score state
   const [homeScore, setHomeScore] = useState('')
   const [awayScore, setAwayScore] = useState('')
@@ -196,6 +200,21 @@ export default function ResultSubmitClient({
       setAwayScore('0')
     }
   }, [homeAbsent, awayAbsent])
+
+  // Fetch forfeit balances when fixture changes
+  useEffect(() => {
+    if (!selectedFixtureId) { setForfeitBalances([]); return }
+    const fixture = pendingFixtures.find(f => f.id === selectedFixtureId)
+    if (!fixture?.home_team && !fixture?.away_team) return
+
+    setBalanceLoading(true)
+    const teamIds = [fixture.home_team?.id, fixture.away_team?.id].filter(Boolean)
+    fetch(`/api/admin/forfeit-balances?teamIds=${teamIds.join(',')}`)
+      .then(r => r.json())
+      .then(data => setForfeitBalances(data.balances ?? []))
+      .catch(() => setForfeitBalances([]))
+      .finally(() => setBalanceLoading(false))
+  }, [selectedFixtureId])
 
   function resetOcr() {
     setOcrResult(null)
@@ -732,6 +751,47 @@ export default function ResultSubmitClient({
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Forfeit Balances */}
+            {forfeitBalances.length > 0 && (
+              <div className="card p-4">
+                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
+                  Pending Forfeit Penalties
+                </h3>
+                <div className="space-y-2">
+                  {forfeitBalances.map((b: any) => (
+                    <div key={b.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-orange-500/20 bg-orange-500/5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-foreground-primary font-medium truncate">{b.half_time_note}</p>
+                        <p className="text-[10px] text-text-muted">
+                          {b.forfeiting_team?.name ?? 'Unknown'} forfeited — {b.remaining} remaining
+                        </p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          const res = await fetch('/api/admin/forfeit-balances/use', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ balance_id: b.id }),
+                          })
+                          if (res.ok) {
+                            setForfeitBalances((prev) =>
+                              prev.map((x: any) =>
+                                x.id === b.id ? { ...x, remaining: x.remaining - 1 } : x
+                              ).filter((x: any) => x.remaining > 0)
+                            )
+                          }
+                        }}
+                        disabled={b.remaining <= 0}
+                        className="shrink-0 px-2.5 py-1 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-40"
+                      >
+                        Use
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

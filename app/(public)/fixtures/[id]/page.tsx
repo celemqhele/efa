@@ -9,6 +9,7 @@ import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
 import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
 import MatchroomCode from '@/components/ui/MatchroomCode'
 import ReactionsPanel from '@/components/ui/ReactionsPanel'
+import ForfeitBadge from '@/components/ui/ForfeitBadge'
 
 export const revalidate = 30
 
@@ -390,16 +391,19 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         )}
 
         {result?.is_abandoned && (
-          <div className="mt-4 text-center">
-            <span className="inline-block bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
-              Abandoned —{' '}
-              {result.abandoned_type === 'home'
-                ? homeTeam.name
-                : result.abandoned_type === 'away'
-                ? awayTeam.name
-                : 'Both teams'}{' '}
-              left
-            </span>
+          <div className="mt-4 text-center space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <span className="inline-block bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+                Abandoned —{' '}
+                {result.abandoned_type === 'home'
+                  ? homeTeam.name
+                  : result.abandoned_type === 'away'
+                  ? awayTeam.name
+                  : 'Both teams'}{' '}
+                left
+              </span>
+              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? homeTeam.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? awayTeam.name : ''} forfeited. Score at time: ${result.home_score}-${result.away_score}. This penalty was applied to the aggregate.`} />
+            </div>
           </div>
         )}
       </div>

@@ -11,15 +11,19 @@ CREATE OR REPLACE FUNCTION update_standings_atomic(
   p_points_inc int,
   p_form_char text,
   p_unbeaten_run_reset boolean,
-  p_clean_sheet_inc int
+  p_clean_sheet_inc int,
+  p_absent_inc int DEFAULT 0,
+  p_gd_penalty_inc int DEFAULT 0
 )
 RETURNS void AS $$
 BEGIN
   INSERT INTO standings (
-    tournament_id, team_id, played, wins, draws, losses, goals_for, goals_against, points, form, unbeaten_run, clean_sheets
+    tournament_id, team_id, played, wins, draws, losses, goals_for, goals_against, points, form, unbeaten_run, clean_sheets,
+    absent, gd_penalty
   ) VALUES (
     p_tournament_id, p_team_id, p_played_inc, p_wins_inc, p_draws_inc, p_losses_inc, p_gf_inc, p_ga_inc, p_points_inc, p_form_char, 
-    CASE WHEN p_unbeaten_run_reset THEN 0 ELSE p_wins_inc + p_draws_inc END, p_clean_sheet_inc
+    CASE WHEN p_unbeaten_run_reset THEN 0 ELSE p_wins_inc + p_draws_inc END, p_clean_sheet_inc,
+    p_absent_inc, p_gd_penalty_inc
   )
   ON CONFLICT (tournament_id, team_id) DO UPDATE SET
     played = standings.played + p_played_inc,
@@ -32,6 +36,8 @@ BEGIN
     form = right(standings.form || p_form_char, 5),
     unbeaten_run = CASE WHEN p_unbeaten_run_reset THEN 0 ELSE standings.unbeaten_run + p_played_inc END,
     clean_sheets = standings.clean_sheets + p_clean_sheet_inc,
+    absent = standings.absent + p_absent_inc,
+    gd_penalty = standings.gd_penalty + p_gd_penalty_inc,
     updated_at = now();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -46,14 +52,18 @@ CREATE OR REPLACE FUNCTION update_group_standings_atomic(
   p_losses_inc int,
   p_gf_inc int,
   p_ga_inc int,
-  p_points_inc int
+  p_points_inc int,
+  p_absent_inc int DEFAULT 0,
+  p_gd_penalty_inc int DEFAULT 0
 )
 RETURNS void AS $$
 BEGIN
   INSERT INTO group_standings (
-    tournament_id, team_id, played, wins, draws, losses, goals_for, goals_against, points
+    tournament_id, team_id, played, wins, draws, losses, goals_for, goals_against, points,
+    absent, gd_penalty
   ) VALUES (
-    p_tournament_id, p_team_id, p_played_inc, p_wins_inc, p_draws_inc, p_losses_inc, p_gf_inc, p_ga_inc, p_points_inc
+    p_tournament_id, p_team_id, p_played_inc, p_wins_inc, p_draws_inc, p_losses_inc, p_gf_inc, p_ga_inc, p_points_inc,
+    p_absent_inc, p_gd_penalty_inc
   )
   ON CONFLICT (tournament_id, team_id) DO UPDATE SET
     played = group_standings.played + p_played_inc,
@@ -63,6 +73,8 @@ BEGIN
     goals_for = group_standings.goals_for + p_gf_inc,
     goals_against = group_standings.goals_against + p_ga_inc,
     points = group_standings.points + p_points_inc,
+    absent = group_standings.absent + p_absent_inc,
+    gd_penalty = group_standings.gd_penalty + p_gd_penalty_inc,
     updated_at = now();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

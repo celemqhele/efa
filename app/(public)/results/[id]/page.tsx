@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { format, parseISO } from 'date-fns'
+import ForfeitBadge from '@/components/ui/ForfeitBadge'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,8 +93,11 @@ export default async function ResultDetailPage({ params }: Props) {
           </div>
 
           {result.is_abandoned && (
-            <div className="mb-4 px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs font-medium inline-block">
-              ⚠️ Abandoned ({result.abandoned_type === 'both' ? 'Mutual' : `${result.abandoned_type} team`})
+            <div className="mb-4 flex items-center gap-2">
+              <div className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs font-medium inline-block">
+                ⚠️ Abandoned ({result.abandoned_type === 'both' ? 'Mutual' : `${result.abandoned_type} team`})
+              </div>
+              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? home?.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? away?.name : ''} forfeited. Score at time: ${result.home_score}-${result.away_score}. This penalty was applied to the aggregate.`} />
             </div>
           )}
 

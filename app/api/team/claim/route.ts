@@ -131,5 +131,13 @@ export async function POST(request: Request) {
       }))
     )
 
+  await adminSupabase.from('audit_log').insert({
+    admin_id: user.id,
+    action: 'claim_team',
+    target_type: 'team',
+    target_id: resolvedTeamId,
+    details: { team_name: team?.name, user_id: user.id, username: profile.username },
+  })
+
   return Response.json({ success: true, team_id: resolvedTeamId })
 }

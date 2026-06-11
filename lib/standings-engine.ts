@@ -13,6 +13,8 @@ type ResultRow = {
   home_score: number
   away_score: number
   override_reason?: string | null
+  is_abandoned?: boolean
+  abandoned_type?: string | null
 }
 
 function cleanGroupName(value: unknown): string | null {
@@ -35,6 +37,8 @@ function emptyStandingRow(tournamentId: string, teamId: string) {
     form: '',
     unbeaten_run: 0,
     clean_sheets: 0,
+    absent: 0,
+    gd_penalty: 0,
   }
 }
 
@@ -51,21 +55,47 @@ function emptyGroupStandingRow(tournamentId: string, groupName: string, teamId: 
     goals_against: 0,
     points: 0,
     form: '',
+    absent: 0,
+    gd_penalty: 0,
   }
 }
 
-function applyResult(homeRow: any, awayRow: any, homeScore: number, awayScore: number, isDoubleForfeit: boolean = false) {
+function applyResult(homeRow: any, awayRow: any, homeScore: number, awayScore: number, isDoubleForfeit: boolean = false, homeAbsent: boolean = false, awayAbsent: boolean = false) {
   homeRow.played++
   awayRow.played++
 
   if (isDoubleForfeit) {
     // 0 points, 0 goals, but counts as played
-    if ('form' in homeRow) homeRow.form = (homeRow.form + 'L').slice(-5)
-    if ('form' in awayRow) awayRow.form = (awayRow.form + 'L').slice(-5)
-    
-    // Increment losses for double forfeit so W+D+L = P
-    homeRow.losses++
-    awayRow.losses++
+    if ('absent' in homeRow) homeRow.absent++
+    if ('absent' in awayRow) awayRow.absent++
+    if ('gd_penalty' in homeRow) homeRow.gd_penalty -= 3
+    if ('gd_penalty' in awayRow) awayRow.gd_penalty -= 3
+    return
+  }
+
+  if (homeAbsent) {
+    // Home absent: away wins 3-0, home gets absent++ and -3GD
+    awayRow.wins++
+    awayRow.goals_for += 3
+    awayRow.points += 3
+    if ('form' in awayRow) awayRow.form = (awayRow.form + 'W').slice(-5)
+    if ('unbeaten_run' in awayRow) awayRow.unbeaten_run++
+    if ('clean_sheets' in awayRow) awayRow.clean_sheets++
+    if ('absent' in homeRow) homeRow.absent++
+    if ('gd_penalty' in homeRow) homeRow.gd_penalty -= 3
+    return
+  }
+
+  if (awayAbsent) {
+    // Away absent: home wins 3-0, away gets absent++ and -3GD
+    homeRow.wins++
+    homeRow.goals_for += 3
+    homeRow.points += 3
+    if ('form' in homeRow) homeRow.form = (homeRow.form + 'W').slice(-5)
+    if ('unbeaten_run' in homeRow) homeRow.unbeaten_run++
+    if ('clean_sheets' in homeRow) homeRow.clean_sheets++
+    if ('absent' in awayRow) awayRow.absent++
+    if ('gd_penalty' in awayRow) awayRow.gd_penalty -= 3
     return
   }
 
@@ -199,7 +229,7 @@ export async function recalculateStandings(tournamentId: string) {
   const { data: results, error: resultsErr } = fixtureIds.length > 0
     ? await db
         .from('results')
-        .select('fixture_id, home_score, away_score, override_reason')
+        .select('fixture_id, home_score, away_score, override_reason, is_abandoned, abandoned_type')
         .in('fixture_id', fixtureIds)
     : { data: [], error: null }
 
@@ -242,8 +272,13 @@ export async function recalculateStandings(tournamentId: string) {
 
       const reason = String(result.override_reason ?? '').toLowerCase()
       const isDoubleForfeit = reason.includes('both') && reason.includes('absent')
+      const isForfeit = result.is_abandoned === true
+      const isAbsent = reason.includes('absent') && !isDoubleForfeit
 
-      applyResult(getRow(fixture.home_team_id), getRow(fixture.away_team_id), homeScore, awayScore, isDoubleForfeit)
+      const homeAbsent = isAbsent && (homeScore === 0 && awayScore === 3)
+      const awayAbsent = isAbsent && (homeScore === 3 && awayScore === 0)
+
+      applyResult(getRow(fixture.home_team_id), getRow(fixture.away_team_id), homeScore, awayScore, isDoubleForfeit, homeAbsent, awayAbsent)
     }
 
     const { error: deleteErr } = await db.from('standings').delete().eq('tournament_id', tournamentId)
@@ -298,6 +333,11 @@ export async function recalculateStandings(tournamentId: string) {
 
       const reason = String(result.override_reason ?? '').toLowerCase()
       const isDoubleForfeit = reason.includes('both') && reason.includes('absent')
+      const isForfeit = result.is_abandoned === true
+      const isAbsent = reason.includes('absent') && !isDoubleForfeit
+
+      const homeAbsent = isAbsent && (homeScore === 0 && awayScore === 3)
+      const awayAbsent = isAbsent && (homeScore === 3 && awayScore === 0)
 
       const homeGroup = groupByTeam[fixture.home_team_id] ?? participantGroupByTeam[fixture.home_team_id]
       const awayGroup = groupByTeam[fixture.away_team_id] ?? participantGroupByTeam[fixture.away_team_id] ?? homeGroup
@@ -307,7 +347,9 @@ export async function recalculateStandings(tournamentId: string) {
         getGroupRow(fixture.away_team_id, awayGroup),
         homeScore,
         awayScore,
-        isDoubleForfeit
+        isDoubleForfeit,
+        homeAbsent,
+        awayAbsent
       )
     }
 

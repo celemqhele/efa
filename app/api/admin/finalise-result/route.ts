@@ -322,6 +322,32 @@ export async function POST(request: Request) {
     .update({ status: 'confirmed' })
     .eq('id', fixture_id)
 
+  // ── Forfeit balance tracking ─────────────────────────────────────────────
+  if (home_forfeit || away_forfeit) {
+    if (home_forfeit) {
+      const note = `Forfeit: ${homeTeam?.name ?? 'Home'} vs ${awayTeam?.name ?? 'Away'} — ${body.home_score ?? 0}-${body.away_score ?? 0} (HT)`
+      await adminSupabase.from('forfeit_balances').insert({
+        fixture_id,
+        forfeiting_team_id: fixture.home_team_id,
+        opponent_team_id: fixture.away_team_id,
+        opponent_score: body.away_score ?? 0,
+        forfeiting_score: body.home_score ?? 0,
+        half_time_note: note,
+      })
+    }
+    if (away_forfeit) {
+      const note = `Forfeit: ${awayTeam?.name ?? 'Away'} vs ${homeTeam?.name ?? 'Home'} — ${body.away_score ?? 0}-${body.home_score ?? 0} (HT)`
+      await adminSupabase.from('forfeit_balances').insert({
+        fixture_id,
+        forfeiting_team_id: fixture.away_team_id,
+        opponent_team_id: fixture.home_team_id,
+        opponent_score: body.home_score ?? 0,
+        forfeiting_score: body.away_score ?? 0,
+        half_time_note: note,
+      })
+    }
+  }
+
   // ── Absent team tracking ──────────────────────────────────────────────────
   try {
     const absentTeamIds: string[] = []

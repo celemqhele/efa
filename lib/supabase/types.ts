@@ -435,6 +435,8 @@ export interface Database {
           biggest_win_score: string | null
           biggest_win_opponent_id: string | null
           clean_sheets: number
+          absent: number
+          gd_penalty: number
           updated_at: string
         }
         Insert: {
@@ -453,6 +455,8 @@ export interface Database {
           biggest_win_score?: string | null
           biggest_win_opponent_id?: string | null
           clean_sheets?: number
+          absent?: number
+          gd_penalty?: number
           updated_at?: string
         }
         Update: Partial<Database['public']['Tables']['standings']['Insert']>
@@ -473,6 +477,8 @@ export interface Database {
           goal_difference: number
           points: number
           form: string
+          absent: number
+          gd_penalty: number
         }
         Insert: {
           id?: string
@@ -487,6 +493,8 @@ export interface Database {
           goals_against?: number
           points?: number
           form?: string
+          absent?: number
+          gd_penalty?: number
         }
         Update: Partial<Database['public']['Tables']['group_standings']['Insert']>
         Relationships: []

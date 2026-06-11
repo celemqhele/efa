@@ -342,6 +342,16 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser }: P
                       </div>
                     )}
                   </div>
+
+                  {/* Availability link */}
+                  <div className="pt-2">
+                    <a
+                      href={`/admin/managers/availability?managerId=${managerProfile.id}`}
+                      className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-gold border border-dashed border-border hover:border-gold/50 rounded-lg px-3 py-1.5 transition-colors"
+                    >
+                      Set Availability Schedule
+                    </a>
+                  </div>
                 </div>
               </div>
             ) : (

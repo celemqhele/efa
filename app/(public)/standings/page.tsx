@@ -26,10 +26,11 @@ function formatGroupTitle(groupName: string) {
 function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-bg-surface">
-      <div className="grid grid-cols-[28px_1fr_30px_36px_40px] sm:grid-cols-[34px_1fr_32px_32px_32px_32px_42px_44px] items-center gap-1 sm:gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-text-muted border-b border-border-subtle">
+      <div className="grid grid-cols-[28px_1fr_30px_30px_36px_40px] sm:grid-cols-[34px_1fr_32px_32px_32px_32px_32px_42px_44px] items-center gap-1 sm:gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-text-muted border-b border-border-subtle">
         <span className="text-center">#</span>
         <span>Team</span>
         <span className="text-center">P</span>
+        <span className="text-center">A</span>
         <span className="hidden sm:block text-center">W</span>
         <span className="hidden sm:block text-center">D</span>
         <span className="hidden sm:block text-center">L</span>
@@ -47,7 +48,7 @@ function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' 
           <Link
             key={row.id ?? `${row.team_id}-${index}`}
             href={`/teams/${row.team_id}`}
-            className={`grid grid-cols-[28px_1fr_30px_36px_40px] sm:grid-cols-[34px_1fr_32px_32px_32px_32px_42px_44px] items-center gap-1 sm:gap-2 px-3 py-2.5 text-xs border-l-4 ${qualificationBorder} ${index % 2 === 0 ? 'bg-bg-base' : 'bg-bg-surface'} hover:bg-accent/10 transition-colors cursor-pointer`}
+            className={`grid grid-cols-[28px_1fr_30px_30px_36px_40px] sm:grid-cols-[34px_1fr_32px_32px_32px_32px_32px_42px_44px] items-center gap-1 sm:gap-2 px-3 py-2.5 text-xs border-l-4 ${qualificationBorder} ${index % 2 === 0 ? 'bg-bg-base' : 'bg-bg-surface'} hover:bg-accent/10 transition-colors cursor-pointer`}
           >
             <span className="text-center font-bold text-text-muted">{index + 1}</span>
 
@@ -68,6 +69,7 @@ function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' 
             </div>
 
             <span className="text-center text-text-secondary">{row.played ?? 0}</span>
+            <span className={`text-center font-medium ${(row.absent ?? 0) > 0 ? 'text-orange-400' : 'text-text-secondary'}`}>{row.absent ?? 0}</span>
             <span className="hidden sm:block text-center text-text-secondary">{row.wins ?? 0}</span>
             <span className="hidden sm:block text-center text-text-secondary">{row.draws ?? 0}</span>
             <span className="hidden sm:block text-center text-text-secondary">{row.losses ?? 0}</span>

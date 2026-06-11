@@ -42,26 +42,58 @@ DECLARE
   v_new_form_away text;
   v_home_gd int;
   v_prev_home_gd int;
+  -- Absent/penalty tracking
+  home_absent_inc int := 0;
+  away_absent_inc int := 0;
+  home_gdp_inc int := 0;
+  away_gdp_inc int := 0;
+  v_reason text;
 BEGIN
   SELECT * INTO v_fixture FROM fixtures WHERE id = NEW.fixture_id;
   SELECT type INTO v_tournament_type FROM tournaments WHERE id = v_fixture.tournament_id;
+  v_reason := COALESCE(NEW.override_reason, '');
 
-  -- Abandoned results: win/loss recorded, 0 GF/GA impact
+  -- Determine outcome, GF/GA, and absent/penalty flags
   IF NEW.is_abandoned THEN
+    -- Forfeit (mid-game quit): actual score stands, forfeiting team gets -3GD + absent++
     IF NEW.abandoned_type = 'home' THEN
-      -- Home abandoned: home gets loss, away gets win
       home_outcome := 'L'; away_outcome := 'W';
-      home_gf := 0; home_ga := 0; away_gf := 0; away_ga := 0;
+      home_gf := NEW.home_score; home_ga := NEW.away_score;
+      away_gf := NEW.away_score; away_ga := NEW.home_score;
+      home_absent_inc := 1; home_gdp_inc := -3;
     ELSIF NEW.abandoned_type = 'away' THEN
-      -- Away abandoned: away gets loss, home gets win
       home_outcome := 'W'; away_outcome := 'L';
-      home_gf := 0; home_ga := 0; away_gf := 0; away_ga := 0;
+      home_gf := NEW.home_score; home_ga := NEW.away_score;
+      away_gf := NEW.away_score; away_ga := NEW.home_score;
+      away_absent_inc := 1; away_gdp_inc := -3;
     ELSE
-      -- Both abandoned: 0-0, no points
-      home_outcome := 'N'; away_outcome := 'N';
+      -- Both forfeited
+      home_outcome := 'L'; away_outcome := 'L';
       home_gf := 0; home_ga := 0; away_gf := 0; away_ga := 0;
+      home_absent_inc := 1; home_gdp_inc := -3;
+      away_absent_inc := 1; away_gdp_inc := -3;
+    END IF;
+  ELSIF v_reason LIKE '%absent%' THEN
+    -- No-show absence: opponent gets 3-0 win, absent team gets -3GD + absent++, no GF/GA
+    IF v_reason LIKE '%both%' THEN
+      -- Both absent
+      home_outcome := 'A'; away_outcome := 'A';
+      home_gf := 0; home_ga := 0; away_gf := 0; away_ga := 0;
+      home_absent_inc := 1; home_gdp_inc := -3;
+      away_absent_inc := 1; away_gdp_inc := -3;
+    ELSIF NEW.home_score = 0 AND NEW.away_score = 3 THEN
+      -- Home absent
+      home_outcome := 'A'; away_outcome := 'W';
+      home_gf := 0; home_ga := 0; away_gf := 3; away_ga := 0;
+      home_absent_inc := 1; home_gdp_inc := -3;
+    ELSE
+      -- Away absent (score = 3-0)
+      home_outcome := 'W'; away_outcome := 'A';
+      home_gf := 3; home_ga := 0; away_gf := 0; away_ga := 0;
+      away_absent_inc := 1; away_gdp_inc := -3;
     END IF;
   ELSE
+    -- Normal result
     home_gf := NEW.home_score; home_ga := NEW.away_score;
     away_gf := NEW.away_score; away_ga := NEW.home_score;
     IF NEW.home_score > NEW.away_score THEN
@@ -80,15 +112,18 @@ BEGIN
     WHERE tournament_id = v_fixture.tournament_id AND team_id = v_fixture.home_team_id;
 
     -- Upsert group standings for home team
-    INSERT INTO group_standings (tournament_id, group_name, team_id, played, wins, draws, losses, goals_for, goals_against, points)
-    VALUES (
+    INSERT INTO group_standings (
+      tournament_id, group_name, team_id, played, wins, draws, losses,
+      goals_for, goals_against, points, absent, gd_penalty
+    ) VALUES (
       v_fixture.tournament_id, v_group_name, v_fixture.home_team_id,
       1,
       CASE WHEN home_outcome = 'W' THEN 1 ELSE 0 END,
       CASE WHEN home_outcome = 'D' THEN 1 ELSE 0 END,
       CASE WHEN home_outcome = 'L' THEN 1 ELSE 0 END,
       home_gf, home_ga,
-      CASE home_outcome WHEN 'W' THEN 3 WHEN 'D' THEN 1 ELSE 0 END
+      CASE WHEN home_outcome = 'W' THEN 3 WHEN home_outcome = 'D' THEN 1 ELSE 0 END,
+      home_absent_inc, home_gdp_inc
     )
     ON CONFLICT (tournament_id, group_name, team_id) DO UPDATE SET
       played = group_standings.played + 1,
@@ -97,18 +132,23 @@ BEGIN
       losses = group_standings.losses + CASE WHEN home_outcome = 'L' THEN 1 ELSE 0 END,
       goals_for = group_standings.goals_for + home_gf,
       goals_against = group_standings.goals_against + home_ga,
-      points = group_standings.points + CASE home_outcome WHEN 'W' THEN 3 WHEN 'D' THEN 1 ELSE 0 END;
+      points = group_standings.points + CASE WHEN home_outcome = 'W' THEN 3 WHEN home_outcome = 'D' THEN 1 ELSE 0 END,
+      absent = group_standings.absent + home_absent_inc,
+      gd_penalty = group_standings.gd_penalty + home_gdp_inc;
 
     -- Upsert group standings for away team
-    INSERT INTO group_standings (tournament_id, group_name, team_id, played, wins, draws, losses, goals_for, goals_against, points)
-    VALUES (
+    INSERT INTO group_standings (
+      tournament_id, group_name, team_id, played, wins, draws, losses,
+      goals_for, goals_against, points, absent, gd_penalty
+    ) VALUES (
       v_fixture.tournament_id, v_group_name, v_fixture.away_team_id,
       1,
       CASE WHEN away_outcome = 'W' THEN 1 ELSE 0 END,
       CASE WHEN away_outcome = 'D' THEN 1 ELSE 0 END,
       CASE WHEN away_outcome = 'L' THEN 1 ELSE 0 END,
       away_gf, away_ga,
-      CASE away_outcome WHEN 'W' THEN 3 WHEN 'D' THEN 1 ELSE 0 END
+      CASE WHEN away_outcome = 'W' THEN 3 WHEN away_outcome = 'D' THEN 1 ELSE 0 END,
+      away_absent_inc, away_gdp_inc
     )
     ON CONFLICT (tournament_id, group_name, team_id) DO UPDATE SET
       played = group_standings.played + 1,
@@ -117,7 +157,9 @@ BEGIN
       losses = group_standings.losses + CASE WHEN away_outcome = 'L' THEN 1 ELSE 0 END,
       goals_for = group_standings.goals_for + away_gf,
       goals_against = group_standings.goals_against + away_ga,
-      points = group_standings.points + CASE away_outcome WHEN 'W' THEN 3 WHEN 'D' THEN 1 ELSE 0 END;
+      points = group_standings.points + CASE WHEN away_outcome = 'W' THEN 3 WHEN away_outcome = 'D' THEN 1 ELSE 0 END,
+      absent = group_standings.absent + away_absent_inc,
+      gd_penalty = group_standings.gd_penalty + away_gdp_inc;
 
     RETURN NEW;
   END IF;
@@ -132,14 +174,14 @@ BEGIN
   WHERE tournament_id = v_fixture.tournament_id AND team_id = v_fixture.away_team_id;
 
   -- Calculate new form strings (last 6)
-  v_new_form_home := right(COALESCE(home_current.form, '') || home_outcome, 6);
-  v_new_form_away := right(COALESCE(away_current.form, '') || away_outcome, 6);
+  v_new_form_home := right(COALESCE(home_current.form, '') || CASE WHEN home_outcome IN ('W','D','L') THEN home_outcome ELSE '' END, 6);
+  v_new_form_away := right(COALESCE(away_current.form, '') || CASE WHEN away_outcome IN ('W','D','L') THEN away_outcome ELSE '' END, 6);
 
   -- Upsert home standings
   INSERT INTO standings (
     tournament_id, team_id, played, wins, draws, losses,
     goals_for, goals_against, points, form, unbeaten_run, clean_sheets,
-    biggest_win_score, biggest_win_opponent_id
+    biggest_win_score, biggest_win_opponent_id, absent, gd_penalty
   ) VALUES (
     v_fixture.tournament_id, v_fixture.home_team_id,
     1,
@@ -147,12 +189,13 @@ BEGIN
     CASE WHEN home_outcome = 'D' THEN 1 ELSE 0 END,
     CASE WHEN home_outcome = 'L' THEN 1 ELSE 0 END,
     home_gf, home_ga,
-    CASE home_outcome WHEN 'W' THEN 3 WHEN 'D' THEN 1 WHEN 'N' THEN 0 ELSE 0 END,
-    CASE WHEN home_outcome != 'N' THEN home_outcome ELSE '' END,
+    CASE WHEN home_outcome = 'W' THEN 3 WHEN home_outcome = 'D' THEN 1 ELSE 0 END,
+    CASE WHEN home_outcome IN ('W','D','L') THEN home_outcome ELSE '' END,
     CASE WHEN home_outcome IN ('W', 'D') THEN 1 ELSE 0 END,
-    CASE WHEN home_ga = 0 AND home_outcome != 'N' THEN 1 ELSE 0 END,
+    CASE WHEN home_ga = 0 AND home_outcome IN ('W','D') THEN 1 ELSE 0 END,
     CASE WHEN home_outcome = 'W' THEN (home_gf::text || '-' || home_ga::text) ELSE NULL END,
-    CASE WHEN home_outcome = 'W' THEN v_fixture.away_team_id ELSE NULL END
+    CASE WHEN home_outcome = 'W' THEN v_fixture.away_team_id ELSE NULL END,
+    home_absent_inc, home_gdp_inc
   )
   ON CONFLICT (tournament_id, team_id) DO UPDATE SET
     played = standings.played + 1,
@@ -161,14 +204,14 @@ BEGIN
     losses = standings.losses + CASE WHEN home_outcome = 'L' THEN 1 ELSE 0 END,
     goals_for = standings.goals_for + home_gf,
     goals_against = standings.goals_against + home_ga,
-    points = standings.points + CASE home_outcome WHEN 'W' THEN 3 WHEN 'D' THEN 1 WHEN 'N' THEN 0 ELSE 0 END,
-    form = CASE WHEN home_outcome != 'N' THEN right(COALESCE(standings.form, '') || home_outcome, 6) ELSE standings.form END,
+    points = standings.points + CASE WHEN home_outcome = 'W' THEN 3 WHEN home_outcome = 'D' THEN 1 ELSE 0 END,
+    form = CASE WHEN home_outcome IN ('W','D','L') THEN right(COALESCE(standings.form, '') || home_outcome, 6) ELSE standings.form END,
     unbeaten_run = CASE
       WHEN home_outcome IN ('W', 'D') THEN standings.unbeaten_run + 1
       WHEN home_outcome = 'L' THEN 0
       ELSE standings.unbeaten_run
     END,
-    clean_sheets = standings.clean_sheets + CASE WHEN home_ga = 0 AND home_outcome != 'N' THEN 1 ELSE 0 END,
+    clean_sheets = standings.clean_sheets + CASE WHEN home_ga = 0 AND home_outcome IN ('W','D') THEN 1 ELSE 0 END,
     biggest_win_score = CASE
       WHEN home_outcome = 'W' AND (
         standings.biggest_win_score IS NULL OR
@@ -189,13 +232,15 @@ BEGIN
       ) THEN v_fixture.away_team_id
       ELSE standings.biggest_win_opponent_id
     END,
+    absent = standings.absent + home_absent_inc,
+    gd_penalty = standings.gd_penalty + home_gdp_inc,
     updated_at = now();
 
   -- Upsert away standings
   INSERT INTO standings (
     tournament_id, team_id, played, wins, draws, losses,
     goals_for, goals_against, points, form, unbeaten_run, clean_sheets,
-    biggest_win_score, biggest_win_opponent_id
+    biggest_win_score, biggest_win_opponent_id, absent, gd_penalty
   ) VALUES (
     v_fixture.tournament_id, v_fixture.away_team_id,
     1,
@@ -203,12 +248,13 @@ BEGIN
     CASE WHEN away_outcome = 'D' THEN 1 ELSE 0 END,
     CASE WHEN away_outcome = 'L' THEN 1 ELSE 0 END,
     away_gf, away_ga,
-    CASE away_outcome WHEN 'W' THEN 3 WHEN 'D' THEN 1 WHEN 'N' THEN 0 ELSE 0 END,
-    CASE WHEN away_outcome != 'N' THEN away_outcome ELSE '' END,
+    CASE WHEN away_outcome = 'W' THEN 3 WHEN away_outcome = 'D' THEN 1 ELSE 0 END,
+    CASE WHEN away_outcome IN ('W','D','L') THEN away_outcome ELSE '' END,
     CASE WHEN away_outcome IN ('W', 'D') THEN 1 ELSE 0 END,
-    CASE WHEN away_ga = 0 AND away_outcome != 'N' THEN 1 ELSE 0 END,
+    CASE WHEN away_ga = 0 AND away_outcome IN ('W','D') THEN 1 ELSE 0 END,
     CASE WHEN away_outcome = 'W' THEN (away_gf::text || '-' || away_ga::text) ELSE NULL END,
-    CASE WHEN away_outcome = 'W' THEN v_fixture.home_team_id ELSE NULL END
+    CASE WHEN away_outcome = 'W' THEN v_fixture.home_team_id ELSE NULL END,
+    away_absent_inc, away_gdp_inc
   )
   ON CONFLICT (tournament_id, team_id) DO UPDATE SET
     played = standings.played + 1,
@@ -217,14 +263,14 @@ BEGIN
     losses = standings.losses + CASE WHEN away_outcome = 'L' THEN 1 ELSE 0 END,
     goals_for = standings.goals_for + away_gf,
     goals_against = standings.goals_against + away_ga,
-    points = standings.points + CASE away_outcome WHEN 'W' THEN 3 WHEN 'D' THEN 1 WHEN 'N' THEN 0 ELSE 0 END,
-    form = CASE WHEN away_outcome != 'N' THEN right(COALESCE(standings.form, '') || away_outcome, 6) ELSE standings.form END,
+    points = standings.points + CASE WHEN away_outcome = 'W' THEN 3 WHEN away_outcome = 'D' THEN 1 ELSE 0 END,
+    form = CASE WHEN away_outcome IN ('W','D','L') THEN right(COALESCE(standings.form, '') || away_outcome, 6) ELSE standings.form END,
     unbeaten_run = CASE
       WHEN away_outcome IN ('W', 'D') THEN standings.unbeaten_run + 1
       WHEN away_outcome = 'L' THEN 0
       ELSE standings.unbeaten_run
     END,
-    clean_sheets = standings.clean_sheets + CASE WHEN away_ga = 0 AND away_outcome != 'N' THEN 1 ELSE 0 END,
+    clean_sheets = standings.clean_sheets + CASE WHEN away_ga = 0 AND away_outcome IN ('W','D') THEN 1 ELSE 0 END,
     biggest_win_score = CASE
       WHEN away_outcome = 'W' AND (
         standings.biggest_win_score IS NULL OR
@@ -245,6 +291,8 @@ BEGIN
       ) THEN v_fixture.home_team_id
       ELSE standings.biggest_win_opponent_id
     END,
+    absent = standings.absent + away_absent_inc,
+    gd_penalty = standings.gd_penalty + away_gdp_inc,
     updated_at = now();
 
   -- Update abandon_count on teams if applicable
