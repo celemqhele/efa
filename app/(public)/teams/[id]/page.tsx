@@ -292,11 +292,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
         </div>
         <div className="px-space-6 pb-space-6 -mt-12 relative">
           <div className="flex items-end gap-space-5">
-            <div className={`rounded-2xl overflow-hidden border-4 shadow-md ${
-              team.logo_team_slug === 'tottenham'
-                ? 'border-accent-hover bg-bg-surface p-1.5'
-                : 'border-border bg-bg-base'
-            }`}>
+            <div className="rounded-2xl overflow-hidden border-4 shadow-md border-border bg-bg-base">
               <Image
                 src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
                 alt={team.name}

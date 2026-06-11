@@ -32,7 +32,7 @@ export default function TeamLogo({ leagueFolder, teamSlug, context, alt, classNa
         alt={alt}
         width={size}
         height={size}
-        className="object-contain w-full h-full [outline:1px_solid_rgba(255,255,255,0.35)]"
+        className="object-contain w-full h-full"
         onError={(e) => {
           const target = e.target as HTMLImageElement
           target.parentElement!.style.display = 'none'
