@@ -126,7 +126,7 @@ export default async function ProfilePage() {
               className="w-24 h-24 rounded-full object-cover ring-2 ring-accent/60"
             />
           ) : team?.logo_league_folder ? (
-            <div className="w-24 h-24 rounded-full bg-bg-elevated flex items-center justify-center ring-2 ring-accent/40 overflow-hidden p-2">
+            <div className="w-24 h-24 bg-bg-elevated flex items-center justify-center p-2">
               <Image
                 src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'profile_avatar')}
                 alt={team.name}
