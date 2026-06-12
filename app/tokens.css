@@ -51,5 +51,17 @@
   --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
   --transition-fast: 150ms ease;
   --transition-base: 250ms ease;
+
+  /* Export card colours */
+  --export-card-bg: #171A21;
+  --export-text: #F7FAFC;
+  --export-muted: #718096;
+  --export-muted-strong: #A0A0B0;
+  --export-soft-text: #94A3B8;
+  --export-row-bg: rgba(255,255,255,0.04);
+  --export-divider: #2D323F;
+  --export-green: #48BB78;
+  --export-red: #F56565;
+  --export-score-divider: #4A5568;
 }
 
