@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
   // 2. Fetch Deep Data for each team
   const csvRows: string[][] = [
-    ['TEAM', 'POS', 'P', 'W', 'D', 'L', 'PTS', 'FORM (Last 5)', 'LAST 3 RESULTS', 'MATCH 1 STATS', 'MATCH 2 STATS'],
+    ['TEAM', 'POS', 'P', 'W', 'D', 'L', 'PTS', 'FORM (Last 5)', 'LAST 3 RESULTS', 'MATCH 1 STATS', 'MATCH 2 STATS', 'NEXT FIXTURE 1', 'NEXT FIXTURE 2', 'NEXT FIXTURE 3'],
   ]
 
   for (let i = 0; i < standings.length; i++) {
@@ -112,6 +112,26 @@ export async function GET(request: Request) {
       }
     }
 
+    // Get next 3 upcoming fixtures
+    const { data: nextFx } = await supabase
+      .from('fixtures')
+      .select(`
+        scheduled_date, home_team_id,
+        home_team:teams!fixtures_home_team_id_fkey(name),
+        away_team:teams!fixtures_away_team_id_fkey(name)
+      `)
+      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+      .eq('status', 'scheduled')
+      .order('scheduled_date', { ascending: true })
+      .limit(3) as any
+
+    const upcomingSummary = (nextFx ?? []).map((f: any) => {
+      const isHome = f.home_team_id === teamId
+      const opp = isHome ? f.away_team?.name : f.home_team?.name
+      const date = f.scheduled_date ? String(f.scheduled_date).slice(0, 10) : 'TBC'
+      return `${date}: vs ${opp}${isHome ? ' (H)' : ' (A)'}`
+    })
+
     csvRows.push([
       teamName,
       (i + 1).toString(),
@@ -124,6 +144,9 @@ export async function GET(request: Request) {
       resultsSummary,
       statsDetails[0] || 'N/A',
       statsDetails[1] || 'N/A',
+      upcomingSummary[0] || 'N/A',
+      upcomingSummary[1] || 'N/A',
+      upcomingSummary[2] || 'N/A',
     ])
   }
 

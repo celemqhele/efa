@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { recalculateStandings } from '@/lib/standings-engine'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -13,6 +14,11 @@ export async function GET(request: Request) {
   if (!tournament_id) return Response.json({ error: 'tournament_id required' }, { status: 400 })
 
   const adminSupabase = await createAdminClient()
+
+  // Recalculate standings to ensure group_standings are up to date
+  try { await recalculateStandings(tournament_id) } catch (e: any) {
+    console.error('Standings recalculation failed:', e)
+  }
 
   // 1. Fetch tournament settings
   const { data: tournament } = await adminSupabase

@@ -1,7 +1,39 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { findMatchDay, findTimeWindow, resolveAvailability, getDateForDay, DaySchedule } from '@/lib/scheduling'
-import { parseISO } from 'date-fns'
+import { addDays, format, parseISO } from 'date-fns'
+
+// South African public holidays (shared with fixture-generator)
+const SA_PUBLIC_HOLIDAYS_2025 = new Set([
+  '2025-01-01', '2025-03-21', '2025-04-18', '2025-04-21',
+  '2025-04-27', '2025-05-01', '2025-06-16', '2025-08-09',
+  '2025-09-24', '2025-12-16', '2025-12-25', '2025-12-26',
+])
+const SA_PUBLIC_HOLIDAYS_2026 = new Set([
+  '2026-01-01', '2026-03-21', '2026-04-03', '2026-04-06',
+  '2026-04-27', '2026-05-01', '2026-06-16', '2026-08-09',
+  '2026-09-24', '2026-12-16', '2026-12-25', '2026-12-26',
+])
+
+function isPublicHoliday(dateStr: string): boolean {
+  return SA_PUBLIC_HOLIDAYS_2025.has(dateStr) || SA_PUBLIC_HOLIDAYS_2026.has(dateStr)
+}
+
+function getSlotsPerDay(dateStr: string): number {
+  const date = parseISO(dateStr)
+  const dow = date.getDay()
+  const weekend = dow === 0 || dow === 6
+  if (weekend || isPublicHoliday(dateStr)) return 3
+  return 2
+}
+
+function isBreak(dateStr: string, breaks: Array<{ break_start: string; break_end: string }>): boolean {
+  return breaks.some((b) => {
+    const d = parseISO(dateStr)
+    const start = parseISO(b.break_start)
+    const end = parseISO(b.break_end)
+    return d >= start && d <= end
+  })
+}
 
 export async function POST(request: Request) {
   const supabase = await createAdminClient()
@@ -11,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'tournamentId is required' }, { status: 400 })
   }
 
-  // 1. Get season start date from tournament settings
+  // 1. Get tournament settings (start date + breaks)
   const { data: tournament } = await supabase
     .from('tournaments')
     .select('season_id, settings')
@@ -19,10 +51,15 @@ export async function POST(request: Request) {
     .single()
 
   let seasonStart: string | null = null
+  let breaks: Array<{ break_start: string; break_end: string }> = []
   const settings = (tournament as any)?.settings
   if (settings?.start_date) {
     seasonStart = settings.start_date
-  } else if ((tournament as any)?.season_id) {
+  }
+  if (settings?.breaks) {
+    breaks = settings.breaks
+  }
+  if (!seasonStart && (tournament as any)?.season_id) {
     const { data: season } = await supabase
       .from('seasons')
       .select('start_date')
@@ -35,33 +72,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No season or tournament start date found' }, { status: 400 })
   }
 
-  // 2. Build query — target fixtures that haven't been assigned a day yet
+  // 2. Fetch all unscheduled fixtures for this tournament, ordered FIFO
   let query = supabase
     .from('fixtures')
-    .select(`
-      id, matchday, scheduled_date,
-      home_team:teams!fixtures_home_team_id_fkey(manager_id),
-      away_team:teams!fixtures_away_team_id_fkey(manager_id)
-    `)
+    .select('id, matchday, home_team_id, away_team_id')
     .eq('tournament_id', tournamentId)
     .is('assigned_day', null)
 
   if (matchday) {
     query = query.eq('matchday', matchday)
-  } else {
-    const { data: earliest } = await supabase
-      .from('fixtures')
-      .select('matchday')
-      .eq('tournament_id', tournamentId)
-      .is('assigned_day', null)
-      .order('matchday', { ascending: true })
-      .limit(1)
-    if (earliest && earliest.length > 0) {
-      query = query.eq('matchday', earliest[0].matchday)
-    }
   }
 
-  const { data: fixtures } = await query
+  const { data: fixtures } = await query.order('matchday', { ascending: true })
 
   if (!fixtures || fixtures.length === 0) {
     return NextResponse.json({
@@ -72,68 +94,83 @@ export async function POST(request: Request) {
     })
   }
 
-  const targetMatchday = fixtures[0].matchday
+  // 3. Get all already-scheduled fixtures for team/day conflict detection
+  const { data: scheduledFx } = await supabase
+    .from('fixtures')
+    .select('home_team_id, away_team_id, scheduled_date')
+    .eq('tournament_id', tournamentId)
+    .not('scheduled_date', 'is', null)
 
-  // 3. Fetch manager availability
-  const managerIds = [
-    ...new Set(
-      fixtures.flatMap((f) => [
-        (f.home_team as any)?.manager_id,
-        (f.away_team as any)?.manager_id,
-      ]).filter(Boolean),
-    ),
-  ]
+  const teamDateSet = new Set<string>()
+  for (const sfx of scheduledFx ?? []) {
+    if (sfx.scheduled_date) {
+      const dateOnly = String(sfx.scheduled_date).slice(0, 10)
+      teamDateSet.add(`${sfx.home_team_id}|${dateOnly}`)
+      teamDateSet.add(`${sfx.away_team_id}|${dateOnly}`)
+    }
+  }
 
-  const { data: availabilities } = await supabase
-    .from('manager_availability')
-    .select('*')
-    .in('profile_id', managerIds as string[])
+  // capacity tracking per date
+  const dateSlotCount: Record<string, number> = {}
 
-  const availMap = Object.fromEntries(
-    (availabilities ?? []).map((a) => [a.profile_id, a.schedule as DaySchedule[]]),
-  )
-
-  // 4. Schedule each fixture
+  // 4. FIFO: assign each fixture to the next available slot
   let successCount = 0
   const results: any[] = []
 
   for (const fx of fixtures) {
-    const homeMgr = (fx.home_team as any)?.manager_id
-    const awayMgr = (fx.away_team as any)?.manager_id
+    let currentDate = parseISO(seasonStart)
+    const safety = 730 // Search up to 2 years
+    let assigned = false
 
-    const rawHome = availMap[homeMgr] as DaySchedule[] | undefined
-    const rawAway = availMap[awayMgr] as DaySchedule[] | undefined
+    for (let i = 0; i < safety; i++) {
+      const dateStr = format(currentDate, 'yyyy-MM-dd')
 
-    // Apply null-availability rules
-    const hAvail = resolveAvailability(rawHome, rawAway)
-    const aAvail = resolveAvailability(rawAway, rawHome)
+      if (isBreak(dateStr, breaks)) {
+        currentDate = addDays(currentDate, 1)
+        continue
+      }
 
-    const dayName = findMatchDay(hAvail, aAvail)
-    const window = findTimeWindow(hAvail, aAvail, dayName)
+      const slotsToday = getSlotsPerDay(dateStr)
+      const used = dateSlotCount[dateStr] ?? 0
 
-    const refDate = fx.scheduled_date
-      ? parseISO(fx.scheduled_date)
-      : parseISO(seasonStart)
-    const scheduledDate = getDateForDay(dayName, refDate)
+      if (used < slotsToday) {
+        // Check team conflict
+        const homeConflict = teamDateSet.has(`${fx.home_team_id}|${dateStr}`)
+        const awayConflict = teamDateSet.has(`${fx.away_team_id}|${dateStr}`)
 
-    const { error } = await supabase
-      .from('fixtures')
-      .update({
-        assigned_day: dayName,
-        window_start: window.start,
-        window_end: window.end,
-        scheduled_date: `${scheduledDate}T${window.start}:00`,
-        deadline: `${scheduledDate}T${window.end}:00`,
-      })
-      .eq('id', fx.id)
+        if (!homeConflict && !awayConflict) {
+          // Assign to this date
+          dateSlotCount[dateStr] = used + 1
+          teamDateSet.add(`${fx.home_team_id}|${dateStr}`)
+          teamDateSet.add(`${fx.away_team_id}|${dateStr}`)
 
-    if (!error) {
-      successCount++
-      results.push({
-        id: fx.id,
-        assigned_day: dayName,
-        window: `${window.start}–${window.end}`,
-      })
+          const deadline = `${dateStr}T12:00:00Z`
+          const { error } = await supabase
+            .from('fixtures')
+            .update({
+              scheduled_date: dateStr,
+              deadline,
+            })
+            .eq('id', fx.id)
+
+          if (!error) {
+            successCount++
+            results.push({
+              id: fx.id,
+              matchday: fx.matchday,
+              date: dateStr,
+            })
+          }
+          assigned = true
+          break
+        }
+      }
+
+      currentDate = addDays(currentDate, 1)
+    }
+
+    if (!assigned) {
+      console.warn(`Could not schedule fixture ${fx.id} (MD ${fx.matchday}) — no available slots`)
     }
   }
 
@@ -141,7 +178,7 @@ export async function POST(request: Request) {
     success: true,
     count: successCount,
     total: fixtures.length,
-    matchday: targetMatchday,
+    matchday: matchday ?? fixtures[0].matchday,
     results,
   })
 }

@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { generateTBCKnockouts } from '@/lib/tournament-progression'
+import { recalculateStandings } from '@/lib/standings-engine'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -19,8 +20,12 @@ export async function POST(request: Request) {
 
   const adminSupabase = await createAdminClient()
 
-  // Verify all group fixtures are confirmed (skip if manual qualifiers provided?)
-  // Actually it's better to keep the check as a safety net.
+  // Recalculate standings to ensure group_standings are up to date
+  try { await recalculateStandings(tournament_id) } catch (e: any) {
+    console.error('Standings recalculation failed:', e)
+  }
+
+  // Verify all group fixtures are confirmed (skip if manual qualifiers provided)
   const { count: pendingGroups } = await adminSupabase
     .from('fixtures')
     .select('*', { count: 'exact', head: true })
@@ -34,7 +39,7 @@ export async function POST(request: Request) {
 
   const result = await generateTBCKnockouts(adminSupabase, tournament_id, !!shuffle, manual_qualifiers)
   if (result.error) {
-    return Response.json({ error: result.error }, { status: result.error === 'SF fixtures already exist' ? 409 : 500 })
+    return Response.json({ error: result.error }, { status: result.error === 'Knockout fixtures already exist' ? 409 : 500 })
   }
 
   await adminSupabase.from('audit_log').insert({

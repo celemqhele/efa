@@ -51,7 +51,7 @@ export default async function TournamentsPage() {
   const completedCounts: Record<string, number> = {}
   for (const f of (fixtures ?? []) as any[]) {
     fixtureCounts[f.tournament_id] = (fixtureCounts[f.tournament_id] ?? 0) + 1
-    if (f.status === 'completed') {
+    if (f.status === 'confirmed') {
       completedCounts[f.tournament_id] = (completedCounts[f.tournament_id] ?? 0) + 1
     }
   }

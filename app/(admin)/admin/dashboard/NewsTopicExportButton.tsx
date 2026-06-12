@@ -54,18 +54,18 @@ export default function NewsTopicExportButton({ tournaments }: Props) {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-left">
-          <div className="bg-white dark:bg-navy-card rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in border border-navy-border">
+          <div className="bg-bg-surface rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in border border-border">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-foreground-primary flex items-center gap-2">
-                <Trophy size={20} className="text-gold" />
+                <Trophy size={20} className="text-accent" />
                 Select Tournament
               </h3>
-              <button onClick={() => setShowResetConfirm(false)} className="text-foreground-muted hover:text-foreground-primary">
+              <button onClick={() => setShowResetConfirm(false)} className="text-text-muted hover:text-foreground-primary">
                 <X size={20} />
               </button>
             </div>
             
-            <p className="text-sm text-foreground-secondary mb-6">
+            <p className="text-sm text-text-muted mb-6">
               Select which competition you want to extract news data from. 
               This will compile results, form, and deep stats for all teams into a CSV.
             </p>
@@ -76,13 +76,13 @@ export default function NewsTopicExportButton({ tournaments }: Props) {
                   key={t.id}
                   disabled={loading}
                   onClick={() => handleExport(t.id, t.name)}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-navy-light/50 border border-navy-border hover:border-gold/50 hover:bg-gold/5 transition-all group"
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-bg-surface/50 border border-border hover:border-accent/50 hover:bg-accent/5 transition-all group"
                 >
                   <div className="text-left">
                     <p className="text-sm font-bold text-foreground-primary">{t.name}</p>
-                    <p className="text-[10px] text-foreground-muted uppercase tracking-widest font-bold">{t.type}</p>
+                    <p className="text-[10px] text-text-muted uppercase tracking-widest font-bold">{t.type}</p>
                   </div>
-                  <ChevronRight size={18} className="text-foreground-muted group-hover:text-gold transition-colors" />
+                  <ChevronRight size={18} className="text-text-muted group-hover:text-accent transition-colors" />
                 </button>
               ))}
             </div>
@@ -90,7 +90,7 @@ export default function NewsTopicExportButton({ tournaments }: Props) {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="flex-1 px-4 py-2 text-sm font-medium text-foreground-muted hover:text-foreground-primary transition-colors"
+                className="flex-1 px-4 py-2 text-sm font-medium text-text-muted hover:text-foreground-primary transition-colors"
               >
                 Cancel
               </button>
