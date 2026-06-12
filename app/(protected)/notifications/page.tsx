@@ -3,28 +3,34 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { MarkAllReadButton, NotificationRow, TeamChangeRequestRow } from './NotificationActions'
+import {
+  Bell, Trophy, CalendarClock, Swords, AlertTriangle,
+  UserPlus, CheckCircle, X, Info, Star, Ban, RefreshCw,
+} from 'lucide-react'
+import type { ReactNode } from 'react'
 
 export const revalidate = 0
 
-// --- Notification type ? emoji icon -----------------------------------------
+// --- Notification type ? icon -------------------------------------------------
 
-const NOTIFICATION_ICON: Record<string, string> = {
-  match_reminder: '?',
-  result_confirmed: '?',
-  fixture_postponed: '??',
-  fixtures_released: '??',
-  sacking: '??',
-  team_request: '??',
-  team_request_approved: '?',
-  team_request_denied: '?',
-  team_request_reviewed: '?',
-  deadline_warning: '??',
-  super_cup: '??',
-  qualification: '?',
+const NOTIFICATION_ICON: Record<string, ReactNode> = {
+  match_reminder: <Bell className="w-4 h-4" />,
+  result_confirmed: <Trophy className="w-4 h-4" />,
+  fixture_postponed: <CalendarClock className="w-4 h-4" />,
+  fixtures_released: <Swords className="w-4 h-4" />,
+  sacking: <AlertTriangle className="w-4 h-4" />,
+  manager_sacked: <Ban className="w-4 h-4" />,
+  team_request: <UserPlus className="w-4 h-4" />,
+  team_request_approved: <CheckCircle className="w-4 h-4" />,
+  team_request_denied: <X className="w-4 h-4" />,
+  team_request_reviewed: <Info className="w-4 h-4" />,
+  deadline_warning: <AlertTriangle className="w-4 h-4" />,
+  super_cup: <Star className="w-4 h-4" />,
+  qualification: <Star className="w-4 h-4" />,
 }
 
-function getIcon(type: string): string {
-  return NOTIFICATION_ICON[type] ?? '??'
+function getIcon(type: string): ReactNode {
+  return NOTIFICATION_ICON[type] ?? <Bell className="w-4 h-4" />
 }
 
 // --- Page ---------------------------------------------------------------------
@@ -102,8 +108,8 @@ export default async function NotificationsPage() {
       {isAdmin && pendingRequests && pendingRequests.length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 pt-4 pb-2 border-b border-border">
-            <h2 className="section-header mb-0">
-              <span>??</span> Pending Team Requests
+              <h2 className="section-header mb-0 gap-2">
+                <RefreshCw className="w-5 h-5 shrink-0" /> Pending Team Requests
               <span className="ml-auto text-xs font-normal text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full">
                 {pendingRequests.length}
               </span>
@@ -120,7 +126,7 @@ export default async function NotificationsPage() {
       {/* -- No notifications at all ----------------------------------------- */}
       {allNotifications.length === 0 && (
         <div className="card p-16 text-center">
-          <div className="text-5xl mb-4">??</div>
+          <Bell className="w-12 h-12 mx-auto text-text-muted" />
           <p className="text-text-muted font-medium">No notifications yet</p>
           <p className="text-foreground-muted text-sm mt-1">
             You&apos;ll see match reminders, result updates, and more here.

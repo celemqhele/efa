@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Check, X, RefreshCw } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 // --- Mark All As Read --------------------------------------------------------
 
@@ -53,7 +54,7 @@ export function NotificationRow({
     type: string
     data: any
   }
-  icon: string
+  icon: ReactNode
 }) {
   const router = useRouter()
 
