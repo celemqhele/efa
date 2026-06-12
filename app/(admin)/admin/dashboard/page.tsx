@@ -7,11 +7,11 @@ import Link from 'next/link'
 import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
 import RecalculateStandingsButton from '@/components/ui/RecalculateStandingsButton'
 import RecalculateManagerStatsButton from '@/components/ui/RecalculateManagerStatsButton'
-import RefreshDNAButton from '@/components/ui/RefreshDNAButton'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 import DueFixturesExportButton from './DueFixturesExportButton'
 import NewsTopicExportButton from './NewsTopicExportButton'
 import { getAppTodayKey, getAppDayUtcRange, APP_TIME_ZONE } from '@/lib/app-time'
+import { Trophy, CheckCircle2, CalendarDays, RefreshCw, Flag, ClipboardList, Hourglass } from 'lucide-react'
 
 export const revalidate = 0
 
@@ -164,7 +164,7 @@ export default async function AdminDashboardPage() {
           <Link href="/admin/managers" className="btn-outline text-xs px-3 py-1.5">Managers</Link>
           <Link href="/admin/hall-of-fame" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Hall of Fame</Link>
           <Link href="/admin/export" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Export</Link>
-          <RefreshDNAButton />
+          <Link href="/admin/dna" className="btn-outline text-xs px-3 py-1.5">DNA</Link>
         </div>
       </div>
 
@@ -208,7 +208,7 @@ export default async function AdminDashboardPage() {
         <div className="lg:col-span-1">
           <div className="card p-5">
             <h2 className="section-header">
-              <span className="text-gold">🏆</span> Tournaments
+              <Trophy className="w-5 h-5 text-gold" /> Tournaments
             </h2>
             <div className="space-y-3">
               {(tournaments ?? []).length === 0 && (
@@ -252,7 +252,7 @@ export default async function AdminDashboardPage() {
         <div className="lg:col-span-2">
           <div className="card p-5">
             <h2 className="section-header">
-              <span className="text-gold">📅</span> Fixtures Due
+              <CalendarDays className="w-5 h-5 text-gold" /> Fixtures Due
               {(dueFixtures?.length ?? 0) > 0 && (
                 <span className="ml-auto text-xs bg-gold/20 text-gold border border-gold/30 rounded-full px-2 py-0.5">
                   {dueFixtures!.length}
@@ -277,7 +277,7 @@ export default async function AdminDashboardPage() {
             </h2>
             {(dueFixtures?.length ?? 0) === 0 ? (
               <div className="text-center py-8 text-slate-500">
-                <p className="text-4xl mb-2">✅</p>
+                <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-2" />
                 <p className="text-sm">All caught up — no fixtures due.</p>
               </div>
             ) : (
@@ -369,7 +369,7 @@ export default async function AdminDashboardPage() {
         {/* Pending Confirmations */}
         <div className="card p-5">
           <h2 className="section-header">
-            <span className="text-yellow-400">⏳</span> Pending Confirmations
+            <Hourglass className="w-5 h-5 text-yellow-400" /> Pending Confirmations
             {(pendingConfirmations?.length ?? 0) > 0 && (
               <span className="ml-auto text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-full px-2 py-0.5">
                 {pendingConfirmations!.length}
@@ -403,7 +403,7 @@ export default async function AdminDashboardPage() {
         {/* Team Change Requests */}
         <div className="card p-5">
           <h2 className="section-header">
-            <span className="text-blue-400">🔄</span> Team Change Requests
+            <RefreshCw className="w-5 h-5 text-blue-400" /> Team Change Requests
             {(changeRequests?.length ?? 0) > 0 && (
               <span className="ml-auto text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full px-2 py-0.5">
                 {changeRequests!.length}
@@ -448,7 +448,7 @@ export default async function AdminDashboardPage() {
         {/* Flagged Abandonments */}
         <div className="card p-5">
           <h2 className="section-header">
-            <span className="text-red-400">🚩</span> Flagged Teams
+            <Flag className="w-5 h-5 text-red-400" /> Flagged Teams
           </h2>
           {(flaggedTeams?.length ?? 0) === 0 ? (
             <p className="text-slate-500 text-sm">No flagged teams.</p>
@@ -478,7 +478,7 @@ export default async function AdminDashboardPage() {
         {/* Recent Audit Log */}
         <div className="card p-5">
           <h2 className="section-header">
-            <span className="text-slate-400">📋</span> Recent Audit Log
+            <ClipboardList className="w-5 h-5 text-slate-400" /> Recent Audit Log
           </h2>
           {(auditLog?.length ?? 0) === 0 ? (
             <p className="text-slate-500 text-sm">No audit entries.</p>

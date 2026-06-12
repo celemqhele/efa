@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import WhatsAppButton from './WhatsAppButton'
 import { Button } from './Button'
+import { Trophy, Gamepad2 } from 'lucide-react'
 
 interface Props {
   fixtureId: string
@@ -58,12 +59,12 @@ export default function DashboardFixtureActions({
   }
 
   const homeMsg = isAwaiting
-    ? `Hi ${homeManagerName ?? 'there'}! Please confirm the result for your match vs ${awayTeamName} on the EFA platform. 🏆`
-    : `Hi ${homeManagerName ?? 'there'}! Just a reminder that your fixture vs ${awayTeamName} is scheduled for today. Please submit your result after playing. 🎮`
+    ? `Hi ${homeManagerName ?? 'there'}! Please confirm the result for your match vs ${awayTeamName} on the EFA platform.`
+    : `Hi ${homeManagerName ?? 'there'}! Just a reminder that your fixture vs ${awayTeamName} is scheduled for today. Please submit your result after playing.`
 
   const awayMsg = isAwaiting
-    ? `Hi ${awayManagerName ?? 'there'}! Please confirm the result for your match vs ${homeTeamName} on the EFA platform. 🏆`
-    : `Hi ${awayManagerName ?? 'there'}! Just a reminder that your fixture vs ${homeTeamName} is scheduled for today. Please submit your result after playing. 🎮`
+    ? `Hi ${awayManagerName ?? 'there'}! Please confirm the result for your match vs ${homeTeamName} on the EFA platform.`
+    : `Hi ${awayManagerName ?? 'there'}! Just a reminder that your fixture vs ${homeTeamName} is scheduled for today. Please submit your result after playing.`
 
   if (isFinished) return null
   if (done) return <span className="text-feedback-warning text-xs font-semibold">Postponed</span>

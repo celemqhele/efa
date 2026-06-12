@@ -5,6 +5,7 @@ import UserActionButtons from './UserActionButtons'
 import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
 import ManagerApplicationButtons from '@/components/ui/ManagerApplicationButtons'
 import { Card } from '@/components/ui/Card'
+import { AlertTriangle, Star, RefreshCw } from 'lucide-react'
 
 export const revalidate = 0
 
@@ -74,7 +75,7 @@ export default async function UsersManagePage() {
       {(managerApplications?.length ?? 0) > 0 && (
         <Card className="p-space-5">
           <h2 className="section-header">
-            <span className="text-accent">⭐</span>
+            <Star className="w-5 h-5 text-accent" />
             Manager Applications
             <span className="ml-auto text-xs bg-accent/20 text-accent border border-accent/30 rounded-full px-space-2 py-0.5">
               {managerApplications!.length}
@@ -147,7 +148,7 @@ export default async function UsersManagePage() {
       {(changeRequests?.length ?? 0) > 0 && (
         <Card className="p-space-5">
           <h2 className="section-header">
-            <span className="text-feedback-warning">🔄</span>
+            <RefreshCw className="w-5 h-5 text-feedback-warning" />
             Pending Team Change Requests
             <span className="ml-auto text-xs bg-feedback-warning/20 text-feedback-warning border border-feedback-warning/30 rounded-full px-space-2 py-0.5">
               {changeRequests!.length}
@@ -272,7 +273,7 @@ export default async function UsersManagePage() {
                         <span className={`inline-flex items-center gap-space-1 text-sm font-bold ${
                           team.abandon_count >= 3 ? 'text-feedback-error' : 'text-text-muted'
                         }`}>
-                          {team.abandon_count >= 3 && <span className="text-xs">⚠</span>}
+                          {team.abandon_count >= 3 && <AlertTriangle className="w-3 h-3 inline" />}
                           {team.abandon_count}
                         </span>
                       ) : (

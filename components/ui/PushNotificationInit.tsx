@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Bell } from 'lucide-react'
 
 const STORAGE_KEY = 'efa-push-dismissed'
 
@@ -71,7 +72,7 @@ export default function PushNotificationInit() {
   return (
     <div className="fixed bottom-20 lg:bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100vw-2rem)] max-w-md">
       <div className="card border border-gold/40 p-4 shadow-2xl shadow-black/40 flex items-start gap-3 animate-slide-up">
-        <span className="text-2xl shrink-0">🔔</span>
+        <Bell className="w-6 h-6 text-gold shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-foreground-primary text-sm">Enable match notifications</p>
           <p className="text-xs text-text-muted mt-0.5">

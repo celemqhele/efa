@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { CheckCircle2, Inbox, X } from 'lucide-react'
 
 const POSTPONE_REASONS = [
   'Internet / connection outage',
@@ -193,7 +194,7 @@ export default function BatchPostponeModal({ teamId, teamName, onClose }: Props)
           <div className="p-6 space-y-4">
             {previewFixtures.length === 0 ? (
               <div className="text-center py-6">
-                <p className="text-3xl mb-2">📭</p>
+                <Inbox className="w-8 h-8 text-text-muted mx-auto mb-2" />
                 <p className="text-text-muted text-sm">No scheduled fixtures found in that date range.</p>
               </div>
             ) : (
@@ -264,7 +265,7 @@ export default function BatchPostponeModal({ teamId, teamName, onClose }: Props)
         {/* Step 3 — Done */}
         {step === 3 && (
           <div className="p-8 text-center space-y-3">
-            <p className="text-3xl">✅</p>
+            <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto" />
             <p className="text-foreground-primary font-semibold">
               {resultCount} fixture{resultCount !== 1 ? 's' : ''} rescheduled
             </p>

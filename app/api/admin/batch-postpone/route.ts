@@ -143,7 +143,7 @@ export async function POST(request: Request) {
         inAppRows.push({
           user_id: uid,
           type: 'fixture_postponed',
-          title: '📅 Match Postponed',
+          title: 'Match Postponed',
           body: `${matchLabel} has been moved from ${oldWhen} to ${newWhen}.${reason ? ` Reason: ${reason}` : ''}`,
           data: {
             fixture_id: u.id,
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
 
         if (subs?.length) {
           await sendPushToUser(subs, {
-            title: '📅 Match Postponed',
+            title: 'Match Postponed',
             body: `${matchLabel} moved to ${newWhen}`,
             url: fixtureUrl,
             tag: `postpone-${u.id}`,

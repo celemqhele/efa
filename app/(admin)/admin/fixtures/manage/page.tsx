@@ -6,6 +6,7 @@ import FixtureActions from './FixtureActions'
 import DateNav from '@/components/ui/DateNav'
 import { getAppTodayKey, getAppDayUtcRange, APP_TIME_ZONE } from '@/lib/app-time'
 import ScheduleRoundPanel from './ScheduleRoundPanel'
+import { CalendarDays } from 'lucide-react'
 
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
@@ -110,7 +111,7 @@ export default async function FixturesManagePage({
 
       {orderedTypes.length === 0 ? (
         <div className="card p-12 text-center text-text-muted">
-          <p className="text-4xl mb-3">📅</p>
+          <CalendarDays className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p>No fixtures scheduled for this day.</p>
         </div>
       ) : (

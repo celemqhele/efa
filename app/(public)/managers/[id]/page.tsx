@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { format } from 'date-fns'
+import { ClipboardList, BarChart3, Shirt, Binoculars, Shield } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,7 +84,7 @@ export default async function ManagerProfilePage({ params }: PageProps) {
         <div className="lg:col-span-1 space-y-6">
           <div className="card p-5">
             <h2 className="section-header text-sm">
-              <span className="text-gold">📋</span> Profile Details
+              <ClipboardList className="w-5 h-5 text-gold" /> Profile Details
             </h2>
             <div className="space-y-4">
               <div>
@@ -103,7 +104,7 @@ export default async function ManagerProfilePage({ params }: PageProps) {
 
           <div className="card p-5">
             <h2 className="section-header text-sm">
-              <span className="text-gold">📊</span> Career Statistics
+              <BarChart3 className="w-5 h-5 text-gold" /> Career Statistics
             </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 rounded-xl bg-navy-light/50 border border-navy-border/50">
@@ -132,12 +133,12 @@ export default async function ManagerProfilePage({ params }: PageProps) {
         <div className="lg:col-span-2 space-y-6">
           <div className="card p-5">
             <h2 className="section-header">
-              <span className="text-gold">👔</span> Management History
+              <Shirt className="w-5 h-5 text-gold" /> Management History
             </h2>
             
             {(tenures ?? []).length === 0 ? (
               <div className="py-12 text-center text-foreground-muted">
-                <p className="text-3xl mb-2">🔭</p>
+                <Binoculars className="w-8 h-8 text-text-muted mx-auto mb-2" />
                 <p className="text-sm font-medium">No management history found.</p>
               </div>
             ) : (
@@ -162,7 +163,7 @@ export default async function ManagerProfilePage({ params }: PageProps) {
                                 src={getTeamLogo(tenure.team.logo_league_folder, tenure.team.logo_team_slug, 'standings_row')} 
                                 alt={tenure.team.name} width={32} height={32} className="object-contain" 
                               />
-                            ) : <span className="text-xl">🛡️</span>}
+                            ) : <Shield className="w-5 h-5 text-text-muted" />}
                           </div>
                           <div className="min-w-0">
                             <Link href={`/teams/${tenure.team_id}`} className="font-bold text-foreground-primary hover:text-gold transition-colors truncate block">

@@ -38,8 +38,8 @@ export async function GET(request: Request) {
     const fixtureUrl = `/fixtures/${fixture.id}`
 
     const reminderPayload = {
-      title: `⏰ Match Reminder — MD${fixture.matchday}`,
-      body: `${label} — Have you played yet? Submit your result and send screenshots to the WhatsApp group! 📱`,
+      title: `Match Reminder — MD${fixture.matchday}`,
+      body: `${label} — Have you played yet? Submit your result and send screenshots to the WhatsApp group!`,
       url: fixtureUrl,
       tag: `reminder-${fixture.id}`,
     }

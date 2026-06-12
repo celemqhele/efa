@@ -6,6 +6,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import { cropToStatsPanel, parseOcrText } from '@/lib/parse-screenshot-client'
 import { notify } from '@/lib/notifications'
 import ForfeitBalanceBadge from '@/components/ui/ForfeitBalanceBadge'
+import { CheckCircle2, AlertTriangle, Camera, Flag, CircleDot, Check } from 'lucide-react'
 
 interface Team {
   id: string
@@ -426,7 +427,7 @@ export default function ResultSubmitClient({
   if (submitSuccess) {
     return (
       <div className="card p-12 text-center">
-        <div className="text-6xl mb-4">✅</div>
+        <CheckCircle2 className="w-14 h-14 text-green-400 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-foreground-primary mb-2">Result Finalised</h2>
         <p className="text-text-muted mb-6">The result has been saved and standings updated.</p>
         <div className="flex gap-3 justify-center">
@@ -517,7 +518,7 @@ export default function ResultSubmitClient({
                     <span className="font-medium truncate">
                       {fx.home_team?.name} vs {fx.away_team?.name}
                     </span>
-                    {hasConflict && <span className="text-red-400 text-xs ml-1 shrink-0">⚠</span>}
+                    {hasConflict && <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 ml-1" />}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-text-muted text-xs">MD{fx.matchday}</span>
@@ -556,12 +557,12 @@ export default function ResultSubmitClient({
       <div className="lg:col-span-2 space-y-4">
         {!selectedFixture ? (
           <div className="card p-12 text-center text-text-muted">
-            <p className="text-4xl mb-3">⚽</p>
+            <CircleDot className="w-10 h-10 text-text-muted mx-auto mb-3" />
             <p>Select a fixture to submit its result.</p>
           </div>
         ) : isFinished ? (
           <div className="card p-12 text-center space-y-6">
-            <div className="text-5xl">🏁</div>
+            <Flag className="w-12 h-12 text-text-muted mx-auto" />
             <div>
               <h2 className="text-2xl font-bold text-foreground-primary">Fixture Completed</h2>
               <p className="text-text-muted mt-2">
@@ -695,7 +696,7 @@ export default function ResultSubmitClient({
                     id="screenshot-upload"
                   />
                   <label htmlFor="screenshot-upload" className="cursor-pointer block">
-                    <div className="text-4xl mb-2">📸</div>
+                    <Camera className="w-10 h-10 text-text-muted mx-auto mb-2" />
                     <p className="text-foreground-secondary text-sm font-medium">Click to upload screenshot</p>
                     <p className="text-text-muted text-xs mt-1">PNG, JPG up to 10MB</p>
                   </label>
@@ -714,7 +715,7 @@ export default function ResultSubmitClient({
                     </div>
                   )}
                   {ocrProgress === 100 && (
-                    <p className="mt-3 text-xs text-green-400 text-center">✓ Parsed</p>
+                    <p className="mt-3 text-xs text-green-400 text-center"><Check className="w-3.5 h-3.5 inline" /> Parsed</p>
                   )}
                 </div>
 

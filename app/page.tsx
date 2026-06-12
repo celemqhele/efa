@@ -7,6 +7,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Trophy, ClipboardList, CalendarDays, Flame } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -309,7 +310,7 @@ export default async function HomePage() {
                         />
                       )}
                       <span className="flex-1 text-xs text-text-primary truncate font-medium">{team?.name}</span>
-                      {s.unbeaten_run >= 3 && <span className="text-xs">🔥</span>}
+                      {s.unbeaten_run >= 3 && <Flame className="w-3.5 h-3.5 text-orange-400 inline" />}
                       <span className="text-xs font-bold text-text-primary w-5 text-right">{s.points}</span>
                     </Link>
                   )
@@ -343,15 +344,18 @@ export default async function HomePage() {
             <h2 className="section-header">Quick Links</h2>
             <div className="grid grid-cols-2 gap-space-2">
               {[
-                { href: '/hall-of-fame', label: 'Hall of Fame', icon: '🏆' },
-                { href: '/rules', label: 'Rules', icon: '📋' },
-                { href: '/calendar', label: 'Calendar', icon: '📅' },
-              ].map((link) => (
-                <Link key={link.href} href={link.href} className="flex flex-col items-center gap-space-1.5 p-space-3 rounded-lg bg-bg-elevated border border-border hover:border-accent/40 transition-colors group">
-                  <span className="text-xl group-hover:scale-110 transition-transform">{link.icon}</span>
-                  <span className="text-xs text-text-secondary font-medium">{link.label}</span>
-                </Link>
-              ))}
+                { href: '/hall-of-fame', label: 'Hall of Fame', icon: Trophy },
+                { href: '/rules', label: 'Rules', icon: ClipboardList },
+                { href: '/calendar', label: 'Calendar', icon: CalendarDays },
+              ].map((link) => {
+                const Icon = link.icon
+                return (
+                  <Link key={link.href} href={link.href} className="flex flex-col items-center gap-space-1.5 p-space-3 rounded-lg bg-bg-elevated border border-border hover:border-accent/40 transition-colors group">
+                    <Icon className="w-6 h-6 text-accent group-hover:scale-110 transition-transform" />
+                    <span className="text-xs text-text-secondary font-medium">{link.label}</span>
+                  </Link>
+                )
+              })}
             </div>
           </Card>
         </div>

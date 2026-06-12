@@ -15,7 +15,7 @@ export function Button({
   children, 
   ...props 
 }: ButtonProps) {
-  const baseStyles = 'inline-flex items-center justify-center font-bold rounded-md transition-all duration-fast disabled:opacity-50 disabled:cursor-not-allowed'
+  const baseStyles = 'inline-flex items-center justify-center font-bold rounded-md transition-all duration-fast disabled:opacity-50 disabled:cursor-not-allowed active:scale-95'
   
   const variants = {
     primary: 'bg-accent text-bg-surface hover:bg-accent-hover',
@@ -24,7 +24,7 @@ export function Button({
     destructive: 'bg-feedback-error text-bg-surface hover:opacity-90',
   }
 
-  const sizes = 'px-space-4 py-space-2 text-sm'
+  const sizes = 'px-5 py-3 sm:px-4 sm:py-2.5 text-sm min-h-[44px] sm:min-h-0'
 
   return (
     <Component 

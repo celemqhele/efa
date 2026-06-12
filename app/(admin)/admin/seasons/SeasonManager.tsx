@@ -8,6 +8,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Check, X } from 'lucide-react'
 
 // --- Types -------------------------------------------------------------------
 
@@ -281,7 +282,7 @@ function TeamPickerButton({
         <div className="w-5 h-5 rounded bg-bg-base shrink-0" />
       )}
       <span className="truncate flex-1">{team.name}</span>
-      {selected && !badgeText && <span className="ml-auto text-current shrink-0">✓</span>}
+      {selected && !badgeText && <Check className="w-3.5 h-3.5 ml-auto shrink-0" />}
       {badgeText && <span className="ml-auto shrink-0 text-[9px] text-text-muted">{badgeText}</span>}
     </Button>
   )
@@ -415,7 +416,7 @@ function StartPhaseDialog({
               Step {step} of 5: {STEP_LABELS[step - 1]}
             </p>
           </div>
-          <Button variant="ghost" onClick={onClose}>✕</Button>
+          <Button variant="ghost" onClick={onClose}><X className="w-4 h-4" /></Button>
         </div>
 
         {/* Progress bar */}
@@ -553,7 +554,7 @@ function StartPhaseDialog({
                               className="text-[10px] py-0 px-space-1"
                               onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[team.id]; return n })}
                             >
-                              ✕
+                              <X className="w-3 h-3" />
                             </Button>
                           </div>
                         ) : (

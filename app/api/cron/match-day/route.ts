@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
       if (subs?.length) {
         await sendPushToUser(subs, {
-          title: `🏠 Matchday! You're playing at HOME`,
+          title: `Matchday! You're playing at HOME`,
           body: `${label} · ${md}\nCreate the matchroom and share the code with your opponent!`,
           url: fixtureUrl,
           tag: `matchday-${fixture.id}-home`,
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
 
       if (subs?.length) {
         await sendPushToUser(subs, {
-          title: `✈️ Matchday! You're playing AWAY`,
+          title: `Matchday! You're playing AWAY`,
           body: `${label} · ${md}\nWait for ${home?.name ?? 'home team'} to share the matchroom code.`,
           url: fixtureUrl,
           tag: `matchday-${fixture.id}-away`,

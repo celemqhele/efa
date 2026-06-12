@@ -5,11 +5,31 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { calculateProbability } from '@/lib/probability-engine'
-import { getTeamDNA, buildTeamStats } from '@/lib/dna-engine'
+import { getTeamDNAFromDB } from '@/lib/dna-engine'
 import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
 import MatchroomCode from '@/components/ui/MatchroomCode'
 import ReactionsPanel from '@/components/ui/ReactionsPanel'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
+import {
+  Gamepad2, Home, Plane, BarChart3, Swords, Sword, Dna, TrendingUp,
+  MessageSquare, CheckCircle, Hourglass, Zap, Check, X,
+  Crown, Drama, Brain, Shield, Dumbbell,
+  ArrowLeftRight, Triangle, Crosshair, Scale,
+} from 'lucide-react'
+
+const DNA_ICONS: Record<string, React.ReactNode> = {
+  crown: <Crown className="w-3.5 h-3.5" />,
+  theater: <Drama className="w-3.5 h-3.5" />,
+  zap: <Zap className="w-3.5 h-3.5" />,
+  brain: <Brain className="w-3.5 h-3.5" />,
+  dagger: <Sword className="w-3.5 h-3.5" />,
+  shield: <Shield className="w-3.5 h-3.5" />,
+  muscle: <Dumbbell className="w-3.5 h-3.5" />,
+  arrows_horizontal: <ArrowLeftRight className="w-3.5 h-3.5" />,
+  triangle: <Triangle className="w-3.5 h-3.5" />,
+  target: <Crosshair className="w-3.5 h-3.5" />,
+  scale: <Scale className="w-3.5 h-3.5" />,
+}
 
 export const revalidate = 30
 
@@ -71,23 +91,23 @@ function ProbabilityBar({
   return (
     <div className="space-y-3">
       <div className="flex justify-between text-sm font-semibold">
-        <span className="text-gold">{home}%</span>
+        <span className="text-feedback-success">{home}%</span>
         <span className="text-text-muted">{draw}% Draw</span>
-        <span className="text-foreground-secondary">{away}%</span>
+        <span className="text-accent">{away}%</span>
       </div>
       <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
         <div
-          className="bg-gold rounded-l-full transition-all duration-700"
+          className="bg-feedback-success rounded-l-full transition-all duration-700"
           style={{ width: `${home}%` }}
           title={`${homeName} win ${home}%`}
         />
         <div
-          className="bg-slate-600 transition-all duration-700"
+          className="bg-text-muted transition-all duration-700"
           style={{ width: `${draw}%` }}
           title={`Draw ${draw}%`}
         />
         <div
-          className="bg-slate-400 rounded-r-full transition-all duration-700"
+          className="bg-accent rounded-r-full transition-all duration-700"
           style={{ width: `${away}%` }}
           title={`${awayName} win ${away}%`}
         />
@@ -253,14 +273,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     .in('result_id', awayFixtureResults.map((r: any) => r.id))
     .limit(10)
 
-  const homeDNA =
-    homeMatchStatsList && homeMatchStatsList.length > 0
-      ? getTeamDNA(buildTeamStats(homeMatchStatsList as any, true, []))
-      : []
-  const awayDNA =
-    awayMatchStatsList && awayMatchStatsList.length > 0
-      ? getTeamDNA(buildTeamStats(awayMatchStatsList as any, false, []))
-      : []
+  const homeDNA = await getTeamDNAFromDB(supabase as any, fixture.home_team_id)
+  const awayDNA = await getTeamDNAFromDB(supabase as any, fixture.away_team_id)
 
   // Derived state
   const homeTeam = (fixture as any).home_team
@@ -412,13 +426,13 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       {!hasResult && (
         <>
           {/* Matchroom Instructions */}
-          <div className="card p-5 border-gold/30 bg-gradient-to-br from-bg-surface to-slate-50">
+          <div className="card p-5 border-accent/20 bg-bg-elevated">
             <h2 className="section-header">
-              <span className="text-gold">🎮</span> Matchroom Instructions
+              <Gamepad2 className="w-5 h-5 text-gold" /> Matchroom Instructions
             </h2>
             <div className="space-y-3">
               <div className="flex items-start gap-3 p-4 rounded-lg bg-gold/10 border border-gold/20">
-                <span className="text-2xl">🏠</span>
+                <Home className="w-5 h-5 text-gold shrink-0 mt-0.5" />
                 <div>
                   <p className="text-gold font-bold text-sm uppercase tracking-wider">
                     HOME — {homeTeam.name}
@@ -431,8 +445,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-navy-border/50 border border-navy-border">
-                <span className="text-2xl">✈️</span>
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-bg-surface border border-border">
+                <Plane className="w-5 h-5 text-foreground-secondary shrink-0 mt-0.5" />
                 <div>
                   <p className="text-foreground-secondary font-bold text-sm uppercase tracking-wider">
                     AWAY — {awayTeam.name}
@@ -458,7 +472,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           {/* Win Probability */}
           <div className="card p-5">
             <h2 className="section-header">
-              <span className="text-gold">📊</span> Win Probability
+              <BarChart3 className="w-5 h-5 text-gold" /> Win Probability
             </h2>
             <ProbabilityBar
               home={probability.home}
@@ -472,7 +486,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           {/* H2H Last 5 */}
           <div className="card p-5">
             <h2 className="section-header">
-              <span className="text-gold">⚔️</span> Head to Head (Last 5)
+              <Swords className="w-5 h-5 text-gold" /> Head to Head (Last 5)
             </h2>
             {h2hList.length === 0 ? (
               <p className="text-text-muted text-sm">No previous meetings.</p>
@@ -536,7 +550,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           {/* Team DNA */}
           <div className="card p-5">
             <h2 className="section-header">
-              <span className="text-gold">🧬</span> Team DNA
+              <Dna className="w-5 h-5 text-gold" /> Team DNA
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -550,7 +564,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                         key={dna.label}
                         className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${dna.color}`}
                       >
-                        {dna.emoji} {dna.label}
+                        {DNA_ICONS[dna.iconName]} {dna.label}
                       </span>
                     ))}
                   </div>
@@ -569,7 +583,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                         key={dna.label}
                         className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${dna.color}`}
                       >
-                        {dna.emoji} {dna.label}
+                        {DNA_ICONS[dna.iconName]} {dna.label}
                       </span>
                     ))}
                   </div>
@@ -583,7 +597,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           {/* Form */}
           <div className="card p-5">
             <h2 className="section-header">
-              <span className="text-gold">📈</span> Recent Form (Last 6)
+              <TrendingUp className="w-5 h-5 text-gold" /> Recent Form (Last 6)
             </h2>
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
@@ -606,7 +620,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           {matchStats && (
             <div className="card p-5">
               <h2 className="section-header">
-                <span className="text-gold">📊</span> Match Statistics
+                <BarChart3 className="w-5 h-5 text-gold" /> Match Statistics
               </h2>
               <div className="space-y-3">
                 <StatBar label="Possession %" home={matchStats.home_possession} away={matchStats.away_possession} />
@@ -631,7 +645,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           {/* Emoji Reactions */}
           <div className="card p-5">
             <h2 className="section-header">
-              <span className="text-gold">💬</span> Reactions
+              <MessageSquare className="w-5 h-5 text-gold" /> Reactions
             </h2>
             <ReactionsPanel
               fixtureId={id}
@@ -647,7 +661,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       {!hasResult && (
         <div className="card p-5">
           <h2 className="section-header">
-            <span className="text-gold">✅</span> Score Submission
+            <CheckCircle className="w-5 h-5 text-gold" /> Score Submission
           </h2>
 
           {confirmationStatus === 'awaiting_confirmation' && (
@@ -704,7 +718,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       {waitingReports && waitingReports.length > 0 && (
         <div className="card p-5 border-yellow-500/30">
           <h2 className="section-header">
-            <span>⏳</span> Waiting Reports
+            <Hourglass className="w-5 h-5 text-accent" /> Waiting Reports
           </h2>
           <p className="text-sm text-yellow-400">
             {waitingReports.length} team(s) have reported waiting for their opponent to be ready.
@@ -716,7 +730,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       <details className="card p-5 group">
         <summary className="section-header cursor-pointer list-none flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <span className="text-gold">⚡</span> Disconnect Rules
+            <Zap className="w-5 h-5 text-gold" /> Disconnect Rules
           </span>
           <span className="text-text-muted text-xs group-open:hidden">Tap to expand</span>
           <span className="text-text-muted text-xs hidden group-open:inline">Collapse</span>
@@ -730,7 +744,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
             <ul className="space-y-1">
               {OFFICIAL_RULES.map((r, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-foreground-secondary">
-                  <span>{r.icon}</span>
+                  {r.icon === 'check' ? <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" /> : r.icon === 'cross' ? <X className="w-4 h-4 text-red-500 shrink-0 mt-0.5" /> : <Home className="w-4 h-4 text-gold shrink-0 mt-0.5" />}
                   <span>{r.rule}</span>
                 </li>
               ))}
@@ -768,7 +782,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       {/* ── BANTER BOARD ─────────────────────────────────────────────────── */}
       <div className="card p-5">
         <h2 className="section-header">
-          <span className="text-gold">💬</span> Banter Board
+          <MessageSquare className="w-5 h-5 text-gold" /> Banter Board
           <span className="text-text-muted text-sm font-normal ml-auto">
             {comments.length} comment{comments.length !== 1 ? 's' : ''}
           </span>

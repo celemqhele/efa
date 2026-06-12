@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Lock } from 'lucide-react'
 import ChangePasswordModal from './ChangePasswordModal'
 
 export default function ProfileActions({ userEmail }: { userEmail: string }) {
@@ -17,7 +18,7 @@ export default function ProfileActions({ userEmail }: { userEmail: string }) {
 
       <div className="card p-5 space-y-3">
         <h2 className="section-header">
-          <span>🔐</span> Account Security
+          <Lock className="w-5 h-5 text-gold" /> Account Security
         </h2>
         <p className="text-text-muted text-xs">
           To reset a forgotten password, contact an admin — they can reset it to a default via the database.

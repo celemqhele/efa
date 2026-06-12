@@ -17,7 +17,7 @@ export interface TeamStats {
 
 export interface DNAProfile {
   label: string
-  emoji: string
+  iconName: string
   color: string
   level: string
   score: number
@@ -68,15 +68,15 @@ function tally(...ws: W[]): number {
 }
 
 // ── Profile definitions ──────────────────────────────────────────────────────
-const DNA_PROFILES: Array<{
+export const DNA_PROFILES: Array<{
   label: string
-  emoji: string
+  iconName: string
   color: string
   score: (s: TeamStats) => number
 }> = [
   {
     label: 'Elite Dominators',
-    emoji: '👑',
+    iconName: 'crown',
     color: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -104,7 +104,7 @@ const DNA_PROFILES: Array<{
 
   {
     label: 'Tiki-Taka',
-    emoji: '🎭',
+    iconName: 'theater',
     color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -132,7 +132,7 @@ const DNA_PROFILES: Array<{
 
   {
     label: 'Gegenpressing',
-    emoji: '⚡',
+    iconName: 'zap',
     color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -160,7 +160,7 @@ const DNA_PROFILES: Array<{
 
   {
     label: 'Disciplined Pressers',
-    emoji: '🧠',
+    iconName: 'brain',
     color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -188,7 +188,7 @@ const DNA_PROFILES: Array<{
 
   {
     label: 'Quick Counter',
-    emoji: '🗡️',
+    iconName: 'dagger',
     color: 'bg-red-500/20 text-red-400 border-red-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -216,7 +216,7 @@ const DNA_PROFILES: Array<{
 
   {
     label: 'Long Ball Counter',
-    emoji: '🛡️',
+    iconName: 'shield',
     color: 'bg-slate-400/20 text-slate-300 border-slate-400/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -244,7 +244,7 @@ const DNA_PROFILES: Array<{
 
   {
     label: 'The Grinders',
-    emoji: '💪',
+    iconName: 'muscle',
     color: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -272,7 +272,7 @@ const DNA_PROFILES: Array<{
 
   {
     label: 'Out Wide',
-    emoji: '↔️',
+    iconName: 'arrows_horizontal',
     color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -300,7 +300,7 @@ const DNA_PROFILES: Array<{
 
   {
     label: 'Set-Piece Specialists',
-    emoji: '📐',
+    iconName: 'triangle',
     color: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -328,7 +328,7 @@ const DNA_PROFILES: Array<{
 
   {
     label: 'Shoot-on-Sight',
-    emoji: '🎯',
+    iconName: 'target',
     color: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
     score: (s) => {
       const pa = s.avg_passes > 0 ? s.avg_successful_passes / s.avg_passes : 0
@@ -359,7 +359,7 @@ const DNA_PROFILES: Array<{
   // Fallback — always scores 0.25, wins only if nothing else qualifies
   {
     label: 'Pragmatic Stabilizers',
-    emoji: '⚖️',
+    iconName: 'scale',
     color: 'bg-green-600/20 text-green-400 border-green-600/30',
     score: () => 0.25,
   },
@@ -728,9 +728,9 @@ export function getTeamDNA(stats: TeamStats): DNAProfile[] {
   const secondaries = scored.slice(1).filter((p) => p.s >= 0.30)
   const result = [primary, ...secondaries].slice(0, 3)
 
-  return result.map(({ label, emoji, color, s }) => ({
+  return result.map(({ label, iconName, color, s }) => ({
     label,
-    emoji,
+    iconName,
     color,
     level: scoreToLevel(s),
     score: s,
@@ -807,4 +807,67 @@ export function buildTeamStats(
       goalsAgainst: goalsAgainstList[i] ?? 0,
     }))
   )
+}
+
+// ── Manual (DB-driven) DNA API ────────────────────────────────────────────
+// Replaces the auto-calculation approach. Playstyles are assigned manually
+// by the AI assistant after reviewing team match stats each matchday.
+
+const PROFILE_COLOR_MAP: Record<string, string> = {}
+const PROFILE_ICON_MAP: Record<string, string> = {}
+for (const p of DNA_PROFILES) {
+  PROFILE_COLOR_MAP[p.label] = p.color
+  PROFILE_ICON_MAP[p.label] = p.iconName
+}
+
+async function getTeamDNARow(
+  supabase: any,
+  teamId: string
+): Promise<Record<string, any> | null> {
+  const { data } = await supabase
+    .from('team_dna')
+    .select('*')
+    .eq('team_id', teamId)
+    .maybeSingle()
+  return data
+}
+
+export async function getTeamDNAFromDB(
+  supabase: any,
+  teamId: string
+): Promise<DNAProfile[]> {
+  const row = await getTeamDNARow(supabase, teamId)
+  if (!row || !row.primary_profile) return []
+
+  const profiles: DNAProfile[] = []
+  const entries: { profile: string; level: string; score: number }[] = [
+    { profile: row.primary_profile, level: row.primary_level ?? '-', score: row.primary_score ?? 0 },
+  ]
+  if (row.secondary_profile) {
+    entries.push({ profile: row.secondary_profile, level: row.secondary_level ?? '-', score: row.secondary_score ?? 0 })
+  }
+  if (row.tertiary_profile) {
+    entries.push({ profile: row.tertiary_profile, level: row.tertiary_level ?? '-', score: row.tertiary_score ?? 0 })
+  }
+
+  for (const e of entries) {
+    profiles.push({
+      label: e.profile,
+      iconName: PROFILE_ICON_MAP[e.profile] ?? 'scale',
+      color: PROFILE_COLOR_MAP[e.profile] ?? 'bg-slate-500/20 text-slate-400',
+      level: e.level,
+      score: e.score,
+    })
+  }
+
+  return profiles
+}
+
+export async function getTeamDNAAndCombinationFromDB(
+  supabase: any,
+  teamId: string
+): Promise<{ profiles: DNAProfile[]; combination: DNACombination | null }> {
+  const profiles = await getTeamDNAFromDB(supabase, teamId)
+  const combination = profiles.length >= 2 ? getTeamCombination(profiles) : null
+  return { profiles, combination }
 }

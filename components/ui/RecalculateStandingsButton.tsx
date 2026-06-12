@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from './Button'
+import { Check } from 'lucide-react'
 
 interface Props {
   tournamentId: string
@@ -28,8 +29,8 @@ export default function RecalculateStandingsButton({ tournamentId }: Props) {
       const { standingsRowsWritten: s, groupRowsWritten: g, fixturesProcessed: f } = data
       const rows = (s ?? 0) + (g ?? 0)
       setMessage(rows > 0
-        ? `✓ Done — ${rows} teams, ${f} fixtures`
-        : `✓ Done — ${f} fixtures processed`)
+        ? `Done — ${rows} teams, ${f} fixtures`
+        : `Done — ${f} fixtures processed`)
       setStatus('done')
     } catch (err: any) {
       setMessage(err.message)
@@ -71,7 +72,7 @@ export default function RecalculateStandingsButton({ tournamentId }: Props) {
       </Button>
       {message && (
         <span className={`text-xs ${status === 'error' ? 'text-red-400' : 'text-green-400'}`}>
-          {message}
+          {status === 'done' && <Check className="w-3.5 h-3.5 inline" />} {message}
         </span>
       )}
     </div>

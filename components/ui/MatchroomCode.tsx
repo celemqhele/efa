@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Gamepad2, Check } from 'lucide-react'
 
 interface Props {
   fixtureId: string
@@ -37,7 +38,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
   return (
     <div className="card p-5 border-gold/30">
       <h2 className="section-header">
-        <span className="text-gold">🎮</span> Matchroom Code
+        <Gamepad2 className="w-5 h-5 text-gold" /> Matchroom Code
       </h2>
 
       {isHomeManager ? (
@@ -72,7 +73,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
               </div>
               <div className="flex flex-col gap-2">
                 <button onClick={copy} className="btn-outline text-xs">
-                  {copied ? '✓ Copied!' : 'Copy'}
+                  {copied ? <><Check className="w-3.5 h-3.5 inline" /> Copied!</> : 'Copy'}
                 </button>
                 <button onClick={() => setEditing(true)} className="btn-outline text-xs">
                   Edit
@@ -84,7 +85,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
               + Set Matchroom Code
             </button>
           )}
-          {saved && <p className="text-xs text-green-400">✓ Saved</p>}
+          {saved && <p className="text-xs text-green-400"><Check className="w-3.5 h-3.5 inline" /> Saved</p>}
         </div>
       ) : (
         /* Away team / spectator — read only */
@@ -96,7 +97,7 @@ export default function MatchroomCode({ fixtureId, initialCode, isHomeManager }:
                 <p className="text-2xl font-black text-gold tracking-[0.2em] font-mono">{code}</p>
               </div>
               <button onClick={copy} className="btn-gold text-sm shrink-0">
-                {copied ? '✓ Copied!' : 'Copy Code'}
+                {copied ? <><Check className="w-3.5 h-3.5 inline" /> Copied!</> : 'Copy Code'}
               </button>
             </div>
           </div>

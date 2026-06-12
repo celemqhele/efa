@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import type { DaySchedule } from '@/lib/scheduling'
+import { CheckCircle2, XCircle, X } from 'lucide-react'
 
 interface Props {
   managerId: string
@@ -254,7 +255,7 @@ export default function AvailabilityManager({ managerId, initialSchedule, initia
                 className="shrink-0 text-text-muted hover:text-feedback-error text-sm leading-none px-1"
                 title="Remove"
               >
-                ✕
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           ))}
@@ -272,7 +273,7 @@ export default function AvailabilityManager({ managerId, initialSchedule, initia
         </button>
         {message && (
           <span className={`text-xs font-semibold ${message.ok ? 'text-feedback-success' : 'text-feedback-error'}`}>
-            {message.ok ? '✅ ' : '❌ '}{message.text}
+            {message.ok ? <CheckCircle2 className="w-4 h-4 text-feedback-success inline" /> : <XCircle className="w-4 h-4 text-feedback-error inline" />} {message.text}
           </span>
         )}
       </div>

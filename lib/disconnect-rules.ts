@@ -15,13 +15,13 @@ export const DISCONNECT_RULES: DisconnectRule[] = [
 ]
 
 export const OFFICIAL_RULES = [
-  { icon: '✅', rule: 'Match duration: 10 minutes' },
-  { icon: '✅', rule: 'Injuries: ON' },
-  { icon: '✅', rule: 'Substitutions: 6' },
-  { icon: '✅', rule: 'Auto Assist: OFF' },
-  { icon: '❌', rule: 'Extra Time: OFF (league & group stage)' },
-  { icon: '❌', rule: 'Penalties: OFF (league & group stage)' },
-  { icon: '✅', rule: 'Extra Time + Penalties: ON (single-leg knockout finals only)' },
-  { icon: '✅', rule: 'Extra Time: ON (2nd leg of two-legged ties, if aggregate level)' },
-  { icon: '🏠', rule: 'Home team creates the matchroom in eFootball' },
+  { icon: 'check', rule: 'Match duration: 10 minutes' },
+  { icon: 'check', rule: 'Injuries: ON' },
+  { icon: 'check', rule: 'Substitutions: 6' },
+  { icon: 'check', rule: 'Auto Assist: OFF' },
+  { icon: 'cross', rule: 'Extra Time: OFF (league & group stage)' },
+  { icon: 'cross', rule: 'Penalties: OFF (league & group stage)' },
+  { icon: 'check', rule: 'Extra Time + Penalties: ON (single-leg knockout finals only)' },
+  { icon: 'check', rule: 'Extra Time: ON (2nd leg of two-legged ties, if aggregate level)' },
+  { icon: 'home', rule: 'Home team creates the matchroom in eFootball' },
 ]

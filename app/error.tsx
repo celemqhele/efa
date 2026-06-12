@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/Button'
+import { AlertTriangle } from 'lucide-react'
 
 export default function GlobalError({
   error,
@@ -13,7 +14,7 @@ export default function GlobalError({
     <html lang="en">
       <body className="font-sans antialiased bg-bg-base text-text-primary min-h-screen flex items-center justify-center p-8">
         <div className="text-center max-w-md">
-          <div className="text-5xl mb-4">⚠️</div>
+          <AlertTriangle className="w-12 h-12 text-feedback-error mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-text-primary mb-2">Something went wrong</h1>
           <p className="text-text-muted text-sm mb-6">
             An unexpected error occurred. Please try again.

@@ -118,7 +118,7 @@ serve(async (req) => {
       await supabase.from('notifications').insert({
         user_id: admin.id,
         type: 'team_request',
-        title: '⚠️ 3+ Abandonments',
+        title: '3+ Abandonments',
         body: `${manager?.username ?? team.name} has ${team.abandon_count} abandonments — review for sacking`,
         data: { team_id: team.id },
       })

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import WhatsAppButton from '@/components/ui/WhatsAppButton'
+import { Briefcase, Circle } from 'lucide-react'
 
 interface Team {
   id: string
@@ -196,7 +197,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
                     <div className="flex items-center gap-1.5">
                       <p className="text-green-600 text-xs truncate">{manager.username}</p>
                       {hasWa && (
-                        <span className="text-[#25D366] text-[10px]">●</span>
+                        <Circle className="w-2 h-2 text-[#25D366] fill-current" />
                       )}
                     </div>
                   ) : (
@@ -215,7 +216,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
       <div className="lg:sticky lg:top-20 self-start">
         {!selectedTeam ? (
           <div className="card p-12 text-center text-text-muted">
-            <p className="text-4xl mb-3">👔</p>
+            <Briefcase className="w-10 h-10 text-text-muted mx-auto mb-3" />
             <p className="text-sm">Select a club to manage its manager.</p>
           </div>
         ) : (

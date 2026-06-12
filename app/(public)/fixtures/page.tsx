@@ -3,6 +3,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
+import { CircleDot, Crosshair } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,7 +57,7 @@ export default async function FixturesPage() {
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-foreground-primary">My Fixtures</h1>
         <div className="card p-12 text-center space-y-3">
-          <p className="text-4xl">⚽</p>
+          <CircleDot className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p className="text-text-muted text-sm">Log in to see your team&apos;s fixtures.</p>
           <Link href="/login" className="btn-gold inline-block text-sm">Log in</Link>
         </div>
@@ -79,7 +80,7 @@ export default async function FixturesPage() {
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-foreground-primary">My Fixtures</h1>
         <div className="card p-12 text-center space-y-3">
-          <p className="text-4xl">🎯</p>
+          <Crosshair className="w-10 h-10 text-text-muted mx-auto mb-3" />
           <p className="text-text-muted text-sm">You don&apos;t have a team yet.</p>
           <Link href="/select-team" className="btn-gold inline-block text-sm">Pick a team</Link>
         </div>
@@ -162,7 +163,7 @@ export default async function FixturesPage() {
     return (
       <Link
         href={`/fixtures/${f.id}`}
-        className="card flex items-center gap-3 px-4 py-3 hover:border-accent/30 hover:bg-black/[0.03] transition-all"
+        className="card flex items-center gap-3 px-4 py-3 sm:py-3 min-h-[52px] sm:min-h-0 hover:border-accent/30 hover:bg-black/[0.03] transition-all"
       >
         <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-text-muted border-border'}`}>
           {tournamentLabel}

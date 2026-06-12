@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from './Button'
+import { Dna, Check } from 'lucide-react'
 
 export default function RefreshDNAButton() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
@@ -14,7 +15,7 @@ export default function RefreshDNAButton() {
       const res = await fetch('/api/admin/refresh-dna', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed')
-      setMessage(`✓ ${data.updated} team${data.updated !== 1 ? 's' : ''} updated`)
+      setMessage(`${data.updated} team${data.updated !== 1 ? 's' : ''} updated`)
       setStatus('done')
     } catch (err: any) {
       setMessage(err.message)
@@ -30,11 +31,11 @@ export default function RefreshDNAButton() {
         variant="secondary"
         className="text-xs"
       >
-        🧬 Refresh Team DNA
+        <Dna className="w-4 h-4" /> Refresh Team DNA
       </Button>
       {message && (
         <span className={`text-xs ${status === 'error' ? 'text-red-400' : 'text-green-400'}`}>
-          {message}
+          {status === 'done' && <Check className="w-3.5 h-3.5 inline" />} {message}
         </span>
       )}
     </div>

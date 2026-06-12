@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Check, X, RefreshCw } from 'lucide-react'
 
 // --- Mark All As Read --------------------------------------------------------
 
@@ -32,7 +33,7 @@ export function MarkAllReadButton({ disabled }: { disabled?: boolean }) {
       variant="ghost"
       className="text-xs"
     >
-      {loading ? 'Marking…' : '✓ Mark all read'}
+      {loading ? 'Marking…' : <><Check className="w-3.5 h-3.5 inline" /> Mark all read</>}
     </Button>
   )
 }
@@ -167,7 +168,7 @@ export function TeamChangeRequestRow({
   if (done) {
     return (
       <div className="flex items-center gap-space-3 px-space-4 py-space-3 rounded-xl border border-border bg-bg-base">
-        <span className="text-lg">{result === 'approved' ? '✅' : '❌'}</span>
+        <span className="text-lg">{result === 'approved' ? <Check className="w-5 h-5 text-feedback-success inline" /> : <X className="w-5 h-5 text-feedback-error inline" />}</span>
         <p className="text-sm text-text-muted">
           Request {result} for{' '}
           <span className="text-text-primary font-medium">@{request.requesting_user?.username}</span>
@@ -178,7 +179,7 @@ export function TeamChangeRequestRow({
 
   return (
     <div className="flex items-center gap-space-4 px-space-4 py-space-4 rounded-xl border border-border hover:border-accent/30 transition-colors bg-bg-surface">
-      <div className="text-xl shrink-0">🔄</div>
+      <RefreshCw className="w-5 h-5 text-text-muted shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-text-primary">
           @{request.requesting_user?.username ?? 'Unknown'} wants to manage{' '}

@@ -3,6 +3,7 @@
 import { toPng } from 'html-to-image'
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Camera } from 'lucide-react'
 
 const APP_TIME_ZONE = 'Africa/Johannesburg'
 
@@ -82,7 +83,7 @@ export default function DueFixturesExportButton({ fixtures }: Props) {
         aria-label="Export fixtures due as PNG"
         isLoading={loading}
       >
-        📸 Export
+        <Camera className="w-4 h-4" /> Export
       </Button>
 
       {/* Off-screen printable card (still in DOM so html-to-image can capture it) */}

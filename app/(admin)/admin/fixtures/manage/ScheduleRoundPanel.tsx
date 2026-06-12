@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Hourglass, Check } from 'lucide-react'
 
 interface UnscheduledInfo {
   tournamentId: string
@@ -101,7 +102,7 @@ export default function ScheduleRoundPanel() {
     <Card className="p-space-5 space-y-space-4 border-accent/20 bg-accent/5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-wider text-accent">
-          ⏳ Pending Scheduling
+          <Hourglass className="w-4 h-4" /> Pending Scheduling
         </h2>
         <Button
           variant="secondary"
@@ -138,7 +139,7 @@ export default function ScheduleRoundPanel() {
       {results && (
         <div className="p-space-3 rounded-lg bg-feedback-success/10 border border-feedback-success/20">
           <p className="text-xs font-bold text-feedback-success mb-space-2">
-            ✓ MD{results.matchday} scheduled — {results.fixtures.length} fixture{results.fixtures.length !== 1 ? 's' : ''}
+            <Check className="w-4 h-4" /> MD{results.matchday} scheduled — {results.fixtures.length} fixture{results.fixtures.length !== 1 ? 's' : ''}
           </p>
           <div className="space-y-1 max-h-32 overflow-y-auto text-[10px] text-text-secondary font-mono">
             {results.fixtures.map((r) => (

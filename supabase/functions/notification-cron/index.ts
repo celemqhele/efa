@@ -2,7 +2,7 @@
 // Called three times per day with ?type= query param:
 //   day_before  → previous evening: "You have X fixtures tomorrow"
 //   morning     → 08:00 SAST (06:00 UTC): "Matchday! X fixtures due today"
-//   warning     → 13:00 SAST (11:00 UTC): "⏰ 1 hour left"
+//   warning     → 13:00 SAST (11:00 UTC): "1 hour left"
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -55,7 +55,7 @@ serve(async (req) => {
       title = 'Matchday!'
       body = `${count} fixture${count > 1 ? 's' : ''} due today by 14:00 SAST. Get your games in!`
     } else {
-      title = '⏰ 1 Hour Left'
+      title = '1 Hour Left'
       body = `${count} fixture${count > 1 ? 's' : ''} still pending. Deadline: 14:00 SAST.`
     }
 

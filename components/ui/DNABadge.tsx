@@ -3,10 +3,50 @@
 import { useState } from 'react'
 import { DNA_EXPLANATIONS } from '@/lib/dna-explanations'
 import { LEVEL_LABELS } from '@/lib/dna-engine'
+import {
+  Crown, Drama, Zap, Brain, Sword, Shield, Dumbbell,
+  ArrowLeftRight, Triangle, Crosshair, Scale,
+} from 'lucide-react'
+
+const DNA_ICONS: Record<string, React.ReactNode> = {
+  crown: <Crown className="w-4 h-4" />,
+  theater: <Drama className="w-4 h-4" />,
+  zap: <Zap className="w-4 h-4" />,
+  brain: <Brain className="w-4 h-4" />,
+  dagger: <Sword className="w-4 h-4" />,
+  shield: <Shield className="w-4 h-4" />,
+  muscle: <Dumbbell className="w-4 h-4" />,
+  arrows_horizontal: <ArrowLeftRight className="w-4 h-4" />,
+  triangle: <Triangle className="w-4 h-4" />,
+  target: <Crosshair className="w-4 h-4" />,
+  scale: <Scale className="w-4 h-4" />,
+}
+
+const DNA_ICONS_LARGE: Record<string, React.ReactNode> = {
+  crown: <Crown className="w-7 h-7" />,
+  theater: <Drama className="w-7 h-7" />,
+  zap: <Zap className="w-7 h-7" />,
+  brain: <Brain className="w-7 h-7" />,
+  dagger: <Sword className="w-7 h-7" />,
+  shield: <Shield className="w-7 h-7" />,
+  muscle: <Dumbbell className="w-7 h-7" />,
+  arrows_horizontal: <ArrowLeftRight className="w-7 h-7" />,
+  triangle: <Triangle className="w-7 h-7" />,
+  target: <Crosshair className="w-7 h-7" />,
+  scale: <Scale className="w-7 h-7" />,
+}
+
+function getIcon(iconName: string): React.ReactNode {
+  return DNA_ICONS[iconName] ?? <span>{iconName}</span>
+}
+
+function getIconLarge(iconName: string): React.ReactNode {
+  return DNA_ICONS_LARGE[iconName] ?? <span>{iconName}</span>
+}
 
 interface Props {
   label: string
-  emoji: string
+  iconName: string
   color: string
   level: string
   isOwnTeam: boolean
@@ -27,12 +67,11 @@ function perspectivize(text: string, isOwnTeam: boolean): string {
     .replace(/\byou\b/g, 'they')
 }
 
-export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Props) {
+export default function DNABadge({ label, iconName, color, level, isOwnTeam }: Props) {
   const [open, setOpen] = useState(false)
   const explanation = DNA_EXPLANATIONS[label]
   const levelInfo = LEVEL_LABELS[level] ?? { short: 'Match', detail: '' }
 
-  // Level indicator color — greener for strong, amber for mid, red for weak
   const levelColor =
     level.startsWith('+++') ? 'text-green-500' :
     level.startsWith('++')  ? 'text-accent' :
@@ -45,7 +84,7 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
         onClick={() => setOpen(true)}
         className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border transition-opacity hover:opacity-80 active:scale-95 cursor-pointer ${color}`}
       >
-        <span>{emoji}</span>
+        {getIcon(iconName)}
         <span>{label}</span>
         <span className={`font-mono font-bold ml-0.5 ${levelColor}`}>{level}</span>
       </button>
@@ -62,7 +101,7 @@ export default function DNABadge({ label, emoji, color, level, isOwnTeam }: Prop
             {/* Header */}
             <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{emoji}</span>
+                {getIconLarge(iconName)}
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-foreground-primary font-bold text-base">{label}</h2>

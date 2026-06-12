@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         managerIds.map((uid) => ({
           user_id: uid,
           type: 'fixture_postponed',
-          title: '📅 Match Postponed',
+          title: 'Match Postponed',
           body: `${matchLabel} has been moved from ${oldWhen} to ${newWhen}.`,
           data: {
             fixture_id: fixtureId,
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
 
       if (subs?.length) {
         await sendPushToUser(subs, {
-          title: '📅 Match Postponed',
+          title: 'Match Postponed',
           body: `${matchLabel} moved to ${newWhen}`,
           url: fixtureUrl,
           tag: `postpone-${fixtureId}`,

@@ -4,6 +4,7 @@ import Image from 'next/image'
 import TeamManageActions from './TeamManageActions'
 import AddTeamForm from './AddTeamForm'
 import { Card } from '@/components/ui/Card'
+import { AlertTriangle } from 'lucide-react'
 
 export const revalidate = 0
 
@@ -65,7 +66,7 @@ export default async function TeamsManagePage() {
                     <p className="text-text-muted text-xs truncate">{team.logo_league_folder?.split('.')[0] ?? '-'}</p>
                   </div>
                   {team.abandon_count >= 3 && (
-                    <span className="ml-auto text-feedback-error font-bold text-xs shrink-0">⚠ {team.abandon_count}</span>
+                    <span className="ml-auto text-feedback-error font-bold text-xs shrink-0"><AlertTriangle className="w-3 h-3 inline" /> {team.abandon_count}</span>
                   )}
                 </div>
                 <div className="flex items-center justify-between gap-space-2 flex-wrap">
@@ -151,7 +152,7 @@ export default async function TeamsManagePage() {
                       <span className={`inline-flex items-center gap-space-1 font-bold ${
                         team.abandon_count >= 3 ? 'text-feedback-error' : 'text-text-muted'
                       }`}>
-                        {team.abandon_count >= 3 && <span className="text-xs">⚠</span>}
+                        {team.abandon_count >= 3 && <AlertTriangle className="w-3 h-3 inline" />}
                         {team.abandon_count}
                       </span>
                     </td>

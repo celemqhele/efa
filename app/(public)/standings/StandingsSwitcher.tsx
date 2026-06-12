@@ -1,5 +1,6 @@
 'use client'
 
+import { ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const TYPE_DOT: Record<string, string> = {
@@ -33,7 +34,7 @@ export default function StandingsSwitcher({ tournaments, selectedId }: Props) {
           ))}
         </select>
         <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-          ▾
+          <ChevronDown className="w-4 h-4" />
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import TeamChangeModal from './TeamChangeModal'
 import ProfileActions from './ProfileActions'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Star, Shirt, Shield, RefreshCw, Calendar } from 'lucide-react'
 
 export const revalidate = 0
 
@@ -150,7 +151,7 @@ export default async function ProfilePage() {
             </h1>
             {profile?.role === 'admin' && (
               <span className="inline-flex items-center gap-space-1 px-space-2.5 py-0.5 rounded-full bg-accent/20 border border-accent/40 text-accent text-xs font-bold uppercase tracking-wider">
-                ⭐ Admin
+                <Star className="w-3 h-3" /> Admin
               </span>
             )}
           </div>
@@ -201,7 +202,7 @@ export default async function ProfilePage() {
       {/* -- Career History Section ------------------------------------------ */}
       <Card className="p-space-5 space-y-space-4">
         <h2 className="section-header">
-          <span>👔</span> Management History
+          <Shirt className="w-5 h-5 text-gold" /> Management History
         </h2>
         
         {(tenures ?? []).length === 0 ? (
@@ -225,7 +226,7 @@ export default async function ProfilePage() {
                         src={getTeamLogo(tenure.team.logo_league_folder, tenure.team.logo_team_slug, 'standings_row')} 
                         alt={tenure.team.name} width={28} height={28} className="object-contain" 
                       />
-                    ) : <span className="text-xl">🛡️</span>}
+                    ) : <Shield className="w-5 h-5 text-text-muted" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <Link href={`/teams/${tenure.team_id}`} className="font-bold text-text-primary hover:text-accent transition-colors truncate block text-sm">
@@ -249,7 +250,7 @@ export default async function ProfilePage() {
       {/* -- Team Change Request --------------------------------------------- */}
       <Card className="p-space-5 space-y-space-3">
         <h2 className="section-header">
-          <span>🔄</span> Team Management
+          <RefreshCw className="w-5 h-5 text-gold" /> Team Management
         </h2>
         <TeamChangeModal
           currentTeamId={team?.id ?? null}
@@ -289,7 +290,7 @@ export default async function ProfilePage() {
       {team && (
         <Card className="p-space-5 space-y-space-4">
           <h2 className="section-header">
-            <span>📅</span> Upcoming Fixtures
+            <Calendar className="w-5 h-5 text-gold" /> Upcoming Fixtures
           </h2>
 
           {next3.length === 0 ? (

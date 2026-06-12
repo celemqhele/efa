@@ -3,6 +3,25 @@
 import { useState } from 'react'
 import { DNA_EXPLANATIONS } from '@/lib/dna-explanations'
 import { LEVEL_LABELS, DNAProfile, DNACombination } from '@/lib/dna-engine'
+import {
+  Crown, Drama, Zap, Brain, Sword, Shield, Dumbbell,
+  ArrowLeftRight, Triangle, Crosshair, Scale,
+  FlaskConical, AlertTriangle,
+} from 'lucide-react'
+
+const DNA_ICONS: Record<string, React.ReactNode> = {
+  crown: <Crown className="w-3.5 h-3.5" />,
+  theater: <Drama className="w-3.5 h-3.5" />,
+  zap: <Zap className="w-3.5 h-3.5" />,
+  brain: <Brain className="w-3.5 h-3.5" />,
+  dagger: <Sword className="w-3.5 h-3.5" />,
+  shield: <Shield className="w-3.5 h-3.5" />,
+  muscle: <Dumbbell className="w-3.5 h-3.5" />,
+  arrows_horizontal: <ArrowLeftRight className="w-3.5 h-3.5" />,
+  triangle: <Triangle className="w-3.5 h-3.5" />,
+  target: <Crosshair className="w-3.5 h-3.5" />,
+  scale: <Scale className="w-3.5 h-3.5" />,
+}
 
 interface Props {
   combination: DNACombination
@@ -55,7 +74,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border border-accent/40 bg-accent/10 text-accent hover:opacity-80 active:scale-95 cursor-pointer transition-opacity"
       >
-        <span>⚗️</span>
+        <FlaskConical className="w-3.5 h-3.5" />
         <span>{name}</span>
         <span className={`font-mono ml-0.5 ${levelColor}`}>{level}</span>
       </button>
@@ -72,7 +91,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
             {/* Header */}
             <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">⚗️</span>
+                <FlaskConical className="w-7 h-7 text-accent" />
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-foreground-primary font-bold text-base">{name}</h2>
@@ -117,7 +136,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                           : 'text-xs font-medium px-2.5 py-1'
                       }`}
                     >
-                      <span>{p.emoji}</span>
+                      {DNA_ICONS[p.iconName] ?? null}
                       <span>{p.label}</span>
                       <span className={`font-mono font-bold ml-0.5 ${
                         p.level.startsWith('+++') ? 'text-green-500' :
@@ -159,7 +178,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                       {allTendencies.map((t, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className={`shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${t.profile.color}`}>
-                            {t.profile.emoji}
+                            {DNA_ICONS[t.profile.iconName] ?? null}
                           </span>
                           {t.text}
                         </li>
@@ -171,7 +190,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                   {selfNotes.map((n, i) => (
                     <div key={i} className="bg-accent/10 border border-accent/30 rounded-xl p-4">
                       <h3 className="text-accent font-semibold text-xs uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${n.profile.color}`}>{n.profile.emoji}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${n.profile.color}`}>{DNA_ICONS[n.profile.iconName] ?? null}</span>
                         Coach Note — {n.profile.label}
                       </h3>
                       <p className="text-foreground-secondary text-sm leading-relaxed">{n.text}</p>
@@ -186,7 +205,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                     <ul className="space-y-1.5">
                       {allWeaknesses.map((w, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
-                          <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
+                          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                           {w.text}
                         </li>
                       ))}
@@ -204,7 +223,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                       {allTendencies.map((t, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
                           <span className={`shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${t.profile.color}`}>
-                            {t.profile.emoji}
+                            {DNA_ICONS[t.profile.iconName] ?? null}
                           </span>
                           {t.text}
                         </li>
@@ -220,7 +239,7 @@ export default function CombinationBadge({ combination, profiles, isOwnTeam }: P
                     <ul className="space-y-1.5">
                       {allWeaknesses.map((w, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-foreground-muted">
-                          <span className="text-red-400 shrink-0 mt-0.5">⚡</span>
+                          <Zap className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                           {perspectivize(w.text, false)}
                         </li>
                       ))}

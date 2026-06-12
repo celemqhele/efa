@@ -2,15 +2,16 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
+import { Trophy, Star, Globe, Medal } from 'lucide-react'
+
+const TROPHY_ICONS: Record<string, React.ReactNode> = {
+  league: <Trophy className="w-4 h-4 text-accent" />,
+  ucl: <Star className="w-4 h-4 text-accent" />,
+  europa: <Globe className="w-4 h-4 text-accent" />,
+  super_cup: <Medal className="w-4 h-4 text-accent" />,
+}
 
 export const revalidate = 300
-
-const TROPHY_ICON: Record<string, string> = {
-  league: '??',
-  ucl: '?',
-  europa: '??',
-  super_cup: '??',
-}
 
 const TROPHY_LABEL: Record<string, string> = {
   league: 'Premier League',
@@ -321,7 +322,7 @@ export default async function HallOfFamePage() {
                               winner ? TROPHY_TEXT[type] : 'text-foreground-muted'
                             }`}
                           >
-                            {TROPHY_ICON[type]} {TROPHY_LABEL[type]}
+                            {TROPHY_ICONS[type]} {TROPHY_LABEL[type]}
                           </p>
 
                           {winner ? (

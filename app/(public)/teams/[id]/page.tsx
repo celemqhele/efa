@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
-import { getTeamDNA, getTeamCombination, buildTeamStatsMixed, MIN_DNA_GAMES } from '@/lib/dna-engine'
+import { getTeamDNAAndCombinationFromDB, buildTeamStatsMixed } from '@/lib/dna-engine'
 import type { DNAProfile, DNACombination } from '@/lib/dna-engine'
 import DNABadge from '@/components/ui/DNABadge'
 import CombinationBadge from '@/components/ui/CombinationBadge'
@@ -20,6 +20,7 @@ import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Trophy, Star, Globe, Medal } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,10 +29,10 @@ interface PageProps {
 }
 
 const TROPHY_ICON: Record<string, string> = {
-  league: '🏆',
-  ucl: '⭐',
-  europa: '🌍',
-  super_cup: '🏅',
+  league: 'trophy',
+  ucl: 'star',
+  europa: 'globe',
+  super_cup: 'medal',
 }
 
 const TROPHY_LABEL: Record<string, string> = {
@@ -297,10 +298,14 @@ export default async function TeamProfilePage({ params }: PageProps) {
           })
         }
 
-        if (managerGames.length >= MIN_DNA_GAMES) {
+        {
+          const { profiles, combination } = await getTeamDNAAndCombinationFromDB(supabase as any, team.id)
+          dnaProfiles = profiles
+          dnaCombination = combination
+        }
+
+        if (managerGames.length >= 1) {
           const teamStats = buildTeamStatsMixed(managerGames)
-          dnaProfiles = getTeamDNA(teamStats)
-          dnaCombination = getTeamCombination(dnaProfiles)
 
           // Actual consecutive streak (most-recent-first, stop when outcome changes)
           let streakType: 'W' | 'D' | 'L' | null = null
@@ -402,7 +407,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
   })
 
   return (
-    <div className="space-y-space-6">
+    <div className="space-y-space-6 pt-space-4">
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <Card>
         <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-24 relative">
@@ -410,7 +415,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
         </div>
         <div className="px-space-6 pb-space-6 -mt-12 relative">
           <div className="flex items-end gap-space-5">
-            <div className="border-4 shadow-md border-border bg-bg-base">
+            <div className="bg-bg-base">
               <Image
                 src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
                 alt={team.name}
@@ -458,7 +463,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                     <DNABadge
                       key={dna.label}
                       label={dna.label}
-                      emoji={dna.emoji}
+                      iconName={dna.iconName}
                       color={dna.color}
                       level={dna.level}
                       isOwnTeam={isCurrentManager}
@@ -555,7 +560,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                 <Link
                   key={f.id}
                   href={`/fixtures/${f.id}`}
-                  className="flex items-center gap-space-3 py-space-3 hover:bg-bg-base/50 -mx-space-5 px-space-5 transition-colors"
+                  className="flex items-center gap-space-3 py-space-3 sm:py-space-3 min-h-[52px] sm:min-h-0 hover:bg-bg-base/50 -mx-space-5 px-space-5 transition-colors"
                 >
                   {/* Opponent logo */}
                   {opponent?.logo_league_folder ? (
@@ -626,7 +631,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                 <Link
                   key={f.id}
                   href={`/fixtures/${f.id}`}
-                  className="flex items-center gap-space-3 py-space-3 hover:bg-bg-base/50 -mx-space-5 px-space-5 transition-colors"
+                  className="flex items-center gap-space-3 py-space-3 sm:py-space-3 min-h-[52px] sm:min-h-0 hover:bg-bg-base/50 -mx-space-5 px-space-5 transition-colors"
                 >
                   {/* Outcome badge */}
                   <span className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-black shrink-0 ${
@@ -659,7 +664,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
                   {/* Score + date */}
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-black tabular-nums ${outcomeColor}`}>
+                    <p className={`text-base sm:text-sm font-black tabular-nums ${outcomeColor}`}>
                       {myScore}–{theirScore}
                     </p>
                     <p className="text-[10px] text-text-muted">{dateStr}</p>
@@ -747,7 +752,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
                 key={trophy.id}
                 className="flex items-center gap-space-3 p-space-3 rounded-lg border border-accent/20 bg-accent-muted/10"
               >
-                <span className="text-3xl">{TROPHY_ICON[trophy.trophy_type] ?? '🏆'}</span>
+                {(() => {
+                  const iconName = TROPHY_ICON[trophy.trophy_type] ?? 'trophy'
+                  const Icon = iconName === 'trophy' ? Trophy : iconName === 'star' ? Star : iconName === 'globe' ? Globe : Medal
+                  return <Icon className="w-8 h-8 text-accent" />
+                })()}
                 <div>
                   <p className="text-sm font-bold text-accent">
                     {TROPHY_LABEL[trophy.trophy_type] ?? trophy.trophy_type}
