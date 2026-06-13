@@ -236,7 +236,7 @@ export default function AdminPollsPage() {
 
               <div>
                 <label className="flex items-center gap-space-2 cursor-pointer">
-                  <input type="checkbox" checked={allowInternational} onChange={(e) => setAllowInternational(e.target.checked)} className="accent-accent" />
+                  <input type="checkbox" checked={allowInternational} onChange={(e) => { setAllowInternational(e.target.checked); if (e.target.checked) setSelectedLeagues([]) }} className="accent-accent" />
                   <span className="text-sm text-text-primary">Include international / national teams</span>
                 </label>
               </div>
