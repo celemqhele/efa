@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { format } from 'date-fns'
-import { ClipboardList, BarChart3, Shirt, Binoculars, Shield } from 'lucide-react'
+import { ClipboardList, BarChart3, Shirt, Binoculars, Shield, UserRound } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,17 +49,33 @@ export default async function ManagerProfilePage({ params }: PageProps) {
 
   const winRate = stats.played > 0 ? Math.round((stats.wins / stats.played) * 100) : 0
 
+  const currentTenure = (tenures ?? []).find((t: any) => !t.ended_at)
+  const currentTeam = currentTenure?.team ?? null
+
   return (
     <div className="space-y-6">
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="card overflow-hidden">
         <div className="bg-gradient-to-br from-navy-light via-gold/10 to-navy-card h-32 relative" />
         <div className="px-6 pb-6 -mt-12 relative flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
-          <div className="w-24 h-24 rounded-full bg-navy-card border-4 border-navy-card shadow-xl overflow-hidden flex items-center justify-center bg-navy text-3xl font-black text-gold">
-            {profile.avatar_url ? (
-              <Image src={profile.avatar_url} alt={profile.username} width={96} height={96} className="object-cover" />
-            ) : (
-              profile.username[0].toUpperCase()
+          <div className="relative shrink-0">
+            <div className="w-24 h-24 rounded-full bg-navy-card border-4 border-navy-card shadow-xl overflow-hidden flex items-center justify-center bg-navy">
+              {profile.avatar_url ? (
+                <Image src={profile.avatar_url} alt={profile.username} width={96} height={96} className="object-cover w-full h-full" />
+              ) : (
+                <UserRound className="w-10 h-10 text-gold" />
+              )}
+            </div>
+            {currentTeam?.logo_team_slug && (
+              <div className="absolute -bottom-0.5 -right-0.5 w-8 h-8 rounded-full bg-navy-card border-2 border-navy-card shadow-md flex items-center justify-center overflow-hidden">
+                <Image
+                  src={getTeamLogo(currentTeam.logo_league_folder, currentTeam.logo_team_slug, 'standings_row')}
+                  alt={currentTeam.name}
+                  width={20}
+                  height={20}
+                  className="object-contain"
+                />
+              </div>
             )}
           </div>
           <div className="pb-1 flex-1">
@@ -156,15 +172,15 @@ export default async function ManagerProfilePage({ params }: PageProps) {
                     }`}>
                       <div className="flex flex-col sm:flex-row gap-4">
                         {/* Club Identity */}
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-12 h-12 bg-navy-card rounded-xl p-2 border border-navy-border flex items-center justify-center shrink-0">
-                            {tenure.team?.logo_team_slug ? (
-                              <Image 
-                                src={getTeamLogo(tenure.team.logo_league_folder, tenure.team.logo_team_slug, 'standings_row')} 
-                                alt={tenure.team.name} width={32} height={32} className="object-contain" 
-                              />
-                            ) : <Shield className="w-5 h-5 text-text-muted" />}
-                          </div>
+                         <div className="flex items-center gap-3 flex-1 min-w-0">
+                           <div className="w-12 h-12 flex items-center justify-center shrink-0">
+                             {tenure.team?.logo_team_slug ? (
+                               <Image 
+                                 src={getTeamLogo(tenure.team.logo_league_folder, tenure.team.logo_team_slug, 'standings_row')} 
+                                 alt={tenure.team.name} width={36} height={36} className="object-contain" 
+                               />
+                             ) : <Shield className="w-5 h-5 text-text-muted" />}
+                           </div>
                           <div className="min-w-0">
                             <Link href={`/teams/${tenure.team_id}`} className="font-bold text-foreground-primary hover:text-gold transition-colors truncate block">
                               {tenure.team?.name || 'Unknown Club'}

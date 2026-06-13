@@ -10,7 +10,8 @@ import TeamChangeModal from './TeamChangeModal'
 import ProfileActions from './ProfileActions'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Star, Shirt, Shield, RefreshCw, Calendar } from 'lucide-react'
+import AvatarUpload from '@/components/ui/AvatarUpload'
+import { Star, Shirt, Shield, RefreshCw, Calendar, UserRound } from 'lucide-react'
 
 export const revalidate = 0
 
@@ -105,10 +106,6 @@ export default async function ProfilePage() {
         .limit(5)
     : { data: null }
 
-  const initials = profile?.username
-    ? profile.username.slice(0, 2).toUpperCase()
-    : user.email?.slice(0, 2).toUpperCase() ?? '??'
-
   const next3 = (upcomingFixtures ?? []).slice(0, 3) as any[]
 
   return (
@@ -118,29 +115,7 @@ export default async function ProfilePage() {
       <Card className="p-space-6 flex flex-col sm:flex-row items-center sm:items-start gap-space-6">
         {/* Avatar */}
         <div className="shrink-0">
-          {profile?.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt={profile.username}
-              width={96}
-              height={96}
-              className="w-24 h-24 rounded-full object-cover ring-2 ring-accent/60"
-            />
-          ) : team?.logo_league_folder ? (
-            <div className="w-24 h-24 bg-bg-elevated flex items-center justify-center p-2">
-              <Image
-                src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'profile_avatar')}
-                alt={team.name}
-                width={128}
-                height={128}
-                className="object-contain"
-              />
-            </div>
-          ) : (
-            <div className="w-24 h-24 rounded-full bg-bg-elevated flex items-center justify-center ring-2 ring-accent/40">
-              <span className="text-3xl font-black text-accent">{initials}</span>
-            </div>
-          )}
+          <AvatarUpload avatarUrl={profile?.avatar_url} username={profile?.username ?? 'User'} />
         </div>
 
         {/* Info */}
@@ -220,7 +195,7 @@ export default async function ProfilePage() {
                     ? 'bg-accent/5 border-accent/20' 
                     : 'bg-bg-elevated border-border'
                 }`}>
-                  <div className="w-10 h-10 bg-bg-surface rounded-lg p-space-1 border border-border flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 flex items-center justify-center shrink-0">
                     {tenure.team?.logo_team_slug ? (
                       <Image 
                         src={getTeamLogo(tenure.team.logo_league_folder, tenure.team.logo_team_slug, 'standings_row')} 
