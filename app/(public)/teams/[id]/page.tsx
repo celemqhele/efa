@@ -607,13 +607,14 @@ export default async function TeamProfilePage({ params }: PageProps) {
                   </Card>
                 )
               })}
-            </div>
-          )}
 
-          {/* Team State Badges */}
-          {teamStates.length > 0 && (
-            <div className="mt-space-3">
-              <TeamStateBadges states={teamStates} />
+              {/* Form States */}
+              {teamStates.length > 0 && (
+                <div className="space-y-space-3">
+                  <h3 className="text-text-primary font-semibold text-sm">Form Indicators</h3>
+                  <TeamStateBadges states={teamStates} />
+                </div>
+              )}
             </div>
           )}
         </div>
