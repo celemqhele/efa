@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
-import { getTeamDNAAndCombinationFromDB, buildTeamStatsMixed, LEVEL_LABELS } from '@/lib/dna-engine'
-import type { DNAProfile, DNACombination, PersonalizedDescription } from '@/lib/dna-engine'
+import { getTeamDNAFromDB, buildTeamStatsMixed, LEVEL_LABELS } from '@/lib/dna-engine'
+import type { DNAProfile, PersonalizedDescription } from '@/lib/dna-engine'
 import { detectTeamStates } from '@/lib/team-states'
 import type { TeamState } from '@/lib/team-states'
 import TeamStateBadges from '@/components/ui/TeamStateBadge'
@@ -18,7 +18,7 @@ import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Sword, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, FlaskConical } from 'lucide-react'
+import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Sword, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -239,19 +239,15 @@ export default async function TeamProfilePage({ params }: PageProps) {
   const managerId = (manager as any)?.id
 
   let dnaProfiles: DNAProfile[] = []
-  let dnaCombination: DNACombination | null = null
-  let dnaDescriptionMap: Record<string, PersonalizedDescription> = {}
-  let dnaCombinationDescription: PersonalizedDescription | null = null
+  let dnaDescription: PersonalizedDescription | null = null
   let teamStates: TeamState[] = []
   let managerNotes: ManagerNote[] = []
 
   // DNA playstyle data lives in team_dna table — fetch for every team regardless of manager
   {
-    const { profiles, combination, descriptionMap, combinationDescription } = await getTeamDNAAndCombinationFromDB(supabase as any, team.id)
+    const { profiles, descriptionMap } = await getTeamDNAFromDB(supabase as any, team.id)
     dnaProfiles = profiles
-    dnaCombination = combination
-    dnaDescriptionMap = descriptionMap
-    dnaCombinationDescription = combinationDescription
+    dnaDescription = profiles.length > 0 ? descriptionMap[profiles[0].label] ?? null : null
   }
 
   if (managerId) {
@@ -491,122 +487,76 @@ export default async function TeamProfilePage({ params }: PageProps) {
             <div className="mt-space-6 space-y-space-6">
               <h2 className="section-header">Playstyle</h2>
 
-              {/* Profile pills */}
-              <div className="flex flex-wrap gap-space-1.5">
-                {dnaProfiles.map((dna) => (
+              {/* Single combined profile badge */}
+              {(() => {
+                const dna = dnaProfiles[0]
+                return (
                   <span
-                    key={dna.label}
-                    className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${dna.color}`}
+                    className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full border ${dna.color}`}
                   >
                     {DNA_ICONS[dna.iconName] ?? null}
                     <span>{dna.label}</span>
-                    <span className={`font-mono font-bold ml-0.5 ${levelColor(dna.level)}`}>{dna.level}</span>
+                    <span className={`font-mono font-bold ml-1 ${levelColor(dna.level)}`}>{dna.level}</span>
                   </span>
-                ))}
-              </div>
+                )
+              })()}
 
-              {/* Combination card */}
-              {dnaCombination && dnaCombinationDescription && (
-                <Card className="p-space-5 space-y-space-4">
-                  <div className="flex items-center gap-2">
-                    <FlaskConical className="w-5 h-5 text-accent" />
-                    <h3 className="font-semibold text-text-primary">{dnaCombination.name}</h3>
-                    <span className={`font-mono font-bold text-sm ${levelColor(dnaCombination.level)}`}>{dnaCombination.level}</span>
+              {/* Level info */}
+              {dnaProfiles.length > 0 && (() => {
+                const lvlInfo = LEVEL_LABELS[dnaProfiles[0].level]
+                return lvlInfo ? (
+                  <div className="flex items-center gap-3 bg-bg-elevated border border-border rounded-xl px-4 py-3">
+                    <span className={`font-mono font-bold text-lg ${levelColor(dnaProfiles[0].level)}`}>{dnaProfiles[0].level}</span>
+                    <div>
+                      <p className="text-text-primary text-sm font-semibold">{lvlInfo.short}</p>
+                      <p className="text-text-muted text-xs mt-0.5">{lvlInfo.detail}</p>
+                    </div>
                   </div>
-                  <p className="text-text-secondary text-sm leading-relaxed">{dnaCombinationDescription.about}</p>
+                ) : null
+              })()}
+
+              {/* About */}
+              {dnaDescription?.about && (
+                <Card className="p-space-5">
+                  <p className="text-text-secondary text-sm leading-relaxed">{dnaDescription.about}</p>
                 </Card>
               )}
 
-              {/* Profile description cards */}
-              {dnaProfiles.map((dna) => {
-                const desc = dnaDescriptionMap[dna.label]
-                if (!desc) return null
-                const lvlInfo = LEVEL_LABELS[dna.level]
-                return (
-                  <Card key={dna.label} className="p-space-5 space-y-space-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {DNA_ICONS[dna.iconName] ?? null}
-                        <h3 className="font-semibold text-text-primary">{dna.label}</h3>
-                      </div>
-                      <span className={`font-mono font-bold text-xs px-2 py-0.5 rounded-full border ${dna.color}`}>
-                        {dna.level}
-                      </span>
-                    </div>
+              {/* What to Expect */}
+              {dnaDescription?.tendencies && dnaDescription.tendencies.length > 0 && (
+                <Card className="p-space-5 space-y-space-3">
+                  <h3 className="font-semibold text-text-primary text-sm">
+                    {isCurrentManager ? 'Your Tendencies' : 'What to Expect'}
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {dnaDescription.tendencies.map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                        <span className={`${isCurrentManager ? 'text-green-500' : 'text-blue-400'} shrink-0 mt-0.5`}>
+                          {isCurrentManager ? '✓' : '›'}
+                        </span>
+                        {isCurrentManager ? t : perspectivize(t)}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
 
-                    {lvlInfo && (
-                      <div className="flex items-center gap-3 bg-bg-elevated border border-border rounded-xl px-4 py-3">
-                        <span className={`font-mono font-bold text-lg ${levelColor(dna.level)}`}>{dna.level}</span>
-                        <div>
-                          <p className="text-text-primary text-sm font-semibold">{lvlInfo.short}</p>
-                          <p className="text-text-muted text-xs mt-0.5">{lvlInfo.detail}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <p className="text-text-secondary text-sm leading-relaxed">{desc.about}</p>
-
-                    {isCurrentManager ? (
-                      <>
-                        <div>
-                          <h4 className="text-text-primary font-semibold text-xs uppercase tracking-wider mb-2">Your Tendencies</h4>
-                          <ul className="space-y-1.5">
-                            {desc.tendencies.map((t, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                                <span className="text-green-500 shrink-0 mt-0.5">✓</span>
-                                {t}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
-                          <h4 className="text-accent font-semibold text-xs uppercase tracking-wider mb-1.5">Coach Note</h4>
-                          <p className="text-text-secondary text-sm leading-relaxed">{desc.coachNote}</p>
-                        </div>
-
-                        <div>
-                          <h4 className="text-text-primary font-semibold text-xs uppercase tracking-wider mb-2">Vulnerabilities to Watch</h4>
-                          <ul className="space-y-1.5">
-                            {desc.weaknesses.map((w, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                                <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
-                                {w}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div>
-                          <h4 className="text-text-primary font-semibold text-xs uppercase tracking-wider mb-2">What to Expect</h4>
-                          <ul className="space-y-1.5">
-                            {desc.tendencies.map((t, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                                <span className="text-blue-400 shrink-0 mt-0.5">›</span>
-                                {perspectivize(t)}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
-                          <h4 className="text-red-400 font-semibold text-xs uppercase tracking-wider mb-2">How to Exploit Their Weaknesses</h4>
-                          <ul className="space-y-1.5">
-                            {desc.weaknesses.map((w, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                                <span className="text-red-400 shrink-0 mt-0.5">⚡</span>
-                                {perspectivize(w)}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </>
-                    )}
-                  </Card>
-                )
-              })}
+              {/* Weaknesses */}
+              {dnaDescription?.weaknesses && dnaDescription.weaknesses.length > 0 && (
+                <Card className="p-space-5 space-y-space-3">
+                  <h3 className={`font-semibold text-sm ${isCurrentManager ? 'text-red-400' : 'text-red-400'}`}>
+                    {isCurrentManager ? 'Vulnerabilities to Watch' : 'How to Exploit Their Weaknesses'}
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {dnaDescription.weaknesses.map((w, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                        <span className="text-red-400 shrink-0 mt-0.5">{isCurrentManager ? '⚠' : '⚡'}</span>
+                        {isCurrentManager ? w : perspectivize(w)}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
 
               {/* Form States */}
               {teamStates.length > 0 && (

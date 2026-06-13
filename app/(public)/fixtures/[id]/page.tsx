@@ -276,6 +276,15 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const { profiles: homeDNA } = await getTeamDNAFromDB(supabase as any, fixture.home_team_id)
   const { profiles: awayDNA } = await getTeamDNAFromDB(supabase as any, fixture.away_team_id)
 
+  // Coach notes for this fixture
+  const { data: coachNotesRaw } = await supabase
+    .from('fixture_coach_notes')
+    .select('*')
+    .eq('fixture_id', id)
+  const coachNotes = (coachNotesRaw ?? []) as any[]
+  const homeCoachNote = coachNotes.find((n: any) => n.team_id === fixture.home_team_id) ?? null
+  const awayCoachNote = coachNotes.find((n: any) => n.team_id === fixture.away_team_id) ?? null
+
   // Derived state
   const homeTeam = (fixture as any).home_team
   const awayTeam = (fixture as any).away_team
@@ -425,6 +434,115 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       {/* ── PRE-MATCH SECTIONS ───────────────────────────────────────────── */}
       {!hasResult && (
         <>
+          {/* Coach's Analysis */}
+          {(homeCoachNote || awayCoachNote) && (
+            <div className="card p-5 border-gold/20">
+              <h2 className="section-header">
+                <Brain className="w-5 h-5 text-gold" /> Coach's Analysis
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Home team analysis */}
+                {homeCoachNote && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                      {homeTeam.name} — vs {awayTeam.name}
+                    </p>
+                    {/* Confidence */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-text-muted">Confidence:</span>
+                      <span className={`font-mono font-bold text-sm ${
+                        homeCoachNote.confidence.startsWith('+') ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {homeCoachNote.confidence}
+                      </span>
+                    </div>
+                    {/* Opponent will exploit */}
+                    {homeCoachNote.opponent_will_exploit?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
+                          {awayTeam.name} will exploit
+                        </h4>
+                        <ul className="space-y-1">
+                          {homeCoachNote.opponent_will_exploit.map((p: string, i: number) => (
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
+                              <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
+                              {p}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Recommendations */}
+                    {homeCoachNote.recommendations?.length > 0 && (
+                      <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
+                        <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
+                          Recommendation
+                        </h4>
+                        <ul className="space-y-1">
+                          {homeCoachNote.recommendations.map((r: string, i: number) => (
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
+                              <span className="text-accent shrink-0 mt-0.5">›</span>
+                              {r}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Away team analysis */}
+                {awayCoachNote && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                      {awayTeam.name} — vs {homeTeam.name}
+                    </p>
+                    {/* Confidence */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-text-muted">Confidence:</span>
+                      <span className={`font-mono font-bold text-sm ${
+                        awayCoachNote.confidence.startsWith('+') ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {awayCoachNote.confidence}
+                      </span>
+                    </div>
+                    {/* Opponent will exploit */}
+                    {awayCoachNote.opponent_will_exploit?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
+                          {homeTeam.name} will exploit
+                        </h4>
+                        <ul className="space-y-1">
+                          {awayCoachNote.opponent_will_exploit.map((p: string, i: number) => (
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
+                              <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
+                              {p}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Recommendations */}
+                    {awayCoachNote.recommendations?.length > 0 && (
+                      <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
+                        <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
+                          Recommendation
+                        </h4>
+                        <ul className="space-y-1">
+                          {awayCoachNote.recommendations.map((r: string, i: number) => (
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
+                              <span className="text-accent shrink-0 mt-0.5">›</span>
+                              {r}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Matchroom Instructions */}
           <div className="card p-5 border-accent/20 bg-bg-elevated">
             <h2 className="section-header">
