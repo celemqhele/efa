@@ -24,6 +24,7 @@ export async function GET() {
       .from('poll_applications' as any)
       .select('*, applicant:profiles!poll_applications_applicant_id_fkey(username)')
       .in('poll_id', pollIds)
+      .neq('status', 'withdrawn')
       .order('created_at', { ascending: true })
     applications = apps ?? []
   }
