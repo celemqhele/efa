@@ -164,7 +164,7 @@ export default async function AdminDashboardPage() {
           <Link href="/admin/managers" className="btn-outline text-xs px-3 py-1.5">Managers</Link>
           <Link href="/admin/hall-of-fame" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Hall of Fame</Link>
           <Link href="/admin/export" className="btn-outline text-xs px-3 py-1.5 hidden sm:inline-flex">Export</Link>
-          <Link href="/admin/dna" className="btn-outline text-xs px-3 py-1.5">DNA</Link>
+          <Link href="/admin/polls" className="btn-outline text-xs px-3 py-1.5">Polls</Link>
         </div>
       </div>
 

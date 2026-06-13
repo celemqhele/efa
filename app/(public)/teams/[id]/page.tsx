@@ -212,6 +212,15 @@ export default async function TeamProfilePage({ params }: PageProps) {
   let teamStates: TeamState[] = []
   let managerNotes: ManagerNote[] = []
 
+  // DNA playstyle data lives in team_dna table — fetch for every team regardless of manager
+  {
+    const { profiles, combination, descriptionMap, combinationDescription } = await getTeamDNAAndCombinationFromDB(supabase as any, team.id)
+    dnaProfiles = profiles
+    dnaCombination = combination
+    dnaDescriptionMap = descriptionMap
+    dnaCombinationDescription = combinationDescription
+  }
+
   if (managerId) {
     const { data: tenures } = await supabase
       .from('manager_tenures')
@@ -298,14 +307,6 @@ export default async function TeamProfilePage({ params }: PageProps) {
             myScore,
             theirScore,
           })
-        }
-
-        {
-          const { profiles, combination, descriptionMap, combinationDescription } = await getTeamDNAAndCombinationFromDB(supabase as any, team.id)
-          dnaProfiles = profiles
-          dnaCombination = combination
-          dnaDescriptionMap = descriptionMap
-          dnaCombinationDescription = combinationDescription
         }
 
         if (managerGames.length >= 1) {
@@ -414,22 +415,22 @@ export default async function TeamProfilePage({ params }: PageProps) {
     <div className="space-y-space-6 pt-space-4">
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <Card>
-        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-24 relative">
+        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-28 relative">
           <div className="absolute inset-0 bg-gradient-to-t from-bg-surface to-transparent" />
         </div>
-        <div className="px-space-6 pb-space-6 -mt-12 relative">
-          <div className="flex items-end gap-space-5">
-            <div className="bg-bg-base">
-              <Image
-                src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
-                alt={team.name}
-                width={96}
-                height={96}
-                className="object-contain w-24 h-24"
-              />
-            </div>
-            <div className="pb-1 flex-1">
-              <h1 className="text-2xl font-black text-text-primary">{team.name}</h1>
+        <div className="px-space-6 pb-space-6 -mt-10 relative">
+            <div className="flex items-end gap-space-5">
+              <div className="bg-bg-base rounded-lg overflow-hidden">
+                <Image
+                  src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
+                  alt={team.name}
+                  width={96}
+                  height={96}
+                  className="object-contain w-24 h-24"
+                />
+              </div>
+              <div className="pb-1 flex-1">
+                <h1 className="text-2xl font-black text-text-primary">{team.name}</h1>
               <div className="flex items-center gap-space-3 flex-wrap mt-0.5">
                 <p className="text-text-muted text-sm">
                   Manager:{' '}
