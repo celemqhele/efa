@@ -17,7 +17,18 @@ export async function GET() {
     .select('*, created_by:profiles!polls_created_by_fkey(username)')
     .order('created_at', { ascending: false })
 
-  return Response.json({ polls: polls ?? [] })
+  const pollIds = (polls ?? []).map((p: any) => p.id)
+  let applications: any[] = []
+  if (pollIds.length > 0) {
+    const { data: apps } = await adminSupabase
+      .from('poll_applications' as any)
+      .select('*, applicant:profiles!poll_applications_applicant_id_fkey(username)')
+      .in('poll_id', pollIds)
+      .order('created_at', { ascending: true })
+    applications = apps ?? []
+  }
+
+  return Response.json({ polls: polls ?? [], applications })
 }
 
 export async function POST(request: Request) {

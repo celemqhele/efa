@@ -15,11 +15,25 @@ interface Poll {
   created_by: { username: string } | { username: string }[]
 }
 
+interface Application {
+  id: string
+  poll_id: string
+  applicant_id: string
+  team_name: string
+  team_slug: string
+  team_league: string
+  status: string
+  created_at: string
+  applicant: { username: string } | { username: string }[]
+}
+
 export default function AdminPollsPage() {
   const supabase = createClient()
   const [polls, setPolls] = useState<Poll[]>([])
+  const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [expandedPoll, setExpandedPoll] = useState<string | null>(null)
 
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
@@ -49,6 +63,11 @@ export default function AdminPollsPage() {
     { value: 'saudi-arabia-pro-league-2025-2026.football-logos.cc', label: 'Saudi Pro League' },
   ]
 
+  function getApplicantName(a: Application): string {
+    const a2 = Array.isArray(a.applicant) ? a.applicant[0] : a.applicant
+    return a2?.username ?? 'Unknown'
+  }
+
   const loadPolls = useCallback(async () => {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
@@ -56,7 +75,10 @@ export default function AdminPollsPage() {
 
     const res = await fetch('/api/admin/polls')
     const data = await res.json()
-    if (res.ok) setPolls(data.polls ?? [])
+    if (res.ok) {
+      setPolls(data.polls ?? [])
+      setApplications(data.applications ?? [])
+    }
     setLoading(false)
   }, [supabase])
 
@@ -151,35 +173,78 @@ export default function AdminPollsPage() {
             const creator = Array.isArray(poll.created_by) ? poll.created_by[0] : poll.created_by
             const isOpen = poll.status === 'open'
             return (
-              <Card key={poll.id} className="p-space-5 flex items-start justify-between gap-space-4">
-                <div className="space-y-space-1.5 min-w-0">
-                  <div className="flex items-center gap-space-3">
-                    <h3 className="font-semibold text-text-primary">{poll.title}</h3>
-                    <span className={`text-[10px] px-space-1.5 py-space-0.5 rounded-full border font-medium ${
-                      isOpen
-                        ? 'bg-feedback-success/10 border-feedback-success/30 text-feedback-success'
-                        : 'bg-bg-elevated border-border text-text-muted'
-                    }`}>
-                      {isOpen ? 'Open' : 'Closed'}
-                    </span>
+              <Card key={poll.id} className="p-space-5">
+                <div className="flex items-start justify-between gap-space-4">
+                  <div className="space-y-space-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-space-3">
+                      <h3 className="font-semibold text-text-primary">{poll.title}</h3>
+                      <span className={`text-[10px] px-space-1.5 py-space-0.5 rounded-full border font-medium ${
+                        isOpen
+                          ? 'bg-feedback-success/10 border-feedback-success/30 text-feedback-success'
+                          : 'bg-bg-elevated border-border text-text-muted'
+                      }`}>
+                        {isOpen ? 'Open' : 'Closed'}
+                      </span>
+                    </div>
+                    {poll.description && (
+                      <p className="text-xs text-text-muted">{poll.description}</p>
+                    )}
+                    <p className="text-[10px] text-text-muted">
+                      Share code: <code className="bg-bg-base px-space-1 rounded">{poll.share_code}</code>
+                      {' · '}Created {new Date(poll.created_at).toLocaleDateString()}
+                      {creator && ` · by ${creator.username}`}
+                    </p>
                   </div>
-                  {poll.description && (
-                    <p className="text-xs text-text-muted">{poll.description}</p>
-                  )}
-                  <p className="text-[10px] text-text-muted">
-                    Share code: <code className="bg-bg-base px-space-1 rounded">{poll.share_code}</code>
-                    {' · '}Created {new Date(poll.created_at).toLocaleDateString()}
-                    {creator && ` · by ${creator.username}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-space-2 shrink-0">
-                  <Button variant="secondary" className="text-xs px-space-3" onClick={() => copyLink(poll.share_code)}>
-                    Copy Link
-                  </Button>
-                  {isOpen && (
-                    <Button variant="destructive" className="text-xs px-space-3" onClick={() => handleClose(poll.id)}>
-                      Close
+                  <div className="flex items-center gap-space-2 shrink-0">
+                    <Button variant="secondary" onClick={() => copyLink(poll.share_code)}>
+                      Copy Link
                     </Button>
+                    {isOpen && (
+                      <Button variant="destructive" onClick={() => handleClose(poll.id)}>
+                        Close
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-space-4 border-t border-border pt-space-3">
+                  <button
+                    onClick={() => setExpandedPoll(expandedPoll === poll.id ? null : poll.id)}
+                    className="flex items-center gap-space-2 text-xs text-text-muted hover:text-text-primary transition-colors"
+                  >
+                    <svg className={`w-3 h-3 transition-transform ${expandedPoll === poll.id ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    Applications ({applications.filter((a) => a.poll_id === poll.id).length})
+                  </button>
+
+                  {expandedPoll === poll.id && (
+                    <div className="mt-space-2 space-y-space-1">
+                      {applications.filter((a) => a.poll_id === poll.id).length === 0 ? (
+                        <p className="text-xs text-text-muted py-space-2">No applications yet.</p>
+                      ) : (
+                        applications
+                          .filter((a) => a.poll_id === poll.id)
+                          .map((app) => (
+                            <div key={app.id} className="flex items-center justify-between px-space-3 py-space-2 rounded-lg bg-bg-elevated/50 border border-border">
+                              <div className="flex items-center gap-space-2 min-w-0">
+                                <span className="text-sm font-medium text-text-primary truncate">{app.team_name}</span>
+                                <span className="text-[10px] text-text-muted truncate">{app.team_league}</span>
+                              </div>
+                              <div className="flex items-center gap-space-2 shrink-0">
+                                <span className="text-[10px] text-text-muted">{getApplicantName(app)}</span>
+                                <span className={`text-[10px] px-space-1.5 py-space-0.5 rounded-full font-medium ${
+                                  app.status === 'pending'
+                                    ? 'bg-warning/10 text-warning'
+                                    : app.status === 'approved'
+                                    ? 'bg-feedback-success/10 text-feedback-success'
+                                    : 'bg-bg-elevated text-text-muted'
+                                }`}>
+                                  {app.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
                   )}
                 </div>
               </Card>
