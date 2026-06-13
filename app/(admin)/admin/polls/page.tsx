@@ -230,8 +230,8 @@ export default function AdminPollsPage() {
                                 <span className="text-[10px] text-text-muted truncate">{app.team_league}</span>
                               </div>
                               <div className="flex items-center gap-space-2 shrink-0">
-                                <span className="text-[10px] text-text-muted">{getApplicantName(app)}</span>
-                                <span className={`text-[10px] px-space-1.5 py-space-0.5 rounded-full font-medium ${
+                                <span className="text-xs text-text-muted">{getApplicantName(app)}</span>
+                                <span className={`text-xs px-space-2 py-space-1 rounded-full font-medium ${
                                   app.status === 'pending'
                                     ? 'bg-warning/10 text-warning'
                                     : app.status === 'approved'

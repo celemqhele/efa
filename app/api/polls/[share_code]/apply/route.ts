@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { LEAGUE_META } from '@/app/(auth)/select-team/registry'
 
 export async function POST(request: Request, { params }: { params: Promise<{ share_code: string }> }) {
   const { share_code } = await params
@@ -37,6 +38,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ sha
 
   if (existing) {
     return Response.json({ error: 'This team has already been claimed' }, { status: 409 })
+  }
+
+  // National teams: only allow one application per user
+  const meta = LEAGUE_META[team_league]
+  if (meta?.isNational) {
+    const { data: existingNational } = await adminSupabase
+      .from('poll_applications' as any)
+      .select('id')
+      .eq('poll_id', poll.id)
+      .eq('applicant_id', user.id)
+      .neq('status', 'withdrawn')
+      .maybeSingle()
+
+    if (existingNational) {
+      return Response.json({ error: 'You can only apply to one national team. Withdraw from your current application first.' }, { status: 409 })
+    }
   }
 
   // Insert application
