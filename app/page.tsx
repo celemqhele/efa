@@ -7,7 +7,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Trophy, ClipboardList, CalendarDays, Flame } from 'lucide-react'
+import { Trophy, ClipboardList, CalendarDays, Flame, Vote } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -347,6 +347,7 @@ export default async function HomePage() {
                 { href: '/hall-of-fame', label: 'Hall of Fame', icon: Trophy },
                 { href: '/rules', label: 'Rules', icon: ClipboardList },
                 { href: '/calendar', label: 'Calendar', icon: CalendarDays },
+                { href: '/polls', label: 'Polls', icon: Vote },
               ].map((link) => {
                 const Icon = link.icon
                 return (
