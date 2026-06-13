@@ -5,10 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
-import { getTeamDNAAndCombinationFromDB, buildTeamStatsMixed } from '@/lib/dna-engine'
+import { getTeamDNAAndCombinationFromDB, buildTeamStatsMixed, LEVEL_LABELS } from '@/lib/dna-engine'
 import type { DNAProfile, DNACombination, PersonalizedDescription } from '@/lib/dna-engine'
-import DNABadge from '@/components/ui/DNABadge'
-import CombinationBadge from '@/components/ui/CombinationBadge'
 import { detectTeamStates } from '@/lib/team-states'
 import type { TeamState } from '@/lib/team-states'
 import TeamStateBadges from '@/components/ui/TeamStateBadge'
@@ -20,7 +18,7 @@ import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Trophy, Star, Globe, Medal } from 'lucide-react'
+import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Sword, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, FlaskConical } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +38,41 @@ const TROPHY_LABEL: Record<string, string> = {
   ucl: 'UCL Winner',
   europa: 'Europa Winner',
   super_cup: 'Super Cup',
+}
+
+const DNA_ICONS: Record<string, React.ReactNode> = {
+  crown: <Crown className="w-4 h-4" />,
+  theater: <Drama className="w-4 h-4" />,
+  zap: <Zap className="w-4 h-4" />,
+  brain: <Brain className="w-4 h-4" />,
+  dagger: <Sword className="w-4 h-4" />,
+  shield: <Shield className="w-4 h-4" />,
+  muscle: <Dumbbell className="w-4 h-4" />,
+  arrows_horizontal: <ArrowLeftRight className="w-4 h-4" />,
+  triangle: <Triangle className="w-4 h-4" />,
+  target: <Crosshair className="w-4 h-4" />,
+  scale: <Scale className="w-4 h-4" />,
+}
+
+function levelColor(level: string): string {
+  if (level.startsWith('+++')) return 'text-green-500'
+  if (level.startsWith('++'))  return 'text-accent'
+  if (level === '+')           return 'text-accent'
+  return 'text-text-muted'
+}
+
+function perspectivize(text: string): string {
+  return text
+    .replace(/\bYour\b/g, 'Their')
+    .replace(/\byour\b/g, 'their')
+    .replace(/\bYou're\b/g, "They're")
+    .replace(/\byou're\b/g, "they're")
+    .replace(/\bYou've\b/g, "They've")
+    .replace(/\byou've\b/g, "they've")
+    .replace(/\bYou'll\b/g, "They'll")
+    .replace(/\byou'll\b/g, "they'll")
+    .replace(/\bYou\b/g, 'They')
+    .replace(/\byou\b/g, 'they')
 }
 
 export default async function TeamProfilePage({ params }: PageProps) {
@@ -453,31 +486,127 @@ export default async function TeamProfilePage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* DNA Badges */}
+          {/* DNA Playstyle */}
           {dnaProfiles.length > 0 && (
-            <div className="mt-space-4">
-              {dnaCombination ? (
-                <CombinationBadge
-                  combination={dnaCombination}
-                  profiles={dnaProfiles}
-                  isOwnTeam={isCurrentManager}
-                  personalized={dnaCombinationDescription}
-                />
-              ) : (
-                <div className="flex flex-wrap gap-space-1.5">
-                  {dnaProfiles.map((dna) => (
-                    <DNABadge
-                      key={dna.label}
-                      label={dna.label}
-                      iconName={dna.iconName}
-                      color={dna.color}
-                      level={dna.level}
-                      isOwnTeam={isCurrentManager}
-                      personalized={dnaDescriptionMap[dna.label] ?? null}
-                    />
-                  ))}
-                </div>
+            <div className="mt-space-6 space-y-space-6">
+              <h2 className="section-header">Playstyle</h2>
+
+              {/* Profile pills */}
+              <div className="flex flex-wrap gap-space-1.5">
+                {dnaProfiles.map((dna) => (
+                  <span
+                    key={dna.label}
+                    className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${dna.color}`}
+                  >
+                    {DNA_ICONS[dna.iconName] ?? null}
+                    <span>{dna.label}</span>
+                    <span className={`font-mono font-bold ml-0.5 ${levelColor(dna.level)}`}>{dna.level}</span>
+                  </span>
+                ))}
+              </div>
+
+              {/* Combination card */}
+              {dnaCombination && dnaCombinationDescription && (
+                <Card className="p-space-5 space-y-space-4">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="w-5 h-5 text-accent" />
+                    <h3 className="font-semibold text-text-primary">{dnaCombination.name}</h3>
+                    <span className={`font-mono font-bold text-sm ${levelColor(dnaCombination.level)}`}>{dnaCombination.level}</span>
+                  </div>
+                  <p className="text-text-secondary text-sm leading-relaxed">{dnaCombinationDescription.about}</p>
+                </Card>
               )}
+
+              {/* Profile description cards */}
+              {dnaProfiles.map((dna) => {
+                const desc = dnaDescriptionMap[dna.label]
+                if (!desc) return null
+                const lvlInfo = LEVEL_LABELS[dna.level]
+                return (
+                  <Card key={dna.label} className="p-space-5 space-y-space-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {DNA_ICONS[dna.iconName] ?? null}
+                        <h3 className="font-semibold text-text-primary">{dna.label}</h3>
+                      </div>
+                      <span className={`font-mono font-bold text-xs px-2 py-0.5 rounded-full border ${dna.color}`}>
+                        {dna.level}
+                      </span>
+                    </div>
+
+                    {lvlInfo && (
+                      <div className="flex items-center gap-3 bg-bg-elevated border border-border rounded-xl px-4 py-3">
+                        <span className={`font-mono font-bold text-lg ${levelColor(dna.level)}`}>{dna.level}</span>
+                        <div>
+                          <p className="text-text-primary text-sm font-semibold">{lvlInfo.short}</p>
+                          <p className="text-text-muted text-xs mt-0.5">{lvlInfo.detail}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-text-secondary text-sm leading-relaxed">{desc.about}</p>
+
+                    {isCurrentManager ? (
+                      <>
+                        <div>
+                          <h4 className="text-text-primary font-semibold text-xs uppercase tracking-wider mb-2">Your Tendencies</h4>
+                          <ul className="space-y-1.5">
+                            {desc.tendencies.map((t, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                                <span className="text-green-500 shrink-0 mt-0.5">✓</span>
+                                {t}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
+                          <h4 className="text-accent font-semibold text-xs uppercase tracking-wider mb-1.5">Coach Note</h4>
+                          <p className="text-text-secondary text-sm leading-relaxed">{desc.coachNote}</p>
+                        </div>
+
+                        <div>
+                          <h4 className="text-text-primary font-semibold text-xs uppercase tracking-wider mb-2">Vulnerabilities to Watch</h4>
+                          <ul className="space-y-1.5">
+                            {desc.weaknesses.map((w, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                                <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
+                                {w}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <h4 className="text-text-primary font-semibold text-xs uppercase tracking-wider mb-2">What to Expect</h4>
+                          <ul className="space-y-1.5">
+                            {desc.tendencies.map((t, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                                <span className="text-blue-400 shrink-0 mt-0.5">›</span>
+                                {perspectivize(t)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+                          <h4 className="text-red-400 font-semibold text-xs uppercase tracking-wider mb-2">How to Exploit Their Weaknesses</h4>
+                          <ul className="space-y-1.5">
+                            {desc.weaknesses.map((w, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
+                                <span className="text-red-400 shrink-0 mt-0.5">⚡</span>
+                                {perspectivize(w)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </>
+                    )}
+                  </Card>
+                )
+              })}
             </div>
           )}
 
