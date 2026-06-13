@@ -29,7 +29,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ shar
   )
 
   const myApplications = user
-    ? (applications ?? []).filter((a: any) => a.applicant_id === user.id)
+    ? (applications ?? []).filter((a: any) => a.applicant_id === user.id && a.status !== 'withdrawn')
     : []
 
   return Response.json({
