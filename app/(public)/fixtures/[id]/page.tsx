@@ -273,8 +273,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     .in('result_id', awayFixtureResults.map((r: any) => r.id))
     .limit(10)
 
-  const homeDNA = await getTeamDNAFromDB(supabase as any, fixture.home_team_id)
-  const awayDNA = await getTeamDNAFromDB(supabase as any, fixture.away_team_id)
+  const { profiles: homeDNA } = await getTeamDNAFromDB(supabase as any, fixture.home_team_id)
+  const { profiles: awayDNA } = await getTeamDNAFromDB(supabase as any, fixture.away_team_id)
 
   // Derived state
   const homeTeam = (fixture as any).home_team

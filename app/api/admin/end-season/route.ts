@@ -58,6 +58,42 @@ export async function POST(request: Request) {
     .update({ status: 'completed' })
     .eq('id', season_id)
 
+  // ── Auto-end all manager tenures for teams in this season ─────────────
+  try {
+    const { data: allTournaments } = await adminSupabase
+      .from('tournaments')
+      .select('id')
+      .eq('season_id', season_id)
+
+    if (allTournaments && allTournaments.length > 0) {
+      const tIds = allTournaments.map((t: any) => t.id)
+
+      const { data: participants } = await adminSupabase
+        .from('tournament_participants')
+        .select('team_id')
+        .in('tournament_id', tIds)
+
+      if (participants && participants.length > 0) {
+        const teamIds = [...new Set(participants.map((p: any) => p.team_id))] as string[]
+
+        const now = new Date().toISOString()
+
+        await adminSupabase
+          .from('teams')
+          .update({ manager_id: null })
+          .in('id', teamIds)
+
+        await adminSupabase
+          .from('manager_tenures' as any)
+          .update({ ended_at: now })
+          .in('team_id', teamIds)
+          .is('ended_at', null)
+      }
+    }
+  } catch (err) {
+    console.error('[end-season] tenure cleanup error:', err)
+  }
+
   // Send qualification notifications
   if (finalStandings) {
     const notifs = finalStandings

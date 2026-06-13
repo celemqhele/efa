@@ -19,12 +19,14 @@ CREATE TABLE IF NOT EXISTS team_dna (
 );
 
 -- Allow reads by any authenticated user (public display)
+DROP POLICY IF EXISTS "team_dna_select_anyone" ON team_dna;
 CREATE POLICY "team_dna_select_anyone"
   ON team_dna FOR SELECT
   TO authenticated
   USING (true);
 
 -- Only admins can insert/update
+DROP POLICY IF EXISTS "team_dna_insert_admin" ON team_dna;
 CREATE POLICY "team_dna_insert_admin"
   ON team_dna FOR INSERT
   TO authenticated
@@ -32,6 +34,7 @@ CREATE POLICY "team_dna_insert_admin"
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
+DROP POLICY IF EXISTS "team_dna_update_admin" ON team_dna;
 CREATE POLICY "team_dna_update_admin"
   ON team_dna FOR UPDATE
   TO authenticated

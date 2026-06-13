@@ -23,6 +23,13 @@ export interface DNAProfile {
   score: number
 }
 
+export interface PersonalizedDescription {
+  about: string
+  tendencies: string[]
+  coachNote: string
+  weaknesses: string[]
+}
+
 // ── Threshold helpers ────────────────────────────────────────────────────────
 function ramp(v: number, lo: number, hi: number): number {
   if (v <= lo) return 0
@@ -832,14 +839,33 @@ async function getTeamDNARow(
   return data
 }
 
+function buildDescription(
+  row: Record<string, any>,
+  prefix: 'primary' | 'secondary' | 'tertiary'
+): PersonalizedDescription | null {
+  const about = row[`${prefix}_about`]
+  if (!about) return null
+  return {
+    about,
+    tendencies: row[`${prefix}_tendencies`] ?? [],
+    coachNote: row[`${prefix}_coach_note`] ?? '',
+    weaknesses: row[`${prefix}_weaknesses`] ?? [],
+  }
+}
+
 export async function getTeamDNAFromDB(
   supabase: any,
   teamId: string
-): Promise<DNAProfile[]> {
+): Promise<{
+  profiles: DNAProfile[]
+  descriptionMap: Record<string, PersonalizedDescription>
+  combinationDescription: PersonalizedDescription | null
+}> {
   const row = await getTeamDNARow(supabase, teamId)
-  if (!row || !row.primary_profile) return []
+  if (!row || !row.primary_profile) return { profiles: [], descriptionMap: {}, combinationDescription: null }
 
   const profiles: DNAProfile[] = []
+  const descriptionMap: Record<string, PersonalizedDescription> = {}
   const entries: { profile: string; level: string; score: number }[] = [
     { profile: row.primary_profile, level: row.primary_level ?? '-', score: row.primary_score ?? 0 },
   ]
@@ -850,7 +876,9 @@ export async function getTeamDNAFromDB(
     entries.push({ profile: row.tertiary_profile, level: row.tertiary_level ?? '-', score: row.tertiary_score ?? 0 })
   }
 
-  for (const e of entries) {
+  const prefixes: ('primary' | 'secondary' | 'tertiary')[] = ['primary', 'secondary', 'tertiary']
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i]
     profiles.push({
       label: e.profile,
       iconName: PROFILE_ICON_MAP[e.profile] ?? 'scale',
@@ -858,16 +886,33 @@ export async function getTeamDNAFromDB(
       level: e.level,
       score: e.score,
     })
+    const desc = buildDescription(row, prefixes[i])
+    if (desc) descriptionMap[e.profile] = desc
   }
 
-  return profiles
+  const combAbout = row.combination_about
+  const combinationDescription = combAbout
+    ? {
+        about: combAbout,
+        tendencies: row.combination_tendencies ?? [],
+        coachNote: row.combination_coach_note ?? '',
+        weaknesses: row.combination_weaknesses ?? [],
+      }
+    : null
+
+  return { profiles, descriptionMap, combinationDescription }
 }
 
 export async function getTeamDNAAndCombinationFromDB(
   supabase: any,
   teamId: string
-): Promise<{ profiles: DNAProfile[]; combination: DNACombination | null }> {
-  const profiles = await getTeamDNAFromDB(supabase, teamId)
+): Promise<{
+  profiles: DNAProfile[]
+  combination: DNACombination | null
+  descriptionMap: Record<string, PersonalizedDescription>
+  combinationDescription: PersonalizedDescription | null
+}> {
+  const { profiles, descriptionMap, combinationDescription } = await getTeamDNAFromDB(supabase, teamId)
   const combination = profiles.length >= 2 ? getTeamCombination(profiles) : null
-  return { profiles, combination }
+  return { profiles, combination, descriptionMap, combinationDescription }
 }

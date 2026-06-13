@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     }
 
     if (generateFixtures) {
-      const generated = generateLeagueFixtures(teamIds, start_date, end_date, [], tid)
+      const generated = await generateLeagueFixtures(adminSupabase, teamIds, tid)
       if (generated.length > 0) {
         await adminSupabase.from('fixtures').insert(
           generated.map((f) => ({

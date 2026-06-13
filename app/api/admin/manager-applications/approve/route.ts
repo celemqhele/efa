@@ -47,19 +47,6 @@ export async function POST(request: Request) {
 
   const now = new Date().toISOString()
 
-  // If applicant already manages a different club, sack them from it first
-  const { data: applicantCurrentTeams } = await adminSupabase
-    .from('teams').select('id, logo_league_folder, logo_team_slug').eq('manager_id', newManagerId)
-  if (applicantCurrentTeams && applicantCurrentTeams.length > 0) {
-    const applicantClubIds = applicantCurrentTeams.map((t: any) => t.id)
-    await adminSupabase.from('teams').update({ manager_id: null }).in('id', applicantClubIds)
-    await adminSupabase
-      .from('manager_tenures' as any)
-      .update({ ended_at: now })
-      .in('team_id', applicantClubIds)
-      .is('ended_at', null)
-  }
-
   // Close existing tenures for the target club
   await adminSupabase
     .from('manager_tenures' as any)

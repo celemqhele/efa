@@ -9,20 +9,7 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  let body: {
-    team_id: string
-    primary_profile: string
-    primary_level: string
-    primary_score: number
-    secondary_profile?: string | null
-    secondary_level?: string | null
-    secondary_score?: number
-    tertiary_profile?: string | null
-    tertiary_level?: string | null
-    tertiary_score?: number
-    notes?: string | null
-  }
-
+  let body: Record<string, any>
   try { body = await request.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
@@ -37,12 +24,28 @@ export async function POST(request: Request) {
     primary_profile: body.primary_profile,
     primary_level: body.primary_level,
     primary_score: body.primary_score ?? 0,
+    primary_about: body.primary_about ?? null,
+    primary_tendencies: body.primary_tendencies ?? [],
+    primary_coach_note: body.primary_coach_note ?? null,
+    primary_weaknesses: body.primary_weaknesses ?? [],
     secondary_profile: body.secondary_profile ?? null,
     secondary_level: body.secondary_level ?? null,
     secondary_score: body.secondary_score ?? 0,
+    secondary_about: body.secondary_about ?? null,
+    secondary_tendencies: body.secondary_tendencies ?? [],
+    secondary_coach_note: body.secondary_coach_note ?? null,
+    secondary_weaknesses: body.secondary_weaknesses ?? [],
     tertiary_profile: body.tertiary_profile ?? null,
     tertiary_level: body.tertiary_level ?? null,
     tertiary_score: body.tertiary_score ?? 0,
+    tertiary_about: body.tertiary_about ?? null,
+    tertiary_tendencies: body.tertiary_tendencies ?? [],
+    tertiary_coach_note: body.tertiary_coach_note ?? null,
+    tertiary_weaknesses: body.tertiary_weaknesses ?? [],
+    combination_about: body.combination_about ?? null,
+    combination_tendencies: body.combination_tendencies ?? [],
+    combination_coach_note: body.combination_coach_note ?? null,
+    combination_weaknesses: body.combination_weaknesses ?? [],
     updated_by: user.id,
     notes: body.notes ?? null,
   }, { onConflict: 'team_id' })

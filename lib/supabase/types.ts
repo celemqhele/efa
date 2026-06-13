@@ -849,6 +849,78 @@ export interface Database {
         }
         Relationships: []
       }
+      polls: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          created_by: string
+          status: string
+          share_code: string
+          allowed_leagues: string[] | null
+          allowed_international: boolean | null
+          created_at: string
+          closed_at: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          created_by: string
+          status?: string
+          share_code: string
+          allowed_leagues?: string[] | null
+          allowed_international?: boolean | null
+          created_at?: string
+          closed_at?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          created_by?: string
+          status?: string
+          share_code?: string
+          allowed_leagues?: string[] | null
+          allowed_international?: boolean | null
+          created_at?: string
+          closed_at?: string | null
+        }
+        Relationships: []
+      }
+      poll_applications: {
+        Row: {
+          id: string
+          poll_id: string
+          applicant_id: string
+          team_name: string
+          team_slug: string
+          team_league: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          poll_id: string
+          applicant_id: string
+          team_name: string
+          team_slug: string
+          team_league: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          poll_id?: string
+          applicant_id?: string
+          team_name?: string
+          team_slug?: string
+          team_league?: string
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {}
     Functions: {}
@@ -876,3 +948,5 @@ export type WaitingReport = Database['public']['Tables']['waiting_reports']['Row
 export type KnockoutRound = Database['public']['Tables']['knockout_rounds']['Row']
 export type TournamentParticipant = Database['public']['Tables']['tournament_participants']['Row']
 export type ManagerTenure = Database['public']['Tables']['manager_tenures']['Row']
+export type Poll = Database['public']['Tables']['polls']['Row']
+export type PollApplication = Database['public']['Tables']['poll_applications']['Row']

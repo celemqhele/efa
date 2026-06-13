@@ -6,7 +6,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { getTeamDNAAndCombinationFromDB, buildTeamStatsMixed } from '@/lib/dna-engine'
-import type { DNAProfile, DNACombination } from '@/lib/dna-engine'
+import type { DNAProfile, DNACombination, PersonalizedDescription } from '@/lib/dna-engine'
 import DNABadge from '@/components/ui/DNABadge'
 import CombinationBadge from '@/components/ui/CombinationBadge'
 import { detectTeamStates } from '@/lib/team-states'
@@ -207,6 +207,8 @@ export default async function TeamProfilePage({ params }: PageProps) {
 
   let dnaProfiles: DNAProfile[] = []
   let dnaCombination: DNACombination | null = null
+  let dnaDescriptionMap: Record<string, PersonalizedDescription> = {}
+  let dnaCombinationDescription: PersonalizedDescription | null = null
   let teamStates: TeamState[] = []
   let managerNotes: ManagerNote[] = []
 
@@ -299,9 +301,11 @@ export default async function TeamProfilePage({ params }: PageProps) {
         }
 
         {
-          const { profiles, combination } = await getTeamDNAAndCombinationFromDB(supabase as any, team.id)
+          const { profiles, combination, descriptionMap, combinationDescription } = await getTeamDNAAndCombinationFromDB(supabase as any, team.id)
           dnaProfiles = profiles
           dnaCombination = combination
+          dnaDescriptionMap = descriptionMap
+          dnaCombinationDescription = combinationDescription
         }
 
         if (managerGames.length >= 1) {
@@ -456,6 +460,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                   combination={dnaCombination}
                   profiles={dnaProfiles}
                   isOwnTeam={isCurrentManager}
+                  personalized={dnaCombinationDescription}
                 />
               ) : (
                 <div className="flex flex-wrap gap-space-1.5">
@@ -467,6 +472,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
                       color={dna.color}
                       level={dna.level}
                       isOwnTeam={isCurrentManager}
+                      personalized={dnaDescriptionMap[dna.label] ?? null}
                     />
                   ))}
                 </div>

@@ -17,10 +17,12 @@ CREATE TABLE IF NOT EXISTS public.manager_tenures (
 ALTER TABLE public.manager_tenures ENABLE ROW LEVEL SECURITY;
 
 -- Policies: public read, admin write
+DROP POLICY IF EXISTS "Anyone can read manager tenures" ON public.manager_tenures;
 CREATE POLICY "Anyone can read manager tenures"
   ON public.manager_tenures FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Admins can manage tenures" ON public.manager_tenures;
 CREATE POLICY "Admins can manage tenures"
   ON public.manager_tenures FOR ALL
   USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
