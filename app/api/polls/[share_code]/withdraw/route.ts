@@ -1,6 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 
-export async function POST(request: Request, { params }: { params: { share_code: string } }) {
+export async function POST(request: Request, { params: _params }: { params: Promise<{ share_code: string }> }) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })

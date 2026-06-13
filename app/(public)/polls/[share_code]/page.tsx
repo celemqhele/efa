@@ -2,14 +2,15 @@ import { createClient } from '@/lib/supabase/server'
 import { buildRegistry } from '@/app/(auth)/select-team/registry'
 import PollClient from './PollClient'
 
-export default async function PollPage({ params }: { params: { share_code: string } }) {
+export default async function PollPage({ params }: { params: Promise<{ share_code: string }> }) {
+  const { share_code } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: poll } = await supabase
     .from('polls' as any)
     .select('*, created_by:profiles!polls_created_by_fkey(username)')
-    .eq('share_code', params.share_code)
+    .eq('share_code', share_code)
     .maybeSingle()
 
   if (!poll) {

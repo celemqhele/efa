@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
@@ -15,7 +16,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { error } = await adminSupabase
     .from('polls' as any)
     .update({ status: 'closed', closed_at: now })
-    .eq('id', params.id)
+    .eq('id', id)
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
 
@@ -23,7 +24,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     admin_id: user.id,
     action: 'close_poll',
     target_type: 'poll',
-    target_id: params.id,
+    target_id: id,
   })
 
   return Response.json({ success: true })

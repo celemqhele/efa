@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 
-export async function POST(request: Request, { params }: { params: { share_code: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ share_code: string }> }) {
+  const { share_code } = await params
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
@@ -18,7 +19,7 @@ export async function POST(request: Request, { params }: { params: { share_code:
   const { data: poll } = await adminSupabase
     .from('polls' as any)
     .select('id, status, allowed_leagues, allowed_international')
-    .eq('share_code', params.share_code)
+    .eq('share_code', share_code)
     .single()
 
   if (!poll) return Response.json({ error: 'Poll not found' }, { status: 404 })
