@@ -18,11 +18,11 @@ CREATE TABLE IF NOT EXISTS team_dna (
   updated_at timestamptz default now()
 );
 
--- Allow reads by any authenticated user (public display)
+-- Allow reads by anyone (public display)
 DROP POLICY IF EXISTS "team_dna_select_anyone" ON team_dna;
 CREATE POLICY "team_dna_select_anyone"
   ON team_dna FOR SELECT
-  TO authenticated
+  TO public
   USING (true);
 
 -- Only admins can insert/update

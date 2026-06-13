@@ -43,9 +43,11 @@ CREATE POLICY "Anyone can read open polls"
   ON public.polls FOR SELECT
   USING (status = 'open' OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
 
+DROP POLICY IF EXISTS "Admins can manage polls" ON public.polls;
 CREATE POLICY "Admins can manage polls"
   ON public.polls FOR ALL
-  USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+  USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
 
 -- Poll applications: anyone can read; users insert/update their own; admins manage all
 CREATE POLICY "Anyone can read poll applications"

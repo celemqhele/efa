@@ -79,7 +79,7 @@ export default function AdminPollsPage() {
       body: JSON.stringify({
         title: title.trim(),
         description: description.trim() || null,
-        allowed_leagues: selectedLeagues.length > 0 ? selectedLeagues : LEAGUE_OPTIONS.map((l) => l.value),
+        allowed_leagues: selectedLeagues.length > 0 ? selectedLeagues : [],
         allowed_international: allowInternational,
       }),
     })
@@ -226,8 +226,11 @@ export default function AdminPollsPage() {
                     )
                   })}
                 </div>
-                {selectedLeagues.length === 0 && (
+                {selectedLeagues.length === 0 && !allowInternational && (
                   <p className="text-[10px] text-text-muted mt-space-1">All leagues selected by default</p>
+                )}
+                {selectedLeagues.length === 0 && allowInternational && (
+                  <p className="text-[10px] text-feedback-success mt-space-1">International / national teams only</p>
                 )}
               </div>
 

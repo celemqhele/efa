@@ -25,7 +25,8 @@ export async function POST(request: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
+  const adminSupabase = await createAdminClient()
+  const { data: profile } = await adminSupabase
     .from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -37,8 +38,6 @@ export async function POST(request: Request) {
   }
 
   const share_code = crypto.randomBytes(4).toString('hex')
-
-  const adminSupabase = await createAdminClient()
 
   const { data: poll, error } = await adminSupabase
     .from('polls' as any)
