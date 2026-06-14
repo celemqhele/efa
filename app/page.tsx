@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import Image from 'next/image'
 import PageWrapper from '@/components/ui/PageWrapper'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
@@ -153,9 +152,13 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-accent),transparent_70%)] opacity-5" />
         <div className="relative">
           <div className="flex items-center gap-space-3 mb-space-2">
-            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
-              <span className="text-bg-base font-black text-sm">EFA</span>
-            </div>
+            <Image
+              src="/efa-logo-white.png"
+              alt="EFA"
+              width={40}
+              height={40}
+              className="w-10 h-10 object-contain"
+            />
             <div>
               <h1 className="text-xl font-bold text-text-primary">Efootball Federal Association</h1>
               <p className="text-xs text-accent">Season 2025/26 — Live</p>
