@@ -50,8 +50,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
     ? localProfiles.find((p) => p.id === selectedTeam.manager_id) ?? null
     : null
 
-  const freeUsers = localProfiles.filter((p) => !localManagedMap[p.id])
-  const busyUsers = localProfiles.filter((p) => !!localManagedMap[p.id])
+
 
   async function handleSack(teamId: string) {
     setLoading(true)
@@ -365,80 +364,56 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
               <div className="space-y-3">
                 <p className="text-xs text-text-muted font-medium uppercase tracking-wide">Assign a Manager</p>
 
-                {freeUsers.length === 0 && (
+                {localProfiles.length === 0 && (
                   <p className="text-text-muted text-sm text-center py-4">
-                    All registered users are already managing a team.
+                    No registered users found.
                   </p>
                 )}
                 <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                  {freeUsers.map((user) => (
-                    <button
-                      key={user.id}
-                      onClick={() => handleAssign(selectedTeam.id, user.id)}
-                      disabled={loading}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-bg-surface hover:border-gold/50 hover:bg-gold/5 transition-all text-left disabled:opacity-50"
-                    >
-                      {user.avatar_url ? (
-                        <Image
-                          src={user.avatar_url}
-                          alt={user.username}
-                          width={32} height={32}
-                          className="rounded-full object-contain bg-bg-elevated shrink-0"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">
-                          <span className="text-text-muted text-xs font-bold">
-                            {user.username[0].toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-foreground-primary text-sm font-medium">{user.username}</p>
-                        <p className="text-green-600 text-xs">Available</p>
-                      </div>
-                      <span className="text-gold text-xs font-semibold shrink-0">Assign →</span>
-                    </button>
-                  ))}
-
-                  {busyUsers.length > 0 && (
-                    <>
-                      {freeUsers.length > 0 && (
-                        <p className="text-xs text-text-muted font-medium uppercase tracking-wide pt-2 pb-1">
-                          Already managing a club
-                        </p>
-                      )}
-                      {busyUsers.map((user) => {
-                        const theirTeam = localManagedMap[user.id]
-                        return (
-                          <div
-                            key={user.id}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-100 bg-bg-surface opacity-60 cursor-not-allowed"
-                          >
-                            {user.avatar_url ? (
-                              <Image
-                                src={user.avatar_url}
-                                alt={user.username}
-                                width={32} height={32}
-                                className="rounded-full object-contain bg-bg-elevated shrink-0"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">
-                                <span className="text-text-muted text-xs font-bold">
-                                  {user.username[0].toUpperCase()}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-foreground-secondary text-sm font-medium">{user.username}</p>
-                              <p className="text-text-muted text-xs truncate">
-                                Manages {theirTeam?.name ?? 'a team'} — sack first
-                              </p>
-                            </div>
+                  {localProfiles.map((user) => {
+                    const theirTeam = localManagedMap[user.id]
+                    const isTheirTeam = theirTeam?.id === selectedTeam.id
+                    return (
+                      <button
+                        key={user.id}
+                        onClick={() => handleAssign(selectedTeam.id, user.id)}
+                        disabled={loading || isTheirTeam}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left disabled:opacity-50 ${
+                          isTheirTeam
+                            ? 'border-border bg-bg-surface cursor-not-allowed'
+                            : 'border-border bg-bg-surface hover:border-gold/50 hover:bg-gold/5 cursor-pointer'
+                        }`}
+                      >
+                        {user.avatar_url ? (
+                          <Image
+                            src={user.avatar_url}
+                            alt={user.username}
+                            width={32} height={32}
+                            className="rounded-full object-contain bg-bg-elevated shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">
+                            <span className="text-text-muted text-xs font-bold">
+                              {user.username[0].toUpperCase()}
+                            </span>
                           </div>
-                        )
-                      })}
-                    </>
-                  )}
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground-primary text-sm font-medium">{user.username}</p>
+                          {isTheirTeam ? (
+                            <p className="text-xs text-text-muted">Already manages this team</p>
+                          ) : theirTeam ? (
+                            <p className="text-xs text-gold">Also manages {theirTeam.name}</p>
+                          ) : (
+                            <p className="text-xs text-green-600">Available</p>
+                          )}
+                        </div>
+                        {!isTheirTeam && (
+                          <span className="text-gold text-xs font-semibold shrink-0">Assign →</span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )}
