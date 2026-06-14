@@ -2,6 +2,12 @@
 const nextConfig = {
   images: {
     formats: ['image/webp'],
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co' },
+      { protocol: 'https', hostname: 'supabase.com' },
+      { protocol: 'https', hostname: 'github.com' },
+      { protocol: 'https', hostname: '**.githubusercontent.com' },
+    ],
   },
   serverExternalPackages: ['sharp', 'tesseract.js'],
   experimental: {

@@ -67,7 +67,7 @@ export default async function ManagerProfilePage({ params }: PageProps) {
               )}
             </div>
             {currentTeam?.logo_team_slug && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-8 h-8 rounded-full bg-navy-card border-2 border-navy-card shadow-md flex items-center justify-center overflow-hidden">
+              <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-8 h-8 rounded-full bg-navy-card border-2 border-navy-card shadow-md flex items-center justify-center overflow-hidden">
                 <Image
                   src={getTeamLogo(currentTeam.logo_league_folder, currentTeam.logo_team_slug, 'standings_row')}
                   alt={currentTeam.name}
