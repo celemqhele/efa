@@ -177,7 +177,7 @@ export default async function FixturesPage() {
           <TeamLogo
             leagueFolder={opponent.logo_league_folder}
             teamSlug={opponent.logo_team_slug}
-            context="standings_row"
+            context="fixture_card"
             alt={opponent.name}
             className="w-8 h-8 shrink-0"
           />
@@ -216,7 +216,7 @@ export default async function FixturesPage() {
           <TeamLogo
             leagueFolder={primaryTeam.logo_league_folder}
             teamSlug={primaryTeam.logo_team_slug}
-            context="standings_row"
+            context="fixture_card"
             alt={primaryTeam.name}
             className="w-12 h-12"
           />
