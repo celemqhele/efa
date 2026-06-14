@@ -66,30 +66,64 @@ function TournamentSelectorSkeleton() {
 
 function FixtureCardSkeleton() {
   return (
-    <div className="card flex items-center gap-3 px-4 py-3 min-h-[52px]">
-      <Skeleton className="h-5 w-12 rounded" />
-      <Skeleton className="h-3 w-6 shrink-0" />
-      <SkeletonCircle size={32} />
-      <div className="flex-1 space-y-1.5">
-        <SkeletonText className="h-4 w-40" />
-        <SkeletonText className="h-3 w-28" />
+    <div className="card flex flex-col gap-2.5">
+      {/* Top row: badges */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-10 rounded" />
+          <Skeleton className="h-3 w-8 rounded" />
+        </div>
+        <Skeleton className="h-4 w-16 rounded" />
       </div>
-      <Skeleton className="h-5 w-12 rounded" />
+      {/* Teams area */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 flex flex-col items-center gap-1">
+          <SkeletonCircle size={48} />
+          <SkeletonText className="h-3 w-20" />
+        </div>
+        <div className="shrink-0 flex flex-col items-center gap-1">
+          <Skeleton className="h-3 w-6" />
+          <Skeleton className="h-5 w-10" />
+        </div>
+        <div className="flex-1 flex flex-col items-center gap-1">
+          <SkeletonCircle size={48} />
+          <SkeletonText className="h-3 w-20" />
+        </div>
+      </div>
+      {/* Bottom row */}
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-3 w-12 rounded" />
+        <Skeleton className="h-4 w-4 rounded" />
+      </div>
     </div>
   )
 }
 
 function FixtureListSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-3 w-20" />
+    <div className="space-y-5">
+      <div>
+        <div className="flex items-center gap-2 mb-2.5">
+          <Skeleton className="h-4 w-1 rounded-full" />
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-3 w-6" />
+        </div>
+        <div className="space-y-2.5">
+          {Array.from({ length: Math.min(count, 3) }).map((_, i) => (
+            <FixtureCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
-      <div className="space-y-2">
-        {Array.from({ length: count }).map((_, i) => (
-          <FixtureCardSkeleton key={i} />
-        ))}
+      <div>
+        <div className="flex items-center gap-2 mb-2.5">
+          <Skeleton className="h-4 w-1 rounded-full" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+        <div className="space-y-2.5">
+          {Array.from({ length: Math.max(count - 3, 1) }).map((_, i) => (
+            <FixtureCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -164,32 +198,47 @@ function PollCardSkeleton() {
 
 function AdminDashboardSkeleton() {
   return (
-    <div className="space-y-4">
-      {/* Tournament cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="card p-4 space-y-3">
-            <SkeletonText className="h-5 w-32" />
-            <SkeletonText className="h-3 w-full" />
-            <SkeletonText className="h-3 w-2/3" />
-            <Skeleton className="h-8 w-full rounded-lg" />
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="space-y-1">
+        <Skeleton className="h-6 w-44" />
+        <Skeleton className="h-3 w-56" />
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2 overflow-hidden">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-11 w-28 rounded-lg shrink-0" />
+        ))}
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="card p-3 space-y-2">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-6 w-8" />
+            <Skeleton className="h-3 w-16" />
           </div>
         ))}
       </div>
-      {/* Fixtures due */}
-      <div className="card p-4 space-y-3">
-        <Skeleton className="h-5 w-28" />
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 py-2 border-b border-border-subtle last:border-0">
-            <SkeletonCircle size={24} />
-            <div className="flex-1 space-y-1">
-              <SkeletonText className="h-3 w-36" />
-              <SkeletonText className="h-2.5 w-20" />
-            </div>
-            <Skeleton className="h-7 w-16 rounded" />
+
+      {/* Section cards */}
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="card p-0 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3.5 border-b border-border">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-6 rounded-full ml-auto" />
+            <Skeleton className="h-4 w-4 rounded" />
           </div>
-        ))}
-      </div>
+          <div className="p-4 space-y-2">
+            {Array.from({ length: 2 }).map((_, j) => (
+              <Skeleton key={j} className="h-14 w-full rounded-lg" />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -198,7 +247,21 @@ function ResultsListSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: count }).map((_, i) => (
-        <FixtureCardSkeleton key={i} />
+        <div key={i} className="card flex items-center gap-3 border-l-4 border-l-bg-surface0">
+          <SkeletonCircle size={40} />
+          <div className="flex-1 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-3 w-8 rounded" />
+              <Skeleton className="h-3 w-6 rounded" />
+            </div>
+            <SkeletonText className="h-4 w-32" />
+            <SkeletonText className="h-3 w-24" />
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <Skeleton className="h-5 w-10" />
+            <Skeleton className="h-3 w-6 rounded" />
+          </div>
+        </div>
       ))}
     </div>
   )
