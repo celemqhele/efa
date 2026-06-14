@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 let globalBuildId: string | null = null
-let listeners: Set<(id: string) => void> = new Set()
+const listeners: Set<(id: string) => void> = new Set()
 
 async function pollVersion() {
   try {
