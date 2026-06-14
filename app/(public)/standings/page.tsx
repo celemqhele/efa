@@ -1,10 +1,8 @@
-import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { buildLiveStandings, goalDifference } from '@/lib/standings-core'
 import { Card } from '@/components/ui/Card'
-import { StandingsTableSkeleton, TournamentSelectorSkeleton } from '@/components/ui/Skeleton'
 
 export const dynamic = 'force-dynamic'
 
@@ -256,14 +254,7 @@ export default async function StandingsPage({ searchParams }: PageProps) {
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Standings</h1>
       </div>
-      <Suspense fallback={
-        <div className="space-y-6">
-          <TournamentSelectorSkeleton />
-          <StandingsTableSkeleton />
-        </div>
-      }>
-        <StandingsContent searchParams={searchParams} />
-      </Suspense>
+      <StandingsContent searchParams={searchParams} />
     </div>
   )
 }

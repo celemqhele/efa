@@ -1,9 +1,7 @@
-import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { FixtureDetailSkeleton } from '@/components/ui/Skeleton'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { calculateProbability } from '@/lib/probability-engine'
@@ -1046,9 +1044,5 @@ async function FixtureDetailContent({ params }: PageProps) {
 }
 
 export default async function FixtureDetailPage({ params }: PageProps) {
-  return (
-    <Suspense fallback={<FixtureDetailSkeleton />}>
-      <FixtureDetailContent params={params} />
-    </Suspense>
-  )
+  return <FixtureDetailContent params={params} />
 }

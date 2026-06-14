@@ -1,9 +1,7 @@
-import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { TeamProfileSkeleton } from '@/components/ui/Skeleton'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
@@ -1061,9 +1059,5 @@ async function TeamProfileContent({ params }: PageProps) {
 }
 
 export default async function TeamProfilePage({ params }: PageProps) {
-  return (
-    <Suspense fallback={<TeamProfileSkeleton />}>
-      <TeamProfileContent params={params} />
-    </Suspense>
-  )
+  return <TeamProfileContent params={params} />
 }

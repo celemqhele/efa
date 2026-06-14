@@ -1,8 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { ProfilePageSkeleton } from '@/components/ui/Skeleton'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -340,9 +338,5 @@ async function ProfileContent() {
 }
 
 export default async function ProfilePage() {
-  return (
-    <Suspense fallback={<ProfilePageSkeleton />}>
-      <ProfileContent />
-    </Suspense>
-  )
+  return <ProfileContent />
 }

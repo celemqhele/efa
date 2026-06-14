@@ -1,8 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { Suspense } from 'react'
 import { createAdminClient } from '@/lib/supabase/server'
-import { AdminDashboardSkeleton } from '@/components/ui/Skeleton'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -542,9 +540,5 @@ async function AdminDashboardContent() {
 }
 
 export default async function AdminDashboardPage() {
-  return (
-    <Suspense fallback={<AdminDashboardSkeleton />}>
-      <AdminDashboardContent />
-    </Suspense>
-  )
+  return <AdminDashboardContent />
 }
