@@ -24,18 +24,19 @@ export default function ThemeSettings() {
     return float ? 0.1 : 0.65
   }
 
-  async function saveTheme(overrides?: Partial<Omit<UserTheme, 'preset' | 'customBgUrl' | 'colors'>>) {
+  async function saveTheme(presetId?: string, overlayOverride?: number) {
     setSaving(true)
     try {
-      const preset = getPresetById(activePreset)
+      const id = presetId ?? activePreset
+      const preset = getPresetById(id)
+      const overlay = overlayOverride ?? overlayFor(floatMode)
       const theme: UserTheme = {
-        preset: activePreset === 'custom' ? null : activePreset,
+        preset: id === 'custom' ? null : id,
         customBgUrl: null,
         colors: preset ? { ...preset.colors } : getDefaultUserTheme().colors,
-        overlayIntensity: overlayFor(floatMode),
-        ...overrides,
+        overlayIntensity: overlay,
       }
-      if (activePreset === 'custom') {
+      if (id === 'custom') {
         theme.preset = 'custom'
       }
       applyThemeToDocument(theme)
@@ -45,7 +46,7 @@ export default function ThemeSettings() {
         body: JSON.stringify({
           preset: theme.preset,
           colors: theme.colors,
-          overlayIntensity: theme.overlayIntensity,
+          overlayIntensity: overlay,
         }),
       })
     } catch (e) {
@@ -75,13 +76,14 @@ export default function ThemeSettings() {
 
   async function selectPreset(presetId: string) {
     setActivePreset(presetId)
-    await saveTheme()
+    await saveTheme(presetId)
   }
 
   async function toggleFloatMode() {
     const next = !floatMode
     setFloatMode(next)
-    await saveTheme({ overlayIntensity: overlayFor(next) })
+    const overlay = overlayFor(next)
+    await saveTheme(undefined, overlay)
   }
 
   async function handleCustomUpload(e: React.ChangeEvent<HTMLInputElement>) {
