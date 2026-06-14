@@ -10,6 +10,7 @@ import {
   getPresetById,
   getDefaultUserTheme,
   applyThemeToDocument,
+  saveThemeToStorage,
   type UserTheme,
 } from '@/lib/themes'
 
@@ -34,6 +35,7 @@ export default function ThemeSettings() {
         theme.preset = 'custom'
       }
       applyThemeToDocument(theme)
+      saveThemeToStorage(theme)
       await fetch('/api/profile/theme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

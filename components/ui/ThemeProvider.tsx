@@ -2,15 +2,20 @@
 
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { applyThemeToDocument, getDefaultUserTheme, getPresetById } from '@/lib/themes'
+import { applyThemeToDocument, getDefaultUserTheme, getPresetById, loadThemeFromStorage, saveThemeToStorage } from '@/lib/themes'
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    async function loadTheme() {
+    // 1. Apply cached theme instantly from localStorage (no network wait)
+    const cached = loadThemeFromStorage()
+    if (cached) applyThemeToDocument(cached)
+
+    // 2. Sync with server in background for the latest saved theme
+    async function syncTheme() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        applyThemeToDocument(getDefaultUserTheme())
+        if (!cached) applyThemeToDocument(getDefaultUserTheme())
         return
       }
 
@@ -27,17 +32,19 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
           const preset = getPresetById(saved.preset)
           if (preset) colors = preset.colors
         }
-        applyThemeToDocument({
+        const theme = {
           preset: saved.preset ?? null,
           customBgUrl: saved.customBgUrl ?? null,
           colors: colors ?? getDefaultUserTheme().colors,
           overlayIntensity: saved.overlayIntensity ?? 0.65,
-        })
-      } else {
+        }
+        applyThemeToDocument(theme)
+        saveThemeToStorage(theme)
+      } else if (!cached) {
         applyThemeToDocument(getDefaultUserTheme())
       }
     }
-    loadTheme()
+    syncTheme()
   }, [])
 
   return <>{children}</>

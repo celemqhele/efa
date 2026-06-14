@@ -329,25 +329,27 @@ export default async function AdminDashboardPage() {
                           <span className="text-slate-400 text-xs font-mono shrink-0 w-12">{timeLabel}</span>
                         )}
                         
-                        {/* 3-Column sub-grid distribution layout container */}
-                        <div className="grid grid-cols-3 items-center flex-1 min-w-0 gap-2 mx-2">
-                          {/* Home Side: Right Aligned */}
-                          <div className="flex items-center justify-end gap-2.5 min-w-0 text-right">
-                            <span className="text-foreground-primary text-sm font-semibold truncate">{fx.home_team?.name}</span>
+                        {/* 3-Column sub-grid: logos in center, names get full width */}
+                        <div className="grid grid-cols-3 items-center flex-1 min-w-0 gap-1 mx-1">
+                          {/* Home Side: team name only */}
+                          <div className="text-right min-w-0">
+                            <span className="text-foreground-primary text-sm font-semibold truncate block">{fx.home_team?.name}</span>
+                          </div>
+
+                          {/* Center: logos + vs */}
+                          <div className="flex items-center justify-center gap-1.5 shrink-0">
                             {fx.home_team?.logo_league_folder && (
-                              <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={24} height={24} className="object-contain shrink-0" />
+                              <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt={fx.home_team.name} width={20} height={20} className="object-contain shrink-0" />
+                            )}
+                            <span className="text-slate-400/70 text-xs font-bold uppercase tracking-wider select-none">vs</span>
+                            {fx.away_team?.logo_league_folder && (
+                              <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={20} height={20} className="object-contain shrink-0" />
                             )}
                           </div>
 
-                          {/* Center Divider: Centered */}
-                          <span className="text-slate-400/70 text-xs font-bold text-center uppercase tracking-wider select-none">vs</span>
-
-                          {/* Away Side: Left Aligned */}
-                          <div className="flex items-center justify-start gap-2.5 min-w-0 text-left">
-                            {fx.away_team?.logo_league_folder && (
-                              <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt={fx.away_team.name} width={24} height={24} className="object-contain shrink-0" />
-                            )}
-                            <span className="text-foreground-primary text-sm font-semibold truncate">{fx.away_team?.name}</span>
+                          {/* Away Side: team name only */}
+                          <div className="text-left min-w-0">
+                            <span className="text-foreground-primary text-sm font-semibold truncate block">{fx.away_team?.name}</span>
                           </div>
                         </div>
 

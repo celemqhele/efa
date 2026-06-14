@@ -55,6 +55,24 @@ export function getPresetById(id: string): ThemePreset | undefined {
   return THEME_PRESETS.find(p => p.id === id)
 }
 
+export const THEME_STORAGE_KEY = 'efa-theme'
+
+export function saveThemeToStorage(theme: UserTheme) {
+  if (typeof window !== 'undefined') {
+    try { localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme)) } catch {}
+  }
+}
+
+export function loadThemeFromStorage(): UserTheme | null {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(THEME_STORAGE_KEY)
+      if (raw) return JSON.parse(raw) as UserTheme
+    } catch {}
+  }
+  return null
+}
+
 export function getDefaultUserTheme(): UserTheme {
   return {
     preset: 'default-dark',
