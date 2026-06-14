@@ -316,9 +316,17 @@ export default async function AdminDashboardPage() {
                             {fx.status.replaceAll('_', ' ')}
                           </span>
                         </div>
-                        <p className="text-foreground-primary text-sm font-semibold mb-2">
-                          {fx.home_team?.name} <span className="text-slate-400 font-normal">vs</span> {fx.away_team?.name}
-                        </p>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <span className="text-foreground-primary text-sm font-semibold truncate">{fx.home_team?.name}</span>
+                          {fx.home_team?.logo_league_folder && (
+                            <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={18} height={18} className="object-contain shrink-0" />
+                          )}
+                          <span className="text-slate-400 font-normal text-xs shrink-0">vs</span>
+                          {fx.away_team?.logo_league_folder && (
+                            <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={18} height={18} className="object-contain shrink-0" />
+                          )}
+                          <span className="text-foreground-primary text-sm font-semibold truncate">{fx.away_team?.name}</span>
+                        </div>
                         <div className="flex justify-end">{actions}</div>
                       </div>
 
@@ -385,9 +393,17 @@ export default async function AdminDashboardPage() {
               {((pendingConfirmations ?? []) as any[]).map((fx: any) => (
                 <div key={fx.id} className="flex items-center justify-between gap-2 bg-navy-light rounded-lg px-3 py-2.5 border border-navy-border">
                   <div className="flex-1 min-w-0">
-                    <p className="text-foreground-primary text-sm font-medium truncate">
-                      {fx.home_team?.name} vs {fx.away_team?.name}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      {fx.home_team?.logo_league_folder && (
+                        <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={16} height={16} className="object-contain shrink-0" />
+                      )}
+                      <span className="text-foreground-primary text-sm font-medium truncate">{fx.home_team?.name}</span>
+                      <span className="text-slate-400 text-xs shrink-0">vs</span>
+                      <span className="text-foreground-primary text-sm font-medium truncate">{fx.away_team?.name}</span>
+                      {fx.away_team?.logo_league_folder && (
+                        <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={16} height={16} className="object-contain shrink-0" />
+                      )}
+                    </div>
                     <p className="text-slate-400 text-xs mt-0.5">
                       MD{fx.matchday}
                       {fx.scheduled_date && ` · ${new Date(fx.scheduled_date).toLocaleDateString('en-GB')}`}
