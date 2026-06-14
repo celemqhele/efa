@@ -1,3 +1,5 @@
+import withSerwist from '@serwist/next'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -16,8 +18,6 @@ const nextConfig = {
     },
   },
   webpack(config, { nextRuntime, webpack }) {
-    // Vercel's Edge Runtime build doesn't define __dirname (V8 isolate, not Node.js).
-    // Some package in the middleware bundle references it — polyfill it to '/'.
     if (nextRuntime === 'edge') {
       config.plugins.push(
         new webpack.DefinePlugin({
@@ -29,4 +29,8 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withSerwist({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
+  disable: process.env.NODE_ENV === 'development',
+})(nextConfig)

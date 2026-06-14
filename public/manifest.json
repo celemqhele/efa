@@ -5,7 +5,7 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a1128",
-  "theme_color": "#0a1128",
+  "theme_color": "#D6B65D",
   "icons": [
     {
       "src": "/icons/efa-icon-192.png",

@@ -14,6 +14,8 @@
     "@babel/preset-env": "^7.29.7",
     "@babel/preset-react": "^7.29.7",
     "@babel/preset-typescript": "^7.29.7",
+    "@serwist/next": "^9.5.11",
+    "@serwist/precaching": "^9.5.11",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "babel-plugin-react-compiler": "^1.0.0",
@@ -23,6 +25,7 @@
     "next": "^15.5.19",
     "react": "^18",
     "react-dom": "^18",
+    "serwist": "^9.5.11",
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0",
     "web-push": "^3.6.7"

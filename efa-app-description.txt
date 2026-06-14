@@ -1,0 +1,156 @@
+EFA LEAGUE MANAGER — Full Application Description
+==================================================
+
+EFA (eFootball Academy) League Manager is a full-stack web application for
+managing simulated football leagues in eFootball. It replaces spreadsheets
+and WhatsApp chaos with a dedicated platform where admins run tournaments
+and managers manage their virtual teams.
+
+------------------------------------------------------------
+CORE CONCEPT
+------------------------------------------------------------
+
+Managers sign up, get assigned to real-world football clubs (Arsenal,
+Barcelona, etc.), and compete in league/cup tournaments. Results are
+submitted by managers, confirmed by opponents, and the standings update
+automatically. Everything is mobile-first with a dark theme, custom
+background images, and bottom tab navigation.
+
+------------------------------------------------------------
+USER ROLES
+------------------------------------------------------------
+
+ADMIN — Full control panel:
+- Create tournaments (league, UCL, Europa, Super Cup, or custom)
+- Generate fixtures automatically (round-robin league or group stage +
+  knockout)
+- Assign/sack managers to any team
+- Submit and finalise results, handle disputes
+- Postpone or reschedule fixtures
+- Create polls for team selection applications
+- Export news data (results from today/yesterday, upcoming fixtures,
+  recently generated fixtures)
+- View audit log of all admin actions
+- Recalculate standings and manager stats
+- Manage seasons, hall of fame, data export
+
+MANAGER — Their hub:
+- See their team's fixtures, results, and league standing
+- Submit result confirmations after matches
+- Send WhatsApp reminders to opponents (one-click deep links)
+- View coach's notes for their own matches (hidden from opponents)
+- View team DNA / playstyle stats
+- Track manager statistics across seasons
+- Change their team (request based, admin-approved)
+- Customize their profile theme (29 preset backgrounds with
+  auto-extracted colour palettes or custom upload)
+
+------------------------------------------------------------
+KEY FEATURES
+------------------------------------------------------------
+
+TOURNAMENT ENGINE
+- League mode: round-robin, configurable home-and-away rounds
+- UCL/Europa mode: group stage + configurable qualifiers per group,
+  followed by knockout
+- Automatic fixture generation using generate-fixtures engine
+- Super Cup: single match between 2 teams
+- Standings auto-recalculate on every result change
+- Form tracking (last 5 results with W/D/L icons)
+
+FIXTURE MANAGEMENT
+- Fixtures listed by matchday with status badges (scheduled, awaiting
+  confirmation, confirmed, completed, postponed, abandoned)
+- Admin dashboard shows fixtures due today, pending confirmations, and
+  result conflicts
+- WhatsApp integration: one-click messages to remind managers to
+  submit/confirm results
+- Postpone/reschedule with datetime picker
+- Result submission with score + optional match stats (possession,
+  shots, passes)
+
+RESULT CONFIRMATION SYSTEM
+- Both managers submit scores independently
+- If scores match, fixture is confirmed
+- If scores conflict, admin sees both entries highlighted in red and
+  resolves manually
+- Prevents disputes and ensures fairness
+
+THEME SYSTEM (12 CSS custom properties)
+- 29 preset backgrounds (real football stadiums, all processed to
+  1920x1080 80% JPEG)
+- Custom upload: image to Supabase Storage to k-means colour extraction
+  (6 centroids via sharp) to colours mapped to CSS variable roles
+- Palettes include base bg, surface, elevated, text (primary/secondary/
+  muted), border, accent (gold + hover + muted)
+- Overlay always at 0.65 opacity for readability
+- Cached in localStorage for instant apply on page load, synced to
+  Supabase profile
+
+MOBILE-FIRST DESIGN
+- Bottom tab bar (Home, Standings, Fixtures, Results, More)
+- Bottom sheets for modals (slide-up on mobile, centered on desktop)
+- Pull-to-refresh and swipe-back gestures
+- Collapsible sections (<details> elements) on fixture detail pages
+- Compact standings grid with tiny logos
+- Safe-area inset support
+- Touch feedback on all interactive elements
+
+DATABASE (Supabase/PostgreSQL)
+- 10+ tables: profiles, teams, tournaments, seasons, fixtures, results,
+  standings, group_standings, result_confirmations, match_stats,
+  notifications, audit_log, polls, poll_applications, manager_tenures,
+  manager_availability, team_change_requests, coach_notes,
+  theme_preferences
+- Row-Level Security (RLS) — users can only access their own data,
+  admins bypass via service role
+- 28 migrations covering the full schema evolution
+
+ADMIN DASHBOARD
+- Header with quick links: Submit Result, News Export, Fixtures,
+  Seasons, Managers, Hall of Fame, Export, Polls
+- Tournament cards with team/fixture counts and progress bars
+- Fixtures Due section (scheduled + awaiting confirmation for today)
+- Result Conflicts section (mismatched confirmations in red)
+- Pending Confirmations list
+- Team Change Requests with approve/deny
+- Flagged Teams (abandon_count >= 3)
+- Recent Audit Log
+
+------------------------------------------------------------
+TECH STACK
+------------------------------------------------------------
+
+  Framework    |  Next.js 14+ (App Router)
+  Language     |  TypeScript
+  Styling      |  Tailwind CSS
+  Database     |  Supabase (PostgreSQL)
+  Auth         |  Supabase Auth (email/password)
+  Storage      |  Supabase Storage (avatars, theme bg uploads)
+  ORM          |  supabase-js (server + browser clients)
+  Image proc.  |  sharp (palette extraction)
+  Icons        |  Lucide React
+  Deployment   |  Vercel
+  Logos        |  ~6,000 club PNGs in /public/logos/ (18 leagues)
+
+------------------------------------------------------------
+PROJECT SCALE
+------------------------------------------------------------
+
+- ~29,000 lines of code across 245 source files
+- 36 pages, 31 components, 58 API routes, 28 migrations
+- Fully responsive, mobile-first, dark theme
+
+------------------------------------------------------------
+CV HIGHLIGHT
+------------------------------------------------------------
+
+"Built a full-stack football league management platform serving 50+
+managers across multiple tournaments. Features include a custom fixture
+generation engine, dual-confirmation result system with conflict
+detection, tournament engine supporting 4 competition formats,
+mobile-first responsive design with theme customization (29 presets +
+custom upload with auto-palette extraction via sharp), WhatsApp
+integration for manager communications, and a comprehensive admin
+dashboard with audit logging. Stack: Next.js, TypeScript, Tailwind CSS,
+Supabase (PostgreSQL + Auth + Storage), deployed on Vercel."

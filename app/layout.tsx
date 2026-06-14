@@ -3,6 +3,7 @@ import './globals.css'
 import ThemeProvider from '@/components/ui/ThemeProvider'
 import PushNotificationInit from '@/components/ui/PushNotificationInit'
 import GlobalNotifications from '@/components/ui/GlobalNotifications'
+import UpdateBanner from '@/components/ui/UpdateBanner'
 
 export const metadata: Metadata = {
   title: 'EFA — Efootball Federal Association',
@@ -42,6 +43,7 @@ export default function RootLayout({
           {children}
           <PushNotificationInit />
           <GlobalNotifications />
+          <UpdateBanner />
         </ThemeProvider>
       </body>
     </html>

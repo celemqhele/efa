@@ -1,0 +1,8 @@
+fix: revert nav logo to text badge and remove float mode
+
+- Nav logo reverted to gold circle "EFA" text badge (logo image
+  files were incorrect - user to re-provide correct ones)
+- Removed getLogoForTheme(), hexLuminance(), THEME_CHANGE_EVENT,
+  dispatchThemeChange() from lib/themes.ts
+- Removed float mode toggle entirely from ThemeSettings.tsx
+- overlayIntensity always set to 0.65
