@@ -57,7 +57,7 @@ export default async function ManagerProfilePage({ params }: PageProps) {
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="card overflow-hidden">
         <div className="bg-gradient-to-br from-navy-light via-gold/10 to-navy-card h-32 relative" />
-        <div className="px-6 pb-6 -mt-12 relative flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
+        <div className="px-6 py-6 -mt-8 relative flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
           <div className="relative shrink-0">
             <div className="w-24 h-24 rounded-full bg-navy-card border-4 border-navy-card shadow-xl overflow-hidden flex items-center justify-center bg-navy">
               {profile.avatar_url ? (
@@ -67,7 +67,7 @@ export default async function ManagerProfilePage({ params }: PageProps) {
               )}
             </div>
             {currentTeam?.logo_team_slug && (
-              <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-8 h-8 rounded-full bg-navy-card border-2 border-navy-card shadow-md flex items-center justify-center overflow-hidden">
+              <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-8 h-8 rounded-full bg-navy-card shadow-md flex items-center justify-center overflow-hidden">
                 <Image
                   src={getTeamLogo(currentTeam.logo_league_folder, currentTeam.logo_team_slug, 'standings_row')}
                   alt={currentTeam.name}
@@ -78,11 +78,11 @@ export default async function ManagerProfilePage({ params }: PageProps) {
               </div>
             )}
           </div>
-          <div className="pb-1 flex-1">
+          <div className="flex-1">
             <h1 className="text-3xl font-black text-foreground-primary">@{profile.username}</h1>
             <p className="text-foreground-muted font-medium uppercase tracking-widest text-xs mt-1">Professional Manager</p>
           </div>
-          <div className="flex gap-4 pb-1">
+          <div className="flex gap-4">
              <div className="text-center">
                 <p className="text-2xl font-black text-foreground-primary">{stats.played}</p>
                 <p className="text-[10px] text-foreground-muted uppercase font-bold tracking-tighter">Matches</p>
