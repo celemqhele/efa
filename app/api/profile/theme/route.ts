@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { preset, customBgUrl, colors } = body
+  const { preset, customBgUrl, colors, overlayIntensity } = body
 
   // Validate preset if provided
   if (preset && preset !== 'custom') {
@@ -23,6 +23,7 @@ export async function POST(req: Request) {
   if (preset) themePrefs.preset = preset
   if (customBgUrl) themePrefs.customBgUrl = customBgUrl
   if (colors) themePrefs.colors = colors
+  if (overlayIntensity !== undefined) themePrefs.overlayIntensity = overlayIntensity
 
   const { error } = await supabase
     .from('profiles')

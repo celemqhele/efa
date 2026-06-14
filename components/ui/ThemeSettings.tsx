@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   THEME_PRESETS,
   getPresetById,
+  getDefaultUserTheme,
   applyThemeToDocument,
   type UserTheme,
 } from '@/lib/themes'
@@ -17,6 +18,41 @@ export default function ThemeSettings() {
   const [uploading, setUploading] = useState(false)
   const [activeTab, setActiveTab] = useState<'presets' | 'custom'>('presets')
   const [activePreset, setActivePreset] = useState<string>('default-dark')
+  const [floatMode, setFloatMode] = useState(false)
+
+  function overlayFor(float: boolean) {
+    return float ? 0.1 : 0.65
+  }
+
+  async function saveTheme(overrides?: Partial<Omit<UserTheme, 'preset' | 'customBgUrl' | 'colors'>>) {
+    setSaving(true)
+    try {
+      const preset = getPresetById(activePreset)
+      const theme: UserTheme = {
+        preset: activePreset === 'custom' ? null : activePreset,
+        customBgUrl: null,
+        colors: preset ? { ...preset.colors } : getDefaultUserTheme().colors,
+        overlayIntensity: overlayFor(floatMode),
+        ...overrides,
+      }
+      if (activePreset === 'custom') {
+        theme.preset = 'custom'
+      }
+      applyThemeToDocument(theme)
+      await fetch('/api/profile/theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          preset: theme.preset,
+          colors: theme.colors,
+          overlayIntensity: theme.overlayIntensity,
+        }),
+      })
+    } catch (e) {
+      console.error('Failed to save theme', e)
+    }
+    setSaving(false)
+  }
 
   // Load current theme from stored preference on mount
   useEffect(() => {
@@ -29,35 +65,23 @@ export default function ThemeSettings() {
       if (data?.theme_preferences) {
         const prefs = data.theme_preferences as any
         if (prefs.preset) setActivePreset(prefs.preset)
+        if (prefs.overlayIntensity !== undefined) {
+          setFloatMode(prefs.overlayIntensity < 0.5)
+        }
       }
     }
     loadCurrent()
   }, [])
 
   async function selectPreset(presetId: string) {
-    setSaving(true)
-    const preset = getPresetById(presetId)
-    if (!preset) return
-
-    const theme: UserTheme = {
-      preset: presetId,
-      customBgUrl: null,
-      colors: { ...preset.colors },
-    }
-
-    applyThemeToDocument(theme)
     setActivePreset(presetId)
+    await saveTheme()
+  }
 
-    try {
-      await fetch('/api/profile/theme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preset: presetId }),
-      })
-    } catch (e) {
-      console.error('Failed to save theme', e)
-    }
-    setSaving(false)
+  async function toggleFloatMode() {
+    const next = !floatMode
+    setFloatMode(next)
+    await saveTheme({ overlayIntensity: overlayFor(next) })
   }
 
   async function handleCustomUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -82,16 +106,21 @@ export default function ThemeSettings() {
         preset: 'custom',
         customBgUrl: data.bgUrl ?? '',
         colors: data.colors,
+        overlayIntensity: overlayFor(floatMode),
       }
 
       applyThemeToDocument(theme)
-      document.documentElement.style.setProperty('--theme-bg-overlay', 'rgba(0,0,0,0.55)')
       setActivePreset('custom')
 
       await fetch('/api/profile/theme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preset: 'custom', customBgUrl: data.bgUrl, colors: data.colors }),
+        body: JSON.stringify({
+          preset: 'custom',
+          customBgUrl: data.bgUrl,
+          colors: data.colors,
+          overlayIntensity: overlayFor(floatMode),
+        }),
       })
     } catch (e) {
       console.error('Failed to upload theme', e)
@@ -131,6 +160,7 @@ export default function ThemeSettings() {
       </div>
 
       {activeTab === 'presets' ? (
+        <>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-space-3">
           {THEME_PRESETS.map((preset) => {
             const isActive = activePreset === preset.id
@@ -185,6 +215,27 @@ export default function ThemeSettings() {
             )
           })}
         </div>
+
+        <div className="flex items-center justify-between p-space-3 rounded-lg bg-bg-base border border-border">
+          <div>
+            <p className="text-xs font-bold text-text-primary">Float Mode</p>
+            <p className="text-[10px] text-text-muted mt-0.5">Let the background image show through</p>
+          </div>
+          <button
+            onClick={toggleFloatMode}
+            disabled={saving}
+            className={`relative w-10 h-5 rounded-full transition-all ${
+              floatMode ? 'bg-accent' : 'bg-border'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                floatMode ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+        </>
       ) : (
         <div className="space-y-space-4">
           <div className="border-2 border-dashed border-border rounded-xl p-space-8 text-center hover:border-accent/50 transition-colors">

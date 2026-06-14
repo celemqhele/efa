@@ -31,6 +31,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
           preset: saved.preset ?? null,
           customBgUrl: saved.customBgUrl ?? null,
           colors: colors ?? getDefaultUserTheme().colors,
+          overlayIntensity: saved.overlayIntensity ?? 0.65,
         })
       } else {
         applyThemeToDocument(getDefaultUserTheme())

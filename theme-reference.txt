@@ -1,0 +1,273 @@
+CURRENT THEME COLOR REFERENCE
+=============================
+Generated: 14 June 2026
+These are ALL the colors currently used across the UI, mapped to their sources.
+
+TABLE OF CONTENTS
+  1. Core Design Tokens (app/tokens.css) — 12 CSS variables that control everything
+  2. Component Color Map — every UI element's exact color
+  3. Ad-Hoc / Hardcoded Colors — not from the token system
+  4. Semantic Usage Breakdown — what color goes where
+  5. How To Implement Multiple Themes
+  6. Important Note About Dead Classes (text-gold, bg-navy, etc.)
+
+=============================================================================
+1. CORE DESIGN TOKENS (app/tokens.css)
+=============================================================================
+
+These 12 CSS custom properties are the ENTIRE color system. Change these and
+every component updates automatically.
+
+Token                    | Hex       | What it controls
+-------------------------|-----------|--------------------------------------------------------
+--color-bg-base          | #0F1117   | Page background, modal overlays, scrollbar track
+--color-bg-surface       | #171A21   | Cards, inputs, tables, nav/sidebar
+--color-bg-elevated      | #242833   | Hover states, elevated cards, dropdowns
+--color-text-primary     | #F7FAFC   | Body text, headings (h1-h6, .section-header)
+--color-text-secondary   | #CBD5E0   | Labels, form labels, .btn-outline default text
+--color-text-muted       | #718096   | Placeholders, timestamps, helper text, stat labels
+--color-border           | #2D323F   | All borders (card, table, input), scrollbar
+--color-border-subtle    | #1C2029   | Subtle dividers, secondary borders
+--color-accent           | #D6B65D   | BRAND GOLD: buttons, links, focus rings, progress
+--color-accent-hover     | #E3C677   | Button hover state (lighter gold)
+--color-accent-muted     | #2E2818   | Subtle gold background (dark, low opacity equivalent)
+--color-feedback-success | #48BB78   | Wins, green badges, success messages
+--color-feedback-warning | #ED8936   | Draws, pending/warning badges
+--color-feedback-error   | #F56565   | Losses, delete buttons, error badges
+
+=============================================================================
+2. COMPONENT COLOR MAP (with Tailwind classes)
+=============================================================================
+
+BUTTONS
+------- 
+.btn-gold (primary CTA)
+  Background (resting)  : bg-accent             -> #D6B65D
+  Text                  : text-bg-surface       -> #171A21
+  Hover background      : hover:bg-accent-hover -> #E3C677
+  Active                : active:scale-95
+  Min height            : min-h-[44px] (mobile), sm:min-h-0
+
+.btn-outline (secondary)
+  Border / Text (rest)  : border-border / text-text-secondary  -> #2D323F / #CBD5E0
+  Hover border + text   : hover:border-accent / hover:text-accent -> #D6B65D
+  Min height            : min-h-[44px] (mobile)
+
+.btn-danger (delete / destructive)
+  Text                  : color: var(--color-feedback-error)     -> #F56565
+  Border                : color-mix(feedback-error 30%, transparent) -> ~rgba(245,101,101,0.3)
+  Background            : color-mix(feedback-error 10%, transparent) -> ~rgba(245,101,101,0.1)
+  Hover background      : color-mix(feedback-error 20%, transparent) -> ~rgba(245,101,101,0.2)
+
+CARDS
+-----
+.card
+  Background            : bg-bg-surface   -> #171A21
+  Border                : border-border   -> #2D323F
+  Shadow                : shadow-sm       -> 0 1px 2px rgba(0,0,0,0.4)
+  Padding               : p-4 (sm:p-5)
+  Border radius         : rounded-lg      -> var(--radius-lg) = 12px
+
+INPUTS
+------
+.input-field
+  Background            : bg-bg-surface          -> #171A21
+  Border                : border-border          -> #2D323F
+  Text                  : text-text-primary      -> #F7FAFC
+  Placeholder           : placeholder-text-muted -> #718096
+  Focus border          : focus:border-accent    -> #D6B65D
+  Focus ring            : focus:ring-1 focus:ring-accent
+  Min height            : min-h-[44px] (mobile)
+
+FORM LABEL
+----------
+.form-label
+  Text                  : text-text-secondary -> #CBD5E0
+  Size                  : text-xs
+  Weight                : font-medium
+  Spacing               : uppercase tracking-wide
+
+SECTION HEADER
+--------------
+.section-header
+  Text                  : text-text-primary -> #F7FAFC
+  Size                  : text-base (sm:text-lg)
+  Weight                : font-bold
+  Icon gap              : gap-2 (sm:gap-3)
+
+STATUS BADGES (category indicator tags)
+---------------
+League      : text-blue-400 bg-blue-500/10 border-blue-500/20      -> #60A5FA
+UCL         : text-yellow-400 bg-yellow-500/10 border-yellow-500/20 -> #FACC15
+Europa      : text-orange-400 bg-orange-500/10 border-orange-500/20 -> #FB923C
+Super Cup   : text-purple-400 bg-purple-500/10 border-purple-500/20 -> #C084FC
+Active      : text-green-400 bg-green-500/10 border-green-500/20   -> #4ADE80
+Upcoming    : text-yellow-400 bg-yellow-500/10 border-yellow-500/20 -> #FACC15
+Completed   : text-text-muted bg-bg-surface0/10 border-slate-500/20 -> #718096
+
+FEEDBACK BADGES (data-driven)
+---------------
+Win / Success : text-green-400 bg-green-500/10 border-green-500/30 -> #4ADE80
+Draw / Pending: text-yellow-400 bg-yellow-500/10 border-yellow-500/30 -> #FACC15
+Loss / Error  : text-red-400 bg-red-500/10 border-red-500/30       -> #F87171
+
+PLAYSTYLE DNA BADGES (in dna-engine.ts)
+-------------------
+Elite Dominators      : bg-amber-500/20 text-amber-400 border-amber-500/30
+Tiki-Taka             : bg-blue-500/20 text-blue-400 border-blue-500/30
+Gegenpressing         : bg-yellow-500/20 text-yellow-400 border-yellow-500/30
+Disciplined Pressers  : bg-indigo-500/20 text-indigo-400 border-indigo-500/30
+Quick Counter         : bg-red-500/20 text-red-400 border-red-500/30
+Long Ball Counter     : bg-slate-400/20 text-slate-300 border-slate-400/30
+The Grinders          : bg-orange-500/20 text-orange-400 border-orange-500/30
+Out Wide              : bg-cyan-500/20 text-cyan-400 border-cyan-500/30
+Set-Piece Specialists : bg-violet-500/20 text-violet-400 border-violet-500/30
+Shoot-on-Sight        : bg-pink-500/20 text-pink-400 border-pink-500/30
+Pragmatic Stabilizers : bg-green-600/20 text-green-400 border-green-600/30
+
+GRADIENTS
+---------
+Manager hero        : from-navy-light via-gold/10 to-navy-card
+  (approximate)     : ~#2D323F -> ~rgba(214,182,93,0.1) -> ~#1C2029
+
+Hall of Fame card   : from-gold/5 to-transparent
+  (approximate)     : ~rgba(214,182,93,0.05) -> transparent
+
+Team page hero      : from-bg-base via-accent/10 to-bg-surface
+  (approximate)     : #0F1117 -> ~rgba(214,182,93,0.1) -> #171A21
+
+Feature cards       : from-bg-surface to-bg-base
+  (approximate)     : #171A21 -> #0F1117
+
+MODAL OVERLAYS
+--------------
+Standard dialog   : bg-black/60 backdrop-blur-sm   -> rgba(0,0,0,0.6)
+Heavy overlay     : bg-black/70                    -> rgba(0,0,0,0.7)
+
+SCROLLBAR
+---------
+Track             : background: var(--color-bg-base)    -> #0F1117
+Thumb             : background: var(--color-border)     -> #2D323F
+Thumb hover       : background: var(--color-accent)     -> #D6B65D
+
+=============================================================================
+3. AD-HOC / HARDCODED COLORS (NOT in the token system)
+=============================================================================
+
+These colors are hardcoded in specific files and would need manual theming:
+
+Color        | Hex       | Where used
+-------------|-----------|--------------------------------------------------------
+Gold dark    | #C9A84C   | Hall of Fame: 1st-place player name highlight
+             |           |   (bg-[#c9a84c], text-[#c9a84c])
+             |           | Gold glow shadow: shadow-[0_0_12px_rgba(201,168,76,0.15)]
+             |           | Radial gradient: rgba(201,168,76,0.06)
+
+WhatsApp     | #25D366   | WhatsApp contact/support buttons
+             |           |   (text-[#25D366], border-[#25D366]/30, bg-[#25D366]/10)
+             |           | Hover: text-[#25D366], bg-[#25D366]/20, border-[#25D366]/50
+
+Blue         | #3B82F6   | Export page calendar highlight (inline style)
+
+=============================================================================
+4. SEMANTIC USAGE BREAKDOWN
+=============================================================================
+
+WHAT                        | TOKEN / CLASS                    | HEX
+----------------------------|----------------------------------|-----------
+Page background             | bg-bg-base                       | #0F1117
+Card backgrounds            | bg-bg-surface                    | #171A21
+Elevated / hover surfaces   | bg-bg-elevated                   | #242833
+Overlay backdrop            | bg-black/60 to bg-black/70       | rgba(0,0,0,...)
+Brand gold (accent)         | bg-accent / text-accent          | #D6B65D
+All headings + body text    | text-text-primary                | #F7FAFC
+Labels / secondary text     | text-text-secondary              | #CBD5E0
+Muted info / timestamps     | text-text-muted                  | #718096
+All borders (default)       | border-border                    | #2D323F
+Subtle separators           | border-border-subtle             | #1C2029
+Focus ring / highlights     | ring-accent                      | #D6B65D
+Error / loss / danger       | text-feedback-error              | #F56565
+Success / win               | text-feedback-success            | #48BB78
+Warning / draw              | text-feedback-warning            | #ED8936
+Icons (default)             | inherits from parent text color  | usually #F7FAFC
+Icons (accent)              | text-accent                      | #D6B65D
+Links (rest)                | inherits (usually text-primary)  | #F7FAFC
+Links (hover)               | hover:text-accent                | #D6B65D
+Progress bar fill           | bg-accent                        | #D6B65D
+Progress bar track          | bg-border or bg-bg-surface       | #2D323F
+Status badges (gold)        | text-gold bg-gold/10 border-gold/30 | (see note 6)
+Status badges (league)      | text-blue-400 bg-blue-500/10 ... | #60A5FA
+Status badges (UCL)         | text-yellow-400 bg-yellow-500/10 | #FACC15
+Status badges (Europa)      | text-orange-400 bg-orange-500/10 | #FB923C
+Status badges (Super Cup)   | text-purple-400 bg-purple-500/10  | #C084FC
+
+=============================================================================
+5. HOW TO IMPLEMENT MULTIPLE THEMES
+=============================================================================
+
+You only need to change the 12 CSS custom properties in app/tokens.css.
+Wrap each theme in a data-attribute selector:
+
+  /* tokens.css */
+  :root, [data-theme="dark"] {
+    --color-bg-base: #0F1117;
+    --color-bg-surface: #171A21;
+    --color-accent: #D6B65D;
+    ...
+  }
+
+  [data-theme="light"] {
+    --color-bg-base: #F8F9FA;
+    --color-bg-surface: #FFFFFF;
+    --color-bg-elevated: #F0F1F3;
+    --color-text-primary: #1A1D23;
+    --color-text-secondary: #4A5568;
+    --color-text-muted: #A0AEC0;
+    --color-border: #E2E8F0;
+    --color-border-subtle: #EDF2F7;
+    --color-accent: #D6B65D;      // same gold or change per theme
+    --color-accent-hover: #C9A84C;
+    --color-accent-muted: #FEF9E7;
+    --color-feedback-success: #38A169;
+    --color-feedback-warning: #DD6B20;
+    --color-feedback-error: #E53E3E;
+  }
+
+  [data-theme="blue"] {
+    --color-accent: #3B82F6;      // replace gold with blue
+    --color-accent-hover: #60A5FA;
+    --color-accent-muted: #1E3A5F;
+    // keep everything else
+  }
+
+Then set data-theme on <html> via a ThemeToggle component.
+
+=============================================================================
+6. IMPORTANT NOTE ABOUT "DEAD" COLOR CLASSES
+=============================================================================
+
+Throughout the JSX, you'll see these classes that LOOK like theme colors:
+
+  text-gold, bg-gold, bg-gold/5, bg-gold/10, bg-gold/20
+  border-gold, border-gold/20, border-gold/30, border-gold/40, border-gold/50
+  bg-navy, bg-navy-light, bg-navy-card, bg-navy-border
+  border-navy, border-navy-border
+  text-navy, from-navy-light, to-navy-card
+  focus:ring-gold
+
+NONE OF THESE CLASSES HAVE ANY CSS EFFECT. They are NOT defined in the
+Tailwind config, NOT in tokens.css, and NOT in the compiled CSS output.
+They are inert class names on HTML elements that do nothing.
+
+The actual gold color comes from:
+  - bg-accent / text-accent / border-accent (token system)
+  - .btn-gold CSS component class (uses bg-accent)
+  - hover:text-accent / hover:border-accent
+
+For theme compatibility, you should eventually consolidate these dead
+classes (replace text-gold -> text-accent, bg-navy-light -> bg-bg-elevated,
+border-navy-border -> border-border, etc.). But the tokens.css theme system
+will work regardless since the actual visuals are driven by the tokens.
+
+=============================================================================
+END OF REFERENCE
