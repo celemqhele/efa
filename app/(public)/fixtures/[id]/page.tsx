@@ -12,7 +12,7 @@ import ReactionsPanel from '@/components/ui/ReactionsPanel'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import {
   Gamepad2, Home, Plane, BarChart3, Swords, Sword, Dna, TrendingUp,
-  MessageSquare, CheckCircle, Hourglass, Zap, Check, X,
+  MessageSquare, CheckCircle, Hourglass, Zap, Check, X, ChevronDown,
   Crown, Drama, Brain, Shield, Dumbbell,
   ArrowLeftRight, Triangle, Crosshair, Scale,
 } from 'lucide-react'
@@ -434,15 +434,20 @@ export default async function FixtureDetailPage({ params }: PageProps) {
       {/* ── PRE-MATCH SECTIONS ───────────────────────────────────────────── */}
       {!hasResult && (
         <>
-          {/* Coach's Analysis */}
-          {(homeCoachNote || awayCoachNote) && (
+          {/* Coach's Analysis — only visible to the relevant managers */}
+          {isManager && (homeCoachNote || awayCoachNote) && (
             <div className="card p-5 border-gold/20">
-              <h2 className="section-header">
-                <Brain className="w-5 h-5 text-gold" /> Coach's Analysis
-              </h2>
+              <details open className="group">
+                <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+                  <h2 className="section-header">
+                    <Brain className="w-5 h-5 text-gold" /> Coach's Analysis
+                  </h2>
+                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+                </summary>
+                <div className="mt-4 lg:mt-0">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Home team analysis */}
-                {homeCoachNote && (
+                {/* Home team analysis — only visible to home manager */}
+                {isHomeManager && homeCoachNote && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                       {homeTeam.name} — vs {awayTeam.name}
@@ -490,8 +495,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                     )}
                   </div>
                 )}
-                {/* Away team analysis */}
-                {awayCoachNote && (
+                {/* Away team analysis — only visible to away manager */}
+                {isAwayManager && awayCoachNote && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                       {awayTeam.name} — vs {homeTeam.name}
@@ -541,14 +546,20 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 )}
               </div>
             </div>
+          </details>
+          </div>
           )}
 
           {/* Matchroom Instructions */}
           <div className="card p-5 border-accent/20 bg-bg-elevated">
-            <h2 className="section-header">
-              <Gamepad2 className="w-5 h-5 text-gold" /> Matchroom Instructions
-            </h2>
-            <div className="space-y-3">
+            <details open className="group">
+              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+                <h2 className="section-header">
+                  <Gamepad2 className="w-5 h-5 text-gold" /> Matchroom Instructions
+                </h2>
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+              </summary>
+              <div className="mt-4 lg:mt-0 space-y-3">
               <div className="flex items-start gap-3 p-4 rounded-lg bg-gold/10 border border-gold/20">
                 <Home className="w-5 h-5 text-gold shrink-0 mt-0.5" />
                 <div>
@@ -578,6 +589,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 </div>
               </div>
             </div>
+          </details>
           </div>
 
           {/* Matchroom Code — editable by home manager, visible to all */}
@@ -589,9 +601,14 @@ export default async function FixtureDetailPage({ params }: PageProps) {
 
           {/* Win Probability */}
           <div className="card p-5">
-            <h2 className="section-header">
-              <BarChart3 className="w-5 h-5 text-gold" /> Win Probability
-            </h2>
+            <details open className="group">
+              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+                <h2 className="section-header">
+                  <BarChart3 className="w-5 h-5 text-gold" /> Win Probability
+                </h2>
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+              </summary>
+              <div className="mt-4 lg:mt-0">
             <ProbabilityBar
               home={probability.home}
               draw={probability.draw}
@@ -599,13 +616,20 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               homeName={homeTeam.name}
               awayName={awayTeam.name}
             />
+            </div>
+          </details>
           </div>
 
           {/* H2H Last 5 */}
           <div className="card p-5">
-            <h2 className="section-header">
-              <Swords className="w-5 h-5 text-gold" /> Head to Head (Last 5)
-            </h2>
+            <details open className="group">
+              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+                <h2 className="section-header">
+                  <Swords className="w-5 h-5 text-gold" /> Head to Head (Last 5)
+                </h2>
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+              </summary>
+              <div className="mt-4 lg:mt-0">
             {h2hList.length === 0 ? (
               <p className="text-text-muted text-sm">No previous meetings.</p>
             ) : (
@@ -663,13 +687,20 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 })}
               </div>
             )}
+            </div>
+          </details>
           </div>
 
           {/* Team DNA */}
           <div className="card p-5">
-            <h2 className="section-header">
-              <Dna className="w-5 h-5 text-gold" /> Team DNA
-            </h2>
+            <details open className="group">
+              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+                <h2 className="section-header">
+                  <Dna className="w-5 h-5 text-gold" /> Team DNA
+                </h2>
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+              </summary>
+              <div className="mt-4 lg:mt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
@@ -710,14 +741,20 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 )}
               </div>
             </div>
+            </div>
+          </details>
           </div>
 
           {/* Form */}
           <div className="card p-5">
-            <h2 className="section-header">
-              <TrendingUp className="w-5 h-5 text-gold" /> Recent Form (Last 6)
-            </h2>
-            <div className="space-y-3">
+            <details open className="group">
+              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+                <h2 className="section-header">
+                  <TrendingUp className="w-5 h-5 text-gold" /> Recent Form (Last 6)
+                </h2>
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+              </summary>
+              <div className="mt-4 lg:mt-0 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm text-text-muted truncate min-w-0">{homeTeam.name}</span>
                 <FormStrip form={(homeStanding?.form ?? '').slice(-6)} />
@@ -727,6 +764,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
                 <FormStrip form={(awayStanding?.form ?? '').slice(-6)} />
               </div>
             </div>
+          </details>
           </div>
         </>
       )}
@@ -737,10 +775,14 @@ export default async function FixtureDetailPage({ params }: PageProps) {
           {/* Match Stats */}
           {matchStats && (
             <div className="card p-5">
-              <h2 className="section-header">
-                <BarChart3 className="w-5 h-5 text-gold" /> Match Statistics
-              </h2>
-              <div className="space-y-3">
+              <details open className="group">
+                <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+                  <h2 className="section-header">
+                    <BarChart3 className="w-5 h-5 text-gold" /> Match Statistics
+                  </h2>
+                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+                </summary>
+                <div className="mt-4 lg:mt-0 space-y-3">
                 <StatBar label="Possession %" home={matchStats.home_possession} away={matchStats.away_possession} />
                 <StatBar label="Shots" home={matchStats.home_shots} away={matchStats.away_shots} />
                 <StatBar label="Shots on Target" home={matchStats.home_shots_on_target} away={matchStats.away_shots_on_target} />
@@ -756,21 +798,29 @@ export default async function FixtureDetailPage({ params }: PageProps) {
               <div className="flex justify-between text-xs text-text-muted mt-3 pt-3 border-t border-navy-border">
                 <span className="font-semibold text-foreground-secondary">{homeTeam.name}</span>
                 <span className="font-semibold text-foreground-secondary">{awayTeam.name}</span>
-              </div>
             </div>
+          </details>
+          </div>
           )}
 
           {/* Emoji Reactions */}
           <div className="card p-5">
-            <h2 className="section-header">
-              <MessageSquare className="w-5 h-5 text-gold" /> Reactions
-            </h2>
+            <details open className="group">
+              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+                <h2 className="section-header">
+                  <MessageSquare className="w-5 h-5 text-gold" /> Reactions
+                </h2>
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+              </summary>
+              <div className="mt-4 lg:mt-0">
             <ReactionsPanel
               fixtureId={id}
               initialCounts={reactionCounts}
               initialUserReactions={userReactionEmojis}
               userId={user?.id ?? null}
             />
+            </div>
+          </details>
           </div>
         </>
       )}

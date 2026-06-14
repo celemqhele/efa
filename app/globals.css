@@ -41,7 +41,7 @@
 
 @layer components {
   .card {
-    @apply bg-bg-surface border border-border rounded-lg shadow-sm transition-colors duration-base p-4 sm:p-5;
+    @apply bg-bg-surface border border-border rounded-lg shadow-sm transition-all duration-base p-4 sm:p-5 active:scale-[0.99];
   }
 
   .btn-gold {
@@ -83,6 +83,11 @@
 }
 
 
+
+/* Safe area for mobile bottom tab bar */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 
 /* Scrollbar */
 ::-webkit-scrollbar {

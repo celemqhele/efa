@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Nav from './Nav'
+import BottomTabBar from './BottomTabBar'
+import MobileGestures from './MobileGestures'
 
 interface PageWrapperProps {
   children: React.ReactNode
@@ -37,11 +39,12 @@ export default async function PageWrapper({ children, fullWidth = false }: PageW
 
   return (
     <div className="min-h-screen bg-navy">
+      <MobileGestures />
       <Nav profile={profile} unreadCount={unreadCount} />
       <main className={fullWidth ? '' : 'max-w-7xl mx-auto px-6 pt-space-8 pb-space-8'}>
         {children}
       </main>
-      <div className="h-20 lg:h-8" /> {/* Bottom spacing for mobile */}
+      <BottomTabBar profile={profile} unreadCount={unreadCount} />
     </div>
   )
 }

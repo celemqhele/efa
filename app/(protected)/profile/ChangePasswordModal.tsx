@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import BottomSheet from '@/components/ui/BottomSheet'
 
 interface Props {
   userEmail: string
@@ -62,72 +63,65 @@ export default function ChangePasswordModal({ userEmail, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-bg-surface border border-border rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-foreground-primary font-bold">Change Password</h2>
-          <button onClick={onClose} className="text-text-muted hover:text-foreground-primary text-xl leading-none">×</button>
+    <BottomSheet open={true} onClose={onClose} title="Change Password" desktopMaxWidth="max-w-sm">
+      {success ? (
+        <div className="py-4 text-center">
+          <p className="text-feedback-success font-semibold">Password updated successfully!</p>
         </div>
-
-        {success ? (
-          <div className="p-8 text-center">
-            <p className="text-green-400 font-semibold">Password updated successfully!</p>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="form-label">Current Password</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              className="input-field"
+              placeholder="Enter current password"
+            />
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div>
-              <label className="form-label">Current Password</label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                className="input-field"
-                placeholder="Enter current password"
-              />
-            </div>
-            <div>
-              <label className="form-label">New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                className="input-field"
-                placeholder="At least 8 characters"
-              />
-            </div>
-            <div>
-              <label className="form-label">Confirm New Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                className="input-field"
-                placeholder="Repeat new password"
-              />
-            </div>
+          <div>
+            <label className="form-label">New Password</label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              minLength={8}
+              className="input-field"
+              placeholder="At least 8 characters"
+            />
+          </div>
+          <div>
+            <label className="form-label">Confirm New Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              className="input-field"
+              placeholder="Repeat new password"
+            />
+          </div>
 
-            {error && (
-              <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                {error}
-              </p>
-            )}
+          {error && (
+            <p className="text-feedback-error text-sm bg-feedback-error/10 border border-feedback-error/20 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
 
-            <div className="flex gap-3 pt-1">
-              <button type="button" onClick={onClose} className="btn-outline text-sm flex-1">
-                Cancel
-              </button>
-              <button type="submit" disabled={loading} className="btn-gold text-sm flex-1 disabled:opacity-50">
-                {loading ? 'Updating…' : 'Update Password'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="btn-outline text-sm flex-1">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading} className="btn-gold text-sm flex-1 disabled:opacity-50">
+              {loading ? 'Updating…' : 'Update Password'}
+            </button>
+          </div>
+        </form>
+      )}
+    </BottomSheet>
   )
 }
 

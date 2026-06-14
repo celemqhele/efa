@@ -1,8 +1,8 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/supabase/types'
 import { Button } from './Button'
@@ -15,7 +15,6 @@ interface NavProps {
 export default function Nav({ profile, unreadCount = 0 }: NavProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [menuOpen, setMenuOpen] = useState(false)
   const supabase = createClient()
 
   const isAdmin = profile?.role === 'admin'
@@ -45,9 +44,13 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
         <div className="flex items-center justify-between h-space-8">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-space-2 shrink-0">
-            <div className="w-space-6 h-space-6 rounded-full bg-accent flex items-center justify-center">
-              <span className="text-bg-base font-black text-[10px]">EFA</span>
-            </div>
+            <Image
+              src="/efa-logo-white.png"
+              alt="EFA"
+              width={28}
+              height={28}
+              className="w-7 h-7 object-contain"
+            />
             <span className="font-bold text-text-primary hidden sm:block text-sm">
               Efootball Federal Association
             </span>
@@ -94,7 +97,7 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
                 {isAdmin && (
                   <Link
                     href="/admin/dashboard"
-                    className="hidden md:flex items-center gap-space-1 px-space-3 py-space-1 bg-accent-muted border border-accent/30 text-accent rounded-md text-xs font-medium hover:bg-accent/20 transition-colors"
+                    className="hidden lg:flex items-center gap-space-1 px-space-3 py-space-1 bg-accent-muted border border-accent/30 text-accent rounded-md text-xs font-medium hover:bg-accent/20 transition-colors"
                   >
                     <svg className="w-space-3 h-space-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -117,13 +120,13 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
                       </span>
                     </div>
                   )}
-                  <span className="hidden md:block text-xs font-medium text-text-secondary">{profile.username}</span>
+                  <span className="hidden lg:block text-xs font-medium text-text-secondary">{profile.username}</span>
                 </Link>
 
                 <Button
                   variant="ghost"
                   onClick={handleLogout}
-                  className="hidden md:block text-xs text-text-muted hover:text-feedback-error transition-colors px-space-2 py-space-1"
+                  className="hidden lg:block text-xs text-text-muted hover:text-feedback-error transition-colors px-space-2 py-space-1"
                 >
                   Logout
                 </Button>
@@ -138,61 +141,8 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
                 </Button>
               </div>
             )}
-
-            {/* Mobile menu toggle */}
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-space-2 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-elevated dark:hover:bg-bg-elevated dark:hover:text-text-primary transition-colors"
-            >
-              <svg className="w-space-5 h-space-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {menuOpen
-                  ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                }
-              </svg>
-            </button>
           </div>
         </div>
-
-        {/* Mobile menu */}
-        {menuOpen && (
-          <div className="lg:hidden border-t border-border py-space-3 animate-fade-in">
-            <div className="grid grid-cols-2 gap-space-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className={`px-space-3 py-space-2 rounded-md text-sm font-medium transition-colors ${
-                    pathname === link.href
-                      ? 'bg-accent-muted text-accent'
-                      : 'text-text-muted hover:text-text-primary hover:bg-bg-elevated dark:hover:bg-bg-elevated dark:hover:text-text-primary'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              {isAdmin && (
-                <Link
-                  href="/admin/dashboard"
-                  onClick={() => setMenuOpen(false)}
-                  className="px-space-3 py-space-2 rounded-md text-sm font-medium text-accent hover:bg-accent-muted transition-colors col-span-2"
-                >
-                  Admin Dashboard
-                </Link>
-              )}
-            </div>
-            {profile && (
-              <Button
-                variant="ghost"
-                onClick={() => { handleLogout(); setMenuOpen(false) }}
-                className="w-full mt-space-2 text-left px-space-3 py-space-2 text-sm text-feedback-error hover:bg-feedback-error/10 rounded-md transition-colors"
-              >
-                Logout
-              </Button>
-            )}
-          </div>
-        )}
       </div>
     </nav>
   )

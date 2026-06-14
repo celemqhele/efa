@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { createClient } from '@/lib/supabase/client'
+import BottomSheet from '@/components/ui/BottomSheet'
 
 interface Team {
   id: string
@@ -112,101 +113,81 @@ export default function TeamChangeModal({
       </button>
 
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          onClick={(e) => e.target === e.currentTarget && setOpen(false)}
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
-
-          {/* Modal */}
-          <div className="relative z-10 w-full max-w-md bg-bg-surface border border-border rounded-2xl p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-foreground-primary">Request a Team</h2>
-              <button
-                onClick={() => setOpen(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-foreground-primary hover:bg-black/10 transition-colors"
-              >
-                ?
-              </button>
+        <BottomSheet open={open} onClose={() => setOpen(false)} title="Request a Team">
+          {submitted ? (
+            <div className="text-center py-8">
+              <p className="text-text-primary font-semibold text-lg">Request submitted!</p>
+              <p className="text-text-muted text-sm mt-1">Awaiting admin review.</p>
             </div>
+          ) : (
+            <>
+              <p className="text-sm text-text-muted mb-4">
+                Search for an available team (no current manager). Your request will be reviewed by an admin.
+              </p>
 
-            {submitted ? (
-              <div className="text-center py-8">
-                <div className="text-4xl mb-3">?</div>
-                <p className="text-foreground-primary font-semibold">Request submitted!</p>
-                <p className="text-text-muted text-sm mt-1">Awaiting admin review.</p>
+              <div className="space-y-1 mb-4">
+                <label className="form-label">Team Name</label>
+                <input
+                  type="text"
+                  value={query}
+                  onChange={handleQueryChange}
+                  placeholder="Search available teams…"
+                  className="input-field"
+                  autoFocus
+                />
               </div>
-            ) : (
-              <>
-                <p className="text-sm text-text-muted mb-4">
-                  Search for an available team (no current manager). Your request will be reviewed by an admin.
-                </p>
 
-                <div className="space-y-1 mb-4">
-                  <label className="form-label">Team Name</label>
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={handleQueryChange}
-                    placeholder="Search available teams…"
-                    className="input-field"
-                    autoFocus
-                  />
+              {error && (
+                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-feedback-error text-sm">
+                  {error}
                 </div>
+              )}
 
-                {error && (
-                  <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                    {error}
-                  </div>
-                )}
+              {loading && (
+                <div className="text-center py-4 text-text-muted text-sm">Searching…</div>
+              )}
 
-                {loading && (
-                  <div className="text-center py-4 text-text-muted text-sm">Searching…</div>
-                )}
+              {!loading && results.length === 0 && query.trim() && (
+                <div className="text-center py-4 text-text-muted text-sm">No available teams found.</div>
+              )}
 
-                {!loading && results.length === 0 && query.trim() && (
-                  <div className="text-center py-4 text-text-muted text-sm">No available teams found.</div>
-                )}
-
-                {results.length > 0 && (
-                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                    {results.map((team) => (
-                      <div
-                        key={team.id}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-accent/40 hover:bg-black/[0.03] transition-all group"
+              {results.length > 0 && (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {results.map((team) => (
+                    <div
+                      key={team.id}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-accent/40 transition-all group"
+                    >
+                      {team.logo_league_folder ? (
+                        <Image
+                          src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                          alt={team.name}
+                          width={40}
+                          height={40}
+                          className="object-contain shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-bg-elevated flex items-center justify-center text-accent font-bold text-sm shrink-0">
+                          {team.name.charAt(0)}
+                        </div>
+                      )}
+                      <span className="flex-1 text-sm font-semibold text-text-primary truncate">
+                        {team.name}
+                      </span>
+                      <button
+                        onClick={() => requestTeam(team.id)}
+                        disabled={submitting}
+                        className="btn-gold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {team.logo_league_folder ? (
-                          <Image
-                            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                            alt={team.name}
-                            width={40}
-                            height={40}
-                            className="object-contain shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-bg-elevated flex items-center justify-center text-accent font-bold text-sm shrink-0">
-                            {team.name.charAt(0)}
-                          </div>
-                        )}
-                        <span className="flex-1 text-sm font-semibold text-foreground-primary truncate">
-                          {team.name}
-                        </span>
-                        <button
-                          onClick={() => requestTeam(team.id)}
-                          disabled={submitting}
-                          className="btn-gold shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {submitting ? '…' : 'Request'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+                        {submitting ? '…' : 'Request'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </BottomSheet>
       )}
     </>
   )

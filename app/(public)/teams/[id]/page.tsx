@@ -444,22 +444,22 @@ export default async function TeamProfilePage({ params }: PageProps) {
     <div className="space-y-space-6 pt-space-4">
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <Card>
-        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-28 relative">
+        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-20 sm:h-28 relative">
           <div className="absolute inset-0 bg-gradient-to-t from-bg-surface to-transparent" />
         </div>
-        <div className="px-space-6 pb-space-6 -mt-10 relative">
-            <div className="flex items-end gap-space-5">
+        <div className="px-space-4 sm:px-space-6 pb-space-6 -mt-8 sm:-mt-10 relative">
+            <div className="flex items-end gap-space-3 sm:gap-space-5">
               <div className="bg-bg-base rounded-lg overflow-hidden">
                 <Image
                   src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
                   alt={team.name}
                   width={96}
                   height={96}
-                  className="object-contain w-24 h-24"
+                  className="object-contain w-20 h-20 sm:w-24 sm:h-24"
                 />
               </div>
-              <div className="pb-1 flex-1">
-                <h1 className="text-2xl font-black text-text-primary">{team.name}</h1>
+              <div className="pb-1 flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-black text-text-primary truncate">{team.name}</h1>
               <div className="flex items-center gap-space-3 flex-wrap mt-0.5">
                 <p className="text-text-muted text-sm">
                   Manager:{' '}
@@ -773,7 +773,30 @@ export default async function TeamProfilePage({ params }: PageProps) {
             </span>
           )}
         </h2>
-        <div className="grid grid-cols-4 gap-space-3 sm:grid-cols-8">
+
+        {/* Mobile: horizontal snap scroll */}
+        <div className="sm:hidden -mx-space-5 overflow-x-auto snap-x snap-mandatory scrollbar-none">
+          <div className="flex gap-space-3 px-space-5 w-max">
+            {[
+              { label: 'P', value: totalPlayed },
+              { label: 'W', value: totalWins },
+              { label: 'D', value: totalDraws },
+              { label: 'L', value: totalLosses },
+              { label: 'GF', value: totalGF },
+              { label: 'GA', value: totalGA },
+              { label: 'GD', value: totalGD >= 0 ? `+${totalGD}` : totalGD },
+              { label: 'PTS', value: totalPoints },
+            ].map(({ label, value }) => (
+              <div key={label} className="snap-start shrink-0 w-[90px] text-center p-space-3 rounded-lg bg-border-subtle/30">
+                <p className="text-xl font-black text-text-primary">{value}</p>
+                <p className="text-xs text-text-muted font-medium mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop: static grid */}
+        <div className="hidden sm:grid grid-cols-8 gap-space-3">
           {[
             { label: 'P', value: totalPlayed },
             { label: 'W', value: totalWins },
