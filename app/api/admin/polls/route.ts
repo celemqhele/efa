@@ -10,9 +10,10 @@ export async function GET() {
     .from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  const adminSupabase = await createAdminClient()
+  // Try admin client first, fall back to authenticated client
+  const db = (await createAdminClient().catch(() => null)) ?? supabase
 
-  const { data: polls } = await adminSupabase
+  const { data: polls } = await db
     .from('polls' as any)
     .select('*, created_by:profiles!polls_created_by_fkey(username)')
     .order('created_at', { ascending: false })
@@ -20,7 +21,7 @@ export async function GET() {
   const pollIds = (polls ?? []).map((p: any) => p.id)
   let applications: any[] = []
   if (pollIds.length > 0) {
-    const { data: apps } = await adminSupabase
+    const { data: apps } = await db
       .from('poll_applications' as any)
       .select('*, applicant:profiles!poll_applications_applicant_id_fkey(username)')
       .in('poll_id', pollIds)
