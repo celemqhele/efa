@@ -18,23 +18,17 @@ export default function ThemeSettings() {
   const [uploading, setUploading] = useState(false)
   const [activeTab, setActiveTab] = useState<'presets' | 'custom'>('presets')
   const [activePreset, setActivePreset] = useState<string>('default-dark')
-  const [floatMode, setFloatMode] = useState(false)
 
-  function overlayFor(float: boolean) {
-    return float ? 0.1 : 0.65
-  }
-
-  async function saveTheme(presetId?: string, overlayOverride?: number) {
+  async function saveTheme(presetId?: string) {
     setSaving(true)
     try {
       const id = presetId ?? activePreset
       const preset = getPresetById(id)
-      const overlay = overlayOverride ?? overlayFor(floatMode)
       const theme: UserTheme = {
         preset: id === 'custom' ? null : id,
         customBgUrl: null,
         colors: preset ? { ...preset.colors } : getDefaultUserTheme().colors,
-        overlayIntensity: overlay,
+        overlayIntensity: 0.65,
       }
       if (id === 'custom') {
         theme.preset = 'custom'
@@ -46,7 +40,7 @@ export default function ThemeSettings() {
         body: JSON.stringify({
           preset: theme.preset,
           colors: theme.colors,
-          overlayIntensity: overlay,
+          overlayIntensity: 0.65,
         }),
       })
     } catch (e) {
@@ -66,9 +60,6 @@ export default function ThemeSettings() {
       if (data?.theme_preferences) {
         const prefs = data.theme_preferences as any
         if (prefs.preset) setActivePreset(prefs.preset)
-        if (prefs.overlayIntensity !== undefined) {
-          setFloatMode(prefs.overlayIntensity < 0.5)
-        }
       }
     }
     loadCurrent()
@@ -77,13 +68,6 @@ export default function ThemeSettings() {
   async function selectPreset(presetId: string) {
     setActivePreset(presetId)
     await saveTheme(presetId)
-  }
-
-  async function toggleFloatMode() {
-    const next = !floatMode
-    setFloatMode(next)
-    const overlay = overlayFor(next)
-    await saveTheme(undefined, overlay)
   }
 
   async function handleCustomUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -108,7 +92,7 @@ export default function ThemeSettings() {
         preset: 'custom',
         customBgUrl: data.bgUrl ?? '',
         colors: data.colors,
-        overlayIntensity: overlayFor(floatMode),
+        overlayIntensity: 0.65,
       }
 
       applyThemeToDocument(theme)
@@ -121,7 +105,7 @@ export default function ThemeSettings() {
           preset: 'custom',
           customBgUrl: data.bgUrl,
           colors: data.colors,
-          overlayIntensity: overlayFor(floatMode),
+          overlayIntensity: 0.65,
         }),
       })
     } catch (e) {
@@ -216,26 +200,6 @@ export default function ThemeSettings() {
               </button>
             )
           })}
-        </div>
-
-        <div className="flex items-center justify-between p-space-3 rounded-lg bg-bg-base border border-border">
-          <div>
-            <p className="text-xs font-bold text-text-primary">Float Mode</p>
-            <p className="text-[10px] text-text-muted mt-0.5">Let the background image show through</p>
-          </div>
-          <button
-            onClick={toggleFloatMode}
-            disabled={saving}
-            className={`relative w-10 h-5 rounded-full transition-all ${
-              floatMode ? 'bg-accent' : 'bg-border'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-all ${
-                floatMode ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
         </div>
         </>
       ) : (

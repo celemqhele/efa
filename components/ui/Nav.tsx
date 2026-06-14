@@ -2,9 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { THEME_CHANGE_EVENT, getLogoForTheme } from '@/lib/themes'
 import type { Profile } from '@/lib/supabase/types'
 import { Button } from './Button'
 
@@ -20,14 +19,6 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
   const supabase = createClient()
 
   const isAdmin = profile?.role === 'admin'
-  const [logoSrc, setLogoSrc] = useState('/efa-logo-white.png')
-
-  useEffect(() => {
-    setLogoSrc(getLogoForTheme())
-    const handler = () => setLogoSrc(getLogoForTheme())
-    document.addEventListener(THEME_CHANGE_EVENT, handler)
-    return () => document.removeEventListener(THEME_CHANGE_EVENT, handler)
-  }, [])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -54,7 +45,9 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
         <div className="flex items-center justify-between h-space-8">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-space-2 shrink-0">
-            <img src={logoSrc} alt="EFA" className="h-space-6 w-auto object-contain" />
+            <div className="w-space-6 h-space-6 rounded-full bg-accent flex items-center justify-center">
+              <span className="text-bg-base font-black text-[10px]">EFA</span>
+            </div>
             <span className="font-bold text-text-primary hidden sm:block text-sm">
               Efootball Federal Association
             </span>

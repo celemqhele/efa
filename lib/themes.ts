@@ -64,33 +64,6 @@ export function getDefaultUserTheme(): UserTheme {
   }
 }
 
-export const THEME_CHANGE_EVENT = 'efa-theme-change'
-
-function hexLuminance(hex: string): number {
-  const h = hex.replace('#', '')
-  const r = parseInt(h.substring(0, 2), 16) / 255
-  const g = parseInt(h.substring(2, 4), 16) / 255
-  const b = parseInt(h.substring(4, 6), 16) / 255
-  const linearize = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-  return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b)
-}
-
-export function getLogoForTheme(): string {
-  if (typeof document === 'undefined') return '/efa-logo-white.png'
-  const bgBase = getComputedStyle(document.documentElement).getPropertyValue('--color-bg-base').trim()
-  if (!bgBase) return '/efa-logo-white.png'
-  try {
-    return hexLuminance(bgBase) < 0.5 ? '/efa-logo-white.png' : '/efa-logo-black.png'
-  } catch {
-    return '/efa-logo-white.png'
-  }
-}
-
-function dispatchThemeChange() {
-  if (typeof document === 'undefined') return
-  document.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT))
-}
-
 export function applyThemeToDocument(theme: UserTheme) {
   const root = document.documentElement
 
@@ -112,8 +85,6 @@ export function applyThemeToDocument(theme: UserTheme) {
   for (const [key, value] of Object.entries(colors)) {
     root.style.setProperty(key, value)
   }
-
-  dispatchThemeChange()
 }
 
 export function resetThemeToDefaults() {
@@ -125,6 +96,4 @@ export function resetThemeToDefaults() {
   for (const [key] of Object.entries(DEFAULT_THEME_COLORS)) {
     root.style.removeProperty(key)
   }
-
-  dispatchThemeChange()
 }
