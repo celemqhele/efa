@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
@@ -8,7 +8,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Check, X } from 'lucide-react'
+import { Check, X, Trophy } from 'lucide-react'
 
 // --- Types -------------------------------------------------------------------
 
@@ -63,6 +63,12 @@ function SeasonCard({
   onGenerateKnockouts: (tournamentId: string) => Promise<void>
 }) {
   const [cancelDialog, setCancelDialog] = useState(false)
+  const [showSuperCup, setShowSuperCup] = useState(false)
+  const [scLoading, setScLoading] = useState(false)
+  const [uclTeams, setUclTeams] = useState<Team[]>([])
+  const [europaTeams, setEuropaTeams] = useState<Team[]>([])
+  const [selectedUcl, setSelectedUcl] = useState<string>('')
+  const [selectedEuropa, setSelectedEuropa] = useState<string>('')
   const [loading, setLoading] = useState<string | null>(null)
 
   const leagueT = season.tournaments.find((t) => t.type === 'league')
@@ -173,47 +179,72 @@ function SeasonCard({
 
           {/* Other tournaments */}
           <div className="grid grid-cols-3 gap-space-2">
-            {[uclT, europaT, superCupT].map((t, idx) =>
-              t ? (
-                <div key={t.id} className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
-                  <p className="text-xs font-bold text-text-primary truncate">
-                    {t.type === 'ucl' ? 'UCL' : t.type === 'europa' ? 'Europa' : 'Super Cup'}
-                  </p>
-                  <p
-                    className={`text-[10px] ${
-                      t.status === 'active'
-                        ? 'text-feedback-success'
-                        : t.status === 'completed'
-                        ? 'text-text-muted'
-                        : 'text-feedback-warning'
-                    }`}
-                  >
-                    {t.status === 'active' ? 'Active' : t.status === 'completed' ? 'Done' : 'Upcoming'}
-                  </p>
-                  <p className="text-[10px] text-text-secondary">
-                    {t.completed_count}/{t.fixture_count}
-                  </p>
-                  {t.knockout_ready && isActive && (
-                    <Button
-                      onClick={() => handleGenerateKO(t.id)}
-                      isLoading={loading === `ko-${t.id}`}
-                      variant="secondary"
-                      className="w-full text-[9px] py-space-1 px-space-1"
+            {[uclT, europaT, superCupT].map((t, idx) => {
+              if (t) {
+                return (
+                  <div key={t.id} className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
+                    <p className="text-xs font-bold text-text-primary truncate">
+                      {t.type === 'ucl' ? 'UCL' : t.type === 'europa' ? 'Europa' : 'Super Cup'}
+                    </p>
+                    <p
+                      className={`text-[10px] ${
+                        t.status === 'active'
+                          ? 'text-feedback-success'
+                          : t.status === 'completed'
+                          ? 'text-text-muted'
+                          : 'text-feedback-warning'
+                      }`}
                     >
-                      Generate KOs
-                    </Button>
-                  )}
-                </div>
-              ) : (
+                      {t.status === 'active' ? 'Active' : t.status === 'completed' ? 'Done' : 'Upcoming'}
+                    </p>
+                    <p className="text-[10px] text-text-secondary">
+                      {t.completed_count}/{t.fixture_count}
+                    </p>
+                    {(t.knockout_ready && isActive && (t.type === 'ucl' || t.type === 'europa')) && (
+                      <Button
+                        onClick={() => handleGenerateKO(t.id)}
+                        isLoading={loading === `ko-${t.id}`}
+                        variant="secondary"
+                        className="w-full text-[9px] py-space-1 px-space-1"
+                      >
+                        Generate KOs
+                      </Button>
+                    )}
+                  </div>
+                )
+              }
+              return (
                 <div
                   key={idx}
-                  className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center opacity-30"
+                  className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1"
                 >
-                  <p className="text-xs text-text-muted">-</p>
+                  {idx === 2 && isActive && uclT && europaT ? (
+                    <Button
+                      onClick={() => setShowSuperCup(true)}
+                      variant="secondary"
+                      className="w-full h-full min-h-[68px] flex flex-col items-center justify-center gap-space-1"
+                    >
+                      <Trophy className="w-4 h-4 text-gold" />
+                      <span className="text-[9px]">Generate Super Cup</span>
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-text-muted opacity-30">-</p>
+                  )}
                 </div>
               )
-            )}
+            })}
           </div>
+
+          {/* Super Cup generation dialog */}
+          {showSuperCup && (
+            <SuperCupDialog
+              seasonId={season.id}
+              uclTId={uclT?.id ?? ''}
+              europaTId={europaT?.id ?? ''}
+              onClose={() => { setShowSuperCup(false); setSelectedUcl(''); setSelectedEuropa('') }}
+              onCreated={() => { setShowSuperCup(false); window.location.reload() }}
+            />
+          )}
 
           {/* Actions */}
           {isActive && (
@@ -724,6 +755,168 @@ function StartPhaseDialog({
             </Button>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// --- Super Cup Generation Dialog ---------------------------------------------
+
+function SuperCupDialog({
+  seasonId,
+  uclTId,
+  europaTId,
+  onClose,
+  onCreated,
+}: {
+  seasonId: string
+  uclTId: string
+  europaTId: string
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const [uclTeams, setUclTeams] = useState<{ id: string; name: string }[]>([])
+  const [europaTeams, setEuropaTeams] = useState<{ id: string; name: string }[]>([])
+  const [selectedUcl, setSelectedUcl] = useState('')
+  const [selectedEuropa, setSelectedEuropa] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<{ scheduled_date: string } | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function load() {
+      if (!uclTId && !europaTId) return
+
+      // Load UCL participants
+      if (uclTId) {
+        const { data: uclPart } = await supabase
+          .from('tournament_participants')
+          .select('team:team_id(id, name)')
+          .eq('tournament_id', uclTId) as any
+        if (uclPart) {
+          setUclTeams(uclPart.map((p: any) => p.team).filter(Boolean))
+        }
+      }
+
+      // Load Europa participants
+      if (europaTId) {
+        const { data: europaPart } = await supabase
+          .from('tournament_participants')
+          .select('team:team_id(id, name)')
+          .eq('tournament_id', europaTId) as any
+        if (europaPart) {
+          setEuropaTeams(europaPart.map((p: any) => p.team).filter(Boolean))
+        }
+      }
+    }
+    load()
+  }, [uclTId, europaTId, supabase])
+
+  async function handleSubmit() {
+    if (!selectedUcl || !selectedEuropa) {
+      setError('Please select both UCL and Europa winners')
+      return
+    }
+    if (selectedUcl === selectedEuropa) {
+      setError('UCL and Europa winners must be different teams')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    const res = await fetch('/api/admin/generate-super-cup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        season_id: seasonId,
+        ucl_winner_id: selectedUcl,
+        europa_winner_id: selectedEuropa,
+      }),
+    })
+
+    const data = await res.json()
+    setLoading(false)
+
+    if (!res.ok) {
+      setError(data.error ?? 'Failed to generate Super Cup')
+      return
+    }
+
+    setResult(data)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-space-4" onClick={onClose}>
+      <div className="w-full max-w-lg bg-bg-surface border border-border rounded-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-space-6 py-space-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-text-primary font-bold text-lg flex items-center gap-space-2">
+            <Trophy className="w-5 h-5 text-gold" /> Generate Super Cup
+          </h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {result ? (
+          <div className="p-space-6 space-y-space-4">
+            <div className="bg-feedback-success/10 border border-feedback-success/30 rounded-xl p-space-4 text-center space-y-space-2">
+              <Trophy className="w-8 h-8 text-gold mx-auto" />
+              <p className="text-text-primary font-bold">Super Cup Generated!</p>
+              <p className="text-sm text-text-secondary">Scheduled for {new Date(result.scheduled_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            </div>
+            <Button onClick={onCreated} variant="primary" className="w-full">Done</Button>
+          </div>
+        ) : (
+          <div className="p-space-6 space-y-space-5">
+            {/* UCL Winner */}
+            <div>
+              <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-space-2 block">
+                UCL Winner
+              </label>
+              <select
+                value={selectedUcl}
+                onChange={(e) => setSelectedUcl(e.target.value)}
+                className="w-full bg-bg-base border border-border rounded-lg px-space-4 py-space-3 text-sm text-text-primary focus:outline-none focus:border-accent"
+              >
+                <option value="">Select UCL winner...</option>
+                {uclTeams.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Europa Winner */}
+            <div>
+              <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-space-2 block">
+                Europa League Winner
+              </label>
+              <select
+                value={selectedEuropa}
+                onChange={(e) => setSelectedEuropa(e.target.value)}
+                className="w-full bg-bg-base border border-border rounded-lg px-space-4 py-space-3 text-sm text-text-primary focus:outline-none focus:border-accent"
+              >
+                <option value="">Select Europa winner...</option>
+                {europaTeams.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {error && (
+              <p className="text-feedback-error text-sm text-center">{error}</p>
+            )}
+
+            <div className="flex gap-space-3">
+              <Button onClick={onClose} variant="secondary" className="flex-1">Cancel</Button>
+              <Button onClick={handleSubmit} isLoading={loading} variant="primary" className="flex-1">
+                Generate Super Cup
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
