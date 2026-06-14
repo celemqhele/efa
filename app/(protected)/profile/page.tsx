@@ -9,9 +9,9 @@ import { format, parseISO, differenceInDays } from 'date-fns'
 import TeamChangeModal from './TeamChangeModal'
 import ProfileActions from './ProfileActions'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import AvatarUpload from '@/components/ui/AvatarUpload'
-import { Star, Shirt, Shield, RefreshCw, Calendar, UserRound } from 'lucide-react'
+import ThemeSettings from '@/components/ui/ThemeSettings'
+import { Star, Shirt, Shield, RefreshCw, Calendar } from 'lucide-react'
 
 export const revalidate = 0
 
@@ -37,7 +37,7 @@ export default async function ProfilePage() {
   // Profile
   const { data: profileRaw } = await supabase
     .from('profiles')
-    .select('id, username, role, avatar_url')
+    .select('id, username, role, avatar_url, theme_preferences')
     .eq('id', user.id)
     .single()
   const profile = profileRaw as any
@@ -326,6 +326,9 @@ export default async function ProfilePage() {
           )}
         </Card>
       )}
+
+      {/* -- Theme Settings ------------------------------------------------- */}
+      <ThemeSettings />
 
       {/* -- Account Security ----------------------------------------------- */}
       <ProfileActions userEmail={user.email ?? ''} />

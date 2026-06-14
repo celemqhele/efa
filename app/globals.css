@@ -15,6 +15,28 @@
     -moz-osx-font-smoothing: grayscale;
     transition: color var(--transition-base), background-color var(--transition-base);
   }
+
+  body.has-theme-bg {
+    background-image: var(--theme-bg-image);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    position: relative;
+  }
+
+  body.has-theme-bg::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--theme-bg-overlay, rgba(0,0,0,0.65));
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body.has-theme-bg > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 @layer components {
