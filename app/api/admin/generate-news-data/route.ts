@@ -9,26 +9,31 @@ const ROUND_LABELS: Record<string, string> = {
   super_cup: 'Super Cup',
 }
 
+async function getDbDateKey(supabase: any): Promise<string> {
+  try {
+    const { data, error } = await supabase.rpc('get_db_now')
+    if (!error && data) return new Date(data).toISOString().slice(0, 10)
+  } catch {}
+  try {
+    const { data: recent } = await supabase
+      .from('fixtures')
+      .select('created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (recent?.created_at) return new Date(recent.created_at).toISOString().slice(0, 10)
+  } catch {}
+  return new Date().toISOString().slice(0, 10)
+}
+
 export async function GET() {
   const supabase = await createAdminClient()
 
-  // 1. Get database time (approximate via most recent audit log entry)
-  const { data: latestEntry } = await supabase
-    .from('audit_log')
-    .select('created_at')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const dbNowIso = latestEntry?.created_at ?? new Date().toISOString()
-  const todayKey = dbNowIso.slice(0, 10)
-
-  // Compute yesterday
+  const todayKey = await getDbDateKey(supabase)
   const todayDate = new Date(todayKey + 'T00:00:00.000Z')
   const yesterdayDate = new Date(todayDate.getTime() - 86400000)
   const yesterdayKey = yesterdayDate.toISOString().slice(0, 10)
 
-  // 2. Fetch all active tournaments
   const { data: tournaments } = await supabase
     .from('tournaments')
     .select('id, name, type')
@@ -41,15 +46,14 @@ export async function GET() {
 
   const lines: string[] = []
   lines.push(`=== EFA NEWS EXPORT ===`)
-  lines.push(`Generated from DB time: ${dbNowIso}`)
-  lines.push(`Date range: ${yesterdayKey} (yesterday) – ${todayKey} (today)`)
+  lines.push(`DB date: ${todayKey}  |  Range: ${yesterdayKey} (yesterday) – ${todayKey} (today)`)
   lines.push('')
 
   for (const tournament of tournaments as any[]) {
     lines.push(`─── ${tournament.name} (${tournament.type.toUpperCase()}) ───`)
     lines.push('')
 
-    // Results from today and yesterday
+    // Results from today and yesterday (scheduled_date is a date column)
     const { data: results } = await supabase
       .from('fixtures')
       .select(`
@@ -60,8 +64,7 @@ export async function GET() {
       `)
       .eq('tournament_id', tournament.id)
       .eq('status', 'confirmed')
-      .gte('scheduled_date', yesterdayKey)
-      .lte('scheduled_date', todayKey + 'T23:59:59.999Z')
+      .in('scheduled_date', [yesterdayKey, todayKey])
       .order('scheduled_date')
 
     if (results?.length) {
@@ -69,7 +72,7 @@ export async function GET() {
       for (const fx of results as any[]) {
         const res = fx.result
         const score = res ? `${res.home_score}–${res.away_score}` : 'N/A'
-        const date = fx.scheduled_date ? String(fx.scheduled_date).slice(0, 10) : 'TBC'
+        const date = fx.scheduled_date ?? 'TBC'
         const round = ROUND_LABELS[fx.round_type] || fx.round_type || 'Match'
         lines.push(
           `    MD${fx.matchday} | ${date} | ${fx.home_team?.name} ${score} ${fx.away_team?.name} | ${round}${fx.leg && fx.leg > 1 ? ` Leg ${fx.leg}` : ''}`
@@ -81,7 +84,7 @@ export async function GET() {
     lines.push('')
 
     // Fixtures happening today
-    const { data: upcoming } = await supabase
+    const { data: todayFixtures } = await supabase
       .from('fixtures')
       .select(`
         matchday, round_type, leg, scheduled_date,
@@ -90,15 +93,14 @@ export async function GET() {
       `)
       .eq('tournament_id', tournament.id)
       .in('status', ['scheduled', 'awaiting_confirmation'])
-      .gte('scheduled_date', todayKey)
-      .lte('scheduled_date', todayKey + 'T23:59:59.999Z')
+      .eq('scheduled_date', todayKey)
       .order('scheduled_date')
 
-    if (upcoming?.length) {
+    if (todayFixtures?.length) {
       lines.push('  FIXTURES TODAY:')
-      for (const fx of upcoming as any[]) {
+      for (const fx of todayFixtures as any[]) {
         const time = fx.scheduled_date
-          ? new Date(fx.scheduled_date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg' })
+          ? new Date(fx.scheduled_date + 'T12:00:00Z').toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg' })
           : 'TBC'
         const round = ROUND_LABELS[fx.round_type] || fx.round_type || 'Match'
         lines.push(
@@ -108,10 +110,36 @@ export async function GET() {
     } else {
       lines.push('  FIXTURES TODAY: None.')
     }
+
+    // Recently generated fixtures (created today via knockout generator etc.)
+    const { data: recentFixtures } = await supabase
+      .from('fixtures')
+      .select(`
+        matchday, round_type, leg, scheduled_date,
+        home_team:teams!fixtures_home_team_id_fkey(id, name),
+        away_team:teams!fixtures_away_team_id_fkey(id, name)
+      `)
+      .eq('tournament_id', tournament.id)
+      .in('status', ['scheduled', 'awaiting_confirmation'])
+      .gte('created_at', todayKey + 'T00:00:00.000Z')
+      .lte('created_at', todayKey + 'T23:59:59.999Z')
+      .neq('scheduled_date', todayKey)
+      .order('created_at', { ascending: false })
+
+    if (recentFixtures?.length) {
+      lines.push('  RECENTLY GENERATED FIXTURES:')
+      for (const fx of recentFixtures as any[]) {
+        const date = fx.scheduled_date ?? 'TBC'
+        const round = ROUND_LABELS[fx.round_type] || fx.round_type || 'Match'
+        lines.push(
+          `    MD${fx.matchday} | Scheduled: ${date} | ${fx.home_team?.name} vs ${fx.away_team?.name} | ${round}${fx.leg && fx.leg > 1 ? ` Leg ${fx.leg}` : ''}`
+        )
+      }
+    }
     lines.push('')
   }
 
-  // Append an AI prompt
+  // AI prompt
   lines.push('─── AI NEWS ANALYSIS PROMPT ───')
   lines.push(
     `Analyze the data above from all tournaments. Identify the MOST INTERESTING news stories. ` +
@@ -121,9 +149,7 @@ export async function GET() {
     `List 5 catchy headlines with a 2-sentence summary for each. Focus on drama and impact.`
   )
 
-  const textContent = lines.join('\n')
-
-  return new Response(textContent, {
+  return new Response(lines.join('\n'), {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Content-Disposition': `attachment; filename="EFA_News_Export_${todayKey}.txt"`,
