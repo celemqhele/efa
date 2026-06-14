@@ -26,8 +26,19 @@ function formatGroupTitle(groupName: string) {
 function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-bg-surface">
-      {/* Mobile: card-per-team layout */}
-      <div className="divide-y divide-border-subtle sm:hidden">
+      {/* Mobile: compact grid layout — same columns as desktop but smaller */}
+      <div className="sm:hidden">
+        <div className="grid grid-cols-[18px_1fr_18px_18px_18px_18px_22px_24px] items-center gap-0.5 px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider text-text-muted border-b border-border-subtle">
+          <span className="text-center">#</span>
+          <span>Team</span>
+          <span className="text-center">P</span>
+          <span className="text-center">W</span>
+          <span className="text-center">D</span>
+          <span className="text-center">L</span>
+          <span className="text-center">GD</span>
+          <span className="text-center text-accent">Pts</span>
+        </div>
+
         {rows.map((row: any, index: number) => {
           const gd = goalDifference(row)
           const qualificationBorder = mode === 'league'
@@ -38,42 +49,32 @@ function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' 
             <Link
               key={row.id ?? `${row.team_id}-${index}`}
               href={`/teams/${row.team_id}`}
-              className={`flex items-center gap-3 px-4 py-3 border-l-4 ${qualificationBorder} hover:bg-accent/10 active:opacity-80 transition-all cursor-pointer`}
+              className={`grid grid-cols-[18px_1fr_18px_18px_18px_18px_22px_24px] items-center gap-0.5 px-2 py-1.5 text-[10px] border-l-4 ${qualificationBorder} ${index % 2 === 0 ? 'bg-bg-base' : 'bg-bg-surface'} hover:bg-accent/10 active:opacity-80 transition-colors cursor-pointer`}
             >
-              {/* Rank */}
-              <span className="w-6 text-center font-bold text-base text-text-muted shrink-0">{index + 1}</span>
+              <span className="text-center font-bold text-text-muted">{index + 1}</span>
 
-              {/* Team info */}
-              <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="flex items-center gap-1 min-w-0">
                 {row.team?.logo_league_folder && (
                   <TeamLogo
                     leagueFolder={row.team.logo_league_folder}
                     teamSlug={row.team.logo_team_slug}
                     context="standings_row"
                     alt={row.team.name}
-                    className="w-8 h-8 shrink-0"
+                    className="w-4 h-4 shrink-0"
                   />
                 )}
-                <div className="min-w-0">
-                  <div className="font-semibold text-text-primary text-sm truncate leading-tight">
-                    {row.team?.name ?? 'Unknown team'}
-                    {mode === 'group' && index < 2 && (
-                      <span className="ml-1.5 text-[9px] font-black text-accent border border-accent/30 rounded px-1 py-0.5 align-middle">Q</span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-text-muted mt-0.5">
-                    P:{row.played ?? 0} W:{row.wins ?? 0} D:{row.draws ?? 0} L:{row.losses ?? 0}
-                  </div>
-                </div>
+                <span className="font-semibold text-text-primary truncate leading-tight">{row.team?.name ?? 'Unknown team'}</span>
+                {mode === 'group' && index < 2 && (
+                  <span className="text-[8px] font-black text-accent border border-accent/30 rounded px-0.5 py-0">Q</span>
+                )}
               </div>
 
-              {/* Points column on the right */}
-              <div className="text-right shrink-0">
-                <div className="font-black text-base text-accent">{row.points ?? 0}</div>
-                <div className={`text-[11px] font-semibold ${gd >= 0 ? 'text-feedback-success' : 'text-feedback-error'}`}>
-                  {gd > 0 ? `+${gd}` : gd}
-                </div>
-              </div>
+              <span className="text-center text-text-secondary">{row.played ?? 0}</span>
+              <span className="text-center text-text-secondary">{row.wins ?? 0}</span>
+              <span className="text-center text-text-secondary">{row.draws ?? 0}</span>
+              <span className="text-center text-text-secondary">{row.losses ?? 0}</span>
+              <span className={`text-center font-semibold ${gd >= 0 ? 'text-feedback-success' : 'text-feedback-error'}`}>{gd > 0 ? `+${gd}` : gd}</span>
+              <span className="text-center font-black text-accent">{row.points ?? 0}</span>
             </Link>
           )
         })}
