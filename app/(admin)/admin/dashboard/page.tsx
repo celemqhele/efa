@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic'
 
+import { Suspense } from 'react'
 import { createAdminClient } from '@/lib/supabase/server'
+import { AdminDashboardSkeleton } from '@/components/ui/Skeleton'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -31,7 +33,7 @@ const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
   super_cup: { label: 'Super Cup', colour: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
 }
 
-export default async function AdminDashboardPage() {
+async function AdminDashboardContent() {
   const supabase = await createAdminClient()
 
   // Fetch all active tournaments with fixture counts
@@ -521,6 +523,14 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default async function AdminDashboardPage() {
+  return (
+    <Suspense fallback={<AdminDashboardSkeleton />}>
+      <AdminDashboardContent />
+    </Suspense>
   )
 }
 

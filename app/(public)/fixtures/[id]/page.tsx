@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { FixtureDetailSkeleton } from '@/components/ui/Skeleton'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { calculateProbability } from '@/lib/probability-engine'
@@ -122,7 +124,7 @@ function ProbabilityBar({
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function FixtureDetailPage({ params }: PageProps) {
+async function FixtureDetailContent({ params }: PageProps) {
   const supabase = await createClient()
   const { id } = await params
 
@@ -1040,5 +1042,13 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         )}
       </div>
     </div>
+  )
+}
+
+export default async function FixtureDetailPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<FixtureDetailSkeleton />}>
+      <FixtureDetailContent params={params} />
+    </Suspense>
   )
 }

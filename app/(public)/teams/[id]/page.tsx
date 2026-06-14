@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { TeamProfileSkeleton } from '@/components/ui/Skeleton'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
@@ -75,7 +77,7 @@ function perspectivize(text: string): string {
     .replace(/\byou\b/g, 'they')
 }
 
-export default async function TeamProfilePage({ params }: PageProps) {
+async function TeamProfileContent({ params }: PageProps) {
   const supabase = await createClient()
   const { id } = await params
 
@@ -1055,5 +1057,13 @@ export default async function TeamProfilePage({ params }: PageProps) {
       </details>
       </Card>
     </div>
+  )
+}
+
+export default async function TeamProfilePage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<TeamProfileSkeleton />}>
+      <TeamProfileContent params={params} />
+    </Suspense>
   )
 }

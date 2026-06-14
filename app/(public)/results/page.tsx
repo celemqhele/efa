@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import { Trophy, Crosshair } from 'lucide-react'
+import { ResultsListSkeleton } from '@/components/ui/Skeleton'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +41,7 @@ function formatWhen(dateStr: string | null): string {
   }
 }
 
-export default async function ResultsPage() {
+async function ResultsContent() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -209,7 +211,7 @@ export default async function ResultsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
       {/* Header */}
       <div className="flex items-center gap-3">
         {primaryTeam?.logo_league_folder && (
@@ -268,7 +270,27 @@ export default async function ResultsPage() {
           </div>
         )}
       </section>
-    </div>
+    </>
   )
 }
 
+export default async function ResultsPage() {
+  return (
+    <div className="space-y-6">
+      <Suspense fallback={
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-bg-surface0 animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-6 w-36 bg-bg-surface0 animate-pulse rounded" />
+              <div className="h-3 w-24 bg-bg-surface0 animate-pulse rounded" />
+            </div>
+          </div>
+          <ResultsListSkeleton count={4} />
+        </div>
+      }>
+        <ResultsContent />
+      </Suspense>
+    </div>
+  )
+}

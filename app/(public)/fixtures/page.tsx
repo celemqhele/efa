@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import { CircleDot, Crosshair } from 'lucide-react'
+import { FixtureListSkeleton } from '@/components/ui/Skeleton'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,7 +49,94 @@ function formatWhen(dateStr: string | null): string {
   }
 }
 
-export default async function FixturesPage() {
+function FixtureRow({ f, teamIds }: { f: any; teamIds: string[] }) {
+  const home = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team
+  const away = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team
+  const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
+
+  const isHome = teamIds.includes(home?.id)
+  const opponent = isHome ? away : home
+  const result = f._result
+  const myScore = isHome ? result?.home_score : result?.away_score
+  const oppScore = isHome ? result?.away_score : result?.home_score
+  const won = result != null && myScore != null && oppScore != null && myScore > oppScore
+  const lost = result != null && myScore != null && oppScore != null && myScore < oppScore
+  const drew = result != null && myScore != null && oppScore != null && myScore === oppScore
+
+  const tournamentType = t?.type ?? 'unknown'
+  const tournamentLabel = TYPE_LABELS[tournamentType] ?? t?.name ?? '—'
+  const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
+
+  let resultBadge: React.ReactNode = null
+  if (won) {
+    resultBadge = (
+      <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-green-500/20 text-green-600 border border-green-500/30">
+        W
+      </span>
+    )
+  } else if (lost) {
+    resultBadge = (
+      <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/30">
+        L
+      </span>
+    )
+  } else if (drew) {
+    resultBadge = (
+      <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-500/20 text-text-muted border border-slate-500/30">
+        D
+      </span>
+    )
+  }
+
+  return (
+    <Link
+      href={`/fixtures/${f.id}`}
+      className="card flex items-center gap-3 px-4 py-3 sm:py-3 min-h-[52px] sm:min-h-0 hover:border-accent/30 hover:bg-black/[0.03] transition-all"
+    >
+      <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-text-muted border-border'}`}>
+        {tournamentLabel}
+      </div>
+
+      <div className="text-xs text-text-muted font-mono shrink-0 w-8 text-center">
+        {isHome ? 'vs' : '@'}
+      </div>
+
+      {opponent?.logo_league_folder && (
+        <TeamLogo
+          leagueFolder={opponent.logo_league_folder}
+          teamSlug={opponent.logo_team_slug}
+          context="fixture_card"
+          alt={opponent.name}
+          className="w-8 h-8 shrink-0"
+        />
+      )}
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground-primary">
+          {opponent?.name ?? 'TBC'}
+        </p>
+        <p className="text-[10px] text-text-muted mt-0.5">
+          {formatWhen(f.scheduled_date)}
+        </p>
+      </div>
+
+      <div className="text-right shrink-0 flex flex-col items-end gap-1">
+        {result ? (
+          <span className="text-base font-black text-foreground-primary tabular-nums">
+            {myScore}–{oppScore}
+          </span>
+        ) : (
+          <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
+            {statusInfo.label}
+          </span>
+        )}
+        {resultBadge}
+      </div>
+    </Link>
+  )
+}
+
+async function FixturesContent() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -65,7 +154,6 @@ export default async function FixturesPage() {
     )
   }
 
-  // User's team(s) — same club can exist across multiple phases
   const { data: _userTeams } = await supabase
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug')
@@ -116,100 +204,18 @@ export default async function FixturesPage() {
     resultsByFixture[(r as any).fixture_id] = r as any
   }
 
+  const fixturesWithResults = (fixtures ?? []).map((f: any) => ({
+    ...f,
+    _result: resultsByFixture[f.id] ?? null,
+  }))
+
   const upcomingStatuses = new Set(['scheduled', 'awaiting_confirmation'])
-  const upcoming = (fixtures ?? []).filter((f: any) => upcomingStatuses.has(f.status))
+  const upcoming = fixturesWithResults.filter((f: any) => upcomingStatuses.has(f.status))
 
   const primaryTeam = teams[0]
 
-  function FixtureRow({ f }: { f: any }) {
-    const home = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team
-    const away = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team
-    const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
-
-    const isHome = teamIds.includes(home?.id)
-    const opponent = isHome ? away : home
-    const result = resultsByFixture[f.id]
-    const myScore = isHome ? result?.home_score : result?.away_score
-    const oppScore = isHome ? result?.away_score : result?.home_score
-    const won = result != null && myScore != null && oppScore != null && myScore > oppScore
-    const lost = result != null && myScore != null && oppScore != null && myScore < oppScore
-    const drew = result != null && myScore != null && oppScore != null && myScore === oppScore
-
-    const tournamentType = t?.type ?? 'unknown'
-    const tournamentLabel = TYPE_LABELS[tournamentType] ?? t?.name ?? '—'
-    const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
-
-    let resultBadge: React.ReactNode = null
-    if (won) {
-      resultBadge = (
-        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-green-500/20 text-green-600 border border-green-500/30">
-          W
-        </span>
-      )
-    } else if (lost) {
-      resultBadge = (
-        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/30">
-          L
-        </span>
-      )
-    } else if (drew) {
-      resultBadge = (
-        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-500/20 text-text-muted border border-slate-500/30">
-          D
-        </span>
-      )
-    }
-
-    return (
-      <Link
-        href={`/fixtures/${f.id}`}
-        className="card flex items-center gap-3 px-4 py-3 sm:py-3 min-h-[52px] sm:min-h-0 hover:border-accent/30 hover:bg-black/[0.03] transition-all"
-      >
-        <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-text-muted border-border'}`}>
-          {tournamentLabel}
-        </div>
-
-        <div className="text-xs text-text-muted font-mono shrink-0 w-8 text-center">
-          {isHome ? 'vs' : '@'}
-        </div>
-
-        {opponent?.logo_league_folder && (
-          <TeamLogo
-            leagueFolder={opponent.logo_league_folder}
-            teamSlug={opponent.logo_team_slug}
-            context="fixture_card"
-            alt={opponent.name}
-            className="w-8 h-8 shrink-0"
-          />
-        )}
-
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground-primary">
-            {opponent?.name ?? 'TBC'}
-          </p>
-          <p className="text-[10px] text-text-muted mt-0.5">
-            {formatWhen(f.scheduled_date)}
-          </p>
-        </div>
-
-        <div className="text-right shrink-0 flex flex-col items-end gap-1">
-          {result ? (
-            <span className="text-base font-black text-foreground-primary tabular-nums">
-              {myScore}–{oppScore}
-            </span>
-          ) : (
-            <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
-              {statusInfo.label}
-            </span>
-          )}
-          {resultBadge}
-        </div>
-      </Link>
-    )
-  }
-
   return (
-    <div className="space-y-6">
+    <>
       {/* Header */}
       <div className="flex items-center gap-3">
         {primaryTeam?.logo_league_folder && (
@@ -246,11 +252,32 @@ export default async function FixturesPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {upcoming.map((f: any) => <FixtureRow key={f.id} f={f} />)}
+            {upcoming.map((f: any) => <FixtureRow key={f.id} f={f} teamIds={teamIds} />)}
           </div>
         )}
       </section>
-    </div>
+    </>
   )
 }
 
+export default async function FixturesPage() {
+  return (
+    <div className="space-y-6">
+      <Suspense fallback={
+        <div className="space-y-6">
+          {/* Header skeleton */}
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-bg-surface0 animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-6 w-36 bg-bg-surface0 animate-pulse rounded" />
+              <div className="h-3 w-24 bg-bg-surface0 animate-pulse rounded" />
+            </div>
+          </div>
+          <FixtureListSkeleton count={3} />
+        </div>
+      }>
+        <FixturesContent />
+      </Suspense>
+    </div>
+  )
+}

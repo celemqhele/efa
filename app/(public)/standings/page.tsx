@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { buildLiveStandings, goalDifference } from '@/lib/standings-core'
 import { Card } from '@/components/ui/Card'
+import { StandingsTableSkeleton, TournamentSelectorSkeleton } from '@/components/ui/Skeleton'
 
 export const dynamic = 'force-dynamic'
 
@@ -139,7 +141,7 @@ function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' 
   )
 }
 
-export default async function StandingsPage({ searchParams }: PageProps) {
+async function StandingsContent({ searchParams }: PageProps) {
   const supabase = await createClient()
   const params = await searchParams
   const selectedTournamentId = params.tournament ?? null
@@ -169,12 +171,7 @@ export default async function StandingsPage({ searchParams }: PageProps) {
   const { leagueStandings, groupStandings } = await buildLiveStandings(supabase, activeTournamentId, activeTournament.type)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Standings</h1>
-        {activeTournament && <p className="text-sm text-accent mt-0.5">{activeTournament.name}</p>}
-      </div>
-
+    <>
       {tournaments && tournaments.length > 1 && (
         <div className="flex flex-wrap gap-2">
           {tournaments.map((t) => {
@@ -249,7 +246,24 @@ export default async function StandingsPage({ searchParams }: PageProps) {
           <p className="text-text-secondary text-sm">No standings available for this tournament type.</p>
         </Card>
       )}
-    </div>
+    </>
   )
 }
 
+export default async function StandingsPage({ searchParams }: PageProps) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">Standings</h1>
+      </div>
+      <Suspense fallback={
+        <div className="space-y-6">
+          <TournamentSelectorSkeleton />
+          <StandingsTableSkeleton />
+        </div>
+      }>
+        <StandingsContent searchParams={searchParams} />
+      </Suspense>
+    </div>
+  )
+}

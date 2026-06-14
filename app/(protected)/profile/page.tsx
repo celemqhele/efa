@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic'
 
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { ProfilePageSkeleton } from '@/components/ui/Skeleton'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -25,7 +27,7 @@ function daysUntil(dateStr: string | null): number | null {
 
 // --- Page ---------------------------------------------------------------------
 
-export default async function ProfilePage() {
+async function ProfileContent() {
   const supabase = await createClient()
 
   // Auth guard
@@ -334,5 +336,13 @@ export default async function ProfilePage() {
       <ProfileActions userEmail={user.email ?? ''} />
 
     </div>
+  )
+}
+
+export default async function ProfilePage() {
+  return (
+    <Suspense fallback={<ProfilePageSkeleton />}>
+      <ProfileContent />
+    </Suspense>
   )
 }

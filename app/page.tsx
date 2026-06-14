@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import Image from 'next/image'
 import Link from 'next/link'
 import PageWrapper from '@/components/ui/PageWrapper'
+import { HomePageSkeleton } from '@/components/ui/Skeleton'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
@@ -11,7 +13,7 @@ import { Trophy, ClipboardList, CalendarDays, Flame, Vote } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
-export default async function HomePage() {
+async function HomeContent() {
   const supabase = await createClient()
 
   // Current user + all their team rows (same club can exist in multiple phases)
@@ -147,7 +149,7 @@ export default async function HomePage() {
     : { data: null }
 
   return (
-    <PageWrapper>
+      <div>
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-bg-surface to-bg-base border border-border p-space-4 sm:p-space-6 mb-space-4 sm:mb-space-6 shadow-sm">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-accent),transparent_70%)] opacity-5" />
@@ -365,6 +367,16 @@ export default async function HomePage() {
           </Card>
         </div>
       </div>
+    </div>
+  )
+}
+
+export default async function HomePage() {
+  return (
+    <PageWrapper>
+      <Suspense fallback={<HomePageSkeleton />}>
+        <HomeContent />
+      </Suspense>
     </PageWrapper>
   )
 }
