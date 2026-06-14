@@ -1,178 +1,132 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import { recalculateStandings } from '@/lib/standings-engine'
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const tournament_id = searchParams.get('tournament_id')
-  if (!tournament_id) return Response.json({ error: 'tournament_id required' }, { status: 400 })
+const ROUND_LABELS: Record<string, string> = {
+  league: 'League Match',
+  group: 'Group Stage',
+  qf: 'Quarter-Final',
+  sf: 'Semi-Final',
+  final: 'Final',
+  super_cup: 'Super Cup',
+}
 
+export async function GET() {
   const supabase = await createAdminClient()
 
-  // 0. Recalculate standings first to ensure data accuracy
-  try {
-    await recalculateStandings(tournament_id)
-  } catch (err: any) {
-    console.error('Failed to recalculate standings for export:', err)
-    // We'll proceed anyway, but log the error.
-  }
+  // 1. Get database time (approximate via most recent audit log entry)
+  const { data: latestEntry } = await supabase
+    .from('audit_log')
+    .select('created_at')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  // 1. Fetch Tournament & Standings
-  const { data: tournament, error: tournamentErr } = await supabase
+  const dbNowIso = latestEntry?.created_at ?? new Date().toISOString()
+  const todayKey = dbNowIso.slice(0, 10)
+
+  // Compute yesterday
+  const todayDate = new Date(todayKey + 'T00:00:00.000Z')
+  const yesterdayDate = new Date(todayDate.getTime() - 86400000)
+  const yesterdayKey = yesterdayDate.toISOString().slice(0, 10)
+
+  // 2. Fetch all active tournaments
+  const { data: tournaments } = await supabase
     .from('tournaments')
-    .select('name, type, settings')
-    .eq('id', tournament_id)
-    .single()
+    .select('id, name, type')
+    .eq('status', 'active')
+    .order('name')
 
-  if (tournamentErr || !tournament) return Response.json({ error: `Tournament fetch error: ${tournamentErr?.message}` }, { status: 404 })
-
-  // Use standings or group_standings depending on settings
-  const settings = (tournament.settings as any) || {}
-  const isLeague = tournament.type === 'league' || !settings.num_groups
-
-  const { data: standings, error: standingsErr } = await supabase
-    .from(isLeague ? 'standings' : 'group_standings')
-    .select('*')
-    .eq('tournament_id', tournament_id)
-    .order('points', { ascending: false })
-
-  if (standingsErr || !standings || standings.length === 0) {
-    return Response.json({ error: `Standings fetch error: ${standingsErr?.message ?? 'No standings data found'}` }, { status: 404 })
+  if (!tournaments?.length) {
+    return new Response('No active tournaments found.', { status: 404 })
   }
 
-  // 1.5. Fetch all teams to map names (prevents join issues)
-  const teamIds = standings.map((s: any) => s.team_id).filter(Boolean)
-  const { data: teams } = await supabase.from('teams').select('id, name').in('id', teamIds)
-  const teamMap = new Map((teams ?? []).map(t => [t.id, t.name]))
+  const lines: string[] = []
+  lines.push(`=== EFA NEWS EXPORT ===`)
+  lines.push(`Generated from DB time: ${dbNowIso}`)
+  lines.push(`Date range: ${yesterdayKey} (yesterday) – ${todayKey} (today)`)
+  lines.push('')
 
-  // 2. Fetch Deep Data for each team
-  const csvRows: string[][] = [
-    ['TEAM', 'POS', 'P', 'W', 'D', 'L', 'PTS', 'FORM (Last 5)', 'LAST 3 RESULTS', 'MATCH 1 STATS', 'MATCH 2 STATS', 'NEXT FIXTURE 1', 'NEXT FIXTURE 2', 'NEXT FIXTURE 3'],
-  ]
+  for (const tournament of tournaments as any[]) {
+    lines.push(`─── ${tournament.name} (${tournament.type.toUpperCase()}) ───`)
+    lines.push('')
 
-  for (let i = 0; i < standings.length; i++) {
-    const s = standings[i]
-    const teamId = s.team_id
-    const teamName = teamMap.get(teamId) || 'Unknown'
-
-    // Get last 3 confirmed fixtures
-    const { data: last3Fx } = await supabase
+    // Results from today and yesterday
+    const { data: results } = await supabase
       .from('fixtures')
       .select(`
-        id, scheduled_date, home_team_id,
-        home_team:teams!fixtures_home_team_id_fkey(name),
-        away_team:teams!fixtures_away_team_id_fkey(name),
+        matchday, round_type, leg, scheduled_date,
+        home_team:teams!fixtures_home_team_id_fkey(id, name),
+        away_team:teams!fixtures_away_team_id_fkey(id, name),
         result:results(*)
       `)
-      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+      .eq('tournament_id', tournament.id)
       .eq('status', 'confirmed')
-      .order('scheduled_date', { ascending: false })
-      .limit(3) as any
+      .gte('scheduled_date', yesterdayKey)
+      .lte('scheduled_date', todayKey + 'T23:59:59.999Z')
+      .order('scheduled_date')
 
-    const resultsSummary = (last3Fx ?? []).map((f: any) => {
-      const res = f.result
-      if (!res) return 'N/A'
-      const isHome = f.home_team_id === teamId
-      const myScore = isHome ? res.home_score : res.away_score
-      const theirScore = isHome ? res.away_score : res.home_score
-      const opp = isHome ? f.away_team?.name : f.home_team?.name
-      return `${myScore}-${theirScore} vs ${opp}`
-    }).join(' | ')
-
-    // Get detailed stats for last 2 matches
-    const statsDetails: string[] = []
-    const fxIds = (last3Fx ?? []).slice(0, 2).map((f: any) => f.id)
-    
-    if (fxIds.length > 0) {
-      const { data: resultsForStats } = await supabase
-        .from('results')
-        .select('id, fixture_id')
-        .in('fixture_id', fxIds)
-
-      const resIds = resultsForStats?.map((r: any) => r.id) ?? []
-      if (resIds.length > 0) {
-        const { data: matchStats } = await supabase
-          .from('match_stats')
-          .select('*')
-          .in('result_id', resIds)
-
-        for (const ms of (matchStats as any[] ?? [])) {
-          const res = resultsForStats?.find((r: any) => r.id === ms.result_id)
-          const fx = last3Fx?.find((f: any) => f.id === res?.fixture_id)
-          if (!fx) continue
-
-          const isHome = fx.home_team_id === teamId
-          
-          const pos = isHome ? ms.home_possession : ms.away_possession
-          const shots = isHome ? ms.home_shots : ms.away_shots
-          const target = isHome ? ms.home_shots_on_target : ms.away_shots_on_target
-          const passes = isHome ? ms.home_passes : ms.away_passes
-          
-          statsDetails.push(`Match vs ${isHome ? fx.away_team?.name : fx.home_team?.name}: ${pos}% Poss, ${shots} Shots (${target} OT), ${passes} Passes`)
-        }
+    if (results?.length) {
+      lines.push('  RESULTS (Today & Yesterday):')
+      for (const fx of results as any[]) {
+        const res = fx.result
+        const score = res ? `${res.home_score}–${res.away_score}` : 'N/A'
+        const date = fx.scheduled_date ? String(fx.scheduled_date).slice(0, 10) : 'TBC'
+        const round = ROUND_LABELS[fx.round_type] || fx.round_type || 'Match'
+        lines.push(
+          `    MD${fx.matchday} | ${date} | ${fx.home_team?.name} ${score} ${fx.away_team?.name} | ${round}${fx.leg && fx.leg > 1 ? ` Leg ${fx.leg}` : ''}`
+        )
       }
+    } else {
+      lines.push('  RESULTS: None in this period.')
     }
+    lines.push('')
 
-    // Get next 3 upcoming fixtures
-    const { data: nextFx } = await supabase
+    // Fixtures happening today
+    const { data: upcoming } = await supabase
       .from('fixtures')
       .select(`
-        scheduled_date, home_team_id,
-        home_team:teams!fixtures_home_team_id_fkey(name),
-        away_team:teams!fixtures_away_team_id_fkey(name)
+        matchday, round_type, leg, scheduled_date,
+        home_team:teams!fixtures_home_team_id_fkey(id, name),
+        away_team:teams!fixtures_away_team_id_fkey(id, name)
       `)
-      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-      .eq('status', 'scheduled')
-      .order('scheduled_date', { ascending: true })
-      .limit(3) as any
+      .eq('tournament_id', tournament.id)
+      .in('status', ['scheduled', 'awaiting_confirmation'])
+      .gte('scheduled_date', todayKey)
+      .lte('scheduled_date', todayKey + 'T23:59:59.999Z')
+      .order('scheduled_date')
 
-    const upcomingSummary = (nextFx ?? []).map((f: any) => {
-      const isHome = f.home_team_id === teamId
-      const opp = isHome ? f.away_team?.name : f.home_team?.name
-      const date = f.scheduled_date ? String(f.scheduled_date).slice(0, 10) : 'TBC'
-      return `${date}: vs ${opp}${isHome ? ' (H)' : ' (A)'}`
-    })
-
-    csvRows.push([
-      teamName,
-      (i + 1).toString(),
-      (s.played ?? 0).toString(),
-      (s.wins ?? 0).toString(),
-      (s.draws ?? 0).toString(),
-      (s.losses ?? 0).toString(),
-      (s.points ?? 0).toString(),
-      (s.form || '').slice(-5),
-      resultsSummary,
-      statsDetails[0] || 'N/A',
-      statsDetails[1] || 'N/A',
-      upcomingSummary[0] || 'N/A',
-      upcomingSummary[1] || 'N/A',
-      upcomingSummary[2] || 'N/A',
-    ])
+    if (upcoming?.length) {
+      lines.push('  FIXTURES TODAY:')
+      for (const fx of upcoming as any[]) {
+        const time = fx.scheduled_date
+          ? new Date(fx.scheduled_date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg' })
+          : 'TBC'
+        const round = ROUND_LABELS[fx.round_type] || fx.round_type || 'Match'
+        lines.push(
+          `    MD${fx.matchday} | ${todayKey} ${time} | ${fx.home_team?.name} vs ${fx.away_team?.name} | ${round}${fx.leg && fx.leg > 1 ? ` Leg ${fx.leg}` : ''}`
+        )
+      }
+    } else {
+      lines.push('  FIXTURES TODAY: None.')
+    }
+    lines.push('')
   }
 
-  // 3. Add AI Prompt Row
-  csvRows.push([])
-  csvRows.push(['--- AI NEWS ANALYSIS PROMPT ---'])
-  csvRows.push([
-    `Analyze the data from the ${tournament.name} above. Identify the MOST INTERESTING news stories. 
-     Nuance is key: don't just list winners. Look for:
-     1. Unbeaten runs that just ended (Shock losses).
-     2. Teams consistently dominating possession/shots but losing (The "Unlucky" story).
-     3. Massive climbers in the table over the last 3 matches.
-     4. Goal droughts or high-scoring bursts for specific teams.
-     5. Critical "Six-Pointer" results that changed the top/bottom of the table.
-     List 5 catchy headlines with a 2-sentence summary for each. Focus on drama, tactical shifts, and significant impact on the title race or relegation.`
-  ])
+  // Append an AI prompt
+  lines.push('─── AI NEWS ANALYSIS PROMPT ───')
+  lines.push(
+    `Analyze the data above from all tournaments. Identify the MOST INTERESTING news stories. ` +
+    `Look for: 1) Shock results where favourites lost. 2) High-scoring matches. ` +
+    `3) Teams on winning/losing streaks. 4) Critical six-pointers in the standings. ` +
+    `5) Key upcoming fixtures that could decide titles or relegation. ` +
+    `List 5 catchy headlines with a 2-sentence summary for each. Focus on drama and impact.`
+  )
 
-  // 4. Generate Text String
-  const textContent = csvRows
-    .map((row: string[]) => row.join('\t'))
-    .join('\n')
+  const textContent = lines.join('\n')
 
   return new Response(textContent, {
     headers: {
-      'Content-Type': 'text/plain',
-      'Content-Disposition': `attachment; filename="EFA_News_Export.txt"`,
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Disposition': `attachment; filename="EFA_News_Export_${todayKey}.txt"`,
     },
   })
 }

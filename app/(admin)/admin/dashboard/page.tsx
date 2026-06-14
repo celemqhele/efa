@@ -158,7 +158,7 @@ export default async function AdminDashboardPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/results/submit" className="btn-gold text-xs px-3 py-1.5">Submit Result</Link>
-          <NewsTopicExportButton tournaments={tournaments ?? []} />
+          <NewsTopicExportButton />
           <Link href="/admin/fixtures/manage" className="btn-outline text-xs px-3 py-1.5">Fixtures</Link>
           <Link href="/admin/seasons" className="btn-outline text-xs px-3 py-1.5">Seasons</Link>
           <Link href="/admin/managers" className="btn-outline text-xs px-3 py-1.5">Managers</Link>
