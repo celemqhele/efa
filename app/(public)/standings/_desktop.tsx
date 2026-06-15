@@ -18,7 +18,7 @@ function formatGroupTitle(groupName: string) {
   return /^group\s+/i.test(clean) ? clean : `Group ${clean}`
 }
 
-function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' }) {
+function StandingsTable({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-bg-surface">
       <div className="sm:hidden">
@@ -37,7 +37,7 @@ function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' 
           const gd = goalDifference(row)
           const qualificationBorder = mode === 'league'
             ? index < 12 ? 'border-l-accent' : index < 20 ? 'border-l-blue-500' : 'border-l-transparent'
-            : index < 2 ? 'border-l-accent' : 'border-l-transparent'
+            : index < qualifiersPerGroup ? 'border-l-accent' : 'border-l-transparent'
 
           return (
             <Link
@@ -58,7 +58,7 @@ function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' 
                   />
                 )}
                 <span className="font-semibold text-text-primary truncate leading-tight">{row.team?.name ?? 'Unknown team'}</span>
-                {mode === 'group' && index < 2 && (
+                {mode === 'group' && index < qualifiersPerGroup && (
                   <span className="text-[8px] font-black text-accent border border-accent/30 rounded px-0.5 py-0">Q</span>
                 )}
               </div>
@@ -91,7 +91,7 @@ function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' 
           const gd = goalDifference(row)
           const qualificationBorder = mode === 'league'
             ? index < 12 ? 'border-l-accent' : index < 20 ? 'border-l-blue-500' : 'border-l-transparent'
-            : index < 2 ? 'border-l-accent' : 'border-l-transparent'
+            : index < qualifiersPerGroup ? 'border-l-accent' : 'border-l-transparent'
 
           return (
             <Link
@@ -112,7 +112,7 @@ function StandingsTable({ rows, mode }: { rows: any[]; mode: 'league' | 'group' 
                   />
                 )}
                 <span className="font-semibold text-text-primary truncate">{row.team?.name ?? 'Unknown team'}</span>
-                {mode === 'group' && index < 2 && (
+                {mode === 'group' && index < qualifiersPerGroup && (
                   <span className="text-[9px] font-black text-accent border border-accent/30 rounded px-1 py-0.5">Q</span>
                 )}
               </div>
@@ -211,13 +211,13 @@ export default function Desktop({ data }: DesktopProps) {
                 .map(([groupName, rows]) => (
                   <div key={groupName} className="space-y-2">
                     <h3 className="text-xs font-black uppercase tracking-wider text-accent">{formatGroupTitle(groupName)}</h3>
-                    <StandingsTable rows={rows} mode="group" />
+                    <StandingsTable rows={rows} mode="group" qualifiersPerGroup={activeTournament?.settings?.qualifiers_per_group ?? 2} />
                   </div>
                 ))}
 
               <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
                 <span className="w-2.5 h-2.5 rounded-sm bg-accent" />
-                Top 2 qualify
+                Top {activeTournament?.settings?.qualifiers_per_group ?? 2} qualify
               </div>
             </>
           ) : (

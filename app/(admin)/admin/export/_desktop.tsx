@@ -47,10 +47,12 @@ function StandingsTable({
   rows,
   mode,
   accent,
+  qualifiersPerGroup = 2,
 }: {
   rows: any[]
   mode: 'league' | 'group'
   accent: string
+  qualifiersPerGroup?: number
 }) {
   const rowEven: React.CSSProperties = { background: 'var(--export-row-bg)', borderRadius: '8px' }
   const rowOdd: React.CSSProperties = { background: 'transparent' }
@@ -84,7 +86,7 @@ function StandingsTable({
             ? i < 12
               ? 'var(--color-accent)'
               : '#3b82f6'
-            : i < 2
+            : i < qualifiersPerGroup
             ? 'var(--color-accent)'
             : 'transparent'
         return (
@@ -192,7 +194,7 @@ function StandingsTable({
             </div>
             {mode === 'group' && (
               <div style={{ width: '20px', textAlign: 'center' }}>
-                {i < 2 && (
+                {i < qualifiersPerGroup && (
                   <span style={{ fontSize: '10px', color: 'var(--color-accent)', fontWeight: 700 }}>Q</span>
                 )}
               </div>
@@ -435,12 +437,12 @@ export default function Desktop({ data }: { data: any }) {
                               >
                                 GROUP {group}
                               </div>
-                              <StandingsTable rows={rows as any[]} mode="group" accent={accent} />
+                              <StandingsTable rows={rows as any[]} mode="group" accent={accent} qualifiersPerGroup={card.tournament?.settings?.qualifiers_per_group ?? 2} />
                             </div>
                           ))}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
-                          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top 2 from each group qualify</span>
+                          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top {card.tournament?.settings?.qualifiers_per_group ?? 2} from each group qualify</span>
                         </div>
                       </>
                     )}

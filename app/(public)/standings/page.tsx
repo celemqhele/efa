@@ -15,7 +15,7 @@ export default async function StandingsPage({ searchParams }: PageProps) {
 
   const { data: _tournaments } = await supabase
     .from('tournaments')
-    .select('id, name, type, status')
+    .select('id, name, type, status, settings')
     .eq('status', 'active')
     .order('created_at', { ascending: true })
   const tournaments = (_tournaments ?? []) as any[]
