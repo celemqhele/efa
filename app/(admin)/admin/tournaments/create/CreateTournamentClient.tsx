@@ -737,19 +737,23 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
   function handleImport(pollId: string) {
     try {
       const pollApps = apps.filter((a: any) => a.poll_id === pollId && a.status !== 'withdrawn')
+      console.log('[ImportFromPoll] pollApps:', pollApps.length, pollApps)
       const matched: string[] = []
       for (const app of pollApps) {
         const team = allTeams.find(
           (t) => t.logo_team_slug === app.team_slug && t.logo_league_folder === app.team_league
         )
+        console.log(`[ImportFromPoll] app: "${app.team_slug}" / "${app.team_league}" -> ${team ? 'MATCH' : 'NO MATCH'}`)
         if (team) matched.push(team.logo_team_slug)
       }
+      console.log('[ImportFromPoll] matched:', matched)
       if (matched.length > 0) {
         onSelect(matched)
         setDone(matched.length)
         setTimeout(() => setDone(0), 2500)
+      } else {
+        setError('No teams matched — the slug/league names differ from the logo database.')
       }
-      setOpen(false)
     } catch (e: any) {
       setError(e.message ?? 'Import failed')
     }
