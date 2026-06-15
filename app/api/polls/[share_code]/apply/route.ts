@@ -40,6 +40,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ sha
     return Response.json({ error: 'This team has already been claimed' }, { status: 409 })
   }
 
+  // Cleanup any lingering withdrawn applications for this team to avoid unique constraint violations
+  await adminSupabase
+    .from('poll_applications' as any)
+    .delete()
+    .eq('poll_id', poll.id)
+    .eq('team_slug', team_slug)
+    .eq('team_league', team_league)
+    .eq('status', 'withdrawn')
+
   // National teams: only allow one application per user
   const meta = LEAGUE_META[team_league]
   if (meta?.isNational) {

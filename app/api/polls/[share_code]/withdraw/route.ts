@@ -26,7 +26,7 @@ export async function POST(request: Request, { params: _params }: { params: Prom
 
   await adminSupabase
     .from('poll_applications' as any)
-    .update({ status: 'withdrawn' })
+    .delete()
     .eq('id', application_id)
 
   return Response.json({ success: true })
