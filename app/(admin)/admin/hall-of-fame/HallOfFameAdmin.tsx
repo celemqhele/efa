@@ -9,16 +9,16 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const TROPHY_TYPE_OPTIONS = [
   { value: 'league', label: 'PL Premier League' },
-  { value: 'ucl', label: 'UCL' },
-  { value: 'europa', label: 'Europa League' },
-  { value: 'super_cup', label: 'Super Cup' },
+  { value: 'tournament_club', label: 'Tournament (Clubs)' },
+  { value: 'tournament_international', label: 'Tournament (Intl)' },
+  { value: 'friendlies', label: 'Friendly' },
 ]
 
 const TROPHY_LABEL: Record<string, string> = {
   league: 'PL League',
-  ucl: 'UCL',
-  europa: 'Europa',
-  super_cup: 'Super Cup',
+  tournament_club: 'Tournament (Clubs)',
+  tournament_international: 'Tournament (Intl)',
+  friendlies: 'Friendly',
 }
 
 interface Team {

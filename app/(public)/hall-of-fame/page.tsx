@@ -6,32 +6,32 @@ import { Trophy, Star, Globe, Medal } from 'lucide-react'
 
 const TROPHY_ICONS: Record<string, React.ReactNode> = {
   league: <Trophy className="w-4 h-4 text-accent" />,
-  ucl: <Star className="w-4 h-4 text-accent" />,
-  europa: <Globe className="w-4 h-4 text-accent" />,
-  super_cup: <Medal className="w-4 h-4 text-accent" />,
+  tournament_club: <Star className="w-4 h-4 text-accent" />,
+  tournament_international: <Globe className="w-4 h-4 text-accent" />,
+  friendlies: <Medal className="w-4 h-4 text-accent" />,
 }
 
 export const revalidate = 300
 
 const TROPHY_LABEL: Record<string, string> = {
   league: 'Premier League',
-  ucl: 'UCL',
-  europa: 'Europa',
-  super_cup: 'Super Cup',
+  tournament_club: 'Tournament (Clubs)',
+  tournament_international: 'Tournament (Intl)',
+  friendlies: 'Friendly',
 }
 
 const TROPHY_COLOR: Record<string, string> = {
   league: 'border-gold/40 bg-gold/10',
-  ucl: 'border-blue-500/40 bg-blue-500/10',
-  europa: 'border-green-500/40 bg-green-500/10',
-  super_cup: 'border-purple-500/40 bg-purple-500/10',
+  tournament_club: 'border-blue-500/40 bg-blue-500/10',
+  tournament_international: 'border-green-500/40 bg-green-500/10',
+  friendlies: 'border-purple-500/40 bg-purple-500/10',
 }
 
 const TROPHY_TEXT: Record<string, string> = {
   league: 'text-gold',
-  ucl: 'text-blue-400',
-  europa: 'text-green-400',
-  super_cup: 'text-purple-400',
+  tournament_club: 'text-blue-400',
+  tournament_international: 'text-green-400',
+  friendlies: 'text-purple-400',
 }
 
 interface TrophyWithRelations {
@@ -39,7 +39,7 @@ interface TrophyWithRelations {
   team_id: string
   tournament_id: string
   season_id: string
-  trophy_type: 'league' | 'ucl' | 'europa' | 'super_cup'
+  trophy_type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
   awarded_at: string
   team: {
     id: string
@@ -108,7 +108,7 @@ export default async function HallOfFamePage() {
     .sort((a, b) => b[1].total - a[1].total)
 
   const mostPL = allTimeRecords.find(([, d]) => (d.byType['league'] ?? 0) > 0)
-  const mostUCL = allTimeRecords.find(([, d]) => (d.byType['ucl'] ?? 0) > 0)
+  const mostUCL = allTimeRecords.find(([, d]) => (d.byType['tournament_club'] ?? 0) > 0)
   const mostTotal = allTimeRecords[0]
 
   return (
@@ -199,7 +199,7 @@ export default async function HallOfFamePage() {
               />
               <p className="font-bold text-foreground-primary">{mostUCL[1].team.name}</p>
               <p className="text-3xl font-black text-blue-400 mt-1">
-                {mostUCL[1].byType['ucl']}
+                {mostUCL[1].byType['tournament_club']}
               </p>
               <p className="text-xs text-text-muted">UCL titles</p>
             </div>
@@ -261,13 +261,13 @@ export default async function HallOfFamePage() {
                         {data.byType['league'] ?? '—'}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['ucl'] ?? '—'}
+                        {data.byType['tournament_club'] ?? '—'}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['europa'] ?? '—'}
+                        {data.byType['tournament_international'] ?? '—'}
                       </td>
                       <td className="py-2.5 text-center">
-                        {data.byType['super_cup'] ?? '—'}
+                        {data.byType['friendlies'] ?? '—'}
                       </td>
                     </tr>
                   ))}
@@ -308,7 +308,7 @@ export default async function HallOfFamePage() {
                   </div>
 
                   <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {(['league', 'ucl', 'europa', 'super_cup'] as const).map((type) => {
+                    {(['league', 'tournament_club', 'tournament_international', 'friendlies'] as const).map((type) => {
                       const winner = byType[type]
                       return (
                         <div

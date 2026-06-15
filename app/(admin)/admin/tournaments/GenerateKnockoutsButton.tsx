@@ -36,7 +36,7 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
     }
   }, [showConfirm])
 
-  if (!['ucl', 'europa', 'custom'].includes(type)) return null
+  if (!['tournament_club', 'tournament_international'].includes(type)) return null
 
   async function fetchQualifiers() {
     setPreviewLoading(true)

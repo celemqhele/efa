@@ -7,13 +7,16 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 interface Props {
   tournamentId: string
   tournamentName: string
+  type?: string
 }
 
-export default function GenerateFixturesButton({ tournamentId, tournamentName }: Props) {
+export default function GenerateFixturesButton({ tournamentId, tournamentName, type }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const router = useRouter()
+
+  if (type === 'friendlies') return null
 
   async function handleGenerate() {
     setDialogOpen(false)

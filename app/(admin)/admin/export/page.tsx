@@ -17,9 +17,9 @@ interface Props {
 
 const ACCENT: Record<string, string> = {
   league: 'var(--color-accent)',
-  ucl: '#3b82f6',
-  europa: '#f97316',
-  super_cup: '#a855f7',
+  tournament_club: '#3b82f6',
+  tournament_international: '#f97316',
+  friendlies: '#a855f7',
 }
 
 const VALID_TYPES = ['fixtures', 'results', 'standings'] as const

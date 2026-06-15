@@ -11,20 +11,20 @@ import { CalendarDays } from 'lucide-react'
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
 
-const TYPE_ORDER = ['league', 'ucl', 'europa', 'super_cup'] as const
+const TYPE_ORDER = ['league', 'tournament_club', 'tournament_international', 'friendlies'] as const
 
 const TYPE_LABELS: Record<string, string> = {
   league: 'Premier League',
-  ucl: 'UEFA Champions League',
-  europa: 'UEFA Europa League',
-  super_cup: 'Super Cup',
+  tournament_club: 'Tournament (Clubs)',
+  tournament_international: 'Tournament (Intl)',
+  friendlies: 'Friendly',
 }
 
 const TYPE_ACCENT: Record<string, string> = {
   league: 'text-accent border-accent/40 bg-accent/5',
-  ucl: 'text-blue-500 border-blue-500/40 bg-blue-500/5',
-  europa: 'text-orange-500 border-orange-500/40 bg-orange-500/5',
-  super_cup: 'text-purple-500 border-purple-500/40 bg-purple-500/5',
+  tournament_club: 'text-blue-500 border-blue-500/40 bg-blue-500/5',
+  tournament_international: 'text-orange-500 border-orange-500/40 bg-orange-500/5',
+  friendlies: 'text-purple-500 border-purple-500/40 bg-purple-500/5',
 }
 
 const STATUS_COLOURS: Record<string, string> = {

@@ -288,7 +288,7 @@ export async function awardTrophy(
   await db.from('trophies').insert({
     tournament_id: tournamentId,
     team_id: winner,
-    trophy_type: (tournament as any)?.type ?? 'ucl',
+    trophy_type: (tournament as any)?.type ?? 'league',
     season_id: (tournament as any)?.season_id ?? null,
   })
 

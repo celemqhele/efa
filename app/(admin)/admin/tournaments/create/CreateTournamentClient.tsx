@@ -26,29 +26,26 @@ interface Team {
   manager_id: string | null
 }
 
-interface Standing {
-  team_id: string
-  points: number
-}
-
 interface Props {
   seasons: Season[]
   allTeams: Team[]
-  activeLeagueName: string | null
-  leagueStandings: Standing[]
 }
 
 const TOURNAMENT_NAMES: Record<string, string> = {
   league: 'EFA Premier League',
-  ucl: 'EFA Champions League',
-  europa: 'EFA Europa League',
-  super_cup: 'EFA Super Cup',
+  tournament_club: 'EFA Tournaments Cup',
+  tournament_international: 'EFA International Cup',
+  friendlies: '',
 }
 
-const UCL_SPOTS = 12
-const EUROPA_SPOTS = 8
+const FIXTURE_MODE: Record<string, string> = {
+  league: 'round_robin',
+  tournament_club: 'groups',
+  tournament_international: 'groups',
+  friendlies: 'exhibition',
+}
 
-export default function CreateTournamentClient({ seasons, allTeams, activeLeagueName, leagueStandings }: Props) {
+export default function CreateTournamentClient({ seasons, allTeams }: Props) {
   const router = useRouter()
 
   // Season
@@ -60,8 +57,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   const [newSeasonLeague, setNewSeasonLeague] = useState('')
 
   // Tournament
-  const [type, setType] = useState<'league' | 'ucl' | 'europa' | 'super_cup' | 'custom'>('league')
-  const [customTypeName, setCustomTypeName] = useState('')
+  const [type, setType] = useState<'league' | 'tournament_club' | 'tournament_international' | 'friendlies'>('league')
   const [name, setName] = useState(TOURNAMENT_NAMES.league)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -76,37 +72,21 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])
   const [teamSearch, setTeamSearch] = useState('')
 
-  // Auto-population for UCL / Europa
-  const topTeamIds = leagueStandings.slice(0, UCL_SPOTS).map((s) => s.team_id)
-  const europaTeamIds = leagueStandings.slice(UCL_SPOTS, UCL_SPOTS + EUROPA_SPOTS).map((s) => s.team_id)
-
-  const topTeamSlugs = allTeams.filter(t => t.id && topTeamIds.includes(t.id)).map(t => t.logo_team_slug)
-  const europaTeamSlugs = allTeams.filter(t => t.id && europaTeamIds.includes(t.id)).map(t => t.logo_team_slug)
+  const isTournament = type === 'tournament_club' || type === 'tournament_international'
+  const isFriendlies = type === 'friendlies'
 
   useEffect(() => {
-    if (type !== 'custom') setName(TOURNAMENT_NAMES[type] ?? type)
-    if (type === 'ucl') {
-      setSelectedSlugs(topTeamSlugs)
+    setName(TOURNAMENT_NAMES[type] ?? type)
+    setSelectedSlugs([])
+    if (type === 'league') {
+      setNumRounds(2)
+    } else if (isTournament) {
       setNumGroups(4)
       setTeamsPerGroup(3)
       setNumRounds(2)
       setQualifiersPerGroup(2)
-    } else if (type === 'europa') {
-      setSelectedSlugs(europaTeamSlugs)
-      setNumGroups(2)
-      setTeamsPerGroup(4)
-      setNumRounds(2)
-      setQualifiersPerGroup(2)
-    } else if (type === 'super_cup') {
-      setSelectedSlugs([])
-      setNumGroups(1)
-      setTeamsPerGroup(2)
+    } else if (isFriendlies) {
       setNumRounds(1)
-    } else if (type === 'custom') {
-      setSelectedSlugs([])
-      setName('')
-    } else if (type === 'league') {
-      setNumRounds(2)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
@@ -115,12 +95,12 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   const calcEndDate = useCallback((start: string, teamCount: number, r: number, t: string, g: number, tpg: number) => {
     if (!start || teamCount < 2) return ''
     let totalFixtures: number
-    if (t === 'super_cup') {
-      totalFixtures = 1
-    } else if (t === 'league' || t === 'custom') {
+    if (t === 'league') {
       totalFixtures = teamCount * (teamCount - 1) * r / 2
-    } else {
+    } else if (t === 'tournament_club' || t === 'tournament_international') {
       totalFixtures = g * tpg * (tpg - 1) * r / 2
+    } else {
+      totalFixtures = 1
     }
     let date = parseISO(start)
     let remaining = totalFixtures
@@ -135,7 +115,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
   }, [])
 
   useEffect(() => {
-    const teams = type === 'super_cup' ? 2 : selectedSlugs.length
+    const teams = isFriendlies ? 2 : selectedSlugs.length
     const autoEnd = calcEndDate(startDate, teams, numRounds, type, numGroups, teamsPerGroup)
     if (autoEnd) setEndDate(autoEnd)
   }, [startDate, selectedSlugs, numRounds, type, numGroups, teamsPerGroup, calcEndDate])
@@ -172,11 +152,12 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
     setError('')
 
     if (!name.trim()) return setError('Tournament name is required.')
-    if ((type === 'league' || type === 'custom') && selectedSlugs.length < 2) return setError('Select at least 2 teams.')
+    if (selectedSlugs.length < 2) return setError('Select at least 2 teams.')
+    if (isFriendlies && selectedSlugs.length > 2) return setError('Friendlies can only have 2 teams.')
     if (!startDate || !endDate) return setError('Start and end dates are required.')
     
     // Validation for groups
-    if (type !== 'league' && type !== 'super_cup') {
+    if (isTournament) {
       if (selectedSlugs.length !== numGroups * teamsPerGroup) {
         return setError(`Team count (${selectedSlugs.length}) does not match Group settings (${numGroups} groups × ${teamsPerGroup} teams = ${numGroups * teamsPerGroup}).`)
       }
@@ -206,14 +187,13 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         manager_id: localManagers[t.logo_team_slug] ?? null
       }))
 
-      const resolvedType = type === 'custom' ? 'league' : type
       const res = await fetch('/api/admin/create-tournament', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           season_id: seasonId || null,
           name,
-          type: resolvedType,
+          type,
           start_date: startDate,
           end_date: endDate,
           teams: teamsData,
@@ -222,23 +202,24 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             teams_per_group: teamsPerGroup,
             num_rounds: numRounds,
             qualifiers_per_group: qualifiersPerGroup,
-            fixture_mode: type === 'custom' ? 'groups' : 'round_robin'
+            fixture_mode: FIXTURE_MODE[type] ?? 'round_robin'
           }
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to create tournament')
 
-      // Redirect to fixture generation
-      router.push(`/admin/fixtures/manage?tournament=${data.tournament_id}&generate=1`)
+      if (isFriendlies) {
+        router.push(`/admin/fixtures/manage?tournament=${data.tournament_id}`)
+      } else {
+        router.push(`/admin/fixtures/manage?tournament=${data.tournament_id}&generate=1`)
+      }
     } catch (e: any) {
       setError(e.message)
     } finally {
       setLoading(false)
     }
   }
-
-  const isAutoPopulated = (type === 'ucl' || type === 'europa') && leagueStandings.length > 0
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -315,45 +296,23 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
           <div>
             <label className="form-label">Type</label>
             <select
-              value={type === 'custom' ? 'custom' : type}
-              onChange={(e) => {
-                const val = e.target.value
-                setType(val as any)
-                if (val !== 'custom') {
-                  setCustomTypeName('')
-                }
-              }}
+              value={type}
+              onChange={(e) => setType(e.target.value as any)}
               className="input-field"
             >
-              <option value="league">League (EFA Premier League)</option>
-              <option value="ucl">UCL – Champions League</option>
-              <option value="europa">Europa League</option>
-              <option value="super_cup">Super Cup</option>
-              <option value="custom">Other</option>
+              <option value="league">League</option>
+              <option value="tournament_club">Tournament (Clubs)</option>
+              <option value="tournament_international">Tournament (International)</option>
+              <option value="friendlies">Friendly</option>
             </select>
           </div>
 
-          {type === 'custom' && (
-            <div>
-              <label className="form-label">Competition Name</label>
-              <input
-                type="text"
-                value={customTypeName}
-                onChange={(e) => setCustomTypeName(e.target.value)}
-                placeholder="e.g. World Cup"
-                className="input-field"
-                required
-              />
-            </div>
-          )}
-
-          <div className={type === 'custom' ? '' : 'md:col-span-1 lg:col-span-1'}>
+          <div>
             <label className="form-label">Tournament Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={type === 'custom' ? 'e.g. EFA World Cup 2026' : ''}
               className="input-field"
               required
             />
@@ -384,11 +343,11 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
       </div>
 
       {/* Format Settings */}
-      {(type !== 'super_cup') && (
+      {!isFriendlies && (
         <div className="card p-5">
           <h2 className="section-header">Format Settings</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {type !== 'league' && (
+            {isTournament && (
               <>
                 <div>
                   <label className="form-label">Number of Groups</label>
@@ -423,7 +382,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                 className="input-field"
               />
             </div>
-            {type !== 'league' && (
+            {isTournament && (
               <div>
                 <label className="form-label">Qualifiers per Group</label>
                 <input
@@ -436,7 +395,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
               </div>
             )}
           </div>
-          {type !== 'league' && (
+          {isTournament && (
             <p className="mt-3 text-xs text-text-muted">
               Total teams required: <strong className="text-gold">{numGroups * teamsPerGroup}</strong>
             </p>
@@ -444,24 +403,15 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         </div>
       )}
 
-      {/* Team Selection */}
-      {type !== 'super_cup' && (
-        <div className="card p-5">
-          <h2 className="section-header">
-            Teams
-            <span className="ml-auto text-xs font-normal text-text-muted flex items-center gap-2">
-              <ImportFromPollButton allTeams={allTeams} onSelect={setSelectedSlugs} />
-              {selectedSlugs.length} selected
-            </span>
-          </h2>
-
-          {isAutoPopulated && (
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4 text-sm text-blue-300">
-              Auto-populated from <strong>{activeLeagueName}</strong> standings.
-              {type === 'ucl' && ` Top ${UCL_SPOTS} teams.`}
-              {type === 'europa' && ` Positions ${UCL_SPOTS + 1}–${UCL_SPOTS + EUROPA_SPOTS}.`}
-            </div>
-          )}
+      {!isFriendlies && (
+      <div className="card p-5">
+        <h2 className="section-header">
+          Teams
+          <span className="ml-auto text-xs font-normal text-text-muted flex items-center gap-2">
+            {!isFriendlies && <ImportFromPollButton allTeams={allTeams} onSelect={setSelectedSlugs} />}
+            {selectedSlugs.length} selected
+          </span>
+        </h2>
 
           <input
             type="text"
@@ -474,8 +424,6 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-96 overflow-y-auto">
             {filteredTeams.map((team) => {
               const isSelected = selectedSlugs.includes(team.logo_team_slug)
-              const isTopTeam = type === 'ucl' && topTeamSlugs.includes(team.logo_team_slug)
-              const isEuropaTeam = type === 'europa' && europaTeamSlugs.includes(team.logo_team_slug)
               return (
                 <button
                   key={team.logo_team_slug}
@@ -498,11 +446,8 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
                     <div className="w-6 h-6 rounded bg-navy-border shrink-0" />
                   )}
                   <span className="text-xs font-medium truncate">{team.name}</span>
-                  {(isTopTeam || isEuropaTeam) && (
-                    <span className="ml-auto text-gold text-xs shrink-0">?</span>
-                  )}
-                  {isSelected && !isTopTeam && !isEuropaTeam && (
-                    <span className="ml-auto text-green-400 text-xs shrink-0">?</span>
+                  {isSelected && (
+                    <span className="ml-auto text-green-400 text-xs shrink-0">✓</span>
                   )}
                 </button>
               )
@@ -541,10 +486,10 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         </div>
       )}
 
-      {type === 'super_cup' && (
+      {isFriendlies && (
         <div className="card p-5">
-          <h2 className="section-header">Super Cup Teams</h2>
-          <p className="text-text-muted text-sm mb-4">Select exactly 2 teams for the Super Cup.</p>
+          <h2 className="section-header">Choose Teams</h2>
+          <p className="text-text-muted text-sm mb-4">Select exactly 2 teams for the friendly.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {allTeams.map((team) => {
               const isSelected = selectedSlugs.includes(team.logo_team_slug)

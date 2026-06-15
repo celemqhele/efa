@@ -24,16 +24,16 @@ const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
 
 const TYPE_LABELS: Record<string, string> = {
   league: 'PL',
-  ucl: 'UCL',
-  europa: 'Europa',
-  super_cup: 'Super Cup',
+  tournament_club: 'Tournament',
+  tournament_international: 'Intl',
+  friendlies: 'Friendly',
 }
 
 const TYPE_ACCENT: Record<string, string> = {
   league: 'text-accent border-accent/40 bg-accent/5',
-  ucl: 'text-blue-500 border-blue-500/40 bg-blue-500/5',
-  europa: 'text-orange-500 border-orange-500/40 bg-orange-500/5',
-  super_cup: 'text-purple-500 border-purple-500/40 bg-purple-500/5',
+  tournament_club: 'text-blue-500 border-blue-500/40 bg-blue-500/5',
+  tournament_international: 'text-orange-500 border-orange-500/40 bg-orange-500/5',
+  friendlies: 'text-purple-500 border-purple-500/40 bg-purple-500/5',
 }
 
 function formatWhen(dateStr: string | null): string {

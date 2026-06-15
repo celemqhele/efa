@@ -72,9 +72,9 @@ function SeasonCard({
   const [loading, setLoading] = useState<string | null>(null)
 
   const leagueT = season.tournaments.find((t) => t.type === 'league')
-  const uclT = season.tournaments.find((t) => t.type === 'ucl')
-  const europaT = season.tournaments.find((t) => t.type === 'europa')
-  const superCupT = season.tournaments.find((t) => t.type === 'super_cup')
+  const uclT = season.tournaments.find((t) => t.type === 'tournament_club')
+  const europaT = season.tournaments.find((t) => t.type === 'tournament_international')
+  const superCupT = season.tournaments.find((t) => t.type === 'friendlies')
 
   const total = season.league_total_fixtures
   const done = season.league_completed_fixtures
@@ -184,7 +184,7 @@ function SeasonCard({
                 return (
                   <div key={t.id} className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
                     <p className="text-xs font-bold text-text-primary truncate">
-                      {t.type === 'ucl' ? 'UCL' : t.type === 'europa' ? 'Europa' : 'Super Cup'}
+                      {t.type === 'tournament_club' ? 'Tournament (Clubs)' : t.type === 'tournament_international' ? 'Tournament (Intl)' : 'Friendlies'}
                     </p>
                     <p
                       className={`text-[10px] ${
@@ -200,7 +200,7 @@ function SeasonCard({
                     <p className="text-[10px] text-text-secondary">
                       {t.completed_count}/{t.fixture_count}
                     </p>
-                    {(t.knockout_ready && isActive && (t.type === 'ucl' || t.type === 'europa')) && (
+                    {(t.knockout_ready && isActive && (t.type === 'tournament_club' || t.type === 'tournament_international')) && (
                       <Button
                         onClick={() => handleGenerateKO(t.id)}
                         isLoading={loading === `ko-${t.id}`}

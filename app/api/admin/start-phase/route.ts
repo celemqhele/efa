@@ -168,22 +168,22 @@ export async function POST(request: Request) {
     )
   }
 
-  // ── 3. UCL tournament ────────────────────────────────────────────────────────
+  // ── 3. Tournament (Clubs) ─────────────────────────────────────────────────────
 
   const { data: uclTournament } = await adminSupabase
     .from('tournaments')
     .insert({
       season_id,
-      name: 'EFA Champions League',
-      type: 'ucl',
+      name: 'EFA Tournament (Clubs)',
+      type: 'tournament_club',
       status: 'active',
-      settings: { start_date, end_date },
+      settings: { start_date, end_date, fixture_mode: 'groups' },
     })
     .select('id')
     .single()
 
   if (!uclTournament) {
-    return Response.json({ error: 'Failed to create UCL tournament' }, { status: 500 })
+    return Response.json({ error: 'Failed to create Tournament (Clubs)' }, { status: 500 })
   }
 
   const uclTId = uclTournament.id
@@ -227,16 +227,16 @@ export async function POST(request: Request) {
     )
   }
 
-  // ── 4. Europa tournament ─────────────────────────────────────────────────────
+  // ── 4. Tournament (International) ───────────────────────────────────────────
 
   const { data: europaTournament } = await adminSupabase
     .from('tournaments')
     .insert({
       season_id,
-      name: 'EFA Europa League',
-      type: 'europa',
+      name: 'EFA Tournament (International)',
+      type: 'tournament_international',
       status: 'active',
-      settings: { start_date, end_date },
+      settings: { start_date, end_date, fixture_mode: 'groups' },
     })
     .select('id')
     .single()

@@ -11,10 +11,10 @@ interface PageProps {
 }
 
 const TOURNAMENT_TYPE_LABELS: Record<string, string> = {
-  league: 'PL',
-  ucl: 'UCL',
-  europa: 'Europa',
-  super_cup: 'Super Cup',
+  league: 'Premier League',
+  tournament_club: 'Tournament (Clubs)',
+  tournament_international: 'Tournament (Intl)',
+  friendlies: 'Friendly',
 }
 
 function formatGroupTitle(groupName: string) {
@@ -213,7 +213,7 @@ async function StandingsContent({ searchParams }: PageProps) {
             <div className="rounded-xl border border-border bg-bg-base p-8 text-center text-sm text-text-muted">No teams found for this tournament.</div>
           )}
         </Card>
-      ) : activeTournament?.type === 'ucl' || activeTournament?.type === 'europa' ? (
+      ) : activeTournament?.type === 'tournament_club' || activeTournament?.type === 'tournament_international' ? (
         <Card className="p-4 sm:p-5 space-y-5">
           <div>
             <h2 className="text-lg font-bold text-text-primary">Group Standings</h2>

@@ -36,9 +36,10 @@ export async function POST(request: Request) {
     teamIds: string[],
     generateFixtures: boolean
   ): Promise<string | null> {
+    const fixtureMode = type === 'league' ? 'round_robin' : 'groups'
     const { data: t, error: tErr } = await adminSupabase
       .from('tournaments')
-      .insert({ season_id, name, type: type as 'league' | 'ucl' | 'europa' | 'super_cup', status: 'active', settings: { start_date, end_date } })
+      .insert({ season_id, name, type, status: 'active', settings: { start_date, end_date, fixture_mode: fixtureMode } })
       .select('id')
       .single()
     if (tErr || !t) { console.error(`Failed to create ${name}:`, tErr?.message); return null }
@@ -91,14 +92,14 @@ export async function POST(request: Request) {
     true
   )
 
-  // 3. Create UCL if teams provided (from previous season)
+  // 3. Create Tournament (Clubs) if teams provided
   if (ucl_team_ids?.length >= 2) {
-    await createTournamentWithFixtures('EFA Champions League', 'ucl', ucl_team_ids, false)
+    await createTournamentWithFixtures('EFA Tournament (Clubs)', 'tournament_club', ucl_team_ids, false)
   }
 
-  // 4. Create Europa if teams provided (from previous season)
+  // 4. Create Tournament (International) if teams provided
   if (europa_team_ids?.length >= 2) {
-    await createTournamentWithFixtures('EFA Europa League', 'europa', europa_team_ids, false)
+    await createTournamentWithFixtures('EFA Tournament (International)', 'tournament_international', europa_team_ids, false)
   }
 
   // 5. Notify all league participants

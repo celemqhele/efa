@@ -84,25 +84,6 @@ export default async function CreateTournamentPage() {
 
   const allClubs = Array.from(clubMap.values()).sort((a, b) => a.name.localeCompare(b.name))
 
-  // Active league tournament + standings for UCL/Europa auto-population
-  const { data: activeLeague } = await (supabase as any)
-    .from('tournaments')
-    .select('id, name')
-    .eq('type', 'league')
-    .eq('status', 'active')
-    .limit(1)
-    .maybeSingle()
-
-  let leagueStandings: { team_id: string; points: number; rank?: number }[] = []
-  if ((activeLeague as any)?.id) {
-    const { data: standings } = await supabase
-      .from('standings')
-      .select('team_id, points')
-      .eq('tournament_id', (activeLeague as any).id)
-      .order('points', { ascending: false })
-    leagueStandings = standings ?? []
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -113,8 +94,6 @@ export default async function CreateTournamentPage() {
       <CreateTournamentClient
         seasons={seasons ?? []}
         allTeams={allClubs}
-        activeLeagueName={activeLeague?.name ?? null}
-        leagueStandings={leagueStandings}
       />
     </div>
   )

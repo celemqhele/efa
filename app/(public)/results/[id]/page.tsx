@@ -49,9 +49,9 @@ export default async function ResultDetailPage({ params }: Props) {
 
   const tournamentColor =
     tournament?.type === 'league' ? 'text-[#c9a84c]' :
-    tournament?.type === 'ucl' ? 'text-blue-400' :
-    tournament?.type === 'europa' ? 'text-orange-400' :
-    'text-purple-400'
+    tournament?.type === 'tournament_club' ? 'text-yellow-400' :
+    tournament?.type === 'tournament_international' ? 'text-green-400' :
+    'text-text-muted'
 
   function StatBar({ label, homeVal, awayVal }: { label: string; homeVal: number; awayVal: number }) {
     const total = homeVal + awayVal || 1

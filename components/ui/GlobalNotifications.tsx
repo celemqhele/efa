@@ -45,7 +45,7 @@ function notifIcon(type: string): React.ReactNode {
 }
 
 function notifIconColour(type: string): string {
-  if (RESULT_TYPES.has(type) || type === 'qualification' || type === 'fixtures_released' || type === 'super_cup')
+  if (RESULT_TYPES.has(type) || type === 'qualification' || type === 'fixtures_released')
     return 'bg-accent/10 text-accent'
   if (type === 'sacking' || type === 'manager_sacked' || type === 'team_request_denied' || type === 'application_denied')
     return 'bg-feedback-error/10 text-feedback-error'

@@ -11,9 +11,9 @@ export const revalidate = 0
 
 const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
   league: { label: 'League', colour: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-  ucl: { label: 'UCL', colour: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
-  europa: { label: 'Europa', colour: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
-  super_cup: { label: 'Super Cup', colour: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+  tournament_club: { label: 'Tournament (Clubs)', colour: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
+  tournament_international: { label: 'Tournament (Intl)', colour: 'text-green-400 bg-green-500/10 border-green-500/20' },
+  friendlies: { label: 'Friendly', colour: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
 }
 
 const STATUS_COLOURS: Record<string, string> = {
@@ -228,7 +228,7 @@ function TournamentCard({
           <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} />
+          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
           <RunTournamentDrawButton
             tournamentId={tournament.id}
             tournamentName={tournament.name}

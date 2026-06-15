@@ -56,7 +56,7 @@ export default async function SeasonsPage() {
         completed_count: doneMap[t.id] ?? 0,
         // For UCL/Europa: whether groups are done but SF not yet generated
         knockout_ready:
-          (t.type === 'ucl' || t.type === 'europa') &&
+          (t.type === 'tournament_club' || t.type === 'tournament_international') &&
           (groupTotalMap[t.id] ?? 0) > 0 &&
           (groupDoneMap[t.id] ?? 0) === (groupTotalMap[t.id] ?? 0) &&
           (sfCountMap[t.id] ?? 0) === 0,

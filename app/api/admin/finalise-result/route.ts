@@ -410,7 +410,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (roundType === 'group' && (tType === 'ucl' || tType === 'europa')) {
+    if (roundType === 'group' && (tType === 'tournament_club' || tType === 'tournament_international')) {
       const { count: pendingGroups } = await adminSupabase
         .from('fixtures')
         .select('*', { count: 'exact', head: true })

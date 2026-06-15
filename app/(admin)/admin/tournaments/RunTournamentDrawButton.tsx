@@ -17,7 +17,7 @@ export default function RunTournamentDrawButton({ tournamentId, tournamentName, 
   const router = useRouter()
 
   // Only show for tournament types that need group/KO draws
-  if (!['ucl', 'europa', 'custom'].includes(type)) return null
+  if (!['tournament_club', 'tournament_international'].includes(type)) return null
 
   async function handleRunDraw() {
     setLoading(true)

@@ -154,7 +154,7 @@ export interface Database {
           id: string
           season_id: string | null
           name: string
-          type: 'league' | 'ucl' | 'europa' | 'super_cup'
+          type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           status: string
           settings: Json | null
           created_at: string
@@ -163,7 +163,7 @@ export interface Database {
           id?: string
           season_id?: string | null
           name: string
-          type: 'league' | 'ucl' | 'europa' | 'super_cup'
+          type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           status?: string
           settings?: Json | null
           created_at?: string
@@ -172,7 +172,7 @@ export interface Database {
           id?: string
           season_id?: string | null
           name?: string
-          type?: 'league' | 'ucl' | 'europa' | 'super_cup'
+          type?: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           status?: string
           settings?: Json | null
           created_at?: string
@@ -645,7 +645,7 @@ export interface Database {
           team_id: string
           tournament_id: string
           season_id: string
-          trophy_type: 'league' | 'ucl' | 'europa' | 'super_cup'
+          trophy_type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           awarded_at: string
         }
         Insert: {
@@ -653,7 +653,7 @@ export interface Database {
           team_id: string
           tournament_id: string
           season_id: string
-          trophy_type: 'league' | 'ucl' | 'europa' | 'super_cup'
+          trophy_type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           awarded_at?: string
         }
         Update: Partial<Database['public']['Tables']['trophies']['Insert']>
