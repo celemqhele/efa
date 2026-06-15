@@ -58,6 +58,7 @@ export default function AdminPollsPage() {
   const [error, setError] = useState('')
   const [expandedPoll, setExpandedPoll] = useState<string | null>(null)
   const [exportingApp, setExportingApp] = useState<Application | null>(null)
+  const [exportingPoll, setExportingPoll] = useState<Poll | null>(null)
 
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
@@ -184,6 +185,28 @@ export default function AdminPollsPage() {
     }, 500)
   }
 
+  async function handleExportPoll(poll: Poll) {
+    setExportingPoll(poll)
+    setTimeout(async () => {
+      const card = document.getElementById(`poll-export-card-${poll.id}`)
+      if (!card) {
+        setExportingPoll(null)
+        return
+      }
+      try {
+        const dataUrl = await toPng(card, { pixelRatio: 2, cacheBust: true })
+        const link = document.createElement('a')
+        link.download = `efa-poll-${poll.title.replace(/\s+/g, '-')}.png`
+        link.href = dataUrl
+        link.click()
+      } catch (err) {
+        console.error('Export failed', err)
+      } finally {
+        setExportingPoll(null)
+      }
+    }, 500)
+  }
+
   async function handleDeleteApplication(appId: string) {
     const res = await fetch(`/api/admin/polls/applications/${appId}`, { method: 'DELETE' })
     if (res.ok) loadPolls()
@@ -258,6 +281,9 @@ export default function AdminPollsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-space-2 shrink-0">
+                    <Button variant="secondary" onClick={() => handleExportPoll(poll)}>
+                      Export PNG
+                    </Button>
                     <Button variant="secondary" onClick={() => copyLink(poll.share_code)}>
                       Copy Link
                     </Button>
@@ -306,13 +332,6 @@ export default function AdminPollsPage() {
                                 }`}>
                                   {app.status}
                                 </span>
-                                <button
-                                  onClick={() => handleExportManager(app)}
-                                  className="text-[10px] text-accent hover:text-accent/80 transition-colors p-1"
-                                  title="Export as PNG"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                </button>
                                 <button
                                   onClick={() => handleDeleteApplication(app.id)}
                                   className="text-[10px] text-feedback-error hover:text-feedback-error/80 transition-colors"
@@ -392,6 +411,73 @@ export default function AdminPollsPage() {
               <Button onClick={handleCreate} isLoading={creating} variant="primary" disabled={!title.trim()}>
                 Create Poll
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden Poll Export Card */}
+      {exportingPoll && (
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+          <div id={`poll-export-card-${exportingPoll.id}`} style={{
+            fontFamily: "'Segoe UI', system-ui, sans-serif",
+            width: '600px',
+            background: '#0a1128',
+            padding: '40px',
+            borderRadius: '24px',
+            color: 'white',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '32px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#0a1128' }}>EFA</div>
+                  <div style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.1em' }}>POLL SUMMARY</div>
+               </div>
+               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{new Date().toLocaleDateString()}</div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>POLL TITLE</div>
+              <div style={{ fontSize: '28px', fontWeight: 900, color: 'white' }}>{exportingPoll.title}</div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>APPLICATIONS ({applications.filter(a => a.poll_id === exportingPoll.id).length})</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {applications
+                  .filter(a => a.poll_id === exportingPoll.id)
+                  .map((app, i) => (
+                    <div key={app.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      padding: '16px',
+                      background: 'rgba(255,255,255,0.03)',
+                      borderRadius: '16px',
+                      border: '1px solid rgba(255,255,255,0.08)'
+                    }}>
+                      <TeamLogoInline folder={app.team_league} slug={app.team_slug} size={32} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '15px', fontWeight: 700 }}>{app.team_name}</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{app.team_league.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-accent)' }}>{getApplicantName(app)}</div>
+                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{app.status}</div>
+                      </div>
+                    </div>
+                  ))}
+                {applications.filter(a => a.poll_id === exportingPoll.id).length === 0 && (
+                  <div style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>No applications yet</div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>EFA — EFOOTBALL FEDERAL ASSOCIATION</div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>efa-fxyk.vercel.app</div>
             </div>
           </div>
         </div>
