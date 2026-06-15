@@ -227,7 +227,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
       if (!res.ok) throw new Error(data.error ?? 'Failed to create tournament')
 
       // Redirect to fixture generation
-      router.push(`/admin/fixtures/manage?tournament=${data.id}&generate=1`)
+      router.push(`/admin/fixtures/manage?tournament=${data.tournament_id}&generate=1`)
     } catch (e: any) {
       setError(e.message)
     } finally {
