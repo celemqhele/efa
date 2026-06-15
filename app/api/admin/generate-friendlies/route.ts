@@ -1,5 +1,6 @@
 import { createAdminClient, createClient } from '@/lib/supabase/server'
-import { generateFriendlyFixtures } from '@/lib/friendlies-generator'
+import { generateExhibitionFixtures } from '@/lib/fixture-generator'
+import { format } from 'date-fns'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   if (teamIds.length < 2) return Response.json({ error: 'Need at least 2 teams' }, { status: 400 })
 
   // 2. Generate fixtures
-  const fixtures = generateFriendlyFixtures(teamIds, matches_per_team, new Date().toISOString().slice(0, 10))
+  const fixtures = await generateExhibitionFixtures(adminSupabase, teamIds, matches_per_team, format(new Date(), 'yyyy-MM-dd'))
 
   // 3. Insert fixtures
   const { error: fErr } = await adminSupabase.from('fixtures').insert(

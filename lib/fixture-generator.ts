@@ -99,3 +99,37 @@ export async function generateGroupFixtures(
     }
   })
 }
+
+export async function generateExhibitionFixtures(
+  db: any,
+  teamIds: string[],
+  matchesPerTeam: number,
+  startFrom?: string
+): Promise<GeneratedFixture[]> {
+  const { assignFixtureSlots } = await import('./fixture-slots')
+  
+  // Simple round-robin pairings for exhibition
+  const pairs: Array<{ home_team_id: string; away_team_id: string }> = []
+  const shuffledTeams = shuffle([...teamIds])
+  
+  // Basic heuristic: each team plays each other until matchesPerTeam is reached
+  for (let m = 0; m < matchesPerTeam; m++) {
+    for (let i = 0; i < shuffledTeams.length; i++) {
+      for (let j = i + 1; j < shuffledTeams.length; j++) {
+        pairs.push({ home_team_id: shuffledTeams[i], away_team_id: shuffledTeams[j] })
+      }
+    }
+  }
+
+  const assignments = await assignFixtureSlots(db, pairs, startFrom)
+
+  return assignments.map((a, i) => ({
+    home_team_id: a.home_team_id,
+    away_team_id: a.away_team_id,
+    matchday: i + 1,
+    scheduled_date: a.scheduled_date,
+    deadline: `${a.scheduled_date}T12:00:00Z`,
+    round_type: 'friendlies' as any,
+    leg: 1,
+  }))
+}
