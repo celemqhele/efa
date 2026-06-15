@@ -16,7 +16,7 @@ interface Props {
   defaultTypes: string[]
 }
 
-const TYPE_OPTIONS = ['fixtures', 'results', 'standings'] as const
+const TYPE_OPTIONS = ['fixtures', 'results', 'standings', 'managers'] as const
 type ExportType = (typeof TYPE_OPTIONS)[number]
 
 export default function ExportControls({
