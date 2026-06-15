@@ -18,15 +18,15 @@ export default function Desktop({ data }: { data: any }) {
   } = data
 
   return (
-    <div className="space-y-space-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-space-3">
+    <div className="max-w-4xl mx-auto space-y-space-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Polls</h1>
           <p className="text-text-muted text-sm mt-space-1">
             Create polls for team selection applications
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} variant="primary" className="self-start sm:self-auto">
+        <Button onClick={() => setShowCreate(true)} variant="primary">
           + Create Poll
         </Button>
       </div>
@@ -53,17 +53,17 @@ export default function Desktop({ data }: { data: any }) {
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-space-4">
+        <div className="space-y-space-4">
           {polls.map((poll: any) => {
             const creator = Array.isArray(poll.created_by) ? poll.created_by[0] : poll.created_by
             const isOpen = poll.status === 'open'
             return (
-              <Card key={poll.id} className="p-space-4 sm:p-space-5">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-space-3">
+              <Card key={poll.id} className="p-space-5">
+                <div className="flex items-start justify-between gap-space-4">
                   <div className="space-y-space-1.5 min-w-0 flex-1">
                     <div className="flex items-center gap-space-3">
-                      <h3 className="font-semibold text-text-primary text-sm sm:text-base">{poll.title}</h3>
-                      <span className={`text-[10px] px-space-1.5 py-space-0.5 rounded-full border font-medium shrink-0 ${
+                      <h3 className="font-semibold text-text-primary text-base">{poll.title}</h3>
+                      <span className={`text-xs px-space-2 py-0.5 rounded-full border font-medium shrink-0 ${
                         isOpen
                           ? 'bg-feedback-success/10 border-feedback-success/30 text-feedback-success'
                           : 'bg-bg-elevated border-border text-text-muted'
@@ -72,20 +72,20 @@ export default function Desktop({ data }: { data: any }) {
                       </span>
                     </div>
                     {poll.description && (
-                      <p className="text-xs text-text-muted">{poll.description}</p>
+                      <p className="text-sm text-text-muted">{poll.description}</p>
                     )}
-                    <p className="text-[10px] text-text-muted">
+                    <p className="text-xs text-text-muted">
                       Share code: <code className="bg-bg-base px-space-1 rounded">{poll.share_code}</code>
                       {' · '}Created {new Date(poll.created_at).toLocaleDateString()}
                       {creator && ` · by ${creator.username}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-space-2 shrink-0 self-stretch sm:self-auto">
-                    <Button variant="secondary" onClick={() => copyLink(poll.share_code)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+                  <div className="flex items-center gap-space-2 shrink-0">
+                    <Button variant="secondary" onClick={() => copyLink(poll.share_code)} className="text-sm">
                       Copy Link
                     </Button>
                     {isOpen && (
-                      <Button variant="destructive" onClick={() => handleClose(poll.id)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+                      <Button variant="destructive" onClick={() => handleClose(poll.id)} className="text-sm">
                         Close
                       </Button>
                     )}
@@ -95,7 +95,7 @@ export default function Desktop({ data }: { data: any }) {
                 <div className="mt-space-4 border-t border-border pt-space-3">
                   <button
                     onClick={() => setExpandedPoll(expandedPoll === poll.id ? null : poll.id)}
-                    className="flex items-center gap-space-2 text-xs text-text-muted hover:text-text-primary transition-colors"
+                    className="flex items-center gap-space-2 text-sm text-text-muted hover:text-text-primary transition-colors"
                   >
                     <svg className={`w-3 h-3 transition-transform ${expandedPoll === poll.id ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                     Applications ({applications.filter((a: any) => a.poll_id === poll.id).length})
@@ -104,20 +104,17 @@ export default function Desktop({ data }: { data: any }) {
                   {expandedPoll === poll.id && (
                     <div className="mt-space-2 space-y-space-1">
                       {applications.filter((a: any) => a.poll_id === poll.id).length === 0 ? (
-                        <p className="text-xs text-text-muted py-space-2">No applications yet.</p>
+                        <p className="text-sm text-text-muted py-space-2">No applications yet.</p>
                       ) : (
                         applications
                           .filter((a: any) => a.poll_id === poll.id)
                           .map((app: any) => (
-                            <div key={app.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-space-2 px-space-3 py-space-2 rounded-lg bg-bg-elevated/50 border border-border">
-                              <div className="flex items-center gap-space-2 min-w-0">
-                                <span className="text-sm font-medium text-text-primary truncate">{app.team_name}</span>
-                                <span className="text-[10px] text-text-muted truncate hidden sm:inline">{app.team_league}</span>
-                              </div>
-                              <div className="flex items-center gap-space-2 shrink-0">
-                                <span className="text-[10px] text-text-muted truncate sm:hidden max-w-[120px]">{app.team_league}</span>
+                            <div key={app.id} className="flex items-center justify-between gap-space-3 px-space-4 py-space-2 rounded-lg bg-bg-elevated/50 border border-border">
+                              <div className="flex items-center gap-space-3 min-w-0">
+                                <span className="text-sm font-medium text-text-primary">{app.team_name}</span>
+                                <span className="text-xs text-text-muted">{app.team_league}</span>
                                 <span className="text-xs text-text-muted">{getApplicantName(app)}</span>
-                                <span className={`text-xs px-space-2 py-space-1 rounded-full font-medium ${
+                                <span className={`text-xs px-space-2 py-0.5 rounded-full font-medium ${
                                   app.status === 'pending'
                                     ? 'bg-warning/10 text-warning'
                                     : app.status === 'approved'
@@ -126,14 +123,14 @@ export default function Desktop({ data }: { data: any }) {
                                 }`}>
                                   {app.status}
                                 </span>
-                                <button
-                                  onClick={() => handleDeleteApplication(app.id)}
-                                  className="text-[10px] text-feedback-error hover:text-feedback-error/80 transition-colors"
-                                  title="Delete application"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
                               </div>
+                              <button
+                                onClick={() => handleDeleteApplication(app.id)}
+                                className="text-xs text-feedback-error hover:text-feedback-error/80 transition-colors"
+                                title="Delete application"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
                             </div>
                           ))
                       )}
@@ -147,18 +144,18 @@ export default function Desktop({ data }: { data: any }) {
       )}
 
       {showCreate && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-0 sm:p-space-4 overflow-y-auto">
-          <div className="w-full max-w-lg bg-bg-surface border-0 sm:border border-border rounded-none sm:rounded-2xl overflow-hidden min-h-screen sm:min-h-0 my-0 sm:my-space-8">
-            <div className="px-space-4 sm:px-space-6 py-space-4 border-b border-border">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-space-4 overflow-y-auto">
+          <div className="w-full max-w-lg bg-bg-surface border border-border rounded-2xl overflow-hidden my-space-8">
+            <div className="px-space-6 py-space-4 border-b border-border">
               <div className="flex items-center justify-between">
                 <h2 className="text-text-primary font-bold text-lg">Create Poll</h2>
-                <button onClick={() => setShowCreate(false)} className="text-text-muted hover:text-text-primary sm:hidden p-space-1">
+                <button onClick={() => setShowCreate(false)} className="text-text-muted hover:text-text-primary p-space-1">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
             </div>
 
-            <div className="p-space-4 sm:p-space-6 space-y-space-5">
+            <div className="p-space-6 space-y-space-5">
               <div>
                 <label className="form-label">Title</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Season 2 Team Selection" className="input-field" />
@@ -173,7 +170,7 @@ export default function Desktop({ data }: { data: any }) {
                 <div className="flex items-center justify-between mb-space-2">
                   <label className="form-label mb-0">Available Leagues</label>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-1.5 max-h-48 overflow-y-auto pr-space-1">
+                <div className="grid grid-cols-2 gap-space-1.5 max-h-48 overflow-y-auto pr-space-1">
                   {LEAGUE_OPTIONS.map((league: any) => {
                     const sel = selectedLeagues.includes(league.value)
                     const allSel = selectedLeagues.length === 0
@@ -205,9 +202,9 @@ export default function Desktop({ data }: { data: any }) {
               </div>
             </div>
 
-            <div className="px-space-4 sm:px-space-6 pb-space-4 sm:pb-space-6 flex flex-col-reverse sm:flex-row sm:justify-between gap-space-3">
-              <Button variant="secondary" onClick={() => setShowCreate(false)} className="w-full sm:w-auto">Cancel</Button>
-              <Button onClick={handleCreate} isLoading={creating} variant="primary" disabled={!title.trim()} className="w-full sm:w-auto">
+            <div className="px-space-6 pb-space-6 flex items-center justify-between gap-space-3">
+              <Button variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button onClick={handleCreate} isLoading={creating} variant="primary" disabled={!title.trim()}>
                 Create Poll
               </Button>
             </div>

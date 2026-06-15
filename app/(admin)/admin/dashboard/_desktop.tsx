@@ -10,7 +10,7 @@ import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 import DueFixturesExportButton from './DueFixturesExportButton'
 import NewsTopicExportButton from './NewsTopicExportButton'
 import { APP_TIME_ZONE } from '@/lib/app-time'
-import { Trophy, CheckCircle2, CalendarDays, RefreshCw, Flag, ClipboardList, Hourglass, AlertTriangle, ChevronRight } from 'lucide-react'
+import { Trophy, CheckCircle2, CalendarDays, RefreshCw, Flag, ClipboardList, Hourglass, AlertTriangle } from 'lucide-react'
 
 const STATUS_CLASSES: Record<string, string> = {
   scheduled: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
@@ -40,12 +40,12 @@ const ACTIONS = [
 
 function QuickActions() {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4 snap-x snap-mandatory">
+    <div className="flex flex-wrap gap-2">
       {ACTIONS.map((a) => (
         <Link
           key={a.href}
           href={a.href}
-          className={`snap-start shrink-0 whitespace-nowrap text-xs font-semibold px-4 py-2.5 rounded-lg min-h-[44px] flex items-center justify-center transition-all active:scale-95 ${
+          className={`text-sm font-semibold px-5 py-2 rounded-lg transition-colors ${
             a.variant === 'gold'
               ? 'bg-accent text-bg-surface hover:bg-accent-hover'
               : 'border border-border text-text-secondary hover:border-accent hover:text-accent'
@@ -61,11 +61,11 @@ function QuickActions() {
 
 function StatCard({ icon, label, count, accent }: { icon: React.ReactNode; label: string; count: number; accent: string }) {
   return (
-    <div className={`card flex items-center gap-3 py-3 px-3 ${accent}`}>
+    <div className={`flex items-center gap-4 p-4 bg-bg-surface border border-border rounded-xl ${accent}`}>
       <div className="shrink-0">{icon}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-lg font-black text-foreground-primary leading-none">{count}</p>
-        <p className="text-[10px] uppercase tracking-widest text-text-muted font-semibold mt-0.5">{label}</p>
+      <div>
+        <p className="text-2xl font-black text-text-primary leading-none">{count}</p>
+        <p className="text-[11px] uppercase tracking-widest text-text-muted font-semibold mt-1">{label}</p>
       </div>
     </div>
   )
@@ -80,48 +80,34 @@ function FixtureDueCard({ fx }: { fx: any }) {
     : null
 
   return (
-    <div className="bg-navy-light rounded-lg border border-navy-border overflow-hidden">
-      <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
-        <span className="text-slate-400 text-xs font-semibold">MD{fx.matchday}</span>
-        <div className="flex items-center gap-2">
-          {timeLabel && <span className="text-slate-400 text-xs font-mono">{timeLabel}</span>}
+    <div className="border border-border rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 bg-bg-base">
+        <span className="text-text-muted text-xs font-semibold">MD{fx.matchday}</span>
+        <div className="flex items-center gap-3">
+          {timeLabel && <span className="text-text-muted text-xs font-mono">{timeLabel}</span>}
           <span className={`text-[10px] px-2 py-0.5 rounded border ${statusCls}`}>
             {fx.status.replaceAll('_', ' ')}
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
-        <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
+      <div className="flex items-center gap-4 px-4 py-3">
+        <div className="flex-1 flex items-center gap-3">
           {fx.home_team?.logo_league_folder && (
-            <Image
-              src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')}
-              alt=""
-              width={24} height={24}
-              className="object-contain shrink-0"
-            />
+            <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={28} height={28} className="object-contain shrink-0" />
           )}
-          <span className="text-xs font-semibold text-foreground-primary text-center leading-tight truncate max-w-full">
-            {fx.home_team?.name}
-          </span>
+          <span className="text-sm font-semibold text-text-primary">{fx.home_team?.name}</span>
         </div>
-        <div className="shrink-0 px-1">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400/70">vs</span>
+        <div className="shrink-0">
+          <span className="text-xs font-black uppercase tracking-widest text-text-muted">vs</span>
         </div>
-        <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
+        <div className="flex-1 flex items-center gap-3 justify-end">
+          <span className="text-sm font-semibold text-text-primary">{fx.away_team?.name}</span>
           {fx.away_team?.logo_league_folder && (
-            <Image
-              src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')}
-              alt=""
-              width={24} height={24}
-              className="object-contain shrink-0"
-            />
+            <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={28} height={28} className="object-contain shrink-0" />
           )}
-          <span className="text-xs font-semibold text-foreground-primary text-center leading-tight truncate max-w-full">
-            {fx.away_team?.name}
-          </span>
         </div>
       </div>
-      <div className="border-t border-navy-border px-3 py-2 flex justify-end">
+      <div className="border-t border-border px-4 py-2 flex justify-end">
         <DashboardFixtureActions
           fixtureId={fx.id}
           status={fx.status}
@@ -139,49 +125,25 @@ function FixtureDueCard({ fx }: { fx: any }) {
 
 function ConflictCard({ fx, confs }: { fx: any; confs: any[] }) {
   return (
-    <div className="bg-navy-light rounded-lg border border-red-500/20 px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-          <span className="text-xs text-slate-400 font-semibold shrink-0">MD{fx.matchday}</span>
-          <span className="text-xs text-foreground-primary font-medium truncate">
-            {(fx.home_team as any)?.name} vs {(fx.away_team as any)?.name}
-          </span>
+    <div className="border border-red-500/20 rounded-xl px-4 py-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+          <span className="text-sm font-semibold text-text-primary">MD{fx.matchday}</span>
+          <span className="text-sm text-text-muted">{(fx.home_team as any)?.name} vs {(fx.away_team as any)?.name}</span>
         </div>
+        <Link href={`/admin/results/submit?fixture=${fx.id}`} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors">
+          Resolve
+        </Link>
       </div>
-      <div className="flex items-center gap-2 flex-wrap mb-2">
+      <div className="flex items-center gap-2">
         {confs.map((c, i) => (
           <span key={i} className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30">
             {c.home_score}–{c.away_score}
           </span>
         ))}
       </div>
-      <Link href={`/admin/results/submit?fixture=${fx.id}`} className="btn-danger text-xs w-full text-center">
-        Resolve
-      </Link>
     </div>
-  )
-}
-
-function SectionCard({ title, icon, count, children, defaultOpen = false }: {
-  title: string; icon: React.ReactNode; count?: number; children: React.ReactNode; defaultOpen?: boolean
-}) {
-  return (
-    <details className="card p-0 overflow-hidden group" open={defaultOpen}>
-      <summary className="flex items-center gap-2 px-4 py-3.5 cursor-pointer list-none select-none active:bg-black/[0.02] transition-colors">
-        <div className="shrink-0">{icon}</div>
-        <span className="text-sm font-bold text-foreground-primary flex-1">{title}</span>
-        {count !== undefined && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">
-            {count}
-          </span>
-        )}
-        <ChevronRight className="w-4 h-4 text-text-muted transition-transform group-open:rotate-90" />
-      </summary>
-      <div className="px-4 pb-4 space-y-2 border-t border-border pt-3">
-        {children}
-      </div>
-    </details>
   )
 }
 
@@ -189,34 +151,34 @@ export default function Desktop({ data }: { data: any }) {
   const { tournaments, countMap, dueFixtures, dueCount, conflictFixtures, conflictMap, conflictCount, pendingConfirmations, pendingCount, changeRequests, requestCount, flaggedTeams, flaggedCount, managerMap, auditLog } = data
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-foreground-primary">Admin Dashboard</h1>
-        <p className="text-xs text-text-muted mt-0.5">
-          {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: APP_TIME_ZONE })}
-        </p>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">Admin Dashboard</h1>
+          <p className="text-sm text-text-muted mt-1">
+            {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: APP_TIME_ZONE })}
+          </p>
+        </div>
       </div>
 
       <QuickActions />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        <StatCard icon={<AlertTriangle className="w-4 h-4 text-red-400" />} label="Conflicts" count={conflictCount} accent={conflictCount > 0 ? 'border-l-4 border-l-red-500/40' : ''} />
-        <StatCard icon={<CalendarDays className="w-4 h-4 text-gold" />} label="Fixtures Due" count={dueCount} accent="" />
-        <StatCard icon={<Hourglass className="w-4 h-4 text-yellow-400" />} label="Pending" count={pendingCount} accent="" />
-        <StatCard icon={<RefreshCw className="w-4 h-4 text-blue-400" />} label="Requests" count={requestCount} accent="" />
-        <StatCard icon={<Flag className="w-4 h-4 text-red-400" />} label="Flagged" count={flaggedCount} accent="" />
+      <div className="grid grid-cols-5 gap-4">
+        <StatCard icon={<AlertTriangle className="w-5 h-5 text-red-400" />} label="Conflicts" count={conflictCount} accent={conflictCount > 0 ? 'border-l-4 border-l-red-500' : ''} />
+        <StatCard icon={<CalendarDays className="w-5 h-5 text-accent" />} label="Fixtures Due" count={dueCount} accent="" />
+        <StatCard icon={<Hourglass className="w-5 h-5 text-yellow-400" />} label="Pending" count={pendingCount} accent="" />
+        <StatCard icon={<RefreshCw className="w-5 h-5 text-blue-400" />} label="Requests" count={requestCount} accent="" />
+        <StatCard icon={<Flag className="w-5 h-5 text-red-400" />} label="Flagged" count={flaggedCount} accent="" />
       </div>
 
       {conflictCount > 0 && (
-        <div className="card border-l-4 border-l-red-500/40">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="w-4 h-4 text-red-400" />
-            <h2 className="text-sm font-bold text-foreground-primary flex-1">Result Conflicts</h2>
-            <span className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 rounded-full px-2 py-0.5 font-semibold">
-              {conflictCount}
-            </span>
+        <div className="bg-bg-surface border border-red-500/30 rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <h2 className="text-base font-bold text-text-primary">Result Conflicts</h2>
+            <span className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 rounded-full px-2 py-0.5 font-semibold">{conflictCount}</span>
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3">
             {conflictFixtures!.map((fx: any) => (
               <ConflictCard key={fx.id} fx={fx} confs={conflictMap[fx.id] ?? []} />
             ))}
@@ -224,190 +186,236 @@ export default function Desktop({ data }: { data: any }) {
         </div>
       )}
 
-      <div className="space-y-3">
-        <SectionCard title="Tournaments" icon={<Trophy className="w-4 h-4 text-gold" />} count={tournaments?.length} defaultOpen>
-          {(tournaments ?? []).length === 0 ? (
-            <p className="text-sm text-text-muted">No active tournaments.</p>
-          ) : (
-            <div className="space-y-2">
-              {((tournaments ?? []) as any[]).map((t: any) => {
-                const typeInfo = TYPE_STYLES[t.type] ?? { label: t.type, colour: 'text-slate-400 bg-slate-500/10 border-slate-500/20' }
-                const statusCls = t.status === 'active'
-                  ? 'text-green-400 bg-green-500/10 border-green-500/20'
-                  : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
-                return (
-                  <div key={t.id} className="bg-navy-light rounded-lg border border-navy-border px-3 py-2.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-foreground-primary truncate">{t.name}</p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
+      <div className="grid grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div className="bg-bg-surface border border-border rounded-xl">
+            <div className="px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-accent" />
+                <h2 className="text-base font-bold text-text-primary">Tournaments</h2>
+                {tournaments?.length > 0 && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">{tournaments.length}</span>
+                )}
+              </div>
+            </div>
+            <div className="p-5 space-y-3">
+              {(tournaments ?? []).length === 0 ? (
+                <p className="text-sm text-text-muted">No active tournaments.</p>
+              ) : (
+                <>
+                  {((tournaments ?? []) as any[]).map((t: any) => {
+                    const typeInfo = TYPE_STYLES[t.type] ?? { label: t.type, colour: 'text-slate-400 bg-slate-500/10 border-slate-500/20' }
+                    const statusCls = t.status === 'active'
+                      ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                      : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
+                    return (
+                      <div key={t.id} className="flex items-center justify-between gap-4 p-3 bg-bg-base border border-border rounded-xl">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-text-primary">{t.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-accent font-black text-xl">{countMap[t.id] ?? 0}</p>
+                          <p className="text-[10px] text-text-muted">fixtures</p>
+                        </div>
+                        <div className="flex gap-1.5 shrink-0">
+                          <RecalculateStandingsButton tournamentId={t.id} tournamentName={t.name} />
+                          <RecalculateManagerStatsButton tournamentId={t.id} tournamentName={t.name} />
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-gold font-black text-lg">{countMap[t.id] ?? 0}</p>
-                        <p className="text-[10px] text-text-muted">fixtures</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-1.5 mt-2">
-                      <RecalculateStandingsButton tournamentId={t.id} tournamentName={t.name} />
-                      <RecalculateManagerStatsButton tournamentId={t.id} tournamentName={t.name} />
-                    </div>
-                  </div>
-                )
-              })}
-              <Link href="/admin/tournaments" className="btn-outline w-full text-center text-xs">
-                Manage Tournaments
-              </Link>
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Fixtures Due" icon={<CalendarDays className="w-4 h-4 text-gold" />} count={dueCount} defaultOpen>
-          {dueCount === 0 ? (
-            <div className="text-center py-4 text-text-muted">
-              <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-1.5" />
-              <p className="text-sm">All caught up — no fixtures due.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex justify-end">
-                <DueFixturesExportButton
-                  fixtures={(dueFixtures ?? []).map((fx: any) => ({
-                    id: fx.id, matchday: fx.matchday ?? null,
-                    scheduled_date: fx.scheduled_date ?? null, status: fx.status,
-                    home_team_name: fx.home_team?.name ?? null,
-                    home_team_folder: fx.home_team?.logo_league_folder ?? null,
-                    home_team_slug: fx.home_team?.logo_team_slug ?? null,
-                    away_team_name: fx.away_team?.name ?? null,
-                    away_team_folder: fx.away_team?.logo_league_folder ?? null,
-                    away_team_slug: fx.away_team?.logo_team_slug ?? null,
-                  }))}
-                />
-              </div>
-              {dueFixtures!.map((fx: any) => (
-                <FixtureDueCard key={fx.id} fx={fx} />
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Pending Confirmations" icon={<Hourglass className="w-4 h-4 text-yellow-400" />} count={pendingCount}>
-          {pendingCount === 0 ? (
-            <p className="text-sm text-text-muted">No pending confirmations.</p>
-          ) : (
-            <div className="space-y-2">
-              {((pendingConfirmations ?? []) as any[]).map((fx: any) => (
-                <div key={fx.id} className="flex items-center justify-between gap-2 bg-navy-light rounded-lg border border-navy-border px-3 py-2.5">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {fx.home_team?.logo_league_folder && (
-                        <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={16} height={16} className="object-contain shrink-0" />
-                      )}
-                      <span className="text-sm font-medium text-foreground-primary truncate">{fx.home_team?.name}</span>
-                      <span className="text-[10px] text-text-muted">vs</span>
-                      <span className="text-sm font-medium text-foreground-primary truncate">{fx.away_team?.name}</span>
-                      {fx.away_team?.logo_league_folder && (
-                        <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={16} height={16} className="object-contain shrink-0" />
-                      )}
-                    </div>
-                    <p className="text-[10px] text-text-muted mt-0.5">
-                      MD{fx.matchday}
-                      {fx.scheduled_date && ` · ${new Date(fx.scheduled_date).toLocaleDateString('en-GB')}`}
-                    </p>
-                  </div>
-                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="btn-gold text-xs py-1.5 px-3 shrink-0">
-                    Finalise
+                    )
+                  })}
+                  <Link href="/admin/tournaments" className="block text-center text-sm font-semibold px-4 py-2.5 rounded-lg border border-border text-text-secondary hover:border-accent hover:text-accent transition-colors">
+                    Manage Tournaments
                   </Link>
-                </div>
-              ))}
+                </>
+              )}
             </div>
-          )}
-        </SectionCard>
+          </div>
 
-        <SectionCard title="Team Change Requests" icon={<RefreshCw className="w-4 h-4 text-blue-400" />} count={requestCount}>
-          {requestCount === 0 ? (
-            <p className="text-sm text-text-muted">No pending requests.</p>
-          ) : (
-            <div className="space-y-2">
-              {((changeRequests ?? []) as any[]).map((req: any) => (
-                <div key={req.id} className="bg-navy-light rounded-lg border border-navy-border px-3 py-2.5">
-                  <div className="flex items-center gap-2 mb-2">
-                    {req.requesting_user?.avatar_url ? (
-                      <Image src={req.requesting_user.avatar_url} alt={req.requesting_user.username} width={24} height={24} className="rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-navy-border flex items-center justify-center text-[10px] text-text-muted shrink-0">
-                        {req.requesting_user?.username?.[0]?.toUpperCase()}
+          <div className="bg-bg-surface border border-border rounded-xl">
+            <div className="px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-accent" />
+                <h2 className="text-base font-bold text-text-primary">Fixtures Due</h2>
+                {dueCount > 0 && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">{dueCount}</span>
+                )}
+              </div>
+            </div>
+            <div className="p-5 space-y-3">
+              {dueCount === 0 ? (
+                <div className="text-center py-8 text-text-muted">
+                  <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-2" />
+                  <p className="text-sm">All caught up — no fixtures due.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-end">
+                    <DueFixturesExportButton
+                      fixtures={(dueFixtures ?? []).map((fx: any) => ({
+                        id: fx.id, matchday: fx.matchday ?? null,
+                        scheduled_date: fx.scheduled_date ?? null, status: fx.status,
+                        home_team_name: fx.home_team?.name ?? null,
+                        home_team_folder: fx.home_team?.logo_league_folder ?? null,
+                        home_team_slug: fx.home_team?.logo_team_slug ?? null,
+                        away_team_name: fx.away_team?.name ?? null,
+                        away_team_folder: fx.away_team?.logo_league_folder ?? null,
+                        away_team_slug: fx.away_team?.logo_team_slug ?? null,
+                      }))}
+                    />
+                  </div>
+                  {dueFixtures!.map((fx: any) => (
+                    <FixtureDueCard key={fx.id} fx={fx} />
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-bg-surface border border-border rounded-xl">
+            <div className="px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Hourglass className="w-5 h-5 text-yellow-400" />
+                <h2 className="text-base font-bold text-text-primary">Pending Confirmations</h2>
+                {pendingCount > 0 && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 border border-yellow-500/25">{pendingCount}</span>
+                )}
+              </div>
+            </div>
+            <div className="p-5 space-y-3">
+              {pendingCount === 0 ? (
+                <p className="text-sm text-text-muted">No pending confirmations.</p>
+              ) : (
+                (pendingConfirmations ?? []).map((fx: any) => (
+                  <div key={fx.id} className="flex items-center justify-between gap-3 p-3 bg-bg-base border border-border rounded-xl">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        {fx.home_team?.logo_league_folder && (
+                          <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={20} height={20} className="object-contain shrink-0" />
+                        )}
+                        <span className="text-sm font-medium text-text-primary">{fx.home_team?.name}</span>
+                        <span className="text-xs text-text-muted">vs</span>
+                        <span className="text-sm font-medium text-text-primary">{fx.away_team?.name}</span>
+                        {fx.away_team?.logo_league_folder && (
+                          <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={20} height={20} className="object-contain shrink-0" />
+                        )}
                       </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <span className="text-sm font-medium text-foreground-primary">{req.requesting_user?.username}</span>
-                      <div className="flex items-center gap-1 text-[10px] text-text-muted mt-0.5">
-                        <span>{req.current_team?.name ?? 'No team'}</span>
-                        <span>→</span>
-                        <span className="text-accent font-semibold">{req.requested_team?.name}</span>
+                      <p className="text-xs text-text-muted mt-0.5">MD{fx.matchday}{fx.scheduled_date && ` · ${new Date(fx.scheduled_date).toLocaleDateString('en-GB')}`}</p>
+                    </div>
+                    <Link href={`/admin/results/submit?fixture=${fx.id}`} className="text-sm font-semibold px-4 py-1.5 rounded-lg bg-accent text-bg-surface hover:bg-accent-hover transition-colors shrink-0">
+                      Finalise
+                    </Link>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="bg-bg-surface border border-border rounded-xl">
+            <div className="px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-5 h-5 text-blue-400" />
+                <h2 className="text-base font-bold text-text-primary">Team Change Requests</h2>
+                {requestCount > 0 && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/25">{requestCount}</span>
+                )}
+              </div>
+            </div>
+            <div className="p-5 space-y-3">
+              {requestCount === 0 ? (
+                <p className="text-sm text-text-muted">No pending requests.</p>
+              ) : (
+                (changeRequests ?? []).map((req: any) => (
+                  <div key={req.id} className="p-3 bg-bg-base border border-border rounded-xl">
+                    <div className="flex items-center gap-3 mb-2">
+                      {req.requesting_user?.avatar_url ? (
+                        <Image src={req.requesting_user.avatar_url} alt={req.requesting_user.username} width={28} height={28} className="rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-border flex items-center justify-center text-xs text-text-muted shrink-0">{req.requesting_user?.username?.[0]?.toUpperCase()}</div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <span className="text-sm font-medium text-text-primary">{req.requesting_user?.username}</span>
+                        <div className="flex items-center gap-1 text-xs text-text-muted">
+                          <span>{req.current_team?.name ?? 'No team'}</span>
+                          <span>→</span>
+                          <span className="text-accent font-semibold">{req.requested_team?.name}</span>
+                        </div>
                       </div>
+                      {req.requested_team?.logo_league_folder && (
+                        <Image src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')} alt={req.requested_team.name} width={32} height={32} className="object-contain shrink-0" />
+                      )}
                     </div>
-                    {req.requested_team?.logo_league_folder && (
-                      <Image src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')} alt={req.requested_team.name} width={28} height={28} className="object-contain shrink-0" />
-                    )}
+                    <TeamRequestButtons requestId={req.id} />
                   </div>
-                  <TeamRequestButtons requestId={req.id} />
-                </div>
-              ))}
+                ))
+              )}
             </div>
-          )}
-        </SectionCard>
+          </div>
 
-        <SectionCard title="Flagged Teams" icon={<Flag className="w-4 h-4 text-red-400" />} count={flaggedCount}>
-          {flaggedCount === 0 ? (
-            <p className="text-sm text-text-muted">No flagged teams.</p>
-          ) : (
-            <div className="space-y-2">
-              {((flaggedTeams ?? []) as any[]).map((team: any) => (
-                <div key={team.id} className="flex items-center gap-3 bg-navy-light rounded-lg border border-red-500/20 px-3 py-2.5">
-                  {team.logo_league_folder && (
-                    <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={28} height={28} className="object-contain shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground-primary truncate">{team.name}</p>
-                    <p className="text-[10px] text-text-muted">
-                      Manager: {team.manager_id ? (managerMap[team.manager_id] ?? 'Unknown') : 'None'}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-red-400 font-black text-lg">{team.abandon_count}</span>
-                    <p className="text-[10px] text-text-muted">abandons</p>
-                  </div>
-                </div>
-              ))}
+          <div className="bg-bg-surface border border-border rounded-xl">
+            <div className="px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Flag className="w-5 h-5 text-red-400" />
+                <h2 className="text-base font-bold text-text-primary">Flagged Teams</h2>
+                {flaggedCount > 0 && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/25">{flaggedCount}</span>
+                )}
+              </div>
             </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Recent Audit Log" icon={<ClipboardList className="w-4 h-4 text-text-muted" />}>
-          {(auditLog?.length ?? 0) === 0 ? (
-            <p className="text-sm text-text-muted">No audit entries.</p>
-          ) : (
-            <div className="space-y-1">
-              {((auditLog ?? []) as any[]).map((entry: any) => (
-                <div key={entry.id} className="flex items-start gap-2.5 text-xs py-2 border-b border-border last:border-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-foreground-primary font-medium">{entry.action}</span>
-                    {entry.target_type && (
-                      <span className="text-text-muted ml-1">on {entry.target_type}</span>
+            <div className="p-5 space-y-3">
+              {flaggedCount === 0 ? (
+                <p className="text-sm text-text-muted">No flagged teams.</p>
+              ) : (
+                (flaggedTeams ?? []).map((team: any) => (
+                  <div key={team.id} className="flex items-center gap-3 p-3 bg-bg-base border border-red-500/20 rounded-xl">
+                    {team.logo_league_folder && (
+                      <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={32} height={32} className="object-contain shrink-0" />
                     )}
-                    <div className="text-text-muted mt-0.5">
-                      {entry.admin?.username ?? 'System'} · {new Date(entry.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: APP_TIME_ZONE })}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text-primary">{team.name}</p>
+                      <p className="text-xs text-text-muted">Manager: {team.manager_id ? (managerMap[team.manager_id] ?? 'Unknown') : 'None'}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-red-400 font-black text-xl">{team.abandon_count}</span>
+                      <p className="text-[10px] text-text-muted">abandons</p>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
-          )}
-        </SectionCard>
+          </div>
+
+          <div className="bg-bg-surface border border-border rounded-xl">
+            <div className="px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-text-muted" />
+                <h2 className="text-base font-bold text-text-primary">Recent Audit Log</h2>
+              </div>
+            </div>
+            <div className="p-5 space-y-2 max-h-[400px] overflow-y-auto">
+              {(auditLog?.length ?? 0) === 0 ? (
+                <p className="text-sm text-text-muted">No audit entries.</p>
+              ) : (
+                (auditLog ?? []).map((entry: any) => (
+                  <div key={entry.id} className="flex items-start gap-3 text-sm py-2 border-b border-border last:border-0">
+                    <div className="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-text-primary font-medium">{entry.action}</span>
+                      {entry.target_type && <span className="text-text-muted ml-1">on {entry.target_type}</span>}
+                      <div className="text-text-muted text-xs mt-0.5">{entry.admin?.username ?? 'System'} · {new Date(entry.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: APP_TIME_ZONE })}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

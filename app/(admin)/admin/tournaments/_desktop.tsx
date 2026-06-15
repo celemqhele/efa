@@ -21,182 +21,107 @@ export default function Desktop({ data }: { data: any }) {
   const { tournaments, participantCounts, fixtureCounts, completedCounts, grouped } = data
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground-primary">Tournaments</h1>
-          <p className="text-text-muted text-sm mt-1">{(tournaments?.length ?? 0)} total tournaments</p>
+          <h1 className="text-2xl font-bold text-text-primary">Tournaments</h1>
+          <p className="text-sm text-text-muted mt-1">{(tournaments?.length ?? 0)} total tournaments</p>
         </div>
-        <Link href="/admin/tournaments/create" className="btn-gold">
+        <Link href="/admin/tournaments/create" className="text-sm font-semibold px-5 py-2 rounded-lg bg-accent text-bg-surface hover:bg-accent-hover transition-colors">
           + Create Tournament
         </Link>
       </div>
 
-      {/* Active */}
-      {grouped.active.length > 0 && (
-        <section>
-          <h2 className="section-header">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" />
-            Active
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {grouped.active.map((t: any) => (
-              <TournamentCard
-                key={t.id}
-                tournament={t}
-                participantCount={participantCounts[t.id] ?? 0}
-                fixtureCount={fixtureCounts[t.id] ?? 0}
-                completedCount={completedCounts[t.id] ?? 0}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Upcoming */}
-      {grouped.upcoming.length > 0 && (
-        <section>
-          <h2 className="section-header">
-            <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />
-            Upcoming
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {grouped.upcoming.map((t: any) => (
-              <TournamentCard
-                key={t.id}
-                tournament={t}
-                participantCount={participantCounts[t.id] ?? 0}
-                fixtureCount={fixtureCounts[t.id] ?? 0}
-                completedCount={completedCounts[t.id] ?? 0}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Completed */}
-      {grouped.completed.length > 0 && (
-        <section>
-          <h2 className="section-header text-text-muted">
-            Completed
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-70">
-            {grouped.completed.map((t: any) => (
-              <TournamentCard
-                key={t.id}
-                tournament={t}
-                participantCount={participantCounts[t.id] ?? 0}
-                fixtureCount={fixtureCounts[t.id] ?? 0}
-                completedCount={completedCounts[t.id] ?? 0}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
       {(tournaments?.length ?? 0) === 0 && (
-        <div className="card p-16 text-center text-text-muted">
-          <p className="text-4xl mb-4">🏆</p>
-          <p className="text-lg font-medium text-foreground-primary mb-2">No tournaments yet</p>
-          <p className="text-sm mb-6">Create your first tournament to get started.</p>
-          <Link href="/admin/tournaments/create" className="btn-gold">Create Tournament</Link>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function TournamentCard({
-  tournament,
-  participantCount,
-  fixtureCount,
-  completedCount,
-}: {
-  tournament: any
-  participantCount: number
-  fixtureCount: number
-  completedCount: number
-}) {
-  const typeInfo = TYPE_LABELS[tournament.type] ?? { label: tournament.type, colour: 'text-text-muted bg-bg-surface0/10 border-slate-500/20' }
-  const statusCls = STATUS_COLOURS[tournament.status] ?? STATUS_COLOURS.completed
-  const progress = fixtureCount > 0 ? Math.round((completedCount / fixtureCount) * 100) : 0
-
-  return (
-    <div className="card p-5 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-foreground-primary font-bold text-base truncate">{tournament.name}</h3>
-          {tournament.season && (
-            <p className="text-text-muted text-xs mt-0.5">{tournament.season.name}</p>
-          )}
-        </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className={`text-xs px-2 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
-          <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>{tournament.status}</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3 text-center">
-        <div className="bg-navy-light rounded-lg py-2">
-          <p className="text-gold font-bold text-lg">{participantCount}</p>
-          <p className="text-text-muted text-xs">Teams</p>
-        </div>
-        <div className="bg-navy-light rounded-lg py-2">
-          <p className="text-foreground-primary font-bold text-lg">{fixtureCount}</p>
-          <p className="text-text-muted text-xs">Fixtures</p>
-        </div>
-        <div className="bg-navy-light rounded-lg py-2">
-          <p className="text-green-400 font-bold text-lg">{completedCount}</p>
-          <p className="text-text-muted text-xs">Played</p>
-        </div>
-      </div>
-
-      {fixtureCount > 0 && (
-        <div>
-          <div className="flex justify-between text-xs text-text-muted mb-1">
-            <span>Progress</span>
-            <span>{progress}%</span>
-          </div>
-          <div className="w-full h-1.5 bg-navy-border rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gold rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+        <div className="bg-bg-surface border border-border rounded-xl p-16 text-center space-y-4">
+          <p className="text-4xl">🏆</p>
+          <p className="text-lg font-medium text-text-primary">No tournaments yet</p>
+          <p className="text-sm text-text-muted">Create your first tournament to get started.</p>
+          <Link href="/admin/tournaments/create" className="inline-block text-sm font-semibold px-5 py-2 rounded-lg bg-accent text-bg-surface hover:bg-accent-hover transition-colors">
+            Create Tournament
+          </Link>
         </div>
       )}
 
-      <div className="space-y-2 pt-1">
-        <div className="grid grid-cols-3 gap-2">
-          <Link
-            href={`/admin/fixtures/manage?tournament=${tournament.id}`}
-            className="btn-outline text-[10px] py-1.5 text-center"
-          >
-            Fixtures
-          </Link>
-          <Link
-            href={`/standings?t=${tournament.id}`}
-            className="btn-outline text-[10px] py-1.5 text-center"
-          >
-            Standings
-          </Link>
-          <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
-          <RunTournamentDrawButton
-            tournamentId={tournament.id}
-            tournamentName={tournament.name}
-            type={tournament.type}
-          />
-          <GenerateKnockoutsButton 
-            tournamentId={tournament.id} 
-            tournamentName={tournament.name} 
-            type={tournament.type} 
-          />
-        </div>
-      </div>
+      {['active', 'upcoming', 'completed'].map((status) => {
+        const items = grouped[status] ?? []
+        if (items.length === 0) return null
+        return (
+          <section key={status} className="bg-bg-surface border border-border rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border">
+              <h2 className="text-base font-bold text-text-primary capitalize">{status}</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-bg-base">
+                    <th className="text-left text-text-muted font-semibold text-xs uppercase tracking-wider px-4 py-3">Name</th>
+                    <th className="text-left text-text-muted font-semibold text-xs uppercase tracking-wider px-4 py-3">Season</th>
+                    <th className="text-center text-text-muted font-semibold text-xs uppercase tracking-wider px-4 py-3 w-24">Type</th>
+                    <th className="text-center text-text-muted font-semibold text-xs uppercase tracking-wider px-4 py-3 w-20">Status</th>
+                    <th className="text-center text-text-muted font-semibold text-xs uppercase tracking-wider px-4 py-3 w-16">Teams</th>
+                    <th className="text-center text-text-muted font-semibold text-xs uppercase tracking-wider px-4 py-3 w-16">Fixtures</th>
+                    <th className="text-center text-text-muted font-semibold text-xs uppercase tracking-wider px-4 py-3 w-16">Played</th>
+                    <th className="text-center text-text-muted font-semibold text-xs uppercase tracking-wider px-4 py-3 w-28">Progress</th>
+                    <th className="text-right text-text-muted font-semibold text-xs uppercase tracking-wider px-4 py-3 w-60">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((t: any) => {
+                    const pc = participantCounts[t.id] ?? 0
+                    const fc = fixtureCounts[t.id] ?? 0
+                    const cc = completedCounts[t.id] ?? 0
+                    const progress = fc > 0 ? Math.round((cc / fc) * 100) : 0
+                    const typeInfo = TYPE_LABELS[t.type] ?? { label: t.type, colour: 'text-text-muted bg-bg-surface0/10 border-slate-500/20' }
+                    const statusCls = STATUS_COLOURS[t.status] ?? STATUS_COLOURS.completed
+                    return (
+                      <tr key={t.id} className="border-b border-border/50 hover:bg-accent/5 transition-colors">
+                        <td className="px-4 py-3">
+                          <span className="font-semibold text-text-primary">{t.name}</span>
+                        </td>
+                        <td className="px-4 py-3 text-text-muted text-xs">{t.season?.name ?? '—'}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`text-[10px] px-2 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`text-[10px] px-2 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center font-bold text-text-primary">{pc}</td>
+                        <td className="px-4 py-3 text-center text-text-secondary">{fc}</td>
+                        <td className="px-4 py-3 text-center text-green-400 font-semibold">{cc}</td>
+                        <td className="px-4 py-3">
+                          {fc > 0 && (
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
+                                <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${progress}%` }} />
+                              </div>
+                              <span className="text-xs text-text-muted w-8 text-right">{progress}%</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Link href={`/admin/fixtures/manage?tournament=${t.id}`} className="text-[10px] font-semibold px-2 py-1 rounded border border-border text-text-secondary hover:border-accent hover:text-accent transition-colors">
+                              Fixtures
+                            </Link>
+                            <Link href={`/standings?t=${t.id}`} className="text-[10px] font-semibold px-2 py-1 rounded border border-border text-text-secondary hover:border-accent hover:text-accent transition-colors">
+                              Standings
+                            </Link>
+                            <DeleteTournamentButton tournamentId={t.id} tournamentName={t.name} />
+                            <GenerateFixturesButton tournamentId={t.id} tournamentName={t.name} type={t.type} />
+                            <RunTournamentDrawButton tournamentId={t.id} tournamentName={t.name} type={t.type} />
+                            <GenerateKnockoutsButton tournamentId={t.id} tournamentName={t.name} type={t.type} />
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )
+      })}
     </div>
   )
 }

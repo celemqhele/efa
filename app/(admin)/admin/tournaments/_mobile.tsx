@@ -3,6 +3,7 @@ import DeleteTournamentButton from './DeleteTournamentButton'
 import GenerateFixturesButton from './GenerateFixturesButton'
 import GenerateKnockoutsButton from './GenerateKnockoutsButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
+import { Trophy } from 'lucide-react'
 
 const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
   league: { label: 'League', colour: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
@@ -17,186 +18,139 @@ const STATUS_COLOURS: Record<string, string> = {
   completed: 'text-text-muted bg-bg-surface0/10 border-slate-500/20',
 }
 
-export default function Mobile({ data }: { data: any }) {
-  const { tournaments, participantCounts, fixtureCounts, completedCounts, grouped } = data
-
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground-primary">Tournaments</h1>
-          <p className="text-text-muted text-sm mt-1">{(tournaments?.length ?? 0)} total tournaments</p>
-        </div>
-        <Link href="/admin/tournaments/create" className="btn-gold">
-          + Create Tournament
-        </Link>
-      </div>
-
-      {/* Active */}
-      {grouped.active.length > 0 && (
-        <section>
-          <h2 className="section-header">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" />
-            Active
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {grouped.active.map((t: any) => (
-              <TournamentCard
-                key={t.id}
-                tournament={t}
-                participantCount={participantCounts[t.id] ?? 0}
-                fixtureCount={fixtureCounts[t.id] ?? 0}
-                completedCount={completedCounts[t.id] ?? 0}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Upcoming */}
-      {grouped.upcoming.length > 0 && (
-        <section>
-          <h2 className="section-header">
-            <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />
-            Upcoming
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {grouped.upcoming.map((t: any) => (
-              <TournamentCard
-                key={t.id}
-                tournament={t}
-                participantCount={participantCounts[t.id] ?? 0}
-                fixtureCount={fixtureCounts[t.id] ?? 0}
-                completedCount={completedCounts[t.id] ?? 0}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Completed */}
-      {grouped.completed.length > 0 && (
-        <section>
-          <h2 className="section-header text-text-muted">
-            Completed
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-70">
-            {grouped.completed.map((t: any) => (
-              <TournamentCard
-                key={t.id}
-                tournament={t}
-                participantCount={participantCounts[t.id] ?? 0}
-                fixtureCount={fixtureCounts[t.id] ?? 0}
-                completedCount={completedCounts[t.id] ?? 0}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {(tournaments?.length ?? 0) === 0 && (
-        <div className="card p-16 text-center text-text-muted">
-          <p className="text-4xl mb-4">🏆</p>
-          <p className="text-lg font-medium text-foreground-primary mb-2">No tournaments yet</p>
-          <p className="text-sm mb-6">Create your first tournament to get started.</p>
-          <Link href="/admin/tournaments/create" className="btn-gold">Create Tournament</Link>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function TournamentCard({
-  tournament,
-  participantCount,
-  fixtureCount,
-  completedCount,
-}: {
-  tournament: any
-  participantCount: number
-  fixtureCount: number
-  completedCount: number
+function TournamentCard({ tournament, participantCount, fixtureCount, completedCount }: {
+  tournament: any; participantCount: number; fixtureCount: number; completedCount: number
 }) {
   const typeInfo = TYPE_LABELS[tournament.type] ?? { label: tournament.type, colour: 'text-text-muted bg-bg-surface0/10 border-slate-500/20' }
   const statusCls = STATUS_COLOURS[tournament.status] ?? STATUS_COLOURS.completed
   const progress = fixtureCount > 0 ? Math.round((completedCount / fixtureCount) * 100) : 0
 
   return (
-    <div className="card p-5 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-foreground-primary font-bold text-base truncate">{tournament.name}</h3>
-          {tournament.season && (
-            <p className="text-text-muted text-xs mt-0.5">{tournament.season.name}</p>
-          )}
+    <div className="bg-bg-surface border border-border rounded-xl p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-text-primary font-bold text-sm truncate">{tournament.name}</h3>
+          {tournament.season && <p className="text-text-muted text-[10px] mt-0.5">{tournament.season.name}</p>}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className={`text-xs px-2 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
-          <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>{tournament.status}</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded border ${statusCls}`}>{tournament.status}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 text-center">
-        <div className="bg-navy-light rounded-lg py-2">
-          <p className="text-gold font-bold text-lg">{participantCount}</p>
-          <p className="text-text-muted text-xs">Teams</p>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-bg-base rounded-lg py-2">
+          <p className="text-accent font-bold text-base">{participantCount}</p>
+          <p className="text-text-muted text-[10px]">Teams</p>
         </div>
-        <div className="bg-navy-light rounded-lg py-2">
-          <p className="text-foreground-primary font-bold text-lg">{fixtureCount}</p>
-          <p className="text-text-muted text-xs">Fixtures</p>
+        <div className="bg-bg-base rounded-lg py-2">
+          <p className="text-text-primary font-bold text-base">{fixtureCount}</p>
+          <p className="text-text-muted text-[10px]">Fixtures</p>
         </div>
-        <div className="bg-navy-light rounded-lg py-2">
-          <p className="text-green-400 font-bold text-lg">{completedCount}</p>
-          <p className="text-text-muted text-xs">Played</p>
+        <div className="bg-bg-base rounded-lg py-2">
+          <p className="text-green-400 font-bold text-base">{completedCount}</p>
+          <p className="text-text-muted text-[10px]">Played</p>
         </div>
       </div>
 
       {fixtureCount > 0 && (
         <div>
-          <div className="flex justify-between text-xs text-text-muted mb-1">
+          <div className="flex justify-between text-[10px] text-text-muted mb-1">
             <span>Progress</span>
             <span>{progress}%</span>
           </div>
-          <div className="w-full h-1.5 bg-navy-border rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gold rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
+            <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
       )}
 
-      <div className="space-y-2 pt-1">
-        <div className="grid grid-cols-3 gap-2">
-          <Link
-            href={`/admin/fixtures/manage?tournament=${tournament.id}`}
-            className="btn-outline text-[10px] py-1.5 text-center"
-          >
+      <div className="space-y-1.5 pt-1">
+        <div className="grid grid-cols-3 gap-1.5">
+          <Link href={`/admin/fixtures/manage?tournament=${tournament.id}`} className="text-[10px] font-semibold text-center px-2 py-2 rounded-lg border border-border text-text-secondary min-h-[36px] flex items-center justify-center">
             Fixtures
           </Link>
-          <Link
-            href={`/standings?t=${tournament.id}`}
-            className="btn-outline text-[10px] py-1.5 text-center"
-          >
+          <Link href={`/standings?t=${tournament.id}`} className="text-[10px] font-semibold text-center px-2 py-2 rounded-lg border border-border text-text-secondary min-h-[36px] flex items-center justify-center">
             Standings
           </Link>
           <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
-          <RunTournamentDrawButton
-            tournamentId={tournament.id}
-            tournamentName={tournament.name}
-            type={tournament.type}
-          />
-          <GenerateKnockoutsButton 
-            tournamentId={tournament.id} 
-            tournamentName={tournament.name} 
-            type={tournament.type} 
-          />
+          <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
         </div>
       </div>
+    </div>
+  )
+}
+
+export default function Mobile({ data }: { data: any }) {
+  const { tournaments, participantCounts, fixtureCounts, completedCounts, grouped } = data
+
+  return (
+    <div className="px-3 pb-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-text-primary">Tournaments</h1>
+          <p className="text-xs text-text-muted mt-0.5">{(tournaments?.length ?? 0)} total</p>
+        </div>
+        <Link href="/admin/tournaments/create" className="text-sm font-semibold px-4 py-2.5 rounded-lg bg-accent text-bg-surface min-h-[44px] flex items-center">
+          + Create
+        </Link>
+      </div>
+
+      {(tournaments?.length ?? 0) === 0 && (
+        <div className="bg-bg-surface border border-border rounded-xl p-12 text-center space-y-3">
+          <Trophy className="w-10 h-10 text-text-muted mx-auto" />
+          <p className="text-base font-medium text-text-primary">No tournaments yet</p>
+          <p className="text-sm text-text-muted">Create your first tournament to get started.</p>
+          <Link href="/admin/tournaments/create" className="inline-block text-sm font-semibold px-5 py-2.5 rounded-lg bg-accent text-bg-surface min-h-[44px] leading-none">
+            Create Tournament
+          </Link>
+        </div>
+      )}
+
+      {grouped.active.length > 0 && (
+        <section>
+          <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-text-muted mb-3">
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            Active
+          </h2>
+          <div className="space-y-3">
+            {grouped.active.map((t: any) => (
+              <TournamentCard key={t.id} tournament={t} participantCount={participantCounts[t.id] ?? 0} fixtureCount={fixtureCounts[t.id] ?? 0} completedCount={completedCounts[t.id] ?? 0} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {grouped.upcoming.length > 0 && (
+        <section>
+          <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-text-muted mb-3">
+            <span className="w-2 h-2 rounded-full bg-yellow-400" />
+            Upcoming
+          </h2>
+          <div className="space-y-3">
+            {grouped.upcoming.map((t: any) => (
+              <TournamentCard key={t.id} tournament={t} participantCount={participantCounts[t.id] ?? 0} fixtureCount={fixtureCounts[t.id] ?? 0} completedCount={completedCounts[t.id] ?? 0} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {grouped.completed.length > 0 && (
+        <section>
+          <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-text-muted mb-3">
+            Completed
+          </h2>
+          <div className="space-y-3 opacity-60">
+            {grouped.completed.map((t: any) => (
+              <TournamentCard key={t.id} tournament={t} participantCount={participantCounts[t.id] ?? 0} fixtureCount={fixtureCounts[t.id] ?? 0} completedCount={completedCounts[t.id] ?? 0} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

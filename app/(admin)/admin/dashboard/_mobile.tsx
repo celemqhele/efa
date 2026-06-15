@@ -40,15 +40,15 @@ const ACTIONS = [
 
 function QuickActions() {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4 snap-x snap-mandatory">
+    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 snap-x snap-mandatory">
       {ACTIONS.map((a) => (
         <Link
           key={a.href}
           href={a.href}
-          className={`snap-start shrink-0 whitespace-nowrap text-xs font-semibold px-4 py-2.5 rounded-lg min-h-[44px] flex items-center justify-center transition-all active:scale-95 ${
+          className={`snap-start shrink-0 whitespace-nowrap text-xs font-semibold px-4 py-2.5 rounded-lg min-h-[44px] flex items-center justify-center transition-colors ${
             a.variant === 'gold'
-              ? 'bg-accent text-bg-surface hover:bg-accent-hover'
-              : 'border border-border text-text-secondary hover:border-accent hover:text-accent'
+              ? 'bg-accent text-bg-surface'
+              : 'border border-border text-text-secondary'
           }`}
         >
           {a.label}
@@ -61,10 +61,10 @@ function QuickActions() {
 
 function StatCard({ icon, label, count, accent }: { icon: React.ReactNode; label: string; count: number; accent: string }) {
   return (
-    <div className={`card flex items-center gap-3 py-3 px-3 ${accent}`}>
+    <div className={`flex items-center gap-3 py-3 px-3 bg-bg-surface border border-border rounded-xl ${accent}`}>
       <div className="shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-lg font-black text-foreground-primary leading-none">{count}</p>
+        <p className="text-lg font-black text-text-primary leading-none">{count}</p>
         <p className="text-[10px] uppercase tracking-widest text-text-muted font-semibold mt-0.5">{label}</p>
       </div>
     </div>
@@ -80,11 +80,11 @@ function FixtureDueCard({ fx }: { fx: any }) {
     : null
 
   return (
-    <div className="bg-navy-light rounded-lg border border-navy-border overflow-hidden">
+    <div className="bg-bg-base border border-border rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
-        <span className="text-slate-400 text-xs font-semibold">MD{fx.matchday}</span>
+        <span className="text-text-muted text-xs font-semibold">MD{fx.matchday}</span>
         <div className="flex items-center gap-2">
-          {timeLabel && <span className="text-slate-400 text-xs font-mono">{timeLabel}</span>}
+          {timeLabel && <span className="text-text-muted text-xs font-mono">{timeLabel}</span>}
           <span className={`text-[10px] px-2 py-0.5 rounded border ${statusCls}`}>
             {fx.status.replaceAll('_', ' ')}
           </span>
@@ -100,12 +100,12 @@ function FixtureDueCard({ fx }: { fx: any }) {
               className="object-contain shrink-0"
             />
           )}
-          <span className="text-xs font-semibold text-foreground-primary text-center leading-tight truncate max-w-full">
+          <span className="text-xs font-semibold text-text-primary text-center leading-tight truncate max-w-full">
             {fx.home_team?.name}
           </span>
         </div>
         <div className="shrink-0 px-1">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400/70">vs</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-text-muted/70">vs</span>
         </div>
         <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
           {fx.away_team?.logo_league_folder && (
@@ -116,12 +116,12 @@ function FixtureDueCard({ fx }: { fx: any }) {
               className="object-contain shrink-0"
             />
           )}
-          <span className="text-xs font-semibold text-foreground-primary text-center leading-tight truncate max-w-full">
+          <span className="text-xs font-semibold text-text-primary text-center leading-tight truncate max-w-full">
             {fx.away_team?.name}
           </span>
         </div>
       </div>
-      <div className="border-t border-navy-border px-3 py-2 flex justify-end">
+      <div className="border-t border-border px-3 py-2 flex justify-end">
         <DashboardFixtureActions
           fixtureId={fx.id}
           status={fx.status}
@@ -139,12 +139,12 @@ function FixtureDueCard({ fx }: { fx: any }) {
 
 function ConflictCard({ fx, confs }: { fx: any; confs: any[] }) {
   return (
-    <div className="bg-navy-light rounded-lg border border-red-500/20 px-3 py-2.5">
+    <div className="bg-bg-base border border-red-500/20 rounded-xl px-3 py-2.5">
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-          <span className="text-xs text-slate-400 font-semibold shrink-0">MD{fx.matchday}</span>
-          <span className="text-xs text-foreground-primary font-medium truncate">
+          <span className="text-xs text-text-muted font-semibold shrink-0">MD{fx.matchday}</span>
+          <span className="text-xs text-text-primary font-medium truncate">
             {(fx.home_team as any)?.name} vs {(fx.away_team as any)?.name}
           </span>
         </div>
@@ -156,7 +156,7 @@ function ConflictCard({ fx, confs }: { fx: any; confs: any[] }) {
           </span>
         ))}
       </div>
-      <Link href={`/admin/results/submit?fixture=${fx.id}`} className="btn-danger text-xs w-full text-center">
+      <Link href={`/admin/results/submit?fixture=${fx.id}`} className="block text-center text-xs font-semibold px-3 py-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 min-h-[36px] leading-none">
         Resolve
       </Link>
     </div>
@@ -167,10 +167,10 @@ function SectionCard({ title, icon, count, children, defaultOpen = false }: {
   title: string; icon: React.ReactNode; count?: number; children: React.ReactNode; defaultOpen?: boolean
 }) {
   return (
-    <details className="card p-0 overflow-hidden group" open={defaultOpen}>
-      <summary className="flex items-center gap-2 px-4 py-3.5 cursor-pointer list-none select-none active:bg-black/[0.02] transition-colors">
+    <details className="bg-bg-surface border border-border rounded-xl overflow-hidden group" open={defaultOpen}>
+      <summary className="flex items-center gap-2 px-4 py-3.5 cursor-pointer list-none select-none min-h-[44px] transition-colors">
         <div className="shrink-0">{icon}</div>
-        <span className="text-sm font-bold text-foreground-primary flex-1">{title}</span>
+        <span className="text-sm font-bold text-text-primary flex-1">{title}</span>
         {count !== undefined && (
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">
             {count}
@@ -189,9 +189,9 @@ export default function Mobile({ data }: { data: any }) {
   const { tournaments, countMap, dueFixtures, dueCount, conflictFixtures, conflictMap, conflictCount, pendingConfirmations, pendingCount, changeRequests, requestCount, flaggedTeams, flaggedCount, managerMap, auditLog } = data
 
   return (
-    <div className="space-y-5">
+    <div className="px-3 pb-6 space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-foreground-primary">Admin Dashboard</h1>
+        <h1 className="text-lg font-bold text-text-primary">Admin Dashboard</h1>
         <p className="text-xs text-text-muted mt-0.5">
           {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: APP_TIME_ZONE })}
         </p>
@@ -199,19 +199,19 @@ export default function Mobile({ data }: { data: any }) {
 
       <QuickActions />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <StatCard icon={<AlertTriangle className="w-4 h-4 text-red-400" />} label="Conflicts" count={conflictCount} accent={conflictCount > 0 ? 'border-l-4 border-l-red-500/40' : ''} />
-        <StatCard icon={<CalendarDays className="w-4 h-4 text-gold" />} label="Fixtures Due" count={dueCount} accent="" />
+        <StatCard icon={<CalendarDays className="w-4 h-4 text-accent" />} label="Fixtures Due" count={dueCount} accent="" />
         <StatCard icon={<Hourglass className="w-4 h-4 text-yellow-400" />} label="Pending" count={pendingCount} accent="" />
         <StatCard icon={<RefreshCw className="w-4 h-4 text-blue-400" />} label="Requests" count={requestCount} accent="" />
         <StatCard icon={<Flag className="w-4 h-4 text-red-400" />} label="Flagged" count={flaggedCount} accent="" />
       </div>
 
       {conflictCount > 0 && (
-        <div className="card border-l-4 border-l-red-500/40">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="bg-bg-surface border border-red-500/30 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-red-400" />
-            <h2 className="text-sm font-bold text-foreground-primary flex-1">Result Conflicts</h2>
+            <h2 className="text-sm font-bold text-text-primary flex-1">Result Conflicts</h2>
             <span className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 rounded-full px-2 py-0.5 font-semibold">
               {conflictCount}
             </span>
@@ -225,7 +225,7 @@ export default function Mobile({ data }: { data: any }) {
       )}
 
       <div className="space-y-3">
-        <SectionCard title="Tournaments" icon={<Trophy className="w-4 h-4 text-gold" />} count={tournaments?.length} defaultOpen>
+        <SectionCard title="Tournaments" icon={<Trophy className="w-4 h-4 text-accent" />} count={tournaments?.length} defaultOpen>
           {(tournaments ?? []).length === 0 ? (
             <p className="text-sm text-text-muted">No active tournaments.</p>
           ) : (
@@ -236,17 +236,17 @@ export default function Mobile({ data }: { data: any }) {
                   ? 'text-green-400 bg-green-500/10 border-green-500/20'
                   : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
                 return (
-                  <div key={t.id} className="bg-navy-light rounded-lg border border-navy-border px-3 py-2.5">
+                  <div key={t.id} className="bg-bg-base border border-border rounded-xl px-3 py-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-foreground-primary truncate">{t.name}</p>
+                        <p className="text-sm font-semibold text-text-primary truncate">{t.name}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className={`text-[10px] px-1.5 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-gold font-black text-lg">{countMap[t.id] ?? 0}</p>
+                        <p className="text-accent font-black text-lg">{countMap[t.id] ?? 0}</p>
                         <p className="text-[10px] text-text-muted">fixtures</p>
                       </div>
                     </div>
@@ -257,14 +257,14 @@ export default function Mobile({ data }: { data: any }) {
                   </div>
                 )
               })}
-              <Link href="/admin/tournaments" className="btn-outline w-full text-center text-xs">
+              <Link href="/admin/tournaments" className="block text-center text-sm font-semibold px-4 py-2.5 rounded-lg border border-border text-text-secondary min-h-[44px] leading-none flex items-center justify-center">
                 Manage Tournaments
               </Link>
             </div>
           )}
         </SectionCard>
 
-        <SectionCard title="Fixtures Due" icon={<CalendarDays className="w-4 h-4 text-gold" />} count={dueCount} defaultOpen>
+        <SectionCard title="Fixtures Due" icon={<CalendarDays className="w-4 h-4 text-accent" />} count={dueCount} defaultOpen>
           {dueCount === 0 ? (
             <div className="text-center py-4 text-text-muted">
               <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-1.5" />
@@ -299,15 +299,15 @@ export default function Mobile({ data }: { data: any }) {
           ) : (
             <div className="space-y-2">
               {((pendingConfirmations ?? []) as any[]).map((fx: any) => (
-                <div key={fx.id} className="flex items-center justify-between gap-2 bg-navy-light rounded-lg border border-navy-border px-3 py-2.5">
+                <div key={fx.id} className="flex items-center justify-between gap-2 bg-bg-base border border-border rounded-xl px-3 py-2.5">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {fx.home_team?.logo_league_folder && (
                         <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={16} height={16} className="object-contain shrink-0" />
                       )}
-                      <span className="text-sm font-medium text-foreground-primary truncate">{fx.home_team?.name}</span>
+                      <span className="text-sm font-medium text-text-primary truncate">{fx.home_team?.name}</span>
                       <span className="text-[10px] text-text-muted">vs</span>
-                      <span className="text-sm font-medium text-foreground-primary truncate">{fx.away_team?.name}</span>
+                      <span className="text-sm font-medium text-text-primary truncate">{fx.away_team?.name}</span>
                       {fx.away_team?.logo_league_folder && (
                         <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={16} height={16} className="object-contain shrink-0" />
                       )}
@@ -317,7 +317,7 @@ export default function Mobile({ data }: { data: any }) {
                       {fx.scheduled_date && ` · ${new Date(fx.scheduled_date).toLocaleDateString('en-GB')}`}
                     </p>
                   </div>
-                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="btn-gold text-xs py-1.5 px-3 shrink-0">
+                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="text-sm font-semibold px-3 py-2 rounded-lg bg-accent text-bg-surface min-h-[36px] flex items-center shrink-0">
                     Finalise
                   </Link>
                 </div>
@@ -332,17 +332,17 @@ export default function Mobile({ data }: { data: any }) {
           ) : (
             <div className="space-y-2">
               {((changeRequests ?? []) as any[]).map((req: any) => (
-                <div key={req.id} className="bg-navy-light rounded-lg border border-navy-border px-3 py-2.5">
+                <div key={req.id} className="bg-bg-base border border-border rounded-xl px-3 py-2.5">
                   <div className="flex items-center gap-2 mb-2">
                     {req.requesting_user?.avatar_url ? (
                       <Image src={req.requesting_user.avatar_url} alt={req.requesting_user.username} width={24} height={24} className="rounded-full object-cover shrink-0" />
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-navy-border flex items-center justify-center text-[10px] text-text-muted shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-border flex items-center justify-center text-[10px] text-text-muted shrink-0">
                         {req.requesting_user?.username?.[0]?.toUpperCase()}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <span className="text-sm font-medium text-foreground-primary">{req.requesting_user?.username}</span>
+                      <span className="text-sm font-medium text-text-primary">{req.requesting_user?.username}</span>
                       <div className="flex items-center gap-1 text-[10px] text-text-muted mt-0.5">
                         <span>{req.current_team?.name ?? 'No team'}</span>
                         <span>→</span>
@@ -366,12 +366,12 @@ export default function Mobile({ data }: { data: any }) {
           ) : (
             <div className="space-y-2">
               {((flaggedTeams ?? []) as any[]).map((team: any) => (
-                <div key={team.id} className="flex items-center gap-3 bg-navy-light rounded-lg border border-red-500/20 px-3 py-2.5">
+                <div key={team.id} className="flex items-center gap-3 bg-bg-base border border-red-500/20 rounded-xl px-3 py-2.5">
                   {team.logo_league_folder && (
                     <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={28} height={28} className="object-contain shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground-primary truncate">{team.name}</p>
+                    <p className="text-sm font-medium text-text-primary truncate">{team.name}</p>
                     <p className="text-[10px] text-text-muted">
                       Manager: {team.manager_id ? (managerMap[team.manager_id] ?? 'Unknown') : 'None'}
                     </p>
@@ -395,7 +395,7 @@ export default function Mobile({ data }: { data: any }) {
                 <div key={entry.id} className="flex items-start gap-2.5 text-xs py-2 border-b border-border last:border-0">
                   <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <span className="text-foreground-primary font-medium">{entry.action}</span>
+                    <span className="text-text-primary font-medium">{entry.action}</span>
                     {entry.target_type && (
                       <span className="text-text-muted ml-1">on {entry.target_type}</span>
                     )}

@@ -4,7 +4,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
-import { CircleDot, Crosshair, CalendarDays, ChevronRight } from 'lucide-react'
+import { CircleDot, Crosshair, CalendarDays } from 'lucide-react'
 
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   scheduled: { label: 'Scheduled', pill: 'bg-slate-500/20 text-text-muted border-slate-500/30' },
@@ -87,73 +87,54 @@ function FixtureCard({ f, teamIds }: { f: any; teamIds: string[] }) {
   return (
     <Link
       href={`/fixtures/${f.id}`}
-      className="card flex flex-col gap-2.5 active:scale-[0.98] transition-transform"
+      className="flex items-center gap-3 px-3 py-3 min-h-[64px] bg-bg-surface border border-border rounded-xl active:bg-accent/5 transition-colors"
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded border ${typeStyle.colour}`}>
-            {typeStyle.label}
-          </span>
-          <span className="text-[10px] text-text-muted font-semibold">MD{f.matchday}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
-            {statusInfo.label}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex flex-col items-center gap-0.5 w-16 shrink-0">
           {home?.logo_league_folder && (
             <TeamLogo
               leagueFolder={home.logo_league_folder}
               teamSlug={home.logo_team_slug}
               context="fixture_card"
               alt={home.name}
-              className="w-12 h-12"
+              className="w-7 h-7"
             />
           )}
-          <span className="text-sm font-semibold text-foreground-primary text-center leading-tight truncate max-w-full">
-            {home?.name ?? 'TBC'}
-          </span>
+          <span className="text-[10px] font-semibold text-text-primary text-center truncate max-w-full leading-tight">{home?.name ?? 'TBC'}</span>
         </div>
 
-        <div className="shrink-0 flex flex-col items-center gap-1">
-          <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">vs</span>
+        <div className="flex flex-col items-center shrink-0 min-w-[50px]">
           {result ? (
-            <span className="text-lg font-black text-foreground-primary tabular-nums">
-              {myScore}–{oppScore}
-            </span>
+            <span className="text-base font-black text-text-primary tabular-nums leading-none">{myScore}–{oppScore}</span>
           ) : time ? (
-            <span className="text-xs font-mono text-text-muted font-semibold">{time}</span>
-          ) : null}
+            <span className="text-xs font-mono text-text-muted font-semibold leading-none">{time}</span>
+          ) : (
+            <span className="text-[9px] font-black uppercase tracking-widest text-text-muted leading-none">vs</span>
+          )}
         </div>
 
-        <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
+        <div className="flex flex-col items-center gap-0.5 w-16 shrink-0">
           {away?.logo_league_folder && (
             <TeamLogo
               leagueFolder={away.logo_league_folder}
               teamSlug={away.logo_team_slug}
               context="fixture_card"
               alt={away.name}
-              className="w-12 h-12"
+              className="w-7 h-7"
             />
           )}
-          <span className="text-sm font-semibold text-foreground-primary text-center leading-tight truncate max-w-full">
-            {away?.name ?? 'TBC'}
-          </span>
+          <span className="text-[10px] font-semibold text-text-primary text-center truncate max-w-full leading-tight">{away?.name ?? 'TBC'}</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          {resultBadge}
-          {f.status === 'awaiting_confirmation' && (
-            <span className="text-[10px] text-yellow-500 font-medium">Confirm result</span>
-          )}
-        </div>
-        <ChevronRight className="w-4 h-4 text-text-muted" />
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <span className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded border ${typeStyle.colour}`}>
+          {typeStyle.label}
+        </span>
+        <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
+          {statusInfo.label}
+        </span>
+        {resultBadge}
       </div>
     </Link>
   )
@@ -173,14 +154,14 @@ interface MobileProps {
 }
 
 export default function Mobile({ data }: MobileProps) {
-  const { user, teams, teamIds, upcoming, grouped, sortedKeys, primaryTeam } = data
+  const { user, teamIds, upcoming, grouped, sortedKeys, primaryTeam } = data
 
   if (!user) {
     return (
-      <div className="space-y-6 px-4">
-        <h1 className="text-xl font-bold text-foreground-primary">My Fixtures</h1>
-        <div className="card p-10 text-center space-y-3">
-          <CircleDot className="w-10 h-10 text-text-muted mx-auto" />
+      <div className="px-3 pb-6 space-y-4">
+        <h1 className="text-lg font-bold text-text-primary">My Fixtures</h1>
+        <div className="bg-bg-surface border border-border rounded-xl p-8 text-center space-y-3">
+          <CircleDot className="w-8 h-8 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">Log in to see your team&apos;s fixtures.</p>
           <Link href="/login" className="btn-gold inline-block text-sm">Log in</Link>
         </div>
@@ -190,10 +171,10 @@ export default function Mobile({ data }: MobileProps) {
 
   if (teamIds.length === 0) {
     return (
-      <div className="space-y-6 px-4">
-        <h1 className="text-xl font-bold text-foreground-primary">My Fixtures</h1>
-        <div className="card p-10 text-center space-y-3">
-          <Crosshair className="w-10 h-10 text-text-muted mx-auto" />
+      <div className="px-3 pb-6 space-y-4">
+        <h1 className="text-lg font-bold text-text-primary">My Fixtures</h1>
+        <div className="bg-bg-surface border border-border rounded-xl p-8 text-center space-y-3">
+          <Crosshair className="w-8 h-8 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">You don&apos;t have a team yet.</p>
           <Link href="/select-team" className="btn-gold inline-block text-sm">Pick a team</Link>
         </div>
@@ -202,7 +183,7 @@ export default function Mobile({ data }: MobileProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="px-3 pb-6 space-y-4">
       <div className="flex items-center gap-3">
         {primaryTeam?.logo_league_folder && (
           <TeamLogo
@@ -210,39 +191,35 @@ export default function Mobile({ data }: MobileProps) {
             teamSlug={primaryTeam.logo_team_slug}
             context="fixture_card"
             alt={primaryTeam.name}
-            className="w-10 h-10"
+            className="w-9 h-9"
           />
         )}
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-foreground-primary">My Fixtures</h1>
+          <h1 className="text-lg font-bold text-text-primary">My Fixtures</h1>
           {primaryTeam && (
             <p className="text-xs text-accent truncate">{primaryTeam.name}</p>
           )}
         </div>
-        <Link href="/results" className="text-xs font-semibold text-accent shrink-0">
-          Results →
-        </Link>
+        <Link href="/results" className="text-sm font-semibold text-accent shrink-0">Results →</Link>
       </div>
 
       {upcoming.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-text-muted">
+        <div className="bg-bg-surface border border-border rounded-xl p-6 text-center">
           <CalendarDays className="w-8 h-8 text-text-muted mx-auto mb-2" />
-          No upcoming fixtures.
+          <p className="text-sm text-text-muted">No upcoming fixtures.</p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {sortedKeys.map((dateKey) => {
             const fixturesInGroup = grouped[dateKey]!
             return (
               <section key={dateKey}>
-                <div className="flex items-center gap-2 mb-2.5 px-1">
-                  <div className="w-1 h-4 rounded-full bg-accent" />
-                  <h2 className="text-xs font-black uppercase tracking-widest text-text-muted">
-                    {formatDateGroup(dateKey)}
-                  </h2>
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <div className="w-1 h-3 rounded-full bg-accent" />
+                  <h2 className="text-[11px] font-black uppercase tracking-widest text-text-muted">{formatDateGroup(dateKey)}</h2>
                   <span className="text-[10px] text-text-muted">({fixturesInGroup.length})</span>
                 </div>
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {fixturesInGroup.map((f: any) => (
                     <FixtureCard key={f.id} f={f} teamIds={teamIds} />
                   ))}

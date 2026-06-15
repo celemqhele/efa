@@ -1,13 +1,11 @@
 'use client'
 
-import Image from 'next/image'
 import { format, parseISO } from 'date-fns'
 import FixtureActions from './FixtureActions'
 import DateNav from '@/components/ui/DateNav'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import ScheduleRoundPanel from './ScheduleRoundPanel'
 import { CalendarDays } from 'lucide-react'
-import { getTeamLogo } from '@/lib/logo-resolver'
 
 const TYPE_ORDER = ['league', 'tournament_club', 'tournament_international', 'friendlies'] as const
 
@@ -59,7 +57,6 @@ export default function Mobile({ data }: { data: any }) {
   const todayKey = data.todayKey
   const selectedDate = data.selectedDate
 
-  // Group by tournament type
   const grouped: Record<string, any[]> = {}
   for (const f of fixtures) {
     const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
@@ -70,11 +67,10 @@ export default function Mobile({ data }: { data: any }) {
   const orderedTypes = TYPE_ORDER.filter((t) => (grouped[t]?.length ?? 0) > 0)
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-foreground-primary">Fixture Management</h1>
-        <p className="text-text-muted text-sm mt-1">
+        <h1 className="text-xl font-bold text-text-primary">Fixture Management</h1>
+        <p className="text-text-muted text-xs mt-1">
           {fixtures.length} fixture{fixtures.length === 1 ? '' : 's'} on {format(parseISO(selectedDate), 'EEE d MMM yyyy')}
         </p>
       </div>
@@ -84,169 +80,68 @@ export default function Mobile({ data }: { data: any }) {
       <ScheduleRoundPanel />
 
       {orderedTypes.length === 0 ? (
-        <div className="card p-12 text-center text-text-muted">
-          <CalendarDays className="w-10 h-10 text-text-muted mx-auto mb-3" />
-          <p>No fixtures scheduled for this day.</p>
+        <div className="card p-8 text-center text-text-muted">
+          <CalendarDays className="w-8 h-8 text-text-muted mx-auto mb-2" />
+          <p className="text-sm">No fixtures scheduled for this day.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {orderedTypes.map((type) => {
             const sectionFixtures = grouped[type] ?? []
-            const tournamentMeta = (Array.isArray(sectionFixtures[0]?.tournament)
-              ? sectionFixtures[0].tournament[0]
-              : sectionFixtures[0]?.tournament) as { id: string; name: string; type: string } | undefined
             return (
-              <section key={type} className="space-y-3">
+              <section key={type} className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded border ${TYPE_ACCENT[type] ?? 'text-text-muted border-border'}`}>
-                    {TYPE_LABELS[type] ?? tournamentMeta?.name ?? type}
+                  <h2 className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${TYPE_ACCENT[type] ?? 'text-text-muted border-border'}`}>
+                    {TYPE_LABELS[type] ?? type}
                   </h2>
-                  <span className="text-xs text-text-muted">
+                  <span className="text-[10px] text-text-muted">
                     {sectionFixtures.length} {sectionFixtures.length === 1 ? 'fixture' : 'fixtures'}
                   </span>
                 </div>
 
-                <div className="card overflow-hidden">
-                  {/* Mobile card list layout */}
-                  <div className="sm:hidden divide-y divide-navy-border">
-                    {sectionFixtures.map((fx: any) => {
-                      const result = fx.result?.[0]
-                      const statusCls = STATUS_COLOURS[fx.status] ?? STATUS_COLOURS.scheduled
-                      const homeTeam = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
-                      const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
-                      const time = fixtureTime(fx.scheduled_date)
-                      const round = fx.round_type && fx.round_type !== 'group'
-                        ? ROUND_LABELS[fx.round_type] ?? fx.round_type.toUpperCase()
-                        : null
-                      return (
-                        <div key={fx.id} className="px-4 py-3 space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {time && (
-                              <span className="text-text-muted text-xs font-bold font-mono">{time}</span>
-                            )}
-                            {round && (
-                              <span className="text-text-muted text-[10px] font-semibold uppercase">{round}</span>
-                            )}
-                            <span className="text-text-muted text-[10px]">MD{fx.matchday}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>
-                              {fx.status.replaceAll('_', ' ')}
-                            </span>
-                            {fx.is_postponed && (
-                              <span className="text-orange-400 text-[10px]">Postponed</span>
-                            )}
-                          </div>
-                          <p className="text-foreground-primary text-sm font-semibold">
-                            {homeTeam?.name ?? 'TBC'}
-                            <span className="text-text-muted font-normal mx-1.5">
-                              {result ? `${result.home_score}–${result.away_score}` : 'vs'}
-                            </span>
-                            {awayTeam?.name ?? 'TBC'}
-                          </p>
-                          <FixtureActions
-                            fixtureId={fx.id}
-                            currentDate={fx.scheduled_date}
-                            status={fx.status}
-                            homeTeamId={homeTeam?.id ?? ''}
-                            homeTeamName={homeTeam?.name ?? ''}
-                            awayTeamId={awayTeam?.id ?? ''}
-                            awayTeamName={awayTeam?.name ?? ''}
-                          />
+                <div className="card divide-y divide-border">
+                  {sectionFixtures.map((fx: any) => {
+                    const result = fx.result?.[0]
+                    const statusCls = STATUS_COLOURS[fx.status] ?? STATUS_COLOURS.scheduled
+                    const homeTeam = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
+                    const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
+                    const time = fixtureTime(fx.scheduled_date)
+                    const round = fx.round_type && fx.round_type !== 'group'
+                      ? ROUND_LABELS[fx.round_type] ?? fx.round_type.toUpperCase()
+                      : null
+                    return (
+                      <div key={fx.id} className="px-3 py-3 space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {time && (
+                            <span className="text-text-muted text-xs font-bold font-mono">{time}</span>
+                          )}
+                          {round && (
+                            <span className="text-text-muted text-[10px] font-semibold uppercase">{round}</span>
+                          )}
+                          <span className="text-text-muted text-[10px]">MD{fx.matchday}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>
+                            {fx.status.replaceAll('_', ' ')}
+                          </span>
                         </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Desktop table layout */}
-                  <div className="hidden sm:block overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-navy-border bg-navy-light/50">
-                          <th className="text-left text-xs text-text-muted py-3 px-4 w-20">Time</th>
-                          <th className="text-left text-xs text-text-muted py-3 px-4">Home</th>
-                          <th className="text-center text-xs text-text-muted py-3 px-2">Score</th>
-                          <th className="text-left text-xs text-text-muted py-3 px-4">Away</th>
-                          <th className="text-left text-xs text-text-muted py-3 px-4">Status</th>
-                          <th className="text-left text-xs text-text-muted py-3 px-4">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-navy-border">
-                        {sectionFixtures.map((fx: any) => {
-                          const result = fx.result?.[0]
-                          const statusCls = STATUS_COLOURS[fx.status] ?? STATUS_COLOURS.scheduled
-                          const homeTeam = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
-                          const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
-                          const time = fixtureTime(fx.scheduled_date)
-                          const round = fx.round_type && fx.round_type !== 'group'
-                            ? ROUND_LABELS[fx.round_type] ?? fx.round_type.toUpperCase()
-                            : null
-                          return (
-                            <tr key={fx.id} className="hover:bg-navy-light/40 transition-colors">
-                              <td className="py-3 px-4">
-                                <div className="text-foreground-primary font-bold font-mono text-sm">{time ?? '—'}</div>
-                                <div className="text-text-muted text-[10px] uppercase">
-                                  {round ?? `MD${fx.matchday}`}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  {homeTeam?.logo_league_folder && (
-                                    <Image
-                                      src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'standings_row')}
-                                      alt={homeTeam.name}
-                                      width={28} height={28}
-                                      className="object-contain shrink-0"
-                                    />
-                                  )}
-                                  <span className="text-foreground-primary font-medium">{homeTeam?.name}</span>
-                                </div>
-                              </td>
-                              <td className="py-3 px-2 text-center">
-                                {result ? (
-                                  <span className="text-foreground-primary font-bold text-base">
-                                    {result.home_score} – {result.away_score}
-                                  </span>
-                                ) : (
-                                  <span className="text-text-muted">vs</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  {awayTeam?.logo_league_folder && (
-                                    <Image
-                                      src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'standings_row')}
-                                      alt={awayTeam.name}
-                                      width={28} height={28}
-                                      className="object-contain shrink-0"
-                                    />
-                                  )}
-                                  <span className="text-foreground-primary font-medium">{awayTeam?.name}</span>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4">
-                                <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>
-                                  {fx.status.replaceAll('_', ' ')}
-                                </span>
-                                {fx.is_postponed && (
-                                  <span className="text-orange-400 text-xs ml-1">P</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">
-                                <FixtureActions
-                                  fixtureId={fx.id}
-                                  currentDate={fx.scheduled_date}
-                                  status={fx.status}
-                                  homeTeamId={homeTeam?.id ?? ''}
-                                  homeTeamName={homeTeam?.name ?? ''}
-                                  awayTeamId={awayTeam?.id ?? ''}
-                                  awayTeamName={awayTeam?.name ?? ''}
-                                />
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                        <p className="text-text-primary text-sm font-semibold">
+                          {homeTeam?.name ?? 'TBC'}
+                          <span className="text-text-muted font-normal mx-1.5">
+                            {result ? `${result.home_score}–${result.away_score}` : 'vs'}
+                          </span>
+                          {awayTeam?.name ?? 'TBC'}
+                        </p>
+                        <FixtureActions
+                          fixtureId={fx.id}
+                          currentDate={fx.scheduled_date}
+                          status={fx.status}
+                          homeTeamId={homeTeam?.id ?? ''}
+                          homeTeamName={homeTeam?.name ?? ''}
+                          awayTeamId={awayTeam?.id ?? ''}
+                          awayTeamName={awayTeam?.name ?? ''}
+                        />
+                      </div>
+                    )
+                  })}
                 </div>
               </section>
             )

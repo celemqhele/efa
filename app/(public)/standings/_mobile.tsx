@@ -3,7 +3,6 @@
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { goalDifference } from '@/lib/standings-core'
-import { Card } from '@/components/ui/Card'
 
 const TOURNAMENT_TYPE_LABELS: Record<string, string> = {
   league: 'Premier League',
@@ -18,117 +17,65 @@ function formatGroupTitle(groupName: string) {
   return /^group\s+/i.test(clean) ? clean : `Group ${clean}`
 }
 
-function StandingsTable({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number }) {
+function StandingsCard({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-bg-surface">
-      <div className="sm:hidden">
-        <div className="grid grid-cols-[18px_1fr_18px_18px_18px_18px_22px_24px] items-center gap-0.5 px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider text-text-muted border-b border-border-subtle">
-          <span className="text-center">#</span>
-          <span>Team</span>
-          <span className="text-center">P</span>
-          <span className="text-center">W</span>
-          <span className="text-center">D</span>
-          <span className="text-center">L</span>
-          <span className="text-center">GD</span>
-          <span className="text-center text-accent">Pts</span>
-        </div>
+    <div className="space-y-1">
+      {rows.map((row: any, index: number) => {
+        const gd = goalDifference(row)
+        const qualifies = mode === 'group' && index < qualifiersPerGroup
+        const qualifierBorder = mode === 'league'
+          ? index < 12 ? 'border-l-accent' : index < 20 ? 'border-l-blue-500' : 'border-l-transparent'
+          : qualifies ? 'border-l-accent' : 'border-l-transparent'
 
-        {rows.map((row: any, index: number) => {
-          const gd = goalDifference(row)
-          const qualificationBorder = mode === 'league'
-            ? index < 12 ? 'border-l-accent' : index < 20 ? 'border-l-blue-500' : 'border-l-transparent'
-            : index < qualifiersPerGroup ? 'border-l-accent' : 'border-l-transparent'
+        return (
+          <Link
+            key={row.id ?? `${row.team_id}-${index}`}
+            href={`/teams/${row.team_id}`}
+            className={`flex items-center gap-3 px-3 py-2.5 min-h-[48px] border-l-4 ${qualifierBorder} ${index % 2 === 0 ? 'bg-bg-base' : 'bg-bg-surface'} active:bg-accent/10 transition-colors`}
+          >
+            <span className="w-5 text-center font-bold text-text-muted text-xs">{index + 1}</span>
 
-          return (
-            <Link
-              key={row.id ?? `${row.team_id}-${index}`}
-              href={`/teams/${row.team_id}`}
-              className={`grid grid-cols-[18px_1fr_18px_18px_18px_18px_22px_24px] items-center gap-0.5 px-2 py-1.5 text-[10px] border-l-4 ${qualificationBorder} ${index % 2 === 0 ? 'bg-bg-base' : 'bg-bg-surface'} hover:bg-accent/10 active:opacity-80 transition-colors cursor-pointer`}
-            >
-              <span className="text-center font-bold text-text-muted">{index + 1}</span>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {row.team?.logo_league_folder && (
+                <TeamLogo
+                  leagueFolder={row.team.logo_league_folder}
+                  teamSlug={row.team.logo_team_slug}
+                  context="standings_row"
+                  alt={row.team.name}
+                  className="w-7 h-7 shrink-0"
+                />
+              )}
+              <span className="font-semibold text-text-primary text-sm truncate">{row.team?.name ?? 'Unknown team'}</span>
+              {qualifies && (
+                <span className="text-[9px] font-black text-accent border border-accent/30 rounded px-1 py-0.5 shrink-0">Q</span>
+              )}
+            </div>
 
-              <div className="flex items-center gap-1 min-w-0">
-                {row.team?.logo_league_folder && (
-                  <TeamLogo
-                    leagueFolder={row.team.logo_league_folder}
-                    teamSlug={row.team.logo_team_slug}
-                    context="standings_row"
-                    alt={row.team.name}
-                    className="w-4 h-4 shrink-0"
-                  />
-                )}
-                <span className="font-semibold text-text-primary truncate leading-tight">{row.team?.name ?? 'Unknown team'}</span>
-                {mode === 'group' && index < qualifiersPerGroup && (
-                  <span className="text-[8px] font-black text-accent border border-accent/30 rounded px-0.5 py-0">Q</span>
-                )}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <StatBox value={row.played ?? 0} label="P" />
+                <StatBox value={row.wins ?? 0} label="W" />
+                <StatBox value={row.draws ?? 0} label="D" />
+                <StatBox value={row.losses ?? 0} label="L" />
               </div>
-
-              <span className="text-center text-text-secondary">{row.played ?? 0}</span>
-              <span className="text-center text-text-secondary">{row.wins ?? 0}</span>
-              <span className="text-center text-text-secondary">{row.draws ?? 0}</span>
-              <span className="text-center text-text-secondary">{row.losses ?? 0}</span>
-              <span className={`text-center font-semibold ${gd >= 0 ? 'text-feedback-success' : 'text-feedback-error'}`}>{gd > 0 ? `+${gd}` : gd}</span>
-              <span className="text-center font-black text-accent">{row.points ?? 0}</span>
-            </Link>
-          )
-        })}
-      </div>
-
-      <div className="hidden sm:block">
-        <div className="grid grid-cols-[34px_1fr_32px_32px_32px_32px_32px_42px_44px] items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-text-muted border-b border-border-subtle">
-          <span className="text-center">#</span>
-          <span>Team</span>
-          <span className="text-center">P</span>
-          <span className="text-center">W</span>
-          <span className="text-center">D</span>
-          <span className="text-center">L</span>
-          <span className="text-center">A</span>
-          <span className="text-center">GD</span>
-          <span className="text-center text-accent">Pts</span>
-        </div>
-
-        {rows.map((row: any, index: number) => {
-          const gd = goalDifference(row)
-          const qualificationBorder = mode === 'league'
-            ? index < 12 ? 'border-l-accent' : index < 20 ? 'border-l-blue-500' : 'border-l-transparent'
-            : index < qualifiersPerGroup ? 'border-l-accent' : 'border-l-transparent'
-
-          return (
-            <Link
-              key={row.id ?? `${row.team_id}-${index}`}
-              href={`/teams/${row.team_id}`}
-              className={`grid grid-cols-[34px_1fr_32px_32px_32px_32px_32px_42px_44px] items-center gap-2 px-3 py-2.5 text-xs border-l-4 ${qualificationBorder} ${index % 2 === 0 ? 'bg-bg-base' : 'bg-bg-surface'} hover:bg-accent/10 transition-colors cursor-pointer`}
-            >
-              <span className="text-center font-bold text-text-muted">{index + 1}</span>
-
-              <div className="flex items-center gap-2 min-w-0">
-                {row.team?.logo_league_folder && (
-                  <TeamLogo
-                    leagueFolder={row.team.logo_league_folder}
-                    teamSlug={row.team.logo_team_slug}
-                    context="standings_row"
-                    alt={row.team.name}
-                    className="w-7 h-7 shrink-0"
-                  />
-                )}
-                <span className="font-semibold text-text-primary truncate">{row.team?.name ?? 'Unknown team'}</span>
-                {mode === 'group' && index < qualifiersPerGroup && (
-                  <span className="text-[9px] font-black text-accent border border-accent/30 rounded px-1 py-0.5">Q</span>
-                )}
-              </div>
-
-              <span className="text-center text-text-secondary">{row.played ?? 0}</span>
-              <span className="text-center text-text-secondary">{row.wins ?? 0}</span>
-              <span className="text-center text-text-secondary">{row.draws ?? 0}</span>
-              <span className="text-center text-text-secondary">{row.losses ?? 0}</span>
-              <span className={`text-center font-medium ${(row.absent ?? 0) > 0 ? 'text-orange-400' : 'text-text-secondary'}`}>{row.absent ?? 0}</span>
-              <span className={`text-center font-semibold ${gd >= 0 ? 'text-feedback-success' : 'text-feedback-error'}`}>{gd > 0 ? `+${gd}` : gd}</span>
-              <span className="text-center font-black text-accent">{row.points ?? 0}</span>
-            </Link>
-          )
-        })}
-      </div>
+              <span className={`text-xs font-semibold w-8 text-right ${gd >= 0 ? 'text-feedback-success' : 'text-feedback-error'}`}>
+                {gd > 0 ? `+${gd}` : gd}
+              </span>
+              <span className="text-sm font-black text-accent w-8 text-right">{row.points ?? 0}</span>
+            </div>
+          </Link>
+        )
+      })}
     </div>
+  )
+}
+
+function StatBox({ value, label }: { value: number; label: string }) {
+  return (
+    <span className="flex flex-col items-center gap-0">
+      <span className="text-xs font-bold text-text-primary leading-tight">{value}</span>
+      <span className="text-[9px] text-text-muted uppercase leading-tight">{label}</span>
+    </span>
   )
 }
 
@@ -147,26 +94,26 @@ export default function Mobile({ data }: MobileProps) {
 
   if (!activeTournamentId || !activeTournament) {
     return (
-      <Card className="p-12 text-center">
+      <div className="px-4 py-12 text-center">
         <p className="text-text-secondary text-sm">No active tournaments.</p>
-      </Card>
+      </div>
     )
   }
 
   return (
-    <>
+    <div className="px-3 pb-6 space-y-4">
       {tournaments && tournaments.length > 1 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-3 px-3 snap-x snap-mandatory">
           {tournaments.map((t: any) => {
             const isActive = t.id === activeTournamentId
             return (
               <Link
                 key={t.id}
                 href={`/standings?tournament=${t.id}`}
-                className={`px-5 py-3 sm:px-4 sm:py-2 rounded-lg text-sm font-semibold transition-colors border min-h-[44px] sm:min-h-0 flex items-center ${
+                className={`snap-start shrink-0 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors border min-h-[44px] flex items-center ${
                   isActive
                     ? 'bg-accent text-bg-base border-accent'
-                    : 'bg-transparent text-text-muted border-border hover:border-accent/50 hover:text-accent'
+                    : 'bg-transparent text-text-muted border-border'
                 }`}
               >
                 {TOURNAMENT_TYPE_LABELS[t.type] ?? t.name}
@@ -176,59 +123,52 @@ export default function Mobile({ data }: MobileProps) {
         </div>
       )}
 
-      {!activeTournamentId ? (
-        <Card className="p-12 text-center">
-          <p className="text-text-secondary text-sm">No active tournaments.</p>
-        </Card>
-      ) : activeTournament?.type === 'league' ? (
-        <Card className="p-4 sm:p-5 space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-text-primary">League Standings</h2>
+      {activeTournament?.type === 'league' ? (
+        <div className="bg-bg-surface rounded-xl border border-border overflow-hidden">
+          <div className="px-3 py-2.5 border-b border-border">
+            <h2 className="text-sm font-bold text-text-primary">League Standings</h2>
           </div>
-
           {leagueStandings.length > 0 ? (
             <>
-              <StandingsTable rows={leagueStandings} mode="league" />
-              <div className="flex flex-wrap gap-4 text-[10px] text-text-muted">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-accent" />UCL places</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500" />Europa places</span>
+              <StandingsCard rows={leagueStandings} mode="league" />
+              <div className="flex gap-4 px-3 py-2 text-[10px] text-text-muted border-t border-border">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-accent" />UCL</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500" />Europa</span>
               </div>
             </>
           ) : (
-            <div className="rounded-xl border border-border bg-bg-base p-8 text-center text-sm text-text-muted">No teams found for this tournament.</div>
+            <div className="p-8 text-center text-sm text-text-muted">No teams found for this tournament.</div>
           )}
-        </Card>
+        </div>
       ) : activeTournament?.type === 'tournament_club' || activeTournament?.type === 'tournament_international' ? (
-        <Card className="p-4 sm:p-5 space-y-5">
-          <div>
-            <h2 className="text-lg font-bold text-text-primary">Group Standings</h2>
+        <div className="bg-bg-surface rounded-xl border border-border overflow-hidden">
+          <div className="px-3 py-2.5 border-b border-border">
+            <h2 className="text-sm font-bold text-text-primary">Group Standings</h2>
           </div>
-
           {Object.keys(groupStandings).length > 0 ? (
-            <>
+            <div className="divide-y divide-border">
               {Object.entries(groupStandings)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([groupName, rows]) => (
-                  <div key={groupName} className="space-y-2">
+                  <div key={groupName} className="px-3 py-3 space-y-2">
                     <h3 className="text-xs font-black uppercase tracking-wider text-accent">{formatGroupTitle(groupName)}</h3>
-                    <StandingsTable rows={rows} mode="group" qualifiersPerGroup={activeTournament?.settings?.qualifiers_per_group ?? 2} />
+                    <StandingsCard rows={rows} mode="group" qualifiersPerGroup={activeTournament?.settings?.qualifiers_per_group ?? 2} />
                   </div>
                 ))}
-
-              <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+              <div className="flex items-center gap-1.5 px-3 py-2 text-[10px] text-text-muted">
                 <span className="w-2.5 h-2.5 rounded-sm bg-accent" />
                 Top {activeTournament?.settings?.qualifiers_per_group ?? 2} qualify
               </div>
-            </>
+            </div>
           ) : (
-            <div className="rounded-xl border border-border bg-bg-base p-8 text-center text-sm text-text-muted">No teams found for this tournament.</div>
+            <div className="p-8 text-center text-sm text-text-muted">No teams found for this tournament.</div>
           )}
-        </Card>
+        </div>
       ) : (
-        <Card className="p-12 text-center">
+        <div className="p-12 text-center">
           <p className="text-text-secondary text-sm">No standings available for this tournament type.</p>
-        </Card>
+        </div>
       )}
-    </>
+    </div>
   )
 }

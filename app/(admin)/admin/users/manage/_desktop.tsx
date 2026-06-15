@@ -10,8 +10,7 @@ export default function Desktop({ data }: { data: any }) {
   const { profiles, teamByManager, changeRequests, managerApplications, profileMap } = data
 
   return (
-    <div className="space-y-space-8">
-      {/* Header */}
+    <div className="max-w-6xl mx-auto space-y-space-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">User Management</h1>

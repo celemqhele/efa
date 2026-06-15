@@ -2,14 +2,9 @@ import HallOfFameAdmin from './HallOfFameAdmin'
 
 export default function Mobile({ data }: { data: any }) {
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-foreground-primary">Hall of Fame</h1>
-        <p className="text-text-muted text-sm mt-1">
-          Manually award or remove trophies for any season.
-        </p>
-      </div>
-
+    <div className="px-3 pb-6 space-y-4">
+      <h1 className="text-lg font-bold text-text-primary">Hall of Fame</h1>
+      <p className="text-xs text-text-muted">Manually award or remove trophies for any season.</p>
       <HallOfFameAdmin
         teams={data.teams}
         seasons={data.seasons}
