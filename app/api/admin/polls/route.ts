@@ -23,7 +23,7 @@ export async function GET() {
   if (pollIds.length > 0) {
     const { data: apps } = await db
       .from('poll_applications' as any)
-      .select('*, applicant:profiles!poll_applications_applicant_id_fkey(username)')
+      .select('*, applicant:profiles!poll_applications_applicant_id_fkey(username, avatar_url)')
       .in('poll_id', pollIds)
       .neq('status', 'withdrawn')
       .order('created_at', { ascending: true })
