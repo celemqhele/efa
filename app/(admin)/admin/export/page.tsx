@@ -225,6 +225,14 @@ type CardData = {
   standings: any[]
   groupStandings: Record<string, any[]>
   managers: any[]
+  // Chunking support
+  isChunked?: boolean
+  chunks?: {
+    key: string
+    title: string
+    groupStandings?: Record<string, any[]>
+    managers?: any[]
+  }[]
 }
 
 export default async function ExportPage({ searchParams }: Props) {
@@ -271,6 +279,8 @@ export default async function ExportPage({ searchParams }: Props) {
       let standings: any[] = []
       let groupStandings: Record<string, any[]> = {}
       let managers: any[] = []
+      let isChunked = false
+      let chunks: any[] = []
 
       if (cardType === 'fixtures') {
         const { data } = await supabase
@@ -323,7 +333,23 @@ export default async function ExportPage({ searchParams }: Props) {
       if (cardType === 'standings') {
         const { leagueStandings, groupStandings: gs } = await buildLiveStandings(supabase, tournamentId, tournament.type)
         standings = leagueStandings
-        groupStandings = gs
+        
+        if (tournament.type !== 'league') {
+          isChunked = true
+          const groupEntries = Object.entries(gs).sort()
+          const groupChunkSize = 4 // 4 groups per image
+          for (let i = 0; i < groupEntries.length; i += groupChunkSize) {
+            const partNum = Math.floor(i / groupChunkSize) + 1
+            const chunkEntries = groupEntries.slice(i, i + groupChunkSize)
+            chunks.push({
+              key: `${tournamentId}-${cardType}-chunk-${partNum}`,
+              title: `GROUP STANDINGS (PART ${partNum})`,
+              groupStandings: Object.fromEntries(chunkEntries)
+            })
+          }
+        } else {
+          groupStandings = gs
+        }
       }
 
       if (cardType === 'managers') {
@@ -342,11 +368,37 @@ export default async function ExportPage({ searchParams }: Props) {
             `)
             .in('id', teamIds)
             .order('name', { ascending: true })
-          managers = teamData ?? []
+          const allManagers = teamData ?? []
+
+          if (allManagers.length > 10) {
+            isChunked = true
+            const managerChunkSize = 10
+            for (let i = 0; i < allManagers.length; i += managerChunkSize) {
+              const partNum = Math.floor(i / managerChunkSize) + 1
+              chunks.push({
+                key: `${tournamentId}-${cardType}-chunk-${partNum}`,
+                title: `MANAGERS (PART ${partNum})`,
+                managers: allManagers.slice(i, i + managerChunkSize)
+              })
+            }
+          } else {
+            managers = allManagers
+          }
         }
       }
 
-      cards.push({ key: `${tournamentId}-${cardType}`, tournament, type: cardType, fixtures, results, standings, groupStandings, managers })
+      cards.push({ 
+        key: `${tournamentId}-${cardType}`, 
+        tournament, 
+        type: cardType, 
+        fixtures, 
+        results, 
+        standings, 
+        groupStandings, 
+        managers,
+        isChunked,
+        chunks
+      })
     }
   }
 
@@ -391,16 +443,144 @@ export default async function ExportPage({ searchParams }: Props) {
             ? 'LEAGUE TABLE'
             : 'GROUP STANDINGS'
 
-        const cardId = `export-card-${i}`
         const filename = `efa-${card.type}-${card.tournament.type}-${selectedDate}.png`
 
+        // If chunked, we render multiple cards and one button for all
+        if (card.isChunked && card.chunks) {
+          const chunkIds = card.chunks.map(c => c.key)
+          return (
+            <div key={card.key} className="space-y-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-text-secondary">
+                  {card.tournament.name}
+                  <span className="font-normal text-text-muted"> — </span>
+                  <span className="capitalize">{card.type}</span>
+                </p>
+                <ExportButton filename={filename} cardIds={chunkIds} />
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {card.chunks.map((chunk) => (
+                  <div key={chunk.key} className="overflow-x-auto pb-space-4">
+                    <Card id={chunk.key} style={cardStyle} className="p-space-8">
+                      {/* Card header */}
+                      <div
+                        style={{
+                          borderBottom: `3px solid ${accent}`,
+                          paddingBottom: '16px',
+                          marginBottom: '24px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div
+                            style={{
+                              width: '44px', height: '44px', borderRadius: '50%',
+                              background: accent, display: 'flex', alignItems: 'center',
+                              justifyContent: 'center', fontWeight: 900, fontSize: '13px',
+                              color: '#0a1128', letterSpacing: '0.02em', flexShrink: 0,
+                            }}
+                          >
+                            EFA
+                          </div>
+                          <div>
+                            <div
+                              style={{
+                                color: accent, fontWeight: 700, fontSize: '10px',
+                                letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px',
+                              }}
+                            >
+                              {card.tournament.name}
+                            </div>
+                            <div
+                              style={{
+                                color: 'var(--export-text)', fontWeight: 900, fontSize: '20px',
+                                lineHeight: 1, letterSpacing: '-0.01em',
+                              }}
+                            >
+                              {chunk.title}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Chunk Content: Standings */}
+                      {chunk.groupStandings && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                          {Object.entries(chunk.groupStandings)
+                            .sort()
+                            .map(([group, rows]) => (
+                              <div key={group}>
+                                <div
+                                  style={{
+                                    color: accent, fontWeight: 700, fontSize: '11px',
+                                    letterSpacing: '0.1em', marginBottom: '10px',
+                                  }}
+                                >
+                                  GROUP {group}
+                                </div>
+                                <StandingsTable rows={rows} mode="group" accent={accent} />
+                              </div>
+                            ))}
+                        </div>
+                      )}
+
+                      {/* Chunk Content: Managers */}
+                      {chunk.managers && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                          {chunk.managers.map((m: any) => (
+                            <div
+                              key={m.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '10px',
+                                background: 'var(--export-row-bg)', borderRadius: '8px',
+                                padding: '10px 12px',
+                              }}
+                            >
+                              <TeamLogoInline folder={m.logo_league_folder} slug={m.logo_team_slug} size={28} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ color: 'var(--export-text)', fontWeight: 700, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {m.name}
+                                </div>
+                                <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {m.managed_by?.username ?? 'VACANT'}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Footer */}
+                      <div
+                        style={{
+                          borderTop: '1px solid var(--export-divider)',
+                          marginTop: '24px', paddingTop: '14px',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        }}
+                      >
+                        <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px', letterSpacing: '0.06em' }}>
+                          EFA — EFOOTBALL FEDERAL ASSOCIATION
+                        </div>
+                        <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px' }}>
+                          efa-fxyk.vercel.app
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        }
+
+        const cardId = `export-card-${i}`
         return <div key={card.key}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-text-secondary">
                 {card.tournament.name}
                 <span className="font-normal text-text-muted"> — </span>
                 <span className="capitalize">{card.type}</span>
-                {card.type !== 'standings' && (
+                {card.type !== 'standings' && card.type !== 'managers' && (
                   <span className="font-normal text-text-muted ml-1 text-xs">({formattedDate})</span>
                 )}
               </p>
@@ -443,7 +623,7 @@ export default async function ExportPage({ searchParams }: Props) {
                           lineHeight: 1, letterSpacing: '-0.01em',
                         }}
                       >
-                        {typeLabel}
+                        {card.type === 'managers' ? 'MANAGERS' : typeLabel}
                       </div>
                     </div>
                   </div>
@@ -557,8 +737,8 @@ export default async function ExportPage({ searchParams }: Props) {
                   </>
                 )}
 
-                {/* STANDINGS (group) */}
-                {card.type === 'standings' && card.tournament.type !== 'league' && (
+                {/* STANDINGS (group - non-chunked) */}
+                {card.type === 'standings' && card.tournament.type !== 'league' && !card.isChunked && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     {Object.keys(card.groupStandings).length === 0 ? (
                       <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
@@ -590,8 +770,8 @@ export default async function ExportPage({ searchParams }: Props) {
                   </div>
                 )}
 
-                {/* MANAGERS */}
-                {card.type === 'managers' && (
+                {/* MANAGERS (non-chunked) */}
+                {card.type === 'managers' && !card.isChunked && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
                     {card.managers.length === 0 ? (
                       <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px', gridColumn: 'span 2' }}>
@@ -640,7 +820,7 @@ export default async function ExportPage({ searchParams }: Props) {
               </Card>
             </div>
           </div>
-        })}
+      })}
     </div>
   )
 }
