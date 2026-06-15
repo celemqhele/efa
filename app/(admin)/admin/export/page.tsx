@@ -232,6 +232,8 @@ type CardData = {
     title: string
     groupStandings?: Record<string, any[]>
     managers?: any[]
+    standings?: any[]
+    standingsOffset?: number
   }[]
 }
 
@@ -794,6 +796,57 @@ export default async function ExportPage({ searchParams }: Props) {
                           <TeamLogoInline folder={m.logo_league_folder} slug={m.logo_team_slug} size={28} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ color: 'var(--export-text)', fontWeight: 700, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {m.name}
+                            </div>
+                            <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {m.manager?.username ?? 'VACANT'}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div
+                  style={{
+                    borderTop: '1px solid var(--export-divider)',
+                    marginTop: '24px', paddingTop: '14px',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}
+                >
+                  <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px', letterSpacing: '0.06em' }}>
+                    EFA — EFOOTBALL FEDERAL ASSOCIATION
+                  </div>
+                  <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px' }}>
+                    efa-fxyk.vercel.app
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+      })}
+    </div>
+  )
+}
+
+  })}
+    </div>
+  )
+}
+
+   })}
+    </div>
+  )
+}
+
+  })}
+    </div>
+  )
+}
+
+en', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {m.name}
                             </div>
                             <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
