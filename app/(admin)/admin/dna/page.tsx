@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import DNAProfilesView from './DNAProfilesView'
+import Shell from './_shell'
 
 export default async function AdminDNAPage() {
   const supabase = await createClient()
@@ -21,9 +21,6 @@ export default async function AdminDNAPage() {
   }
 
   return (
-    <DNAProfilesView
-      teams={teams ?? []}
-      dnaMap={Object.fromEntries(dnaMap)}
-    />
+    <Shell data={{ teams: teams ?? [], dnaMap: Object.fromEntries(dnaMap) }} />
   )
 }

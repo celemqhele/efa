@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import HallOfFameAdmin from './HallOfFameAdmin'
+import Shell from './_shell'
 
 export default async function AdminHallOfFamePage() {
   const supabase = await createClient()
@@ -25,22 +25,10 @@ export default async function AdminHallOfFamePage() {
         .order('awarded_at', { ascending: false }),
     ])
 
-  return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-foreground-primary">Hall of Fame</h1>
-        <p className="text-text-muted text-sm mt-1">
-          Manually award or remove trophies for any season.
-        </p>
-      </div>
-
-      <HallOfFameAdmin
-        teams={teams ?? []}
-        seasons={seasons ?? []}
-        tournaments={tournaments ?? []}
-        trophies={(trophiesRaw ?? []) as any}
-      />
-    </div>
-  )
+  return <Shell data={{
+    teams: teams ?? [],
+    seasons: seasons ?? [],
+    tournaments: tournaments ?? [],
+    trophies: (trophiesRaw ?? []) as any,
+  }} />
 }
-

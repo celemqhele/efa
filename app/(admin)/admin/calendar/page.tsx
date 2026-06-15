@@ -1,22 +1,13 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths } from 'date-fns'
+import Shell from './_shell'
 
 export const revalidate = 0
 
 interface Props {
   searchParams: Promise<{ month?: string; scope?: 'mine' | 'all' }>
-}
-
-const TOURNAMENT_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  league: { bg: 'bg-accent/20', text: 'text-accent', label: 'PL' },
-  ucl:    { bg: 'bg-blue-500/20',   text: 'text-blue-400',  label: 'UCL' },
-  europa: { bg: 'bg-orange-500/20', text: 'text-orange-400', label: 'UEL' },
-  super_cup: { bg: 'bg-purple-500/20', text: 'text-purple-400', label: 'SC' },
 }
 
 export default async function AdminCalendarPage({ searchParams }: Props) {
@@ -29,12 +20,10 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   const prevMonth = format(subMonths(monthStart, 1), 'yyyy-MM')
   const nextMonth = format(addMonths(monthStart, 1), 'yyyy-MM')
   
-  // Scope state
   const scope = sp.scope === 'mine' ? 'mine' : 'all'
 
   const supabase = await createClient()
 
-  // Fetch current user and their team
   const { data: { user } } = await supabase.auth.getUser()
   const { data: userTeam } = user 
     ? await supabase.from('teams').select('id, name').eq('manager_id', user.id).maybeSingle()
@@ -60,13 +49,11 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
       .gte('break_end', format(monthStart, 'yyyy-MM-dd')),
   ])
 
-  // Apply scope filter
   const rawFixtures = (fixtures ?? []) as any[]
   const processedFixtures = scope === 'mine'
     ? (userTeam ? rawFixtures.filter((f: any) => (f.home_team as any)?.id === (userTeam as any).id || (f.away_team as any)?.id === (userTeam as any).id) : [])
     : rawFixtures
 
-  // Index processed fixtures by date
   const byDate: Record<string, any[]> = {}
   for (const f of processedFixtures) {
     const d = f.scheduled_date as string
@@ -74,7 +61,6 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
     byDate[d]!.push(f)
   }
 
-  // Break date set
   const breakDates = new Set<string>()
   for (const b of (breaks ?? []) as any[]) {
     const start = parseISO(b.break_start as string)
@@ -85,175 +71,22 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   }
 
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
-  const startPad = (getDay(monthStart) + 6) % 7 // Mon=0
+  const startPad = (getDay(monthStart) + 6) % 7
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold text-foreground-primary">{monthLabel}</h1>
-          
-          {/* Scope Toggle */}
-          <div className="flex items-center gap-2 bg-bg-elevated px-3 py-1.5 rounded-full border border-border shadow-sm">
-            <span className={`text-xs font-medium ${scope === 'mine' ? 'text-foreground-primary' : 'text-text-muted'}`}>
-              My Team
-            </span>
-            <Link
-              href={`?month=${sp.month || format(now, 'yyyy-MM')}&scope=${scope === 'mine' ? 'all' : 'mine'}`}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${scope === 'all' ? 'bg-accent' : 'bg-slate-300'}`}
-              scroll={false}
-            >
-              <span
-                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-bg-surface transition-transform ${scope === 'all' ? 'translate-x-4' : 'translate-x-1'}`}
-              />
-            </Link>
-            <span className={`text-xs font-medium ${scope === 'all' ? 'text-foreground-primary' : 'text-text-muted'}`}>
-              All Teams
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Link href={`?month=${prevMonth}&scope=${scope}`} className="btn-outline text-xs px-3 py-2">← Prev</Link>
-          <Link href={`?month=${format(now, 'yyyy-MM')}&scope=${scope}`} className="text-xs text-accent px-3 py-2">Today</Link>
-          <Link href={`?month=${nextMonth}&scope=${scope}`} className="btn-outline text-xs px-3 py-2">Next →</Link>
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-2">
-        {Object.entries(TOURNAMENT_COLORS).map(([type, c]) => (
-          <span key={type} className={`text-xs px-2 py-0.5 rounded ${c.bg} ${c.text} font-bold`}>
-            {c.label}
-          </span>
-        ))}
-        <span className="text-xs px-2 py-0.5 rounded bg-bg-elevated text-text-muted font-bold">Break</span>
-      </div>
-
-      {/* Calendar grid */}
-      <div className="card p-2 overflow-x-auto">
-        {/* Day headers */}
-        <div className="grid grid-cols-7 mb-1">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-            <div key={d} className="text-center text-xs text-text-muted font-medium py-2">{d}</div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7 gap-px bg-bg-elevated">
-          {/* Padding */}
-          {Array.from({ length: startPad }).map((_, i) => (
-            <div key={`pad-${i}`} className="bg-bg-surface min-h-[80px]" />
-          ))}
-
-          {days.map((day) => {
-            const dateStr = format(day, 'yyyy-MM-dd')
-            const isBreak = breakDates.has(dateStr)
-            const dayFixtures = byDate[dateStr] ?? []
-            const isToday = dateStr === format(now, 'yyyy-MM-dd')
-
-            return (
-              <div
-                key={dateStr}
-                className={`bg-bg-surface min-h-[80px] p-1.5 ${
-                  isBreak ? 'opacity-40' : ''
-                } ${isToday ? 'ring-1 ring-accent ring-inset' : ''}`}
-              >
-                <div className={`text-xs font-bold mb-1 ${
-                  isToday ? 'text-accent' : 'text-text-muted'
-                }`}>
-                  {format(day, 'd')}
-                </div>
-
-                {isBreak && (
-                  <div className="text-[9px] text-foreground-muted bg-bg-elevated rounded px-1 py-0.5">
-                    Break
-                  </div>
-                )}
-
-                <div className="space-y-0.5">
-                  {dayFixtures.slice(0, 4).map((f: any) => {
-                    const colors = TOURNAMENT_COLORS[f.tournament?.type] ?? TOURNAMENT_COLORS.league
-                    const result = f.results?.[0]
-                    return (
-                      <Link
-                        key={f.id}
-                        href={result ? `/results` : `/admin/results/submit?fixture=${f.id}`}
-                        className={`block rounded px-1 py-0.5 ${colors.bg} hover:opacity-80 transition-opacity`}
-                      >
-                        <div className="flex items-center gap-0.5">
-                          {f.home_team?.logo_league_folder && (
-                            <Image
-                              src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')}
-                              alt=""
-                              width={12} height={12}
-                              className="object-contain"
-                            />
-                          )}
-                          <span className={`text-[9px] font-bold ${colors.text}`}>
-                            {result
-                              ? `${result.home_score}-${result.away_score}`
-                              : 'vs'
-                            }
-                          </span>
-                          {f.away_team?.logo_league_folder && (
-                            <Image
-                              src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')}
-                              alt=""
-                              width={12} height={12}
-                              className="object-contain"
-                            />
-                          )}
-                        </div>
-                      </Link>
-                    )
-                  })}
-                  {dayFixtures.length > 4 && (
-                    <div className="text-[9px] text-text-muted px-1">
-                      +{dayFixtures.length - 4} more
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* List view for today */}
-      {byDate[format(now, 'yyyy-MM-dd')]?.length ? (
-        <div className="card p-4">
-          <h2 className="section-header">Today's Fixtures</h2>
-          <div className="space-y-2">
-            {(byDate[format(now, 'yyyy-MM-dd')] ?? []).map((f: any) => (
-              <div key={f.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                <div className="flex items-center gap-2">
-                  {f.home_team?.logo_league_folder && (
-                    <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
-                  )}
-                  <span className="text-sm text-foreground-primary">{f.home_team?.name}</span>
-                </div>
-                <div className="text-center px-3">
-                  {f.results?.[0]
-                    ? <span className="text-foreground-primary font-bold">{f.results[0].home_score}–{f.results[0].away_score}</span>
-                    : <span className="text-xs text-accent">vs</span>
-                  }
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-foreground-primary">{f.away_team?.name}</span>
-                  {f.away_team?.logo_league_folder && (
-                    <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
-                  )}
-                </div>
-                <Link href={`/results/submit?fixture=${f.id}`} className="btn-gold text-xs px-3 py-1.5 ml-2">
-                  Submit
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
+    <Shell data={{
+      monthLabel,
+      prevMonth,
+      nextMonth,
+      scope,
+      currentMonth: sp.month || format(now, 'yyyy-MM'),
+      now: now.toISOString(),
+      todayStr: format(now, 'yyyy-MM-dd'),
+      days: days.map(d => ({ dateStr: format(d, 'yyyy-MM-dd'), dayNum: parseInt(format(d, 'd')) })),
+      startPad,
+      breakDates: Array.from(breakDates),
+      byDate,
+    }} />
   )
 }
 

@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import AvailabilityManager from './AvailabilityManager'
+import Shell from './_shell'
 
 export default async function ManagerAvailabilityPage({ searchParams }: { searchParams: Promise<{ managerId: string }> }) {
   const supabase = await createAdminClient()
@@ -16,10 +16,12 @@ export default async function ManagerAvailabilityPage({ searchParams }: { search
   }))
 
   return (
-    <AvailabilityManager
-      managerId={managerId}
-      initialSchedule={(avail?.schedule as any) ?? defaultSchedule}
-      initialType={(avail?.profile_type as any) ?? 'EVERYDAY'}
+    <Shell
+      data={{
+        managerId,
+        initialSchedule: (avail?.schedule as any) ?? defaultSchedule,
+        initialType: (avail?.profile_type as any) ?? 'EVERYDAY',
+      }}
     />
   )
 }

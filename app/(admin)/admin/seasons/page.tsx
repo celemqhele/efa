@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import SeasonManager from './SeasonManager'
+import Shell from './_shell'
 
 export default async function SeasonsPage() {
   const supabase = await createClient()
@@ -14,7 +14,6 @@ export default async function SeasonsPage() {
     `)
     .order('created_at', { ascending: false }) as any)
 
-  // Fixture counts + round breakdown per tournament
   const { data: fixtureCounts } = await supabase
     .from('fixtures')
     .select('tournament_id, status, round_type')
@@ -54,7 +53,6 @@ export default async function SeasonsPage() {
         status: t.status,
         fixture_count: totalMap[t.id] ?? 0,
         completed_count: doneMap[t.id] ?? 0,
-        // For UCL/Europa: whether groups are done but SF not yet generated
         knockout_ready:
           (t.type === 'tournament_club' || t.type === 'tournament_international') &&
           (groupTotalMap[t.id] ?? 0) > 0 &&
@@ -94,11 +92,12 @@ export default async function SeasonsPage() {
   }
 
   return (
-    <SeasonManager
-      seasons={seasons}
-      allTeams={allTeams ?? []}
-      prevSeasonStandings={prevSeasonStandings}
+    <Shell
+      data={{
+        seasons,
+        allTeams: allTeams ?? [],
+        prevSeasonStandings,
+      }}
     />
   )
 }
-

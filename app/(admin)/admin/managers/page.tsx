@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import ManagersClient from './ManagersClient'
+import Shell from './_shell'
 
 export default async function ManageManagersPage() {
   const supabase = await createClient()
@@ -17,14 +17,12 @@ export default async function ManageManagersPage() {
       .order('username', { ascending: true }),
   ])
 
-  // Fetch which managers have availability set
   const adminSupabase = await createAdminClient()
   const { data: availRows } = await adminSupabase
     .from('manager_availability')
     .select('profile_id')
   const hasAvailability = new Set((availRows ?? []).map((r: any) => r.profile_id))
 
-  // Deduplicate teams by logo slug — same club can appear across multiple phases
   type TeamRow = any
   const seen = new Map<string, TeamRow>()
   for (const team of (rawTeams ?? []) as any[]) {
@@ -39,27 +37,19 @@ export default async function ManageManagersPage() {
   }
   const teams = Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name))
 
-  // Build userId → team map (from the deduplicated set)
   const managedTeamByUser: Record<string, TeamRow> = {}
   for (const team of teams) {
     if (team.manager_id) managedTeamByUser[team.manager_id] = team
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground-primary">Manage Managers</h1>
-        <p className="text-text-muted text-sm mt-1">
-          Assign or remove managers for each club in the league.
-        </p>
-      </div>
-      <ManagersClient
-        teams={teams}
-        profiles={rawProfiles ?? []}
-        managedTeamByUser={managedTeamByUser}
-        hasAvailabilityIds={Array.from(hasAvailability)}
-      />
-    </div>
+    <Shell
+      data={{
+        teams,
+        profiles: rawProfiles ?? [],
+        managedTeamByUser,
+        hasAvailabilityIds: Array.from(hasAvailability),
+      }}
+    />
   )
 }
-

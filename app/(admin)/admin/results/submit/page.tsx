@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import ResultSubmitClient from './ResultSubmitClient'
+import Shell from './_shell'
 
 export const revalidate = 0
 
@@ -12,7 +12,6 @@ export default async function ResultSubmitPage({
 
   const resolvedSearchParams = await searchParams
 
-  // Fixtures needing admin action
   const { data: pendingFixtures } = await supabase
     .from('fixtures')
     .select(`
@@ -24,7 +23,6 @@ export default async function ResultSubmitPage({
     .not('status', 'eq', 'abandoned')
     .order('scheduled_date', { ascending: true })
 
-  // Filter: awaiting_confirmation OR has a result_confirmation already
   const { data: allConfirmations } = await supabase
     .from('result_confirmations')
     .select('fixture_id, home_score, away_score, submitted_by, confirmed_at')
@@ -35,37 +33,26 @@ export default async function ResultSubmitPage({
     confirmationsByFixture[c.fixture_id]!.push(c)
   }
 
-  // Show all scheduled and awaiting_confirmation fixtures (admin can submit for any)
   const relevantFixtures = pendingFixtures ?? []
 
-  // Team name mappings for OCR
   const { data: teamNameMappings } = await supabase
     .from('team_name_mappings')
     .select('id, ocr_name, team_id')
 
-  // All teams for mapping UI
   const { data: allTeams } = await supabase
     .from('teams')
     .select('id, name, logo_league_folder, logo_team_slug')
     .order('name', { ascending: true })
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground-primary">Submit Result</h1>
-        <p className="text-text-muted text-sm mt-1">
-          Finalise fixture results via screenshot OCR or manual entry.
-        </p>
-      </div>
-
-      <ResultSubmitClient
-        pendingFixtures={relevantFixtures as any}
-        confirmationsByFixture={confirmationsByFixture as any}
-        teamNameMappings={teamNameMappings ?? []}
-        allTeams={allTeams ?? []}
-        defaultFixtureId={resolvedSearchParams.fixture}
-      />
-    </div>
+    <Shell
+      data={{
+        pendingFixtures: relevantFixtures as any,
+        confirmationsByFixture: confirmationsByFixture as any,
+        teamNameMappings: teamNameMappings ?? [],
+        allTeams: allTeams ?? [],
+        defaultFixtureId: resolvedSearchParams.fixture,
+      }}
+    />
   )
 }
-

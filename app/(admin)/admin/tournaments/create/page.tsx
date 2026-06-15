@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { createClient } from '@/lib/supabase/server'
 import { getLeagueFolders, slugToDisplayName } from '@/lib/logo-resolver'
-import CreateTournamentClient from './CreateTournamentClient'
+import Shell from './_shell'
 
 export const revalidate = 0
 
@@ -84,18 +84,5 @@ export default async function CreateTournamentPage() {
 
   const allClubs = Array.from(clubMap.values()).sort((a, b) => a.name.localeCompare(b.name))
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground-primary">Create Tournament</h1>
-        <p className="text-text-muted text-sm mt-1">Set up a new season tournament.</p>
-      </div>
-
-      <CreateTournamentClient
-        seasons={seasons ?? []}
-        allTeams={allClubs}
-      />
-    </div>
-  )
+  return <Shell data={{ seasons: seasons ?? [], allTeams: allClubs }} />
 }
-

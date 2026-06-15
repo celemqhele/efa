@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import FixtureScheduler from './FixtureScheduler'
+import Shell from './_shell'
 
 export default async function SchedulerPage({ searchParams }: { searchParams: Promise<{ tournamentId: string }> }) {
   const supabase = await createAdminClient()
@@ -11,10 +11,5 @@ export default async function SchedulerPage({ searchParams }: { searchParams: Pr
     .eq('tournament_id', tournamentId)
     .is('scheduled_date', null)
 
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Scheduling Dashboard</h1>
-      <FixtureScheduler tournamentId={tournamentId} unscheduledCount={count ?? 0} />
-    </div>
-  )
+  return <Shell data={{ tournamentId, unscheduledCount: count ?? 0 }} />
 }

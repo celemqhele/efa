@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import AdminNotificationsClient from './AdminNotificationsClient'
+import Shell from './_shell'
 
 export const revalidate = 0
 
@@ -39,11 +39,11 @@ export default async function AdminNotificationsPage() {
   ])
 
   return (
-    <AdminNotificationsClient
-      pendingRequests={(pendingRequests ?? []) as any[]}
-      notifications={(adminNotifications ?? []) as any[]}
-      allUsers={(allUsers ?? []) as any[]}
-    />
+    <Shell data={{
+      pendingRequests: (pendingRequests ?? []) as any[],
+      notifications: (adminNotifications ?? []) as any[],
+      allUsers: (allUsers ?? []) as any[],
+    }} />
   )
 }
 
