@@ -280,7 +280,7 @@ export default async function ExportPage({ searchParams }: Props) {
       let groupStandings: Record<string, any[]> = {}
       let managers: any[] = []
       let isChunked = false
-      let chunks: any[] = []
+      const chunks: any[] = []
 
       if (cardType === 'fixtures') {
         const { data } = await supabase
@@ -521,6 +521,10 @@ export default async function ExportPage({ searchParams }: Props) {
                                 <StandingsTable rows={rows} mode="group" accent={accent} />
                               </div>
                             ))}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
+                            <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top 2 qualify</span>
+                          </div>
                         </div>
                       )}
 
@@ -542,7 +546,7 @@ export default async function ExportPage({ searchParams }: Props) {
                                   {m.name}
                                 </div>
                                 <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {m.managed_by?.username ?? 'VACANT'}
+                                  {m.manager?.username ?? 'VACANT'}
                                 </div>
                               </div>
                             </div>
@@ -793,7 +797,7 @@ export default async function ExportPage({ searchParams }: Props) {
                               {m.name}
                             </div>
                             <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {m.managed_by?.username ?? 'VACANT'}
+                              {m.manager?.username ?? 'VACANT'}
                             </div>
                           </div>
                         </div>
@@ -821,6 +825,11 @@ export default async function ExportPage({ searchParams }: Props) {
             </div>
           </div>
       })}
+    </div>
+  )
+}
+
+  })}
     </div>
   )
 }
