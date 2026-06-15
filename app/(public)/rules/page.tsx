@@ -46,7 +46,8 @@ export default function RulesPage() {
           forward.
         </p>
 
-        <div className="overflow-x-auto rounded-lg border border-border">
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-bg-surface border-b border-border">
@@ -78,6 +79,28 @@ export default function RulesPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile cards */}
+        <div className="block sm:hidden space-y-2">
+          {DISCONNECT_RULES.map((row, i) => (
+            <div key={i} className="rounded-lg border border-border bg-bg-surface p-3 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted uppercase tracking-wider">At</span>
+                <span className="font-mono text-accent font-semibold text-sm">{row.minute}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted uppercase tracking-wider">Restart</span>
+                <span className="text-foreground-primary text-sm">{row.restart}</span>
+              </div>
+              {row.note && (
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-text-muted uppercase tracking-wider shrink-0">Note</span>
+                  <span className="text-text-muted text-sm">{row.note}</span>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 
@@ -202,8 +225,8 @@ export default function RulesPage() {
           <h2 className="text-lg font-bold text-foreground-primary">Matchroom Instructions</h2>
         </div>
 
-        <div className="flex gap-4 p-5 rounded-xl bg-gradient-to-r from-accent/10 to-transparent border border-accent/25">
-          <Home className="w-8 h-8 text-accent shrink-0" />
+        <div className="flex flex-col sm:flex-row gap-4 p-5 rounded-xl bg-gradient-to-r from-accent/10 to-transparent border border-accent/25">
+          <Home className="w-8 h-8 text-accent shrink-0 self-start" />
           <div className="space-y-2">
             <p className="text-foreground-primary font-semibold text-base">
               The Home Team ALWAYS Creates the Matchroom

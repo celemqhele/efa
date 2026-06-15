@@ -204,7 +204,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         manager_id: localManagers[t.logo_team_slug] ?? null
       }))
 
-      const resolvedType = type === 'custom' ? (customTypeName.trim() || 'league') : type
+      const resolvedType = type === 'custom' ? 'league' : type
       const res = await fetch('/api/admin/create-tournament', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -373,7 +373,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
               type="date"
               value={endDate}
               readOnly
-              className="input-field opacity-80 cursor-default"
+              className="input-field opacity-50 cursor-not-allowed bg-bg-elevated"
               required
             />
           </div>
