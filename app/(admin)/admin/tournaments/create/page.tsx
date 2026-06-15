@@ -1,17 +1,10 @@
 import fs from 'fs'
 import path from 'path'
 import { createClient } from '@/lib/supabase/server'
-import { getLeagueFolders } from '@/lib/logo-resolver'
+import { getLeagueFolders, slugToDisplayName } from '@/lib/logo-resolver'
 import CreateTournamentClient from './CreateTournamentClient'
 
 export const revalidate = 0
-
-function slugToName(slug: string): string {
-  return slug
-    .split('-')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-}
 
 export default async function CreateTournamentPage() {
   const supabase = await createClient()
@@ -68,7 +61,7 @@ export default async function CreateTournamentPage() {
       const db = dbBySlug.get(slug)
       clubMap.set(slug, {
         id: db?.id ?? null,
-        name: db?.name ?? slugToName(slug),
+        name: db?.name ?? slugToDisplayName(slug),
         logo_league_folder: db?.logo_league_folder ?? folder,
         logo_team_slug: slug,
         manager_id: db?.manager_id ?? null,

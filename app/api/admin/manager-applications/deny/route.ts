@@ -51,5 +51,12 @@ export async function POST(request: Request) {
     details: { team_name: team.name, applicant_id: applicantId },
   })
 
+  // Mark the requesting admin's own notification as read
+  await adminSupabase.from('notifications')
+    .update({ read: true })
+    .eq('user_id', user.id)
+    .eq('type', 'manager_application')
+    .eq('read', false)
+
   return Response.json({ success: true })
 }

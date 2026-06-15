@@ -57,12 +57,6 @@ export async function POST(request: Request) {
   // Assign new manager on all sibling rows
   await adminSupabase.from('teams').update({ manager_id: newManagerId }).in('id', allClubIds)
 
-  // Update applicant avatar to team logo
-  if (team.logo_league_folder && team.logo_team_slug) {
-    const avatarUrl = `/logos/${team.logo_league_folder}/128x128/${team.logo_team_slug}.png`
-    await adminSupabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', newManagerId)
-  }
-
   // Open new tenures for all sibling rows
   await adminSupabase.from('manager_tenures' as any).insert(
     allClubIds.map((id) => ({
@@ -120,6 +114,13 @@ export async function POST(request: Request) {
       previous_manager_id: previousManagerId,
     },
   })
+
+  // Mark the requesting admin's own notification as read
+  await adminSupabase.from('notifications')
+    .update({ read: true })
+    .eq('user_id', user.id)
+    .eq('type', 'manager_application')
+    .eq('read', false)
 
   return Response.json({ success: true })
 }

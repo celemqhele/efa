@@ -1,4 +1,5 @@
 import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
+import { Check, X, Home, Clock, UserMinus, ShieldBan, CalendarX } from 'lucide-react'
 
 export const revalidate = false // static
 
@@ -26,7 +27,7 @@ export default function RulesPage() {
               key={i}
               className="flex items-start gap-3 py-2.5 px-3 rounded-lg bg-bg-surface border border-border hover:border-accent/30 transition-colors"
             >
-              <span className="text-base leading-none mt-0.5 flex-shrink-0">{item.icon}</span>
+              <span className="text-base leading-none mt-0.5 flex-shrink-0">{item.icon === 'check' ? <Check className="w-4 h-4 text-green-400" /> : item.icon === 'cross' ? <X className="w-4 h-4 text-red-400" /> : <Home className="w-4 h-4 text-accent" />}</span>
               <span className="text-sm text-slate-200 leading-snug">{item.rule}</span>
             </li>
           ))}
@@ -90,7 +91,7 @@ export default function RulesPage() {
         <div className="space-y-3">
           {/* Waiting window */}
           <div className="flex gap-3 p-4 rounded-lg bg-bg-surface border border-border">
-            <span className="text-xl flex-shrink-0">?</span>
+            <Clock className="w-5 h-5 text-accent shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-foreground-primary mb-1">Reporting Window</p>
               <p className="text-sm text-text-muted leading-relaxed">
@@ -104,7 +105,7 @@ export default function RulesPage() {
           {/* Outcome rules */}
           <div className="space-y-2">
             <div className="flex gap-3 p-3.5 rounded-lg bg-green-500/10 border border-green-500/20">
-              <span className="text-lg flex-shrink-0">??</span>
+              <UserMinus className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
               <p className="text-sm text-slate-200 leading-snug">
                 If the <span className="text-green-400 font-semibold">home team</span> submits a
                 waiting report and the away team does not respond, the{' '}
@@ -113,7 +114,7 @@ export default function RulesPage() {
             </div>
 
             <div className="flex gap-3 p-3.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <span className="text-lg flex-shrink-0">??</span>
+              <UserMinus className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
               <p className="text-sm text-slate-200 leading-snug">
                 If the <span className="text-blue-400 font-semibold">away team</span> submits a
                 waiting report and the home team does not respond, the{' '}
@@ -122,7 +123,7 @@ export default function RulesPage() {
             </div>
 
             <div className="flex gap-3 p-3.5 rounded-lg bg-bg-surface0/10 border border-slate-500/20">
-              <span className="text-lg flex-shrink-0">??</span>
+              <ShieldBan className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
               <p className="text-sm text-slate-200 leading-snug">
                 If <span className="text-foreground-secondary font-semibold">neither team</span> submits a
                 waiting report, the fixture is recorded as a{' '}
@@ -132,7 +133,7 @@ export default function RulesPage() {
             </div>
 
             <div className="flex gap-3 p-3.5 rounded-lg bg-red-500/10 border border-red-500/20">
-              <span className="text-lg flex-shrink-0">??</span>
+              <ShieldBan className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
               <p className="text-sm text-slate-200 leading-snug">
                 Any team with{' '}
                 <span className="text-red-400 font-semibold">3 or more abandonments</span> will be
@@ -144,7 +145,57 @@ export default function RulesPage() {
         </div>
       </section>
 
-      {/* -- Section 4: Matchroom Instructions -- */}
+      {/* -- Section 4: Anti-Forfeit Rule -- */}
+      <section className="card p-6 space-y-4">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-1 h-6 rounded-full bg-orange-500" />
+          <h2 className="text-lg font-bold text-foreground-primary">Anti-Forfeit Rule</h2>
+        </div>
+        <div className="flex gap-3 p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
+          <ShieldBan className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-slate-200 leading-relaxed">
+              If a manager forfeits a match (fails to show, abandons, or concedes), the score from
+              that fixture <span className="text-orange-400 font-semibold">carries over</span> to
+              the next match between the same two teams. The forfeiting team also receives a{' '}
+              <span className="text-orange-400 font-semibold">-3 goal difference (GD) penalty</span>{' '}
+              applied at the end of the season.
+            </p>
+            <p className="text-sm text-text-muted leading-relaxed mt-2">
+              This ensures that forfeiting is never an advantageous strategy and that the
+              aggrieved team still gets competitive fixture time.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* -- Section 5: No-Postponements Policy -- */}
+      <section className="card p-6 space-y-4">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-1 h-6 rounded-full bg-rose-500" />
+          <h2 className="text-lg font-bold text-foreground-primary">No-Postponements Policy</h2>
+        </div>
+        <div className="flex gap-3 p-4 rounded-lg bg-rose-500/10 border border-rose-500/20">
+          <CalendarX className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-slate-200 leading-relaxed">
+              Matches will <span className="text-rose-400 font-semibold">not</span> be postponed
+              under normal circumstances. If a manager cannot play their fixture at the scheduled
+              time, a <span className="text-rose-400 font-semibold">backdoor loss</span> will be
+              awarded — unless the manager has messaged an admin{' '}
+              <span className="text-rose-400 font-semibold">before the deadline</span> with a
+              valid reason.
+            </p>
+            <p className="text-sm text-text-muted leading-relaxed mt-2">
+              Valid reasons are reviewed on a case-by-case basis by the administration.
+              Last-minute or no-show situations without prior notice will result in an
+              automatic loss.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* -- Section 6: Matchroom Instructions -- */}
       <section className="card p-6 space-y-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-1 h-6 rounded-full bg-accent" />
@@ -152,7 +203,7 @@ export default function RulesPage() {
         </div>
 
         <div className="flex gap-4 p-5 rounded-xl bg-gradient-to-r from-accent/10 to-transparent border border-accent/25">
-          <div className="text-3xl flex-shrink-0">??</div>
+          <Home className="w-8 h-8 text-accent shrink-0" />
           <div className="space-y-2">
             <p className="text-foreground-primary font-semibold text-base">
               The Home Team ALWAYS Creates the Matchroom

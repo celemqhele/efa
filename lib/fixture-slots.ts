@@ -18,8 +18,8 @@ function isPublicHoliday(dateStr: string): boolean {
 export function getDailyCapacity(dateStr: string): { globalCap: number; teamCap: number } {
   const d = parseISO(dateStr)
   const weekend = d.getDay() === 0 || d.getDay() === 6
-  if (weekend || isPublicHoliday(dateStr)) return { globalCap: 30, teamCap: 3 }
-  return { globalCap: 20, teamCap: 2 }
+  if (weekend || isPublicHoliday(dateStr)) return { globalCap: 20, teamCap: 999 }
+  return { globalCap: 10, teamCap: 999 }
 }
 
 export async function getSlotStateForDate(db: any, dateStr: string): Promise<{ globalUsed: number; teamUsed: Record<string, number> }> {

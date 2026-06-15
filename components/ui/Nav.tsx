@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/supabase/types'
 import { Button } from './Button'
+import GlobalSearch from './GlobalSearch'
 
 interface NavProps {
   profile?: Profile | null
@@ -78,6 +79,9 @@ export default function Nav({ profile, unreadCount = 0 }: NavProps) {
           <div className="flex items-center gap-space-1">
             {profile ? (
               <>
+                {/* Global Search */}
+                <GlobalSearch />
+
                 {/* Notifications bell */}
                 <Link
                   href="/notifications"

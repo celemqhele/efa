@@ -102,7 +102,7 @@ export default async function UsersManagePage() {
                       <td className="py-space-3 pr-space-4">
                         <div className="flex items-center gap-space-2">
                           {applicant?.avatar_url ? (
-                            <Image src={applicant.avatar_url} alt="" width={28} height={28} className="rounded-full" />
+                            <Image src={applicant.avatar_url} alt="" width={28} height={28} className="rounded-full object-cover" />
                           ) : (
                             <div className="w-7 h-7 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
                               {applicant?.username?.[0]?.toUpperCase()}
@@ -171,7 +171,7 @@ export default async function UsersManagePage() {
                     <td className="py-space-3 pr-space-4">
                       <div className="flex items-center gap-space-2">
                         {req.requesting_user?.avatar_url ? (
-                          <Image src={req.requesting_user.avatar_url} alt="" width={28} height={28} className="rounded-full" />
+                          <Image src={req.requesting_user.avatar_url} alt="" width={28} height={28} className="rounded-full object-cover" />
                         ) : (
                           <div className="w-7 h-7 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
                             {req.requesting_user?.username?.[0]?.toUpperCase()}
@@ -228,7 +228,7 @@ export default async function UsersManagePage() {
                     <td className="py-space-3 pr-space-4">
                       <div className="flex items-center gap-space-3">
                         {profile.avatar_url ? (
-                          <Image src={profile.avatar_url} alt="" width={36} height={36} className="rounded-full" />
+                          <Image src={profile.avatar_url} alt="" width={36} height={36} className="rounded-full object-cover" />
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-border-subtle flex items-center justify-center text-sm font-bold text-text-muted">
                             {profile.username?.[0]?.toUpperCase()}

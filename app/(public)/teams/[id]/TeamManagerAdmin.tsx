@@ -91,7 +91,7 @@ export default function TeamManagerAdmin({
       {managerId ? (
         <div className="flex items-center gap-3 bg-bg-surface border border-border rounded-xl px-4 py-3">
           {managerAvatar ? (
-            <Image src={managerAvatar} alt={managerUsername ?? ''} width={40} height={40} className="rounded-full object-contain bg-bg-surface shrink-0" />
+            <Image src={managerAvatar} alt={managerUsername ?? ''} width={40} height={40} className="rounded-full object-cover bg-bg-surface shrink-0" />
           ) : (
             <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center shrink-0">
               <span className="text-gold font-bold">{(managerUsername ?? '?')[0].toUpperCase()}</span>
@@ -122,7 +122,7 @@ export default function TeamManagerAdmin({
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-bg-surface hover:border-gold/50 hover:bg-gold/5 transition-all text-left disabled:opacity-50"
               >
                 {user.avatar_url ? (
-                  <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-contain bg-bg-elevated shrink-0" />
+                  <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-cover bg-bg-elevated shrink-0" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">
                     <span className="text-text-muted text-xs font-bold">{user.username[0].toUpperCase()}</span>
@@ -144,7 +144,7 @@ export default function TeamManagerAdmin({
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-100 bg-bg-surface opacity-60"
                   >
                     {user.avatar_url ? (
-                      <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-contain bg-bg-elevated shrink-0" />
+                      <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-cover bg-bg-elevated shrink-0" />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">
                         <span className="text-text-muted text-xs font-bold">{user.username[0].toUpperCase()}</span>

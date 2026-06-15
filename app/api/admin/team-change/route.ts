@@ -85,15 +85,6 @@ export async function POST(request: Request) {
       .update({ manager_id: changeRequest.requesting_user_id })
       .eq('id', changeRequest.requested_team_id)
 
-    // Update profile avatar_url to new team logo
-    if (requestedTeam) {
-      const logoUrl = `/logos/${requestedTeam.logo_league_folder}/${requestedTeam.logo_team_slug}.png`
-      await adminSupabase
-        .from('profiles')
-        .update({ avatar_url: logoUrl })
-        .eq('id', changeRequest.requesting_user_id)
-    }
-
     // Update request status
     await adminSupabase
       .from('team_change_requests')
@@ -165,6 +156,13 @@ export async function POST(request: Request) {
       },
     })
   }
+
+  // Mark the requesting admin's own notification as read
+  await adminSupabase.from('notifications')
+    .update({ read: true })
+    .eq('user_id', user.id)
+    .eq('type', 'team_request')
+    .eq('read', false)
 
   return Response.json({ success: true, action })
 }

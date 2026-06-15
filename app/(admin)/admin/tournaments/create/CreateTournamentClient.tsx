@@ -1,11 +1,12 @@
 'use client'
 
 // File encoding: UTF-8
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { createClient } from '@/lib/supabase/client'
+import { addDays, format, parseISO } from 'date-fns'
 
 interface Season {
   id: string
@@ -108,6 +109,35 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
 
+  // Auto-calculate end date from slot capacity
+  const calcEndDate = useCallback((start: string, teamCount: number, r: number, t: string, g: number, tpg: number) => {
+    if (!start || teamCount < 2) return ''
+    let totalFixtures: number
+    if (t === 'super_cup') {
+      totalFixtures = 1
+    } else if (t === 'league' || t === 'custom') {
+      totalFixtures = teamCount * (teamCount - 1) * r / 2
+    } else {
+      totalFixtures = g * tpg * (tpg - 1) * r / 2
+    }
+    let date = parseISO(start)
+    let remaining = totalFixtures
+    for (let safety = 0; safety < 365; safety++) {
+      if (remaining <= 0) break
+      const dow = date.getDay()
+      const cap = dow === 0 || dow === 6 ? 10 : 5
+      remaining -= cap
+      date = addDays(date, 1)
+    }
+    return format(date, 'yyyy-MM-dd')
+  }, [])
+
+  useEffect(() => {
+    const teams = type === 'super_cup' ? 2 : selectedSlugs.length
+    const autoEnd = calcEndDate(startDate, teams, numRounds, type, numGroups, teamsPerGroup)
+    if (autoEnd) setEndDate(autoEnd)
+  }, [startDate, selectedSlugs, numRounds, type, numGroups, teamsPerGroup, calcEndDate])
+
   // Manager assignments
   const [users, setUsers] = useState<{ id: string; username: string }[]>([])
   const [localManagers, setLocalManagers] = useState<Record<string, string>>({}) // slug -> user_id
@@ -174,7 +204,7 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         manager_id: localManagers[t.logo_team_slug] ?? null
       }))
 
-      const resolvedType = type === 'custom' ? (customTypeName.trim() || 'custom') : type
+      const resolvedType = type === 'custom' ? (customTypeName.trim() || 'league') : type
       const res = await fetch('/api/admin/create-tournament', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -338,12 +368,12 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
           </div>
 
           <div>
-            <label className="form-label">End Date</label>
+            <label className="form-label">End Date <span className="text-text-muted text-[10px]">(auto-calculated from slot capacity)</span></label>
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="input-field"
+              readOnly
+              className="input-field opacity-80 cursor-default"
               required
             />
           </div>

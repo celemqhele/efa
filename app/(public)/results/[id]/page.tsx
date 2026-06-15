@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { format, parseISO } from 'date-fns'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, BarChart3, ChevronDown, Camera, ArrowLeft, ChevronRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,12 +75,13 @@ export default async function ResultDetailPage({ params }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       {/* Back */}
-      <Link href="/results" className="text-xs text-text-muted hover:text-foreground-secondary flex items-center gap-1">
-        ← Results
+      <Link href="/results" className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-foreground-secondary transition-colors py-2">
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Results
       </Link>
 
       {/* Score card */}
-      <div className="card p-6 text-center relative overflow-hidden">
+      <div className="card p-4 sm:p-6 text-center relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(201,168,76,0.06),transparent_70%)]" />
         <div className="relative">
           {/* Tournament + matchday */}
@@ -94,67 +95,77 @@ export default async function ResultDetailPage({ params }: Props) {
           </div>
 
           {result.is_abandoned && (
-            <div className="mb-4 flex items-center gap-2">
-              <div className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs font-medium inline-block">
-                <AlertTriangle className="w-3.5 h-3.5 inline" /> Abandoned ({result.abandoned_type === 'both' ? 'Mutual' : `${result.abandoned_type} team`})
+            <div className="mb-4 flex flex-col sm:flex-row items-center gap-2 justify-center">
+              <div className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs font-medium inline-flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" /> Abandoned ({result.abandoned_type === 'both' ? 'Mutual' : `${result.abandoned_type} team`})
               </div>
               <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? home?.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? away?.name : ''} forfeited. Score at time: ${result.home_score}-${result.away_score}. This penalty was applied to the aggregate.`} />
             </div>
           )}
 
-          {/* Teams + score */}
-          <div className="flex items-center justify-between gap-4">
-            {/* Home */}
-            <Link href={`/teams/${home?.id}`} className="flex flex-col items-center gap-2 flex-1 hover:opacity-80 transition-opacity">
-              {home?.logo_league_folder && (
-                <Image
-                  src={getTeamLogo(home.logo_league_folder, home.logo_team_slug, 'match_detail_hero')}
-                  alt={home.name}
-                  width={80} height={80}
-                  className="object-contain"
-                />
-              )}
-              <span className="text-sm font-bold text-foreground-primary text-center leading-tight">{home?.name}</span>
-              <span className="text-xs text-text-muted">{home?.manager?.username ?? 'NO MANAGER'}</span>
-            </Link>
-
-            {/* Score */}
-            <div className="text-center">
-              <div className="text-5xl font-black text-foreground-primary tabular-nums">
+          {/* Teams + score — mobile: stacked, sm: side-by-side */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-4">
+            {/* Score (mobile: show on top between teams) */}
+            <div className="order-1 sm:order-none text-center mb-3 sm:mb-0 w-full sm:w-auto">
+              <div className="text-5xl sm:text-5xl font-black text-foreground-primary tabular-nums">
                 {result.home_score}
                 <span className="text-text-muted mx-2">–</span>
                 {result.away_score}
               </div>
               {fixture?.scheduled_date && (
-                <div className="text-xs text-text-muted mt-2">
+                <div className="text-xs text-text-muted mt-1.5">
                   {format(parseISO(fixture.scheduled_date), 'EEE d MMM yyyy')}
                 </div>
               )}
-              <div className="text-xs text-green-400 mt-1 font-medium">Full Time</div>
+              <div className="text-[10px] text-green-400 mt-1 font-semibold uppercase tracking-wider">Full Time</div>
             </div>
 
-            {/* Away */}
-            <Link href={`/teams/${away?.id}`} className="flex flex-col items-center gap-2 flex-1 hover:opacity-80 transition-opacity">
-              {away?.logo_league_folder && (
-                <Image
-                  src={getTeamLogo(away.logo_league_folder, away.logo_team_slug, 'match_detail_hero')}
-                  alt={away.name}
-                  width={80} height={80}
-                  className="object-contain"
-                />
-              )}
-              <span className="text-sm font-bold text-foreground-primary text-center leading-tight">{away?.name}</span>
-              <span className="text-xs text-text-muted">{away?.manager?.username ?? 'NO MANAGER'}</span>
-            </Link>
+            {/* Teams row */}
+            <div className="flex items-center justify-between gap-4 w-full sm:w-auto order-2 sm:order-none">
+              {/* Home */}
+              <Link href={`/teams/${home?.id}`} className="flex flex-col items-center gap-1.5 flex-1 sm:flex-initial hover:opacity-80 transition-opacity min-w-0">
+                {home?.logo_league_folder && (
+                  <Image
+                    src={getTeamLogo(home.logo_league_folder, home.logo_team_slug, 'match_detail_hero')}
+                    alt={home.name}
+                    width={56} height={56}
+                    className="object-contain w-14 h-14 sm:w-20 sm:h-20"
+                  />
+                )}
+                <span className="text-xs sm:text-sm font-bold text-foreground-primary text-center leading-tight truncate max-w-[100px] sm:max-w-[160px]">{home?.name}</span>
+                <span className="text-[10px] sm:text-xs text-text-muted truncate max-w-[100px] sm:max-w-[160px]">{home?.manager?.username ?? 'NO MANAGER'}</span>
+              </Link>
+
+              {/* VS divider (mobile only) */}
+              <span className="text-text-muted text-lg font-black sm:hidden">:</span>
+
+              {/* Away */}
+              <Link href={`/teams/${away?.id}`} className="flex flex-col items-center gap-1.5 flex-1 sm:flex-initial hover:opacity-80 transition-opacity min-w-0">
+                {away?.logo_league_folder && (
+                  <Image
+                    src={getTeamLogo(away.logo_league_folder, away.logo_team_slug, 'match_detail_hero')}
+                    alt={away.name}
+                    width={56} height={56}
+                    className="object-contain w-14 h-14 sm:w-20 sm:h-20"
+                  />
+                )}
+                <span className="text-xs sm:text-sm font-bold text-foreground-primary text-center leading-tight truncate max-w-[100px] sm:max-w-[160px]">{away?.name}</span>
+                <span className="text-[10px] sm:text-xs text-text-muted truncate max-w-[100px] sm:max-w-[160px]">{away?.manager?.username ?? 'NO MANAGER'}</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Match Stats */}
+      {/* Match Stats — collapsible on mobile, open on desktop */}
       {stats && (
-        <div className="card p-4">
-          <h2 className="section-header text-base">Match Statistics</h2>
-          <div className="space-y-3">
+        <details className="card p-0 overflow-hidden group" open>
+          <summary className="flex items-center gap-2 px-4 py-3.5 cursor-pointer list-none select-none active:bg-black/[0.02] transition-colors lg:pointer-events-none">
+            <BarChart3 className="w-4 h-4 text-[#c9a84c] shrink-0" />
+            <span className="text-sm font-bold text-foreground-primary flex-1">Match Statistics</span>
+            <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+          </summary>
+          <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
             {stats.home_possession != null && (
               <StatBar label="Possession %" homeVal={stats.home_possession} awayVal={stats.away_possession ?? 0} />
             )}
@@ -185,41 +196,48 @@ export default async function ResultDetailPage({ params }: Props) {
             {stats.home_interceptions != null && (
               <StatBar label="Interceptions" homeVal={stats.home_interceptions} awayVal={stats.away_interceptions ?? 0} />
             )}
-          </div>
 
-          {/* Key: home=gold, away=blue */}
-          <div className="flex justify-between mt-4 pt-3 border-t border-border">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-1.5 rounded-full bg-[#c9a84c]" />
-              <span className="text-xs text-text-muted">{home?.name}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-muted">{away?.name}</span>
-              <div className="w-3 h-1.5 rounded-full bg-blue-500" />
+            {/* Key: home=gold, away=blue */}
+            <div className="flex justify-between pt-3 border-t border-border">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-1.5 rounded-full bg-[#c9a84c]" />
+                <span className="text-xs text-text-muted">{home?.name}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-text-muted">{away?.name}</span>
+                <div className="w-3 h-1.5 rounded-full bg-blue-500" />
+              </div>
             </div>
           </div>
-        </div>
+        </details>
       )}
 
       {/* Screenshot */}
       {result.screenshot_url && (
-        <div className="card p-4">
-          <h2 className="section-header text-base">Match Screenshot</h2>
-          <img
-            src={result.screenshot_url}
-            alt="Match screenshot"
-            className="w-full rounded-lg border border-border"
-          />
-        </div>
+        <details className="card p-0 overflow-hidden group" open>
+          <summary className="flex items-center gap-2 px-4 py-3.5 cursor-pointer list-none select-none lg:pointer-events-none">
+            <Camera className="w-4 h-4 text-[#c9a84c] shrink-0" />
+            <span className="text-sm font-bold text-foreground-primary flex-1">Match Screenshot</span>
+            <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+          </summary>
+          <div className="px-4 pb-4 border-t border-border pt-3">
+            <img
+              src={result.screenshot_url}
+              alt="Match screenshot"
+              className="w-full rounded-lg border border-border"
+            />
+          </div>
+        </details>
       )}
 
       {/* View fixture */}
       {fixture?.id && (
         <Link
           href={`/fixtures/${fixture.id}`}
-          className="btn-outline w-full text-center py-3 block text-sm"
+          className="btn-outline w-full text-center py-3 block text-sm font-semibold flex items-center justify-center gap-1.5"
         >
-          View Fixture Details →
+          View Fixture Details
+          <ChevronRight className="w-4 h-4" />
         </Link>
       )}
     </div>

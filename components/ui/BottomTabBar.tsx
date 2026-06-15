@@ -115,6 +115,7 @@ export default function BottomTabBar({ profile, unreadCount = 0 }: BottomTabBarP
           <MobileMoreLink href="/hall-of-fame" icon={Award} label="Hall of Fame" onClick={closeMore} />
           <MobileMoreLink href="/rules" icon={ScrollText} label="Rules" onClick={closeMore} />
 
+
           {profile && (
             <>
               <div className="border-t border-border my-space-2" />

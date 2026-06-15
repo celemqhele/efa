@@ -459,7 +459,7 @@ async function AdminDashboardContent() {
                 <div key={req.id} className="bg-navy-light rounded-lg border border-navy-border px-3 py-2.5">
                   <div className="flex items-center gap-2 mb-2">
                     {req.requesting_user?.avatar_url ? (
-                      <Image src={req.requesting_user.avatar_url} alt={req.requesting_user.username} width={24} height={24} className="rounded-full shrink-0" />
+                      <Image src={req.requesting_user.avatar_url} alt={req.requesting_user.username} width={24} height={24} className="rounded-full object-cover shrink-0" />
                     ) : (
                       <div className="w-6 h-6 rounded-full bg-navy-border flex items-center justify-center text-[10px] text-text-muted shrink-0">
                         {req.requesting_user?.username?.[0]?.toUpperCase()}

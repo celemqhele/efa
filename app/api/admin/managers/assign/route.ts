@@ -82,13 +82,8 @@ export async function POST(request: Request) {
 
   if (updateErr) return Response.json({ error: updateErr.message }, { status: 500 })
 
-  // Update profile avatar to this team's logo
-  if (team.logo_league_folder && team.logo_team_slug) {
-    const avatarUrl = `/logos/${team.logo_league_folder}/128x128/${team.logo_team_slug}.png`
-    await adminSupabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user_id)
-  }
-
   const now = new Date().toISOString()
+
 
   // Close any existing open tenures for these rows
   await adminSupabase

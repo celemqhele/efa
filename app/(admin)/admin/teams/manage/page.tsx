@@ -74,7 +74,7 @@ export default async function TeamsManagePage() {
                     {manager ? (
                       <>
                         {manager.avatar_url ? (
-                          <Image src={manager.avatar_url} alt="" width={20} height={20} className="rounded-full" />
+                          <Image src={manager.avatar_url} alt="" width={20} height={20} className="rounded-full object-cover" />
                         ) : (
                           <div className="w-5 h-5 rounded-full bg-bg-base flex items-center justify-center text-xs text-text-muted">
                             {manager.username?.[0]?.toUpperCase()}
@@ -136,7 +136,7 @@ export default async function TeamsManagePage() {
                       {manager ? (
                         <div className="flex items-center gap-space-2">
                           {manager.avatar_url ? (
-                            <Image src={manager.avatar_url} alt="" width={24} height={24} className="rounded-full" />
+                            <Image src={manager.avatar_url} alt="" width={24} height={24} className="rounded-full object-cover" />
                           ) : (
                             <div className="w-6 h-6 rounded-full bg-bg-elevated flex items-center justify-center text-xs text-text-muted">
                               {manager.username?.[0]?.toUpperCase()}

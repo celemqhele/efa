@@ -46,6 +46,29 @@ export function getLeagueFolders(): string[] {
   ]
 }
 
+function slugToName(slug: string): string {
+  return slug
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+const SLUG_OVERRIDES: Record<string, string> = {
+  'dutch-national-team': 'Netherlands',
+  'portugal-national-team': 'Portugal',
+  'france-national-team': 'France',
+  'germany-national-team': 'Germany',
+  'italy-national-team': 'Italy',
+  'spain-national-team': 'Spain',
+  'argentina-national-team': 'Argentina',
+  'england-national-team': 'England',
+  'brazil-national-team': 'Brazil',
+}
+
+export function slugToDisplayName(slug: string, fallback?: string): string {
+  return SLUG_OVERRIDES[slug] ?? fallback ?? slugToName(slug)
+}
+
 export function getLeagueDisplayName(folder: string): string {
   const map: Record<string, string> = {
     'argentina-primera-division-2025-2026.football-logos.cc': 'Argentina Primera División',

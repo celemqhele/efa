@@ -140,7 +140,7 @@ function SeasonCard({
             isActive
               ? 'bg-feedback-success/10 border-feedback-success/30 text-feedback-success'
               : isCompleted
-              ? 'bg-bg-elevated border-border text-text-muted'
+              ? 'bg-accent/10 border-accent/30 text-accent'
               : 'bg-feedback-warning/10 border-feedback-warning/30 text-feedback-warning'
           }`}
         >
