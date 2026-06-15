@@ -41,7 +41,7 @@
 
 @layer components {
   .card {
-    @apply bg-bg-surface border border-border rounded-lg shadow-sm transition-all duration-base p-4 sm:p-5 active:scale-[0.99];
+    @apply bg-bg-surface border border-border rounded-lg shadow-sm transition-all duration-base p-4 sm:p-5;
   }
 
   .btn-gold {

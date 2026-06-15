@@ -8,6 +8,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import { createClient } from '@/lib/supabase/client'
 import { addDays, format, parseISO } from 'date-fns'
 import { Loader2 } from 'lucide-react'
+import ModalPortal from '@/components/ui/ModalPortal'
 
 interface Season {
   id: string
@@ -773,52 +774,54 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          <div className="relative z-10 w-full max-w-md bg-bg-surface border border-border rounded-2xl shadow-2xl p-6 animate-scale-in max-h-[80vh] flex flex-col">
-            <h3 className="text-lg font-bold text-foreground-primary mb-4">Import from Poll</h3>
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+            <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+            <div className="relative z-10 w-full max-w-md bg-bg-surface border border-border rounded-2xl shadow-2xl p-6 animate-scale-in max-h-[80vh] flex flex-col">
+              <h3 className="text-lg font-bold text-foreground-primary mb-4">Import from Poll</h3>
 
-            {error && (
-              <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg mb-4">{error}</p>
-            )}
+              {error && (
+                <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg mb-4">{error}</p>
+              )}
 
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-5 h-5 text-accent animate-spin" />
-              </div>
-            ) : polls.length === 0 ? (
-              <p className="text-sm text-text-muted text-center py-8">No polls found.</p>
-            ) : (
-              <div className="flex-1 overflow-y-auto space-y-2">
-                {polls.map((poll) => {
-                  const pollApps = apps.filter((a: any) => a.poll_id === poll.id && a.status !== 'withdrawn')
-                  return (
-                    <button
-                      key={poll.id}
-                      type="button"
-                      onClick={() => handleImport(poll.id)}
-                      className="w-full flex items-center justify-between p-3 rounded-lg border border-border bg-bg-elevated hover:border-accent/30 transition-colors text-left"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-foreground-primary">{poll.title}</p>
-                        <p className="text-xs text-text-muted mt-0.5">{pollApps.length} teams</p>
-                      </div>
-                      <span className="text-xs text-accent shrink-0">Import</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 text-accent animate-spin" />
+                </div>
+              ) : polls.length === 0 ? (
+                <p className="text-sm text-text-muted text-center py-8">No polls found.</p>
+              ) : (
+                <div className="flex-1 overflow-y-auto space-y-2">
+                  {polls.map((poll) => {
+                    const pollApps = apps.filter((a: any) => a.poll_id === poll.id && a.status !== 'withdrawn')
+                    return (
+                      <button
+                        key={poll.id}
+                        type="button"
+                        onClick={() => handleImport(poll.id)}
+                        className="w-full flex items-center justify-between p-3 rounded-lg border border-border bg-bg-elevated hover:border-accent/30 transition-colors text-left"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-foreground-primary">{poll.title}</p>
+                          <p className="text-xs text-text-muted mt-0.5">{pollApps.length} teams</p>
+                        </div>
+                        <span className="text-xs text-accent shrink-0">Import</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
 
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="mt-4 text-sm text-text-muted hover:text-foreground-secondary transition-colors self-center"
-            >
-              Cancel
-            </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="mt-4 text-sm text-text-muted hover:text-foreground-secondary transition-colors self-center"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </>
   )

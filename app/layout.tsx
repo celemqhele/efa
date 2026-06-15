@@ -45,6 +45,7 @@ export default function RootLayout({
           <GlobalNotifications />
           <UpdateBanner />
         </ThemeProvider>
+        <div id="portal-root" />
       </body>
     </html>
   )
