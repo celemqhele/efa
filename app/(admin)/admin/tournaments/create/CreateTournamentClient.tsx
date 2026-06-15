@@ -1,12 +1,11 @@
 'use client'
 
 // File encoding: UTF-8
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { createClient } from '@/lib/supabase/client'
-import { addDays, format, parseISO } from 'date-fns'
 import { Loader2, CheckCircle } from 'lucide-react'
 import ModalPortal from '@/components/ui/ModalPortal'
 
@@ -62,64 +61,18 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  // Format Settings
-  const [numGroups, setNumGroups] = useState(4)
-  const [teamsPerGroup, setTeamsPerGroup] = useState(3)
-  const [numRounds, setNumRounds] = useState(2)
-  const [qualifiersPerGroup, setQualifiersPerGroup] = useState(2)
-
   // Team selection — using logo_team_slug as the unique key
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])
   const [teamSearch, setTeamSearch] = useState('')
   const [successId, setSuccessId] = useState<string | null>(null)
 
-  const isTournament = type === 'tournament_club' || type === 'tournament_international'
   const isFriendlies = type === 'friendlies'
 
   useEffect(() => {
     setName(TOURNAMENT_NAMES[type] ?? type)
     setSelectedSlugs([])
-    if (type === 'league') {
-      setNumRounds(2)
-    } else if (isTournament) {
-      setNumGroups(4)
-      setTeamsPerGroup(3)
-      setNumRounds(2)
-      setQualifiersPerGroup(2)
-    } else if (isFriendlies) {
-      setNumRounds(1)
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
-
-  // Auto-calculate end date from slot capacity
-  const calcEndDate = useCallback((start: string, teamCount: number, r: number, t: string, g: number, tpg: number) => {
-    if (!start || teamCount < 2) return ''
-    let totalFixtures: number
-    if (t === 'league') {
-      totalFixtures = teamCount * (teamCount - 1) * r / 2
-    } else if (t === 'tournament_club' || t === 'tournament_international') {
-      totalFixtures = g * tpg * (tpg - 1) * r / 2
-    } else {
-      totalFixtures = 1
-    }
-    let date = parseISO(start)
-    let remaining = totalFixtures
-    for (let safety = 0; safety < 365; safety++) {
-      if (remaining <= 0) break
-      const dow = date.getDay()
-      const cap = dow === 0 || dow === 6 ? 10 : 5
-      remaining -= cap
-      date = addDays(date, 1)
-    }
-    return format(date, 'yyyy-MM-dd')
-  }, [])
-
-  useEffect(() => {
-    const teams = isFriendlies ? 2 : selectedSlugs.length
-    const autoEnd = calcEndDate(startDate, teams, numRounds, type, numGroups, teamsPerGroup)
-    if (autoEnd) setEndDate(autoEnd)
-  }, [startDate, selectedSlugs, numRounds, type, numGroups, teamsPerGroup, calcEndDate])
 
   // Manager assignments
   const [users, setUsers] = useState<{ id: string; username: string }[]>([])
@@ -156,13 +109,6 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
     if (selectedSlugs.length < 2) return setError('Select at least 2 teams.')
     if (isFriendlies && selectedSlugs.length > 2) return setError('Friendlies can only have 2 teams.')
     if (!startDate || !endDate) return setError('Start and end dates are required.')
-    
-    // Validation for groups
-    if (isTournament) {
-      if (selectedSlugs.length !== numGroups * teamsPerGroup) {
-        return setError(`Team count (${selectedSlugs.length}) does not match Group settings (${numGroups} groups × ${teamsPerGroup} teams = ${numGroups * teamsPerGroup}).`)
-      }
-    }
 
     setLoading(true)
     try {
@@ -199,10 +145,6 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
           end_date: endDate,
           teams: teamsData,
           settings: {
-            num_groups: numGroups,
-            teams_per_group: teamsPerGroup,
-            num_rounds: numRounds,
-            qualifiers_per_group: qualifiersPerGroup,
             fixture_mode: FIXTURE_MODE[type] ?? 'round_robin'
           }
         }),
@@ -328,78 +270,17 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
           </div>
 
           <div>
-            <label className="form-label">End Date <span className="text-text-muted text-[10px]">(auto-calculated from slot capacity)</span></label>
+            <label className="form-label">End Date</label>
             <input
               type="date"
               value={endDate}
-              readOnly
-              className="input-field opacity-50 cursor-not-allowed bg-bg-elevated"
+              onChange={(e) => setEndDate(e.target.value)}
+              className="input-field"
               required
             />
           </div>
         </div>
       </div>
-
-      {/* Format Settings */}
-      {!isFriendlies && (
-        <div className="card p-5">
-          <h2 className="section-header">Format Settings</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {isTournament && (
-              <>
-                <div>
-                  <label className="form-label">Number of Groups</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={numGroups}
-                    onChange={(e) => setNumGroups(parseInt(e.target.value) || 1)}
-                    className="input-field"
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Teams per Group</label>
-                  <input
-                    type="number"
-                    min="2"
-                    value={teamsPerGroup}
-                    onChange={(e) => setTeamsPerGroup(parseInt(e.target.value) || 2)}
-                    className="input-field"
-                  />
-                </div>
-              </>
-            )}
-            <div>
-              <label className="form-label">Rounds (1=Single, 2=H&A)</label>
-              <input
-                type="number"
-                min="1"
-                max="4"
-                value={numRounds}
-                onChange={(e) => setNumRounds(parseInt(e.target.value) || 1)}
-                className="input-field"
-              />
-            </div>
-            {isTournament && (
-              <div>
-                <label className="form-label">Qualifiers per Group</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={qualifiersPerGroup}
-                  onChange={(e) => setQualifiersPerGroup(parseInt(e.target.value) || 1)}
-                  className="input-field"
-                />
-              </div>
-            )}
-          </div>
-          {isTournament && (
-            <p className="mt-3 text-xs text-text-muted">
-              Total teams required: <strong className="text-gold">{numGroups * teamsPerGroup}</strong>
-            </p>
-          )}
-        </div>
-      )}
 
       {!isFriendlies && (
       <div className="card p-5">

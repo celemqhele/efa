@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import PollListClient from './PollListClient'
+import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,5 +11,5 @@ export default async function PollsPage() {
     .select('*, created_by:profiles!polls_created_by_fkey(username)')
     .order('created_at', { ascending: false })
 
-  return <PollListClient polls={polls ?? []} />
+  return <Shell data={{ polls: polls ?? [] }} />
 }

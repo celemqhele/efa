@@ -16,6 +16,12 @@ export default function RunTournamentDrawButton({ tournamentId, tournamentName, 
   const [result, setResult] = useState<{ groups?: any[]; pairings?: any[]; iterations?: number } | null>(null)
   const router = useRouter()
 
+  // Draw settings
+  const [numGroups, setNumGroups] = useState(4)
+  const [teamsPerGroup, setTeamsPerGroup] = useState(3)
+  const [numRounds, setNumRounds] = useState(2)
+  const [qualifiersPerGroup, setQualifiersPerGroup] = useState(2)
+
   // Only show for tournament types that need group/KO draws
   if (!['tournament_club', 'tournament_international'].includes(type)) return null
 
@@ -26,7 +32,13 @@ export default function RunTournamentDrawButton({ tournamentId, tournamentName, 
       const res = await fetch('/api/admin/tournament-draw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tournament_id: tournamentId }),
+        body: JSON.stringify({
+          tournament_id: tournamentId,
+          num_groups: numGroups,
+          teams_per_group: teamsPerGroup,
+          num_rounds: numRounds,
+          qualifiers_per_group: qualifiersPerGroup,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Draw failed')
@@ -57,25 +69,73 @@ export default function RunTournamentDrawButton({ tournamentId, tournamentName, 
             <p className="text-xs text-text-muted mb-4">
               {result
                 ? 'Draw completed. Groups and standings have been created.'
-                : `Run the group stage draw for ${tournamentName}. Teams will be split into pots by ranking and randomly assigned to groups.`}
+                : `Configure groups and run the draw for ${tournamentName}.`}
             </p>
 
             {!result && (
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  className="px-4 py-2 text-sm font-medium text-text-muted hover:text-foreground-secondary transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleRunDraw}
-                  disabled={loading}
-                  className="px-4 py-2 bg-gold text-navy text-sm font-bold rounded-lg hover:bg-gold-light transition-colors disabled:opacity-50"
-                >
-                  {loading ? 'Drawing...' : 'Run Draw'}
-                </button>
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="form-label">Number of Groups</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={numGroups}
+                      onChange={(e) => setNumGroups(parseInt(e.target.value) || 1)}
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Teams per Group</label>
+                    <input
+                      type="number"
+                      min="2"
+                      value={teamsPerGroup}
+                      onChange={(e) => setTeamsPerGroup(parseInt(e.target.value) || 2)}
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Rounds (1=Single, 2=H&A)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="4"
+                      value={numRounds}
+                      onChange={(e) => setNumRounds(parseInt(e.target.value) || 1)}
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Qualifiers per Group</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={qualifiersPerGroup}
+                      onChange={(e) => setQualifiersPerGroup(parseInt(e.target.value) || 1)}
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-text-muted mb-4">
+                  Total teams required: <strong className="text-gold">{numGroups * teamsPerGroup}</strong>
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowConfirm(false)}
+                    className="px-4 py-2 text-sm font-medium text-text-muted hover:text-foreground-secondary transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRunDraw}
+                    disabled={loading}
+                    className="px-4 py-2 bg-gold text-navy text-sm font-bold rounded-lg hover:bg-gold-light transition-colors disabled:opacity-50"
+                  >
+                    {loading ? 'Drawing...' : 'Run Draw'}
+                  </button>
+                </div>
+              </>
             )}
 
             {result?.groups && (

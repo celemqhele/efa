@@ -9,7 +9,14 @@ export async function POST(request: Request) {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  let body: { tournament_id: string; phase?: 'groups' | 'knockout' }
+  let body: {
+    tournament_id: string
+    phase?: 'groups' | 'knockout'
+    num_groups?: number
+    teams_per_group?: number
+    num_rounds?: number
+    qualifiers_per_group?: number
+  }
   try { body = await request.json() } catch {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 })
   }
@@ -41,8 +48,24 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Not enough teams' }, { status: 400 })
   }
 
+  // Save draw settings to tournament if provided
+  const drawSettings: Record<string, any> = {}
+  if (body.num_groups !== undefined) drawSettings.num_groups = body.num_groups
+  if (body.teams_per_group !== undefined) drawSettings.teams_per_group = body.teams_per_group
+  if (body.num_rounds !== undefined) drawSettings.num_rounds = body.num_rounds
+  if (body.qualifiers_per_group !== undefined) drawSettings.qualifiers_per_group = body.qualifiers_per_group
+
+  if (Object.keys(drawSettings).length > 0) {
+    await db('tournaments')
+      .update({ settings: { ...settings, ...drawSettings } })
+      .eq('id', tournament_id)
+  }
+
+  // Merge settings for the draw logic
+  const mergedSettings = { ...settings, ...drawSettings }
+
   if (phase === 'groups') {
-    return await handleGroupDraw(adminSupabase, tournament, teams, settings, db)
+    return await handleGroupDraw(adminSupabase, tournament, teams, mergedSettings, db)
   }
 
   return await handleKnockoutDraw(adminSupabase, tournament, teams, settings, db)
