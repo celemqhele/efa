@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { createClient } from '@/lib/supabase/client'
 import { addDays, format, parseISO } from 'date-fns'
+import { Loader2 } from 'lucide-react'
 
 interface Season {
   id: string
@@ -447,7 +448,8 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         <div className="card p-5">
           <h2 className="section-header">
             Teams
-            <span className="ml-auto text-sm font-normal text-text-muted">
+            <span className="ml-auto text-xs font-normal text-text-muted flex items-center gap-2">
+              <ImportFromPollButton allTeams={allTeams} onSelect={setSelectedSlugs} />
               {selectedSlugs.length} selected
             </span>
           </h2>
@@ -706,6 +708,96 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
         </button>
       </div>
     </form>
+  )
+}
+
+function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSelect: (slugs: string[]) => void }) {
+  const [open, setOpen] = useState(false)
+  const [polls, setPolls] = useState<any[]>([])
+  const [apps, setApps] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selectedPollId, setSelectedPollId] = useState<string | null>(null)
+
+  async function loadPolls() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin/polls')
+      const data = await res.json()
+      setPolls((data.polls ?? []).filter((p: any) => p.status === 'closed'))
+      setApps(data.applications ?? [])
+    } catch {}
+    setLoading(false)
+  }
+
+  function handleImport(pollId: string) {
+    const pollApps = apps.filter((a: any) => a.poll_id === pollId && a.status === 'approved')
+    const matched: string[] = []
+    for (const app of pollApps) {
+      const team = allTeams.find(
+        (t) => t.logo_team_slug === app.team_slug && t.logo_league_folder === app.team_league
+      )
+      if (team) matched.push(team.logo_team_slug)
+    }
+    onSelect(matched)
+    setOpen(false)
+    setSelectedPollId(null)
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => { setOpen(true); loadPolls() }}
+        className="text-[10px] px-2 py-0.5 rounded bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors"
+      >
+        Import from Poll
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+          <div className="relative z-10 w-full max-w-md bg-bg-surface border border-border rounded-2xl shadow-2xl p-6 animate-scale-in max-h-[80vh] flex flex-col">
+            <h3 className="text-lg font-bold text-foreground-primary mb-4">Import from Poll</h3>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 text-accent animate-spin" />
+              </div>
+            ) : polls.length === 0 ? (
+              <p className="text-sm text-text-muted text-center py-8">No closed polls found.</p>
+            ) : (
+              <div className="flex-1 overflow-y-auto space-y-2">
+                {polls.map((poll) => {
+                  const pollApps = apps.filter((a: any) => a.poll_id === poll.id && a.status === 'approved')
+                  return (
+                    <button
+                      key={poll.id}
+                      type="button"
+                      onClick={() => handleImport(poll.id)}
+                      className="w-full flex items-center justify-between p-3 rounded-lg border border-border bg-bg-elevated hover:border-accent/30 transition-colors text-left"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-foreground-primary">{poll.title}</p>
+                        <p className="text-xs text-text-muted mt-0.5">{pollApps.length} approved teams</p>
+                      </div>
+                      <span className="text-xs text-accent shrink-0">Import</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="mt-4 text-sm text-text-muted hover:text-foreground-secondary transition-colors self-center"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
