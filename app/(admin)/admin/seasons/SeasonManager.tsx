@@ -775,8 +775,8 @@ function SuperCupDialog({
   onClose: () => void
   onCreated: () => void
 }) {
-  const [uclTeams, setUclTeams] = useState<{ id: string; name: string }[]>([])
-  const [europaTeams, setEuropaTeams] = useState<{ id: string; name: string }[]>([])
+  const [uclTeams, setUclTeams] = useState<Team[]>([])
+  const [europaTeams, setEuropaTeams] = useState<Team[]>([])
   const [selectedUcl, setSelectedUcl] = useState('')
   const [selectedEuropa, setSelectedEuropa] = useState('')
   const [loading, setLoading] = useState(false)
@@ -792,7 +792,7 @@ function SuperCupDialog({
       if (uclTId) {
         const { data: uclPart } = await supabase
           .from('tournament_participants')
-          .select('team:team_id(id, name)')
+          .select('team:teams(id, name, logo_league_folder, logo_team_slug)')
           .eq('tournament_id', uclTId) as any
         if (uclPart) {
           setUclTeams(uclPart.map((p: any) => p.team).filter(Boolean))
@@ -803,7 +803,7 @@ function SuperCupDialog({
       if (europaTId) {
         const { data: europaPart } = await supabase
           .from('tournament_participants')
-          .select('team:team_id(id, name)')
+          .select('team:teams(id, name, logo_league_folder, logo_team_slug)')
           .eq('tournament_id', europaTId) as any
         if (europaPart) {
           setEuropaTeams(europaPart.map((p: any) => p.team).filter(Boolean))
@@ -818,39 +818,35 @@ function SuperCupDialog({
       setError('Please select both UCL and Europa winners')
       return
     }
-    if (selectedUcl === selectedEuropa) {
-      setError('UCL and Europa winners must be different teams')
-      return
-    }
 
     setLoading(true)
     setError('')
     setResult(null)
 
-    const res = await fetch('/api/admin/generate-super-cup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        season_id: seasonId,
-        ucl_winner_id: selectedUcl,
-        europa_winner_id: selectedEuropa,
-      }),
-    })
+    try {
+      const res = await fetch('/api/admin/generate-super-cup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          season_id: seasonId,
+          ucl_winner_id: selectedUcl,
+          europa_winner_id: selectedEuropa,
+        }),
+      })
 
-    const data = await res.json()
-    setLoading(false)
-
-    if (!res.ok) {
-      setError(data.error ?? 'Failed to generate Super Cup')
-      return
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to generate Super Cup')
+      setResult(data)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
-
-    setResult(data)
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-space-4" onClick={onClose}>
-      <div className="w-full max-w-lg bg-bg-surface border border-border rounded-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-space-4 overflow-y-auto" onClick={onClose}>
+      <div className="w-full max-w-2xl bg-bg-surface border border-border rounded-2xl overflow-hidden my-space-8" onClick={(e) => e.stopPropagation()}>
         <div className="px-space-6 py-space-4 border-b border-border flex items-center justify-between">
           <h2 className="text-text-primary font-bold text-lg flex items-center gap-space-2">
             <Trophy className="w-5 h-5 text-gold" /> Generate Super Cup
@@ -870,39 +866,51 @@ function SuperCupDialog({
             <Button onClick={onCreated} variant="primary" className="w-full">Done</Button>
           </div>
         ) : (
-          <div className="p-space-6 space-y-space-5">
-            {/* UCL Winner */}
-            <div>
-              <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-space-2 block">
-                UCL Winner
-              </label>
-              <select
-                value={selectedUcl}
-                onChange={(e) => setSelectedUcl(e.target.value)}
-                className="w-full bg-bg-base border border-border rounded-lg px-space-4 py-space-3 text-sm text-text-primary focus:outline-none focus:border-accent"
-              >
-                <option value="">Select UCL winner...</option>
-                {uclTeams.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-            </div>
+          <div className="p-space-6 space-y-space-6">
+            <div className="space-y-space-4">
+              <div className="bg-accent-muted border border-accent/20 rounded-lg p-space-3 text-xs text-accent">
+                Select the winners of the UCL and Europa League to generate the Super Cup final.
+              </div>
 
-            {/* Europa Winner */}
-            <div>
-              <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-space-2 block">
-                Europa League Winner
-              </label>
-              <select
-                value={selectedEuropa}
-                onChange={(e) => setSelectedEuropa(e.target.value)}
-                className="w-full bg-bg-base border border-border rounded-lg px-space-4 py-space-3 text-sm text-text-primary focus:outline-none focus:border-accent"
-              >
-                <option value="">Select Europa winner...</option>
-                {europaTeams.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-space-6">
+                {/* UCL Picker */}
+                <div>
+                  <div className="flex items-center justify-between mb-space-3">
+                    <h3 className="text-text-primary font-semibold text-sm">UCL Winner</h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-space-2 max-h-60 overflow-y-auto pr-space-1">
+                    {uclTeams.map((team) => (
+                      <TeamPickerButton
+                        key={team.id}
+                        team={team}
+                        selected={selectedUcl === team.id}
+                        disabled={false}
+                        accentClass="bg-accent/10 border-accent/40"
+                        onClick={() => setSelectedUcl(team.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Europa Picker */}
+                <div>
+                  <div className="flex items-center justify-between mb-space-3">
+                    <h3 className="text-text-primary font-semibold text-sm">Europa Winner</h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-space-2 max-h-60 overflow-y-auto pr-space-1">
+                    {europaTeams.map((team) => (
+                      <TeamPickerButton
+                        key={team.id}
+                        team={team}
+                        selected={selectedEuropa === team.id}
+                        disabled={false}
+                        accentClass="bg-feedback-warning/10 border-feedback-warning/40"
+                        onClick={() => setSelectedEuropa(team.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {error && (
@@ -911,8 +919,14 @@ function SuperCupDialog({
 
             <div className="flex gap-space-3">
               <Button onClick={onClose} variant="secondary" className="flex-1">Cancel</Button>
-              <Button onClick={handleSubmit} isLoading={loading} variant="primary" className="flex-1">
-                Generate Super Cup
+              <Button 
+                onClick={handleSubmit} 
+                isLoading={loading} 
+                variant="primary" 
+                className="flex-1"
+                disabled={!selectedUcl || !selectedEuropa}
+              >
+                Generate Final
               </Button>
             </div>
           </div>
