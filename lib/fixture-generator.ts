@@ -111,7 +111,7 @@ export async function generateExhibitionFixtures(
   // Simple round-robin pairings for exhibition
   const pairs: Array<{ home_team_id: string; away_team_id: string }> = []
   const shuffledTeams = shuffle([...teamIds])
-  
+
   // Basic heuristic: each team plays each other until matchesPerTeam is reached
   for (let m = 0; m < matchesPerTeam; m++) {
     for (let i = 0; i < shuffledTeams.length; i++) {
