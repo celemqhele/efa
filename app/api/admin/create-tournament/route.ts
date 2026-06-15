@@ -195,24 +195,8 @@ export async function POST(request: Request) {
     if (standingsError) {
       console.error('Failed to create standings:', standingsError.message)
     }
-  } else if (type === 'friendlies' && resolvedTeamIds.length === 2) {
-    // Create a single friendly fixture
-    const fixtureDate = start_date ?? new Date().toISOString().slice(0, 10)
-    const { error: fixtureErr } = await db('fixtures').insert({
-      tournament_id,
-      home_team_id: resolvedTeamIds[0],
-      away_team_id: resolvedTeamIds[1],
-      matchday: 1,
-      leg: 1,
-      scheduled_date: fixtureDate,
-      deadline: fixtureDate,
-      round_type: null,
-      status: 'scheduled',
-      is_postponed: false,
-    })
-    if (fixtureErr) {
-      console.error('Failed to create friendly fixture:', fixtureErr.message)
-    }
+  } else if (type === 'friendlies' && resolvedTeamIds.length >= 2) {
+    // Friendlies now created without auto-fixtures
   }
 
   await db('audit_log').insert({
