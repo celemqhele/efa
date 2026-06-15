@@ -20,7 +20,7 @@ interface MobileProps {
     fixtures: any[]
     breaks: any[]
     user: any | null
-    userTeam: { id: string; name: string } | null
+    userTeams: { id: string; name: string }[]
     nextFixture: any | null
     daysUntilNext: number | null
     prev: { year: number; month: number }
@@ -33,7 +33,7 @@ function monthParam(year: number, month: number): string {
 }
 
 export default function Mobile({ data }: MobileProps) {
-  const { year, month, fixtures, breaks, user, userTeam, nextFixture, daysUntilNext, prev, next } = data
+  const { year, month, fixtures, breaks, user, userTeams, nextFixture, daysUntilNext, prev, next } = data
 
   return (
     <div className="space-y-space-6">
@@ -112,8 +112,8 @@ export default function Mobile({ data }: MobileProps) {
           <h1 className="text-2xl font-bold text-text-primary">
             {MONTH_NAMES[month - 1]} {year}
           </h1>
-          {userTeam && (
-            <p className="text-sm text-accent mt-space-0.5">{userTeam.name}</p>
+          {userTeams.length > 0 && (
+            <p className="text-sm text-accent mt-space-0.5">{userTeams.map(t => t.name).join(', ')}</p>
           )}
         </div>
 

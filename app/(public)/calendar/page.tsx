@@ -47,12 +47,13 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  let userTeam: { id: string; name: string } | null = null
+  let userTeams: { id: string; name: string }[] = []
   if (user) {
-    const [{ data: teamRaw }] = await Promise.all([
-      supabase.from('teams').select('id, name').eq('manager_id', user.id).maybeSingle(),
-    ])
-    userTeam = (teamRaw as any) ?? null
+    const { data: teamRows } = await supabase
+      .from('teams')
+      .select('id, name')
+      .eq('manager_id', user.id)
+    userTeams = (teamRows ?? []) as { id: string; name: string }[]
   }
 
   let fixtureQuery = supabase
@@ -67,10 +68,11 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     .lte('scheduled_date', monthEnd + 'T23:59:59')
     .order('scheduled_date', { ascending: true })
 
-  if (userTeam) {
-    fixtureQuery = fixtureQuery.or(
-      `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
-    )
+  if (userTeams.length > 0) {
+    const teamFilter = userTeams
+      .flatMap(t => [`home_team_id.eq.${t.id}`, `away_team_id.eq.${t.id}`])
+      .join(',')
+    fixtureQuery = fixtureQuery.or(teamFilter)
   }
 
   const { data: fixtures } = await fixtureQuery.limit(500)
@@ -99,10 +101,11 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     .order('scheduled_date', { ascending: true })
     .limit(1)
 
-  if (userTeam) {
-    nextQuery = nextQuery.or(
-      `home_team_id.eq.${userTeam.id},away_team_id.eq.${userTeam.id}`
-    )
+  if (userTeams.length > 0) {
+    const teamFilter = userTeams
+      .flatMap(t => [`home_team_id.eq.${t.id}`, `away_team_id.eq.${t.id}`])
+      .join(',')
+    nextQuery = nextQuery.or(teamFilter)
   }
 
   const { data: nextFixtureArr } = await nextQuery
@@ -117,5 +120,5 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   const prev = prevMonth(year, month)
   const nextN = nextMonth(year, month)
 
-  return <Shell data={{ year, month, fixtures: allFixtures, breaks: allBreaks, user, userTeam, nextFixture, daysUntilNext, prev, next: nextN }} />
+  return <Shell data={{ year, month, fixtures: allFixtures, breaks: allBreaks, user, userTeams, nextFixture, daysUntilNext, prev, next: nextN }} />
 }

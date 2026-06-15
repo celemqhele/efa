@@ -34,6 +34,7 @@ export async function POST(request: Request) {
   }
 
   const tournament_id: string = body.tournament_id ?? body.tournamentId
+  const start_date: string | undefined = body.start_date
 
   if (!tournament_id) {
     return Response.json({ error: 'tournament_id is required' }, { status: 400 })
@@ -129,9 +130,9 @@ export async function POST(request: Request) {
     const { error: gsErr } = await (adminSupabase.from('group_standings') as any).insert(groupStandingRows)
     if (gsErr) console.error('Failed to init group standings:', gsErr.message)
 
-    generated = await generateGroupFixtures(adminSupabase, groups, numRounds)
+    generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date)
   } else {
-    generated = await generateLeagueFixtures(adminSupabase, teamIds, tournament_id, numRounds)
+    generated = await generateLeagueFixtures(adminSupabase, teamIds, tournament_id, numRounds, start_date)
   }
 
   if (generated.length === 0) {

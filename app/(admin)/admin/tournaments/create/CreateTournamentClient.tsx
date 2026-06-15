@@ -58,8 +58,6 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
   // Tournament
   const [type, setType] = useState<'league' | 'tournament_club' | 'tournament_international' | 'friendlies'>('league')
   const [name, setName] = useState(TOURNAMENT_NAMES.league)
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
 
   // Team selection — using logo_team_slug as the unique key
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])
@@ -74,24 +72,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
 
-  // Auto-calculate end date
-  useEffect(() => {
-    if (!startDate || selectedSlugs.length < 2) return
-    const teamCount = isFriendlies ? 2 : selectedSlugs.length
-    let estDays: number
-    if (type === 'friendlies') {
-      estDays = 1
-    } else if (type === 'league') {
-      const matches = teamCount * (teamCount - 1)
-      estDays = Math.ceil(matches / 5)
-    } else {
-      const matches = 12 * 2 * 2 / 2
-      estDays = Math.ceil(matches / 5)
-    }
-    const end = new Date(startDate)
-    end.setDate(end.getDate() + estDays)
-    setEndDate(end.toISOString().slice(0, 10))
-  }, [startDate, selectedSlugs, type, isFriendlies])
+
 
   // Manager assignments
   const [users, setUsers] = useState<{ id: string; username: string }[]>([])
@@ -127,7 +108,6 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
     if (!name.trim()) return setError('Tournament name is required.')
     if (selectedSlugs.length < 2) return setError('Select at least 2 teams.')
     if (isFriendlies && selectedSlugs.length > 2) return setError('Friendlies can only have 2 teams.')
-    if (!startDate || !endDate) return setError('Start and end dates are required.')
 
     setLoading(true)
     try {
@@ -160,8 +140,6 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
           season_id: seasonId || null,
           name,
           type,
-          start_date: startDate,
-          end_date: endDate,
           teams: teamsData,
           settings: {
             fixture_mode: FIXTURE_MODE[type] ?? 'round_robin'
@@ -251,7 +229,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
       {/* Tournament Details */}
       <div className="card p-5">
         <h2 className="section-header">Tournament Details</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="form-label">Type</label>
             <select
@@ -273,28 +251,6 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="input-field"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="form-label">Start Date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="input-field"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="form-label">End Date <span className="text-text-muted text-[10px]">(auto-calculated)</span></label>
-            <input
-              type="date"
-              value={endDate}
-              readOnly
-              className="input-field opacity-50 cursor-not-allowed bg-bg-elevated"
               required
             />
           </div>

@@ -33,8 +33,8 @@ export async function POST(request: Request) {
     base_league?: string
     name: string
     type: TournamentType
-    start_date: string
-    end_date: string
+    start_date?: string
+    end_date?: string
     teams: {
       id: string | null
       name: string
@@ -62,9 +62,9 @@ export async function POST(request: Request) {
     settings: customSettings,
   } = body
 
-  if (!name || !type || !start_date || !end_date || !teams || teams.length === 0) {
+  if (!name || !type || !teams || teams.length === 0) {
     return Response.json(
-      { error: 'name, type, start_date, end_date and teams are required' },
+      { error: 'name, type, and teams are required' },
       { status: 400 }
     )
   }
@@ -136,8 +136,8 @@ export async function POST(request: Request) {
   }
 
   const settings = {
-    start_date,
-    end_date,
+    ...(start_date ? { start_date } : {}),
+    ...(end_date ? { end_date } : {}),
     ...customSettings,
   }
 
@@ -197,14 +197,15 @@ export async function POST(request: Request) {
     }
   } else if (type === 'friendlies' && resolvedTeamIds.length === 2) {
     // Create a single friendly fixture
+    const fixtureDate = start_date ?? new Date().toISOString().slice(0, 10)
     const { error: fixtureErr } = await db('fixtures').insert({
       tournament_id,
       home_team_id: resolvedTeamIds[0],
       away_team_id: resolvedTeamIds[1],
       matchday: 1,
       leg: 1,
-      scheduled_date: start_date,
-      deadline: start_date,
+      scheduled_date: fixtureDate,
+      deadline: fixtureDate,
       round_type: null,
       status: 'scheduled',
       is_postponed: false,

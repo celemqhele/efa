@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import BottomSheet from '@/components/ui/BottomSheet'
+import { Button } from '@/components/ui/Button'
+import { addDays, format } from 'date-fns'
 
 interface Props {
   tournamentId: string
@@ -10,15 +12,56 @@ interface Props {
   type?: string
 }
 
+const DAILY_CAP = 5
+
 export default function GenerateFixturesButton({ tournamentId, tournamentName, type }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [settings, setSettings] = useState<any>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    if (!startDate || !settings) return
+    const fixtureMode = settings?.fixture_mode
+    const numGroups = settings?.num_groups
+    const teamsPerGroup = settings?.teams_per_group
+    const numRounds = settings?.num_rounds ?? 2
+
+    let estMatches = 0
+    if (fixtureMode === 'groups' && numGroups && teamsPerGroup) {
+      estMatches = numGroups * teamsPerGroup * (teamsPerGroup - 1) * numRounds / 2
+    } else {
+      estMatches = 20 * 19 * numRounds / 2
+    }
+    const estDays = Math.max(1, Math.ceil(estMatches / DAILY_CAP))
+    const end = addDays(new Date(startDate), estDays)
+    setEndDate(format(end, 'yyyy-MM-dd'))
+  }, [startDate, settings])
 
   if (type === 'friendlies') return null
 
+  async function openDialog() {
+    setDialogOpen(true)
+    setStartDate(format(new Date(), 'yyyy-MM-dd'))
+    setError('')
+    if (!settings) {
+      try {
+        const res = await fetch(`/api/admin/tournaments?id=${tournamentId}`)
+        const data = await res.json()
+        if (res.ok && data.tournament) {
+          setSettings(data.tournament.settings ?? {})
+        }
+      } catch {
+        // non-critical
+      }
+    }
+  }
+
   async function handleGenerate() {
+    if (!startDate) return
     setDialogOpen(false)
     setLoading(true)
     setError('')
@@ -26,7 +69,7 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName, t
       const res = await fetch('/api/admin/generate-fixtures', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tournamentId }),
+        body: JSON.stringify({ tournamentId, start_date: startDate }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Generation failed')
@@ -40,18 +83,49 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName, t
 
   return (
     <>
-      <ConfirmDialog
-        open={dialogOpen}
-        title="Generate Fixtures"
-        message={`Create a full fixture list for "${tournamentName}"? This cannot be undone.`}
-        confirmLabel={loading ? 'Generating...' : 'Generate'}
-        onConfirm={handleGenerate}
-        onCancel={() => setDialogOpen(false)}
-      />
+      <BottomSheet open={dialogOpen} onClose={() => setDialogOpen(false)}>
+        <h3 className="text-text-primary font-bold text-lg mb-1">Generate Fixtures</h3>
+        <p className="text-text-secondary text-sm mb-4 leading-relaxed">
+          Set the start date for {tournamentName}. The end date is estimated based on match count and daily caps.
+        </p>
+
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="block text-xs font-semibold text-text-primary mb-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="input-field w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-text-muted mb-1">
+              Estimated End Date
+              <span className="ml-1 text-[10px]">(auto-calculated)</span>
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              readOnly
+              className="input-field w-full opacity-50 cursor-not-allowed bg-bg-elevated"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-space-2 justify-end">
+          <Button variant="secondary" onClick={() => setDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleGenerate} disabled={!startDate}>
+            Generate
+          </Button>
+        </div>
+      </BottomSheet>
 
       {error && <span className="text-red-400 text-[10px]">{error}</span>}
       <button
-        onClick={() => setDialogOpen(true)}
+        onClick={openDialog}
         disabled={loading}
         className="btn-gold text-[10px] py-1 px-2"
       >
