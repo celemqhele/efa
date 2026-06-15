@@ -723,14 +723,14 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
     try {
       const res = await fetch('/api/admin/polls')
       const data = await res.json()
-      setPolls((data.polls ?? []).filter((p: any) => p.status === 'closed'))
+      setPolls(data.polls ?? [])
       setApps(data.applications ?? [])
     } catch {}
     setLoading(false)
   }
 
   function handleImport(pollId: string) {
-    const pollApps = apps.filter((a: any) => a.poll_id === pollId && a.status === 'approved')
+    const pollApps = apps.filter((a: any) => a.poll_id === pollId && a.status !== 'withdrawn')
     const matched: string[] = []
     for (const app of pollApps) {
       const team = allTeams.find(
@@ -768,7 +768,7 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
             ) : (
               <div className="flex-1 overflow-y-auto space-y-2">
                 {polls.map((poll) => {
-                  const pollApps = apps.filter((a: any) => a.poll_id === poll.id && a.status === 'approved')
+                  const pollApps = apps.filter((a: any) => a.poll_id === poll.id && a.status !== 'withdrawn')
                   return (
                     <button
                       key={poll.id}
@@ -778,7 +778,7 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
                     >
                       <div>
                         <p className="text-sm font-medium text-foreground-primary">{poll.title}</p>
-                        <p className="text-xs text-text-muted mt-0.5">{pollApps.length} approved teams</p>
+                        <p className="text-xs text-text-muted mt-0.5">{pollApps.length} teams</p>
                       </div>
                       <span className="text-xs text-accent shrink-0">Import</span>
                     </button>
