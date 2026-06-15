@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 }
 
 async function handleGroupDraw(adminSupabase: any, tournament: any, teams: any[], settings: any, db: any) {
-  const groupCount = settings.group_count ?? Math.max(2, Math.floor(teams.length / 3))
+  const groupCount = settings.num_groups ?? settings.group_count ?? Math.max(2, Math.floor(teams.length / 3))
 
   // Run the draw
   const result = drawGroups({
@@ -134,7 +134,7 @@ async function handleKnockoutDraw(adminSupabase: any, tournament: any, teams: an
     return Response.json({ error: 'No group standings found. Run group draw first.' }, { status: 400 })
   }
 
-  const autoQualifyPerGroup = settings.auto_qualify_per_group ?? 2
+  const autoQualifyPerGroup = settings.qualifiers_per_group ?? settings.auto_qualify_per_group ?? 2
   const additionalSlots = settings.additional_knockout_slots ?? 0
 
   const standings = groupStandings.map((gs: any) => ({

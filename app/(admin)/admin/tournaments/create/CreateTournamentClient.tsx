@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { createClient } from '@/lib/supabase/client'
 import { addDays, format, parseISO } from 'date-fns'
-import { Loader2 } from 'lucide-react'
+import { Loader2, CheckCircle } from 'lucide-react'
 import ModalPortal from '@/components/ui/ModalPortal'
 
 interface Season {
@@ -71,6 +71,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
   // Team selection — using logo_team_slug as the unique key
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])
   const [teamSearch, setTeamSearch] = useState('')
+  const [successId, setSuccessId] = useState<string | null>(null)
 
   const isTournament = type === 'tournament_club' || type === 'tournament_international'
   const isFriendlies = type === 'friendlies'
@@ -209,11 +210,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to create tournament')
 
-      if (isFriendlies) {
-        router.push(`/admin/fixtures/manage?tournament=${data.tournament_id}`)
-      } else {
-        router.push(`/admin/fixtures/manage?tournament=${data.tournament_id}&generate=1`)
-      }
+      setSuccessId(data.tournament_id)
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -222,6 +219,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Season */}
       <div className="card p-5">
@@ -654,6 +652,26 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
         </button>
       </div>
     </form>
+
+      {successId && (
+        <ModalPortal>
+          <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+            <div className="absolute inset-0 bg-black/60" />
+            <div className="relative z-10 w-full max-w-sm bg-bg-surface border border-border rounded-2xl shadow-2xl p-8 animate-scale-in text-center space-y-4">
+              <CheckCircle className="w-12 h-12 text-green-400 mx-auto" />
+              <h3 className="text-xl font-bold text-foreground-primary">Tournament Created</h3>
+              <p className="text-sm text-text-muted">The tournament has been created successfully.</p>
+              <button
+                onClick={() => { setSuccessId(null); router.push('/admin/tournaments') }}
+                className="btn-gold px-6 py-2.5 text-sm font-bold"
+              >
+                Manage Tournaments
+              </button>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+    </>
   )
 }
 
