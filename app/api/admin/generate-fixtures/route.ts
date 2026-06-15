@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
   let generated: GeneratedFixture[] = []
 
-  if (numGroups && teamsPerGroup && tournament.type !== 'league') {
+  if (numGroups && teamsPerGroup && settings?.fixture_mode === 'groups') {
     const shuffledTeamIds = [...teamIds].sort(() => Math.random() - 0.5)
     const groups: Record<string, string[]> = {}
     const participantUpdates: Array<{ id: string; group_name: string }> = []

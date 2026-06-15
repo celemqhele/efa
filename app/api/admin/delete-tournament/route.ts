@@ -1,22 +1,8 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 export async function DELETE(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const db = (table: string) => supabase.from(table) as any
-
-  const { data: profile } = await db('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
+  const adminSupabase = await createAdminClient()
+  const db = (table: string) => adminSupabase.from(table) as any
 
   let tournament_id: string
   try {
@@ -30,23 +16,19 @@ export async function DELETE(request: Request) {
     return Response.json({ error: 'tournament_id is required' }, { status: 400 })
   }
 
-  const adminSupabase = await createAdminClient()
-  const adminDb = (table: string) => adminSupabase.from(table) as any
+  await db('fixtures').delete().eq('tournament_id', tournament_id)
+  await db('standings').delete().eq('tournament_id', tournament_id)
+  await db('group_standings').delete().eq('tournament_id', tournament_id)
+  await db('tournament_participants').delete().eq('tournament_id', tournament_id)
+  await db('trophies').delete().eq('tournament_id', tournament_id)
 
-  await adminDb('fixtures').delete().eq('tournament_id', tournament_id)
-  await adminDb('standings').delete().eq('tournament_id', tournament_id)
-  await adminDb('group_standings').delete().eq('tournament_id', tournament_id)
-  await adminDb('tournament_participants').delete().eq('tournament_id', tournament_id)
-  await adminDb('trophies').delete().eq('tournament_id', tournament_id)
-
-  const { error } = await adminDb('tournaments')
+  const { error } = await db('tournaments')
     .delete()
     .eq('id', tournament_id)
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
 
-  await adminDb('audit_log').insert({
-    admin_id: user.id,
+  await db('audit_log').insert({
     action: 'delete_tournament',
     target_type: 'tournament',
     target_id: tournament_id,

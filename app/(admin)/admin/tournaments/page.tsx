@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import DeleteTournamentButton from './DeleteTournamentButton'
+import GenerateFixturesButton from './GenerateFixturesButton'
 import GenerateKnockoutsButton from './GenerateKnockoutsButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
 
@@ -210,30 +211,35 @@ function TournamentCard({
         </div>
       )}
 
-      <div className="flex gap-2 pt-1">
-        <Link
-          href={`/admin/fixtures/manage?tournament=${tournament.id}`}
-          className="btn-outline text-xs flex-1 text-center"
-        >
-          Fixtures
-        </Link>
-        <RunTournamentDrawButton
-          tournamentId={tournament.id}
-          tournamentName={tournament.name}
-          type={tournament.type}
-        />
-        <GenerateKnockoutsButton 
-          tournamentId={tournament.id} 
-          tournamentName={tournament.name} 
-          type={tournament.type} 
-        />
-        <Link
-          href={`/standings?t=${tournament.id}`}
-          className="btn-outline text-xs flex-1 text-center"
-        >
-          View
-        </Link>
-        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
+      <div className="space-y-2 pt-1">
+        <div className="grid grid-cols-3 gap-2">
+          <Link
+            href={`/admin/fixtures/manage?tournament=${tournament.id}`}
+            className="btn-outline text-[10px] py-1.5 text-center"
+          >
+            Fixtures
+          </Link>
+          <Link
+            href={`/standings?t=${tournament.id}`}
+            className="btn-outline text-[10px] py-1.5 text-center"
+          >
+            Standings
+          </Link>
+          <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} />
+          <RunTournamentDrawButton
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            type={tournament.type}
+          />
+          <GenerateKnockoutsButton 
+            tournamentId={tournament.id} 
+            tournamentName={tournament.name} 
+            type={tournament.type} 
+          />
+        </div>
       </div>
     </div>
   )

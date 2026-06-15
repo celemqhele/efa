@@ -219,7 +219,8 @@ export default function CreateTournamentClient({ seasons, allTeams, activeLeague
             num_groups: numGroups,
             teams_per_group: teamsPerGroup,
             num_rounds: numRounds,
-            qualifiers_per_group: qualifiersPerGroup
+            qualifiers_per_group: qualifiersPerGroup,
+            fixture_mode: type === 'custom' ? 'groups' : 'round_robin'
           }
         }),
       })
