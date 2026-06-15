@@ -82,7 +82,7 @@ async function handleGroupDraw(adminSupabase: any, tournament: any, teams: any[]
   })
 
   if (!result.valid) {
-    return Response.json({ error: 'Could not generate valid groups after 10000 attempts' }, { status: 500 })
+    return Response.json({ error: 'Could not generate valid groups after 20000 attempts' }, { status: 500 })
   }
 
   // Organise by group

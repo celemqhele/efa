@@ -85,7 +85,8 @@ export function createPots(teams: DrawTeam[], groupCount: number): DrawTeam[][] 
 export function drawGroups(config: DrawConfig): DrawResult {
   const { teams, groupCount, restriction } = config
   const pots = createPots(teams, groupCount)
-  const maxIterations = 10000
+  const maxTeamsPerGroup = Math.ceil(teams.length / groupCount)
+  const maxIterations = 20000
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     const assignments: GroupAssignment[] = []
@@ -103,7 +104,7 @@ export function drawGroups(config: DrawConfig): DrawResult {
         let placed = false
 
         for (const groupIdx of groupOrder) {
-          if (groupSlots[groupIdx].length >= pots.length) continue
+          if (groupSlots[groupIdx].length >= maxTeamsPerGroup) continue
 
           if (restriction) {
             const forbidden = restriction.sameGroupForbidden ?? []

@@ -74,6 +74,25 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type])
 
+  // Auto-calculate end date
+  useEffect(() => {
+    if (!startDate || selectedSlugs.length < 2) return
+    const teamCount = isFriendlies ? 2 : selectedSlugs.length
+    let estDays: number
+    if (type === 'friendlies') {
+      estDays = 1
+    } else if (type === 'league') {
+      const matches = teamCount * (teamCount - 1)
+      estDays = Math.ceil(matches / 5)
+    } else {
+      const matches = 12 * 2 * 2 / 2
+      estDays = Math.ceil(matches / 5)
+    }
+    const end = new Date(startDate)
+    end.setDate(end.getDate() + estDays)
+    setEndDate(end.toISOString().slice(0, 10))
+  }, [startDate, selectedSlugs, type, isFriendlies])
+
   // Manager assignments
   const [users, setUsers] = useState<{ id: string; username: string }[]>([])
   const [localManagers, setLocalManagers] = useState<Record<string, string>>({}) // slug -> user_id
@@ -270,12 +289,12 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
           </div>
 
           <div>
-            <label className="form-label">End Date</label>
+            <label className="form-label">End Date <span className="text-text-muted text-[10px]">(auto-calculated)</span></label>
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="input-field"
+              readOnly
+              className="input-field opacity-50 cursor-not-allowed bg-bg-elevated"
               required
             />
           </div>

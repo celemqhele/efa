@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { buildRegistry } from '@/app/(auth)/select-team/registry'
-import PollClient from './PollClient'
+import Shell from './_shell'
 
 export default async function PollPage({ params }: { params: Promise<{ share_code: string }> }) {
   const { share_code } = await params
@@ -37,11 +37,11 @@ export default async function PollPage({ params }: { params: Promise<{ share_cod
     ? await supabase.from('profiles').select('username, avatar_url').eq('id', user.id).single()
     : null
 
-  return (
-    <PollClient
-      poll={poll}
-      leagues={leagues}
-      user={user ? { id: user.id, ...(userProfile?.data ?? {}) } : null}
-    />
-  )
+  const data = {
+    poll,
+    leagues,
+    user: user ? { id: user.id, ...(userProfile?.data ?? {}) } : null,
+  }
+
+  return <Shell data={data} />
 }

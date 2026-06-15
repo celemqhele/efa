@@ -4,7 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import { createClient } from '@/lib/supabase/server'
 import { getLeagueFolders } from '@/lib/logo-resolver'
-import SelectTeamClient from './SelectTeamClient'
+import Shell from './_shell'
 
 function slugToName(slug: string): string {
   return slug
@@ -83,6 +83,6 @@ export default async function SelectTeamPage() {
 
   const clubs = Array.from(clubMap.values()).sort((a, b) => a.name.localeCompare(b.name))
 
-  return <SelectTeamClient clubs={clubs} />
+  return <Shell data={{ clubs }} />
 }
 
