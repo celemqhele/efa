@@ -59,10 +59,12 @@ function StandingsTable({
   rows,
   mode,
   accent,
+  offset = 0,
 }: {
   rows: any[]
   mode: 'league' | 'group'
   accent: string
+  offset?: number
 }) {
   const rowEven: React.CSSProperties = { background: 'var(--export-row-bg)', borderRadius: '8px' }
   const rowOdd: React.CSSProperties = { background: 'transparent' }
@@ -91,14 +93,15 @@ function StandingsTable({
       </div>
       {rows.map((s: any, i: number) => {
         const gd = goalDifference(s)
+        const pos = i + offset
         const borderColor =
           mode === 'league'
-            ? i < 12
+            ? pos < 12
               ? 'var(--color-accent)'
-              : '#3b82f6'
-            : i < 2
-            ? 'var(--color-accent)'
-            : 'transparent'
+              : pos < 20
+              ? '#3b82f6'
+              : 'transparent'
+            : pos < 2 ? 'var(--color-accent)' : 'transparent'
         return (
           <div
             key={s.id ?? i}
@@ -119,7 +122,7 @@ function StandingsTable({
                 fontWeight: 700,
               }}
             >
-              {i + 1}
+              {pos + 1}
             </div>
             <TeamLogoInline
               folder={s.team?.logo_league_folder}
@@ -204,7 +207,7 @@ function StandingsTable({
             </div>
             {mode === 'group' && (
               <div style={{ width: '20px', textAlign: 'center' }}>
-                {i < 2 && (
+                {pos < 2 && (
                   <span style={{ fontSize: '10px', color: 'var(--color-accent)', fontWeight: 700 }}>Q</span>
                 )}
               </div>
@@ -351,22 +354,35 @@ export default async function ExportPage({ searchParams }: Props) {
           }
         } else {
           groupStandings = gs
+          if (leagueStandings.length > 12) {
+            isChunked = true
+            const leagueChunkSize = 10
+            for (let i = 0; i < leagueStandings.length; i += leagueChunkSize) {
+              const partNum = Math.floor(i / leagueChunkSize) + 1
+              chunks.push({
+                key: `${tournamentId}-${cardType}-chunk-${partNum}`,
+                title: `LEAGUE TABLE (PART ${partNum})`,
+                standings: leagueStandings.slice(i, i + leagueChunkSize),
+                standingsOffset: i
+              })
+            }
+          }
         }
       }
 
       if (cardType === 'managers') {
-        const { data: teams } = await supabase
-          .from('tournament_teams')
+        const { data: participants } = await supabase
+          .from('tournament_participants')
           .select('team_id')
           .eq('tournament_id', tournamentId)
         
-        const teamIds = (teams ?? []).map(t => t.team_id)
+        const teamIds = (participants ?? []).map(p => p.team_id)
         if (teamIds.length > 0) {
           const { data: teamData } = await supabase
             .from('teams')
             .select(`
               id, name, logo_league_folder, logo_team_slug,
-              managed_by:profiles!teams_managed_by_fkey(username)
+              manager:profiles!teams_manager_id_fkey(username)
             `)
             .in('id', teamIds)
             .order('name', { ascending: true })
@@ -460,7 +476,7 @@ export default async function ExportPage({ searchParams }: Props) {
                 </p>
                 <ExportButton filename={filename} cardIds={chunkIds} />
               </div>
-
+              
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {card.chunks.map((chunk) => (
                   <div key={chunk.key} className="overflow-x-auto pb-space-4">
@@ -505,7 +521,7 @@ export default async function ExportPage({ searchParams }: Props) {
                         </div>
                       </div>
 
-                      {/* Chunk Content: Standings */}
+                      {/* Chunk Content: Standings (Group) */}
                       {chunk.groupStandings && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                           {Object.entries(chunk.groupStandings)
@@ -530,29 +546,49 @@ export default async function ExportPage({ searchParams }: Props) {
                         </div>
                       )}
 
+                      {/* Chunk Content: Standings (League) */}
+                      {chunk.standings && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <StandingsTable rows={chunk.standings} mode="league" accent={accent} offset={chunk.standingsOffset} />
+                          <div style={{ display: 'flex', gap: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
+                              <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>UCL places</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
+                              <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Europa places</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Chunk Content: Managers */}
                       {chunk.managers && (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                          {chunk.managers.map((m: any) => (
-                            <div
-                              key={m.id}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: '10px',
-                                background: 'var(--export-row-bg)', borderRadius: '8px',
-                                padding: '10px 12px',
-                              }}
-                            >
-                              <TeamLogoInline folder={m.logo_league_folder} slug={m.logo_team_slug} size={28} />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ color: 'var(--export-text)', fontWeight: 700, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {m.name}
-                                </div>
-                                <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {m.manager?.username ?? 'VACANT'}
+                          {chunk.managers.map((m: any) => {
+                            const managerName = Array.isArray(m.manager) ? m.manager[0]?.username : m.manager?.username
+                            return (
+                              <div
+                                key={m.id}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '10px',
+                                  background: 'var(--export-row-bg)', borderRadius: '8px',
+                                  padding: '10px 12px',
+                                }}
+                              >
+                                <TeamLogoInline folder={m.logo_league_folder} slug={m.logo_team_slug} size={28} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ color: 'var(--export-text)', fontWeight: 700, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {m.name}
+                                  </div>
+                                  <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {managerName ?? 'VACANT'}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
 
@@ -727,17 +763,17 @@ export default async function ExportPage({ searchParams }: Props) {
                 )}
 
                 {/* STANDINGS (league) */}
-                {card.type === 'standings' && card.tournament.type === 'league' && (
+                {card.type === 'standings' && card.tournament.type === 'league' && !card.isChunked && (
                   <>
                     <StandingsTable rows={card.standings} mode="league" accent={accent} />
                     <div style={{ display: 'flex', gap: '16px', marginTop: '14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
-                        <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>UCL (1–12)</span>
+                        <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>UCL places</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
-                        <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Europa (13–20)</span>
+                        <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Europa places</span>
                       </div>
                     </div>
                   </>
@@ -769,7 +805,7 @@ export default async function ExportPage({ searchParams }: Props) {
                           ))}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
-                          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top 2 from each group qualify</span>
+                          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top 2 qualify</span>
                         </div>
                       </>
                     )}
@@ -784,26 +820,29 @@ export default async function ExportPage({ searchParams }: Props) {
                         No managers found
                       </div>
                     ) : (
-                      card.managers.map((m: any, mi: number) => (
-                        <div
-                          key={m.id}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: '10px',
-                            background: 'var(--export-row-bg)', borderRadius: '8px',
-                            padding: '10px 12px',
-                          }}
-                        >
-                          <TeamLogoInline folder={m.logo_league_folder} slug={m.logo_team_slug} size={28} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ color: 'var(--export-text)', fontWeight: 700, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {m.name}
-                            </div>
-                            <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {m.manager?.username ?? 'VACANT'}
+                      card.managers.map((m: any, mi: number) => {
+                        const managerName = Array.isArray(m.manager) ? m.manager[0]?.username : m.manager?.username
+                        return (
+                          <div
+                            key={m.id}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '10px',
+                              background: 'var(--export-row-bg)', borderRadius: '8px',
+                              padding: '10px 12px',
+                            }}
+                          >
+                            <TeamLogoInline folder={m.logo_league_folder} slug={m.logo_team_slug} size={28} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ color: 'var(--export-text)', fontWeight: 700, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {m.name}
+                              </div>
+                              <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {managerName ?? 'VACANT'}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))
+                        )
+                      })
                     )}
                   </div>
                 )}
@@ -830,60 +869,3 @@ export default async function ExportPage({ searchParams }: Props) {
     </div>
   )
 }
-
-  })}
-    </div>
-  )
-}
-
-   })}
-    </div>
-  )
-}
-
-  })}
-    </div>
-  )
-}
-
-en', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {m.name}
-                            </div>
-                            <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {m.manager?.username ?? 'VACANT'}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {/* Footer */}
-                <div
-                  style={{
-                    borderTop: '1px solid var(--export-divider)',
-                    marginTop: '24px', paddingTop: '14px',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  }}
-                >
-                  <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px', letterSpacing: '0.06em' }}>
-                    EFA — EFOOTBALL FEDERAL ASSOCIATION
-                  </div>
-                  <div style={{ color: 'var(--export-muted-strong)', fontSize: '10px' }}>
-                    efa-fxyk.vercel.app
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-      })}
-    </div>
-  )
-}
-
-  })}
-    </div>
-  )
-}
-
