@@ -716,42 +716,57 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
   const [polls, setPolls] = useState<any[]>([])
   const [apps, setApps] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedPollId, setSelectedPollId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [done, setDone] = useState(0)
 
   async function loadPolls() {
     setLoading(true)
+    setError('')
     try {
       const res = await fetch('/api/admin/polls')
+      if (!res.ok) { setError(`API error: ${res.status}`); return }
       const data = await res.json()
       setPolls(data.polls ?? [])
       setApps(data.applications ?? [])
-    } catch {}
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to load polls')
+    }
     setLoading(false)
   }
 
   function handleImport(pollId: string) {
-    const pollApps = apps.filter((a: any) => a.poll_id === pollId && a.status !== 'withdrawn')
-    const matched: string[] = []
-    for (const app of pollApps) {
-      const team = allTeams.find(
-        (t) => t.logo_team_slug === app.team_slug && t.logo_league_folder === app.team_league
-      )
-      if (team) matched.push(team.logo_team_slug)
+    try {
+      const pollApps = apps.filter((a: any) => a.poll_id === pollId && a.status !== 'withdrawn')
+      const matched: string[] = []
+      for (const app of pollApps) {
+        const team = allTeams.find(
+          (t) => t.logo_team_slug === app.team_slug && t.logo_league_folder === app.team_league
+        )
+        if (team) matched.push(team.logo_team_slug)
+      }
+      if (matched.length > 0) {
+        onSelect(matched)
+        setDone(matched.length)
+        setTimeout(() => setDone(0), 2500)
+      }
+      setOpen(false)
+    } catch (e: any) {
+      setError(e.message ?? 'Import failed')
     }
-    onSelect(matched)
-    setOpen(false)
-    setSelectedPollId(null)
   }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => { setOpen(true); loadPolls() }}
-        className="text-[10px] px-2 py-0.5 rounded bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors"
-      >
-        Import from Poll
-      </button>
+      <div className="flex items-center gap-1">
+        {done > 0 && <span className="text-[10px] text-green-400">{done} imported</span>}
+        <button
+          type="button"
+          onClick={() => { setOpen(true); loadPolls() }}
+          className="text-[10px] px-2 py-0.5 rounded bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-colors"
+        >
+          Import from Poll
+        </button>
+      </div>
 
       {open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -759,12 +774,16 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
           <div className="relative z-10 w-full max-w-md bg-bg-surface border border-border rounded-2xl shadow-2xl p-6 animate-scale-in max-h-[80vh] flex flex-col">
             <h3 className="text-lg font-bold text-foreground-primary mb-4">Import from Poll</h3>
 
+            {error && (
+              <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg mb-4">{error}</p>
+            )}
+
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-5 h-5 text-accent animate-spin" />
               </div>
             ) : polls.length === 0 ? (
-              <p className="text-sm text-text-muted text-center py-8">No closed polls found.</p>
+              <p className="text-sm text-text-muted text-center py-8">No polls found.</p>
             ) : (
               <div className="flex-1 overflow-y-auto space-y-2">
                 {polls.map((poll) => {
