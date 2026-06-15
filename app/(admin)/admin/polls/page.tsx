@@ -59,6 +59,7 @@ export default function AdminPollsPage() {
   const [expandedPoll, setExpandedPoll] = useState<string | null>(null)
   const [exportingApp, setExportingApp] = useState<Application | null>(null)
   const [exportingPoll, setExportingPoll] = useState<Poll | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState('')
@@ -186,25 +187,38 @@ export default function AdminPollsPage() {
   }
 
   async function handleExportPoll(poll: Poll) {
+    const pollApps = applications.filter(a => a.poll_id === poll.id)
+    if (pollApps.length === 0) return
+
     setExportingPoll(poll)
+    setIsExporting(true)
+
+    // Calculate chunks
+    const chunkSize = 5
+    const chunksCount = Math.ceil(pollApps.length / chunkSize)
+
+    // Wait for DOM to render chunks
     setTimeout(async () => {
-      const card = document.getElementById(`poll-export-card-${poll.id}`)
-      if (!card) {
-        setExportingPoll(null)
-        return
+      for (let i = 0; i < chunksCount; i++) {
+        const cardId = `poll-export-card-${poll.id}-chunk-${i}`
+        const card = document.getElementById(cardId)
+        if (card) {
+          try {
+            const dataUrl = await toPng(card, { pixelRatio: 2, cacheBust: true })
+            const link = document.createElement('a')
+            link.download = `efa-poll-${poll.title.replace(/\s+/g, '-')}-part-${i + 1}.png`
+            link.href = dataUrl
+            link.click()
+            // Small delay between downloads to prevent browser blocking or race conditions
+            await new Promise(resolve => setTimeout(resolve, 500))
+          } catch (err) {
+            console.error('Export failed for chunk', i, err)
+          }
+        }
       }
-      try {
-        const dataUrl = await toPng(card, { pixelRatio: 2, cacheBust: true })
-        const link = document.createElement('a')
-        link.download = `efa-poll-${poll.title.replace(/\s+/g, '-')}.png`
-        link.href = dataUrl
-        link.click()
-      } catch (err) {
-        console.error('Export failed', err)
-      } finally {
-        setExportingPoll(null)
-      }
-    }, 500)
+      setExportingPoll(null)
+      setIsExporting(false)
+    }, 1000)
   }
 
   async function handleDeleteApplication(appId: string) {
@@ -281,7 +295,7 @@ export default function AdminPollsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-space-2 shrink-0">
-                    <Button variant="secondary" onClick={() => handleExportPoll(poll)}>
+                    <Button variant="secondary" onClick={() => handleExportPoll(poll)} isLoading={isExporting && exportingPoll?.id === poll.id}>
                       Export PNG
                     </Button>
                     <Button variant="secondary" onClick={() => copyLink(poll.share_code)}>
@@ -417,71 +431,80 @@ export default function AdminPollsPage() {
       )}
 
       {/* Hidden Poll Export Card */}
-      {exportingPoll && (
-        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-          <div id={`poll-export-card-${exportingPoll.id}`} style={{
-            fontFamily: "'Segoe UI', system-ui, sans-serif",
-            width: '600px',
-            background: '#0a1128',
-            padding: '40px',
-            borderRadius: '24px',
-            color: 'white',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '32px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#0a1128' }}>EFA</div>
-                  <div style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.1em' }}>POLL SUMMARY</div>
-               </div>
-               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{new Date().toLocaleDateString()}</div>
-            </div>
+      {exportingPoll && (() => {
+        const pollApps = applications.filter(a => a.poll_id === exportingPoll.id)
+        const chunkSize = 5
+        const chunks = []
+        for (let i = 0; i < pollApps.length; i += chunkSize) {
+          chunks.push(pollApps.slice(i, i + chunkSize))
+        }
 
-            <div>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>POLL TITLE</div>
-              <div style={{ fontSize: '28px', fontWeight: 900, color: 'white' }}>{exportingPoll.title}</div>
-            </div>
+        return (
+          <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+            {chunks.map((chunk, chunkIdx) => (
+              <div key={chunkIdx} id={`poll-export-card-${exportingPoll.id}-chunk-${chunkIdx}`} style={{
+                fontFamily: "'Segoe UI', system-ui, sans-serif",
+                width: '600px',
+                background: '#0a1128',
+                padding: '40px',
+                borderRadius: '24px',
+                color: 'white',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '32px',
+                marginBottom: '40px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#0a1128' }}>EFA</div>
+                      <div style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.1em' }}>
+                        POLL SUMMARY {chunks.length > 1 ? `(${chunkIdx + 1}/${chunks.length})` : ''}
+                      </div>
+                   </div>
+                   <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>{new Date().toLocaleDateString()}</div>
+                </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>APPLICATIONS ({applications.filter(a => a.poll_id === exportingPoll.id).length})</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {applications
-                  .filter(a => a.poll_id === exportingPoll.id)
-                  .map((app, i) => (
-                    <div key={app.id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      padding: '16px',
-                      background: 'rgba(255,255,255,0.03)',
-                      borderRadius: '16px',
-                      border: '1px solid rgba(255,255,255,0.08)'
-                    }}>
-                      <TeamLogoInline folder={app.team_league} slug={app.team_slug} size={32} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '15px', fontWeight: 700 }}>{app.team_name}</div>
-                        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{app.team_league.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</div>
+                <div>
+                  <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>POLL TITLE</div>
+                  <div style={{ fontSize: '28px', fontWeight: 900, color: 'white' }}>{exportingPoll.title}</div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>APPLICATIONS ({pollApps.length})</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {chunk.map((app) => (
+                      <div key={app.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        padding: '16px',
+                        background: 'rgba(255,255,255,0.03)',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255,255,255,0.08)'
+                      }}>
+                        <TeamLogoInline folder={app.team_league} slug={app.team_slug} size={32} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '15px', fontWeight: 700 }}>{app.team_name}</div>
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>{app.team_league.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-accent)' }}>{getApplicantName(app)}</div>
+                          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{app.status}</div>
+                        </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-accent)' }}>{getApplicantName(app)}</div>
-                        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{app.status}</div>
-                      </div>
-                    </div>
-                  ))}
-                {applications.filter(a => a.poll_id === exportingPoll.id).length === 0 && (
-                  <div style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>No applications yet</div>
-                )}
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>EFA — EFOOTBALL FEDERAL ASSOCIATION</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>efa-fxyk.vercel.app</div>
+                </div>
               </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>EFA — EFOOTBALL FEDERAL ASSOCIATION</div>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>efa-fxyk.vercel.app</div>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Hidden Manager Export Card */}
       {exportingApp && (
