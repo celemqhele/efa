@@ -89,7 +89,7 @@ export default function Desktop({ data }: { data: any }) {
         {/* ── Stats Table ──────────────────────────────────────────────── */}
         <div className="col-span-3 card p-6">
           <h2 className="text-sm font-black text-text-primary uppercase tracking-widest flex items-center gap-2 mb-4">
-            <BarChart3 className="w-5 h-5 text-[#c9a84c]" /> Match Statistics
+            <BarChart3 className="w-5 h-5 text-accent" /> Match Statistics
           </h2>
 
           {statDefs.length > 0 ? (
@@ -123,7 +123,7 @@ export default function Desktop({ data }: { data: any }) {
           {result.screenshot_url && (
             <div className="card p-6">
               <h2 className="text-sm font-black text-text-primary uppercase tracking-widest flex items-center gap-2 mb-4">
-                <Camera className="w-5 h-5 text-[#c9a84c]" /> Match Screenshot
+                <Camera className="w-5 h-5 text-accent" /> Match Screenshot
               </h2>
               <img src={result.screenshot_url} alt="Match screenshot" className="w-full rounded-lg border border-border" />
             </div>
