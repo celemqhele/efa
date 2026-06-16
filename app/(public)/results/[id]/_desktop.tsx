@@ -24,20 +24,20 @@ export default function Desktop({ data }: { data: any }) {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Breadcrumb */}
-      <Link href="/results" className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-foreground-secondary transition-colors">
+      <Link href="/results" className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors">
         <ArrowLeft className="w-3.5 h-3.5" />
         Results
       </Link>
 
       {/* ── Hero Score Card ────────────────────────────────────────────── */}
       <div className="card overflow-hidden">
-        <div className="bg-gradient-to-br from-navy-light via-gold/10 to-navy-card h-24 relative" />
+        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-24 relative" />
         <div className="px-10 py-8 -mt-8 relative">
           <div className="relative flex items-center justify-between gap-8">
             {/* Home team */}
             <div className="flex items-center gap-5 flex-1 justify-end">
               <div className="text-right">
-                <Link href={`/teams/${home?.id}`} className="text-lg font-bold text-foreground-primary hover:text-gold transition-colors block">{home?.name}</Link>
+                <Link href={`/teams/${home?.id}`} className="text-lg font-bold text-text-primary hover:text-accent transition-colors block">{home?.name}</Link>
                 <p className="text-xs text-text-muted">{home?.manager?.username ?? 'NO MANAGER'}</p>
               </div>
               {home?.logo_league_folder && (
@@ -51,7 +51,7 @@ export default function Desktop({ data }: { data: any }) {
                 <span className={`text-xs font-bold uppercase tracking-widest ${tournamentColor}`}>{tournament?.name}</span>
                 {fixture?.matchday && <span className="text-xs text-text-muted">· Matchday {fixture.matchday}</span>}
               </div>
-              <div className="text-6xl font-black text-foreground-primary tabular-nums tracking-tight">
+              <div className="text-6xl font-black text-text-primary tabular-nums tracking-tight">
                 {result.home_score}<span className="text-text-muted mx-3">–</span>{result.away_score}
               </div>
               <div className="text-xs text-green-400 mt-1 font-semibold uppercase tracking-wider">Full Time</div>
@@ -68,7 +68,7 @@ export default function Desktop({ data }: { data: any }) {
                 <Image src={getTeamLogo(away.logo_league_folder, away.logo_team_slug, 'match_detail_hero')} alt={away.name} width={64} height={64} className="object-contain w-16 h-16" />
               )}
               <div>
-                <Link href={`/teams/${away?.id}`} className="text-lg font-bold text-foreground-primary hover:text-gold transition-colors block">{away?.name}</Link>
+                <Link href={`/teams/${away?.id}`} className="text-lg font-bold text-text-primary hover:text-accent transition-colors block">{away?.name}</Link>
                 <p className="text-xs text-text-muted">{away?.manager?.username ?? 'NO MANAGER'}</p>
               </div>
             </div>
@@ -88,7 +88,7 @@ export default function Desktop({ data }: { data: any }) {
       <div className="grid grid-cols-5 gap-6">
         {/* ── Stats Table ──────────────────────────────────────────────── */}
         <div className="col-span-3 card p-6">
-          <h2 className="text-sm font-black text-foreground-primary uppercase tracking-widest flex items-center gap-2 mb-4">
+          <h2 className="text-sm font-black text-text-primary uppercase tracking-widest flex items-center gap-2 mb-4">
             <BarChart3 className="w-5 h-5 text-[#c9a84c]" /> Match Statistics
           </h2>
 
@@ -105,9 +105,9 @@ export default function Desktop({ data }: { data: any }) {
                 <tbody>
                   {statDefs.map((s) => (
                     <tr key={s.key} className="border-b border-border/20 hover:bg-black/[0.02] transition-colors">
-                      <td className="text-right py-3 pr-6 font-semibold text-foreground-primary tabular-nums">{s.h}{s.unit}</td>
+                      <td className="text-right py-3 pr-6 font-semibold text-text-primary tabular-nums">{s.h}{s.unit}</td>
                       <td className="py-3 px-6 text-xs text-text-muted font-medium">{s.label}</td>
-                      <td className="py-3 pl-6 font-semibold text-foreground-primary tabular-nums">{s.a}{s.unit}</td>
+                      <td className="py-3 pl-6 font-semibold text-text-primary tabular-nums">{s.a}{s.unit}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -122,7 +122,7 @@ export default function Desktop({ data }: { data: any }) {
         <div className="col-span-2 space-y-6">
           {result.screenshot_url && (
             <div className="card p-6">
-              <h2 className="text-sm font-black text-foreground-primary uppercase tracking-widest flex items-center gap-2 mb-4">
+              <h2 className="text-sm font-black text-text-primary uppercase tracking-widest flex items-center gap-2 mb-4">
                 <Camera className="w-5 h-5 text-[#c9a84c]" /> Match Screenshot
               </h2>
               <img src={result.screenshot_url} alt="Match screenshot" className="w-full rounded-lg border border-border" />

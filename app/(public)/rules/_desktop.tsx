@@ -76,9 +76,9 @@ export default function Desktop() {
                 <div className="flex gap-3 p-3.5 rounded-lg bg-bg-surface0/10 border border-slate-500/20 hover:bg-bg-surface0/20 transition-colors">
                   <ShieldBan className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
                   <p className="text-sm text-slate-200 leading-snug">
-                    If <span className="text-foreground-secondary font-semibold">neither team</span> submits a
+                    If <span className="text-text-secondary font-semibold">neither team</span> submits a
                     waiting report, the fixture is recorded as a{' '}
-                    <span className="text-foreground-secondary font-semibold">0–0 draw with no points</span> awarded
+                    <span className="text-text-secondary font-semibold">0–0 draw with no points</span> awarded
                     to either side.
                   </p>
                 </div>
@@ -108,7 +108,7 @@ export default function Desktop() {
                 <p className="text-text-primary font-semibold text-base">
                   The Home Team ALWAYS Creates the Matchroom
                 </p>
-                <p className="text-sm text-foreground-secondary leading-relaxed">
+                <p className="text-sm text-text-secondary leading-relaxed">
                   In eFootball, it is the responsibility of the{' '}
                   <span className="text-accent font-semibold">home team</span> — as listed in the
                   fixture — to open and host the matchroom. The away team joins the room created by the
@@ -140,7 +140,7 @@ export default function Desktop() {
                   <span className="flex-shrink-0 w-5 h-5 rounded-full bg-accent/20 text-accent text-xs font-bold flex items-center justify-center mt-0.5">
                     {i + 1}
                   </span>
-                  <span className="text-sm text-foreground-secondary leading-snug">{step}</span>
+                  <span className="text-sm text-text-secondary leading-snug">{step}</span>
                 </div>
               ))}
             </div>
@@ -245,7 +245,7 @@ export default function Desktop() {
         </div>
       </div>
 
-      <p className="text-center text-xs text-foreground-muted pb-4">
+      <p className="text-center text-xs text-text-muted pb-4">
         Rules last updated by EFA administration. All decisions by admins are final.
       </p>
     </div>

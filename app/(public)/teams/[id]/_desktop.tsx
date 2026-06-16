@@ -102,7 +102,7 @@ export default function Desktop({ data }: { data: any }) {
   } = data
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pt-6 px-4 lg:px-0">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* ── Hero ── */}
       <Card>
         <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-32 relative">
@@ -319,7 +319,7 @@ export default function Desktop({ data }: { data: any }) {
                     : 'TBD'
                   return (
                     <tr key={f.id} className="hover:bg-accent/5 transition-colors">
-                      <td className="py-3 pr-4">
+                      <td className="py-3 pr-4 min-w-0">
                         <Link href={`/fixtures/${f.id}`} className="flex items-center gap-3">
                           {opponent?.logo_league_folder ? (
                             <TeamLogo
@@ -332,7 +332,7 @@ export default function Desktop({ data }: { data: any }) {
                           ) : (
                             <div className="w-7 h-7 rounded bg-bg-base flex items-center justify-center text-xs text-text-muted shrink-0">?</div>
                           )}
-                          <span className="font-medium text-text-primary">
+                          <span className="font-medium text-text-primary truncate">
                             <span className="text-text-muted font-normal">{isHome ? 'vs' : '@'}</span> {opponent?.name ?? 'TBD'}
                           </span>
                         </Link>
@@ -404,7 +404,7 @@ export default function Desktop({ data }: { data: any }) {
                           {outcomeLetter}
                         </span>
                       </td>
-                      <td className="py-3 pr-4">
+                      <td className="py-3 pr-4 min-w-0">
                         <Link href={`/fixtures/${f.id}`} className="flex items-center gap-3">
                           {opponent?.logo_league_folder ? (
                             <TeamLogo
@@ -417,7 +417,7 @@ export default function Desktop({ data }: { data: any }) {
                           ) : (
                             <div className="w-7 h-7 rounded bg-bg-base flex items-center justify-center text-xs text-text-muted shrink-0">?</div>
                           )}
-                          <span className="font-medium text-text-primary">
+                          <span className="font-medium text-text-primary truncate">
                             <span className="text-text-muted font-normal">{isHome ? 'vs' : '@'}</span> {opponent?.name ?? 'Unknown'}
                           </span>
                         </Link>
@@ -673,10 +673,10 @@ export default function Desktop({ data }: { data: any }) {
               <tbody className="divide-y divide-border/40">
                 {h2hEntries.map(([oppId, rec]: [string, any]) => (
                   <tr key={oppId} className="hover:bg-accent/5 transition-colors">
-                    <td className="py-3 pr-4 font-medium">
+                    <td className="py-3 pr-4 font-medium min-w-0">
                       <Link
                         href={`/teams/${oppId}`}
-                        className="hover:text-accent transition-colors"
+                        className="hover:text-accent transition-colors truncate block"
                       >
                         {rec.name}
                       </Link>

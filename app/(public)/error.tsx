@@ -23,7 +23,7 @@ export default function PublicError({
         </Button>
         <Link
           href="/"
-          className="px-5 py-2 border border-border text-foreground-secondary rounded-lg hover:border-accent/40 transition-colors text-sm"
+          className="px-5 py-2 border border-border text-text-secondary rounded-lg hover:border-accent/40 transition-colors text-sm"
         >
           Go home
         </Link>

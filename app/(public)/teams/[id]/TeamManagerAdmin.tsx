@@ -79,8 +79,8 @@ export default function TeamManagerAdmin({
   }
 
   return (
-    <div className="card p-5 border-gold/20">
-      <h2 className="section-header text-gold">Admin — Manager Controls</h2>
+    <div className="card p-5 border-accent/20">
+      <h2 className="section-header text-accent">Admin — Manager Controls</h2>
 
       {error && (
         <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
@@ -93,12 +93,12 @@ export default function TeamManagerAdmin({
           {managerAvatar ? (
             <Image src={managerAvatar} alt={managerUsername ?? ''} width={40} height={40} className="rounded-full object-cover bg-bg-surface shrink-0" />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center shrink-0">
-              <span className="text-gold font-bold">{(managerUsername ?? '?')[0].toUpperCase()}</span>
+            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+              <span className="text-accent font-bold">{(managerUsername ?? '?')[0].toUpperCase()}</span>
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-foreground-primary font-semibold">@{managerUsername}</p>
+            <p className="text-text-primary font-semibold">@{managerUsername}</p>
             <p className="text-text-muted text-xs">Current manager</p>
           </div>
           <button
@@ -119,7 +119,7 @@ export default function TeamManagerAdmin({
                 key={user.id}
                 onClick={() => handleAssign(user.id)}
                 disabled={loading}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-bg-surface hover:border-gold/50 hover:bg-gold/5 transition-all text-left disabled:opacity-50"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-bg-surface hover:border-accent/50 hover:bg-accent/5 transition-all text-left disabled:opacity-50"
               >
                 {user.avatar_url ? (
                   <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-cover bg-bg-elevated shrink-0" />
@@ -128,8 +128,8 @@ export default function TeamManagerAdmin({
                     <span className="text-text-muted text-xs font-bold">{user.username[0].toUpperCase()}</span>
                   </div>
                 )}
-                <span className="text-foreground-primary text-sm font-medium flex-1">{user.username}</span>
-                <span className="text-gold text-xs font-semibold">Assign →</span>
+                <span className="text-text-primary text-sm font-medium flex-1">{user.username}</span>
+                <span className="text-accent text-xs font-semibold">Assign →</span>
               </button>
             ))}
 
@@ -151,7 +151,7 @@ export default function TeamManagerAdmin({
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-foreground-secondary text-sm font-medium">{user.username}</p>
+                      <p className="text-text-secondary text-sm font-medium">{user.username}</p>
                       <p className="text-text-muted text-xs truncate">Manages {managedTeamByUser[user.id]} — sack first</p>
                     </div>
                   </div>

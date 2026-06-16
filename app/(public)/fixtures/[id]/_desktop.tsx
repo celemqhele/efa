@@ -46,13 +46,13 @@ function StatBar({
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-text-muted">
-        <span className="font-semibold text-foreground-primary">{h}</span>
+        <span className="font-semibold text-text-primary">{h}</span>
         <span className="uppercase tracking-wider">{label}</span>
-        <span className="font-semibold text-foreground-primary">{a}</span>
+        <span className="font-semibold text-text-primary">{a}</span>
       </div>
-      <div className="flex h-1.5 rounded-full overflow-hidden bg-navy-border">
+      <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-elevated">
         <div
-          className="bg-gold transition-all duration-500"
+          className="bg-accent transition-all duration-500"
           style={{ width: `${homePct}%` }}
         />
         <div
@@ -163,7 +163,7 @@ export default function Desktop({ data }: { data: any }) {
       {/* ── Match Hero ──────────────────────────────────────────────────── */}
       <div className="card p-8">
         <div className="text-center mb-6">
-          <span className="text-sm font-medium text-gold uppercase tracking-widest">
+          <span className="text-sm font-medium text-accent uppercase tracking-widest">
             {tournament?.name ?? 'Match'} · Matchday {fixture.matchday}
           </span>
           {fixture.scheduled_date && (
@@ -189,17 +189,17 @@ export default function Desktop({ data }: { data: any }) {
                 className="object-contain group-hover:scale-105 transition-transform"
               />
               <div className="text-center">
-                <p className="font-bold text-foreground-primary text-lg">{homeTeam.name}</p>
+                <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
                 <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
 
             <div className="flex items-center gap-5">
-              <span className="text-6xl font-black text-foreground-primary tabular-nums">
+              <span className="text-6xl font-black text-text-primary tabular-nums">
                 {result.home_score}
               </span>
               <span className="text-3xl font-bold text-text-muted">–</span>
-              <span className="text-6xl font-black text-foreground-primary tabular-nums">
+              <span className="text-6xl font-black text-text-primary tabular-nums">
                 {result.away_score}
               </span>
             </div>
@@ -213,7 +213,7 @@ export default function Desktop({ data }: { data: any }) {
                 className="object-contain group-hover:scale-105 transition-transform"
               />
               <div className="text-center">
-                <p className="font-bold text-foreground-primary text-lg">{awayTeam.name}</p>
+                <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
                 <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
               </div>
             </Link>
@@ -229,13 +229,13 @@ export default function Desktop({ data }: { data: any }) {
                 className="object-contain group-hover:scale-105 transition-transform"
               />
               <div className="text-center">
-                <p className="font-bold text-foreground-primary text-lg">{homeTeam.name}</p>
+                <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
                 <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
 
             <div className="text-center">
-              <span className="text-5xl font-black text-foreground-muted tracking-widest">VS</span>
+              <span className="text-5xl font-black text-text-muted tracking-widest">VS</span>
             </div>
 
             <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
@@ -247,7 +247,7 @@ export default function Desktop({ data }: { data: any }) {
                 className="object-contain group-hover:scale-105 transition-transform"
               />
               <div className="text-center">
-                <p className="font-bold text-foreground-primary text-lg">{awayTeam.name}</p>
+                <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
                 <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
               </div>
             </Link>
@@ -277,9 +277,9 @@ export default function Desktop({ data }: { data: any }) {
         <>
           {/* Coach's Analysis — always visible to managers */}
           {isManager && (homeCoachNote || awayCoachNote) && (
-            <div className="card p-6 border-gold/20">
+            <div className="card p-6 border-accent/20">
               <h2 className="section-header mb-4">
-                <Brain className="w-5 h-5 text-gold" /> Coach's Analysis
+                <Brain className="w-5 h-5 text-accent" /> Coach's Analysis
               </h2>
               <div className="grid grid-cols-2 gap-6">
                 {isHomeManager && homeCoachNote && (
@@ -379,31 +379,31 @@ export default function Desktop({ data }: { data: any }) {
           {/* Matchroom Instructions */}
           <div className="card p-6 border-accent/20 bg-bg-elevated">
             <h2 className="section-header mb-4">
-              <Gamepad2 className="w-5 h-5 text-gold" /> Matchroom Instructions
+              <Gamepad2 className="w-5 h-5 text-accent" /> Matchroom Instructions
             </h2>
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-start gap-4 p-5 rounded-lg bg-gold/10 border border-gold/20 hover:bg-gold/[0.15] transition-colors">
-                <Home className="w-6 h-6 text-gold shrink-0 mt-0.5" />
+              <div className="flex items-start gap-4 p-5 rounded-lg bg-accent/10 border border-accent/20 hover:bg-accent/[0.15] transition-colors">
+                <Home className="w-6 h-6 text-accent shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-gold font-bold text-sm uppercase tracking-wider">
+                  <p className="text-accent font-bold text-sm uppercase tracking-wider">
                     HOME — {homeTeam.name}
                   </p>
                   {homeManager && (
-                    <p className="text-foreground-primary font-semibold">@{homeManager.username}</p>
+                    <p className="text-text-primary font-semibold">@{homeManager.username}</p>
                   )}
-                  <p className="text-foreground-secondary text-sm mt-2">
+                  <p className="text-text-secondary text-sm mt-2">
                     YOU CREATE THE MATCHROOM in eFootball
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-4 p-5 rounded-lg bg-bg-surface border border-border hover:bg-bg-elevated transition-colors">
-                <Plane className="w-6 h-6 text-foreground-secondary shrink-0 mt-0.5" />
+                <Plane className="w-6 h-6 text-text-secondary shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-foreground-secondary font-bold text-sm uppercase tracking-wider">
+                  <p className="text-text-secondary font-bold text-sm uppercase tracking-wider">
                     AWAY — {awayTeam.name}
                   </p>
                   {awayManager && (
-                    <p className="text-foreground-primary font-semibold">@{awayManager.username}</p>
+                    <p className="text-text-primary font-semibold">@{awayManager.username}</p>
                   )}
                   <p className="text-text-muted text-sm mt-2">
                     You join the matchroom
@@ -423,7 +423,7 @@ export default function Desktop({ data }: { data: any }) {
           {/* Win Probability */}
           <div className="card p-6">
             <h2 className="section-header mb-4">
-              <BarChart3 className="w-5 h-5 text-gold" /> Win Probability
+              <BarChart3 className="w-5 h-5 text-accent" /> Win Probability
             </h2>
             <ProbabilityBar
               home={probability.home}
@@ -437,7 +437,7 @@ export default function Desktop({ data }: { data: any }) {
           {/* H2H Last 5 */}
           <div className="card p-6">
             <h2 className="section-header mb-4">
-              <Swords className="w-5 h-5 text-gold" /> Head to Head (Last 5)
+              <Swords className="w-5 h-5 text-accent" /> Head to Head (Last 5)
             </h2>
             {h2hList.length === 0 ? (
               <p className="text-text-muted text-sm">No previous meetings.</p>
@@ -452,10 +452,10 @@ export default function Desktop({ data }: { data: any }) {
                   const theirScore = f.home_team_id === fixture.home_team_id ? aScore : hScore
                   const outcome = ourScore > theirScore ? 'W' : ourScore < theirScore ? 'L' : 'D'
                   const outcomeColor =
-                    outcome === 'W' ? 'text-green-400' : outcome === 'L' ? 'text-red-400' : 'text-yellow-400'
+                    outcome === 'W' ? 'text-feedback-success' : outcome === 'L' ? 'text-feedback-error' : 'text-feedback-warning'
 
                   return (
-                    <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg bg-navy-border/30 hover:bg-navy-border/50 transition-colors">
+                    <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg bg-bg-elevated/30 hover:bg-bg-elevated/50 transition-colors">
                       <Link href={`/teams/${hTeam.id}`} className="flex items-center gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
                         {hTeam.logo_league_folder && (
                           <Image
@@ -465,15 +465,15 @@ export default function Desktop({ data }: { data: any }) {
                             className="object-contain shrink-0"
                           />
                         )}
-                        <span className="text-xs text-text-muted">{hTeam.name}</span>
+                        <span className="text-xs text-text-muted truncate">{hTeam.name}</span>
                       </Link>
 
-                      <Link href={`/fixtures/${f.id}`} className="font-bold text-foreground-primary tabular-nums text-sm px-3 hover:text-gold transition-colors shrink-0">
+                      <Link href={`/fixtures/${f.id}`} className="font-bold text-text-primary tabular-nums text-sm px-3 hover:text-accent transition-colors shrink-0">
                         {hScore} – {aScore}
                       </Link>
 
                       <Link href={`/teams/${aTeam.id}`} className="flex items-center justify-end gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
-                        <span className="text-xs text-text-muted text-right">{aTeam.name}</span>
+                        <span className="text-xs text-text-muted text-right truncate">{aTeam.name}</span>
                         {aTeam.logo_league_folder && (
                           <Image
                             src={getTeamLogo(aTeam.logo_league_folder, aTeam.logo_team_slug, 'standings_row')}
@@ -495,10 +495,10 @@ export default function Desktop({ data }: { data: any }) {
           {/* Team DNA — always-visible 2-column grid */}
           <div className="card p-6">
             <h2 className="section-header mb-4">
-              <Dna className="w-5 h-5 text-gold" /> Team DNA
+              <Dna className="w-5 h-5 text-accent" /> Team DNA
             </h2>
             <div className="grid grid-cols-2 gap-6">
-              <div className="bg-navy-border/20 rounded-xl p-4">
+              <div className="bg-bg-elevated/30 rounded-xl p-4">
                 <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
                   {homeTeam.name}
                 </p>
@@ -514,10 +514,10 @@ export default function Desktop({ data }: { data: any }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-foreground-muted text-xs">Not enough data</p>
+                  <p className="text-text-muted text-xs">Not enough data</p>
                 )}
               </div>
-              <div className="bg-navy-border/20 rounded-xl p-4">
+              <div className="bg-bg-elevated/30 rounded-xl p-4">
                 <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
                   {awayTeam.name}
                 </p>
@@ -533,7 +533,7 @@ export default function Desktop({ data }: { data: any }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-foreground-muted text-xs">Not enough data</p>
+                  <p className="text-text-muted text-xs">Not enough data</p>
                 )}
               </div>
             </div>
@@ -542,14 +542,14 @@ export default function Desktop({ data }: { data: any }) {
           {/* Form */}
           <div className="card p-6">
             <h2 className="section-header mb-4">
-              <TrendingUp className="w-5 h-5 text-gold" /> Recent Form (Last 6)
+              <TrendingUp className="w-5 h-5 text-accent" /> Recent Form (Last 6)
             </h2>
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-navy-border/20">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-bg-elevated/30">
                 <span className="text-sm text-text-muted truncate min-w-0">{homeTeam.name}</span>
                 <FormStrip form={(homeStanding?.form ?? '').slice(-6)} />
               </div>
-              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-navy-border/20">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-bg-elevated/30">
                 <span className="text-sm text-text-muted truncate min-w-0">{awayTeam.name}</span>
                 <FormStrip form={(awayStanding?.form ?? '').slice(-6)} />
               </div>
@@ -565,16 +565,16 @@ export default function Desktop({ data }: { data: any }) {
           {matchStats && (
             <div className="card p-6">
               <h2 className="section-header mb-4">
-                <BarChart3 className="w-5 h-5 text-gold" /> Match Statistics
+                <BarChart3 className="w-5 h-5 text-accent" /> Match Statistics
               </h2>
               <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                 {matchStatEntries.map((stat) => (
                   <StatBar key={stat.label} label={stat.label} home={stat.home} away={stat.away} />
                 ))}
               </div>
-              <div className="flex justify-between text-xs text-text-muted mt-4 pt-4 border-t border-navy-border">
-                <span className="font-semibold text-foreground-secondary">{homeTeam.name}</span>
-                <span className="font-semibold text-foreground-secondary">{awayTeam.name}</span>
+              <div className="flex justify-between text-xs text-text-muted mt-4 pt-4 border-t border-border">
+                <span className="font-semibold text-text-secondary">{homeTeam.name}</span>
+                <span className="font-semibold text-text-secondary">{awayTeam.name}</span>
               </div>
             </div>
           )}
@@ -582,7 +582,7 @@ export default function Desktop({ data }: { data: any }) {
           {/* Reactions — expanded panel with hover effects */}
           <div className="card p-6">
             <h2 className="section-header mb-4">
-              <MessageSquare className="w-5 h-5 text-gold" /> Reactions
+              <MessageSquare className="w-5 h-5 text-accent" /> Reactions
             </h2>
             <ReactionsPanel
               fixtureId={id}
@@ -598,7 +598,7 @@ export default function Desktop({ data }: { data: any }) {
       {!hasResult && (
         <div className="card p-6">
           <h2 className="section-header">
-            <CheckCircle className="w-5 h-5 text-gold" /> Score Submission
+            <CheckCircle className="w-5 h-5 text-accent" /> Score Submission
           </h2>
 
           {confirmationStatus === 'awaiting_confirmation' && (
@@ -622,7 +622,7 @@ export default function Desktop({ data }: { data: any }) {
                     Submitted: {conf1.home_score}–{conf1.away_score}
                   </span>
                 ) : (
-                  <span className="text-foreground-muted">Pending</span>
+                  <span className="text-text-muted">Pending</span>
                 )}
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -632,7 +632,7 @@ export default function Desktop({ data }: { data: any }) {
                     Submitted: {conf2.home_score}–{conf2.away_score}
                   </span>
                 ) : (
-                  <span className="text-foreground-muted">Pending</span>
+                  <span className="text-text-muted">Pending</span>
                 )}
               </div>
             </div>
@@ -666,18 +666,18 @@ export default function Desktop({ data }: { data: any }) {
       {/* ── DISCONNECT RULES ─────────────────────────────────────────────── */}
       <div className="card p-6">
         <h2 className="section-header mb-4">
-          <Zap className="w-5 h-5 text-gold" /> Disconnect Rules
+          <Zap className="w-5 h-5 text-accent" /> Disconnect Rules
         </h2>
 
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <h3 className="text-sm font-semibold text-gold mb-3 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-accent mb-3 uppercase tracking-wider">
               Official Rules
             </h3>
             <ul className="space-y-1.5">
               {OFFICIAL_RULES.map((r: any, i: number) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-foreground-secondary hover:text-foreground-primary transition-colors">
-                  {r.icon === 'check' ? <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" /> : r.icon === 'cross' ? <X className="w-4 h-4 text-red-500 shrink-0 mt-0.5" /> : <Home className="w-4 h-4 text-gold shrink-0 mt-0.5" />}
+                <li key={i} className="flex items-start gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors">
+                  {r.icon === 'check' ? <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" /> : r.icon === 'cross' ? <X className="w-4 h-4 text-red-500 shrink-0 mt-0.5" /> : <Home className="w-4 h-4 text-accent shrink-0 mt-0.5" />}
                   <span>{r.rule}</span>
                 </li>
               ))}
@@ -685,21 +685,21 @@ export default function Desktop({ data }: { data: any }) {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gold mb-3 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-accent mb-3 uppercase tracking-wider">
               Disconnect Restart Table
             </h3>
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b border-navy-border">
+                <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b border-border">
                   <th className="pb-2 pr-4">Minute of DC</th>
                   <th className="pb-2 pr-4">Restart</th>
                   <th className="pb-2">Note</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-navy-border/50">
+              <tbody className="divide-y divide-border/50">
                 {DISCONNECT_RULES.map((rule: any, i: number) => (
-                  <tr key={i} className="text-foreground-secondary hover:bg-navy-border/20 transition-colors">
-                    <td className="py-2 pr-4 font-semibold text-gold">{rule.minute}</td>
+                  <tr key={i} className="text-text-secondary hover:bg-bg-elevated/20 transition-colors">
+                    <td className="py-2 pr-4 font-semibold text-accent">{rule.minute}</td>
                     <td className="py-2 pr-4">{rule.restart}</td>
                     <td className="py-2 text-text-muted">{rule.note}</td>
                   </tr>
@@ -713,7 +713,7 @@ export default function Desktop({ data }: { data: any }) {
       {/* ── BANTER BOARD ─────────────────────────────────────────────────── */}
       <div className="card p-6">
         <h2 className="section-header">
-          <MessageSquare className="w-5 h-5 text-gold" /> Banter Board
+          <MessageSquare className="w-5 h-5 text-accent" /> Banter Board
           <span className="text-text-muted text-sm font-normal ml-auto">
             {comments.length} comment{comments.length !== 1 ? 's' : ''}
           </span>
@@ -732,22 +732,22 @@ export default function Desktop({ data }: { data: any }) {
               return (
                 <div key={comment.id} className="space-y-2">
                   <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-navy-border flex items-center justify-center text-xs font-bold text-gold shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-accent shrink-0">
                       {comment.author?.username?.[0]?.toUpperCase() ?? '?'}
                     </div>
-                    <div className="flex-1 p-3 rounded-lg bg-navy-border/40">
+                    <div className="flex-1 p-3 rounded-lg bg-bg-elevated/40">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-gold">
+                        <span className="text-xs font-semibold text-accent">
                           @{comment.author?.username ?? 'Unknown'}
                         </span>
-                        <span className="text-xs text-foreground-muted">
+                        <span className="text-xs text-text-muted">
                           {new Date(comment.created_at).toLocaleDateString('en-GB', {
                             day: 'numeric',
                             month: 'short',
                           })}
                         </span>
                       </div>
-                      <p className="text-sm text-foreground-secondary">{comment.content}</p>
+                      <p className="text-sm text-text-secondary">{comment.content}</p>
                     </div>
                   </div>
 
@@ -755,15 +755,15 @@ export default function Desktop({ data }: { data: any }) {
                     <div className="ml-11 space-y-2">
                       {commentReplies.map((reply: any) => (
                         <div key={reply.id} className="flex gap-3">
-                          <div className="w-6 h-6 rounded-full bg-navy-border flex items-center justify-center text-xs font-bold text-text-muted shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-text-muted shrink-0">
                             {reply.author?.username?.[0]?.toUpperCase() ?? '?'}
                           </div>
-                          <div className="flex-1 p-2.5 rounded-lg bg-navy-border/20 border border-navy-border/50">
+                          <div className="flex-1 p-2.5 rounded-lg bg-bg-elevated/20 border border-border/50">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-semibold text-foreground-secondary">
+                              <span className="text-xs font-semibold text-text-secondary">
                                 @{reply.author?.username ?? 'Unknown'}
                               </span>
-                              <span className="text-xs text-foreground-muted">
+                              <span className="text-xs text-text-muted">
                                 {new Date(reply.created_at).toLocaleDateString('en-GB', {
                                   day: 'numeric',
                                   month: 'short',
@@ -783,7 +783,7 @@ export default function Desktop({ data }: { data: any }) {
         )}
 
         {user && (
-          <div className="mt-4 pt-4 border-t border-navy-border">
+          <div className="mt-4 pt-4 border-t border-border">
             <form action={`/api/comments`} method="post">
               <input type="hidden" name="fixture_id" value={id} />
               <div className="flex gap-3">

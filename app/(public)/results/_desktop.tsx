@@ -63,7 +63,7 @@ export default function Desktop({ data }: DesktopProps) {
 
   if (!user) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-text-primary">My Results</h1>
         <div className="bg-bg-surface border border-border rounded-xl p-12 text-center space-y-3">
           <Trophy className="w-10 h-10 text-text-muted mx-auto" />
@@ -76,7 +76,7 @@ export default function Desktop({ data }: DesktopProps) {
 
   if (teamIds.length === 0) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-text-primary">My Results</h1>
         <div className="bg-bg-surface border border-border rounded-xl p-12 text-center space-y-3">
           <Crosshair className="w-10 h-10 text-text-muted mx-auto" />
@@ -112,16 +112,16 @@ export default function Desktop({ data }: DesktopProps) {
 
       {(fixturesWithResults?.length ?? 0) > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-green-500/40 flex flex-col items-center py-4 gap-0.5">
-            <span className="text-2xl font-black text-green-500 leading-none">{wins}</span>
+          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-feedback-success/40 flex flex-col items-center py-4 gap-0.5">
+            <span className="text-2xl font-black text-feedback-success leading-none">{wins}</span>
             <span className="text-xs uppercase tracking-widest text-text-muted font-bold">Won</span>
           </div>
-          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-slate-500/20 flex flex-col items-center py-4 gap-0.5">
+          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-text-muted/30 flex flex-col items-center py-4 gap-0.5">
             <span className="text-2xl font-black text-text-muted leading-none">{draws}</span>
             <span className="text-xs uppercase tracking-widest text-text-muted font-bold">Drawn</span>
           </div>
-          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-red-500/40 flex flex-col items-center py-4 gap-0.5">
-            <span className="text-2xl font-black text-red-500 leading-none">{losses}</span>
+          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-feedback-error/40 flex flex-col items-center py-4 gap-0.5">
+            <span className="text-2xl font-black text-feedback-error leading-none">{losses}</span>
             <span className="text-xs uppercase tracking-widest text-text-muted font-bold">Lost</span>
           </div>
         </div>
@@ -162,11 +162,11 @@ export default function Desktop({ data }: DesktopProps) {
                     const typeStyle = TYPE_STYLES[tournamentType] ?? { label: t?.name ?? '—', colour: 'bg-slate-500/10 text-text-muted border-slate-500/25' }
 
                     let resultBadge: { label: string; cls: string } | null = null
-                    if (won) resultBadge = { label: 'W', cls: 'bg-green-500/15 text-green-500 border-green-500/30' }
-                    else if (lost) resultBadge = { label: 'L', cls: 'bg-red-500/15 text-red-500 border-red-500/30' }
-                    else if (drew) resultBadge = { label: 'D', cls: 'bg-slate-500/15 text-text-muted border-slate-500/30' }
+                    if (won) resultBadge = { label: 'W', cls: 'bg-feedback-success/15 text-feedback-success border-feedback-success/30' }
+                    else if (lost) resultBadge = { label: 'L', cls: 'bg-feedback-error/15 text-feedback-error border-feedback-error/30' }
+                    else if (drew) resultBadge = { label: 'D', cls: 'bg-text-muted/15 text-text-muted border-text-muted/30' }
 
-                    const borderAccent = won ? 'border-l-green-500/40' : lost ? 'border-l-red-500/40' : 'border-l-slate-500/20'
+                    const borderAccent = won ? 'border-l-feedback-success/40' : lost ? 'border-l-feedback-error/40' : 'border-l-text-muted/30'
 
                     return (
                       <Link
@@ -190,7 +190,7 @@ export default function Desktop({ data }: DesktopProps) {
                             </span>
                             <span className="text-[10px] text-text-muted font-semibold">MD{f.matchday}</span>
                           </div>
-                          <p className="text-sm font-semibold text-text-primary">{opponent?.name ?? 'TBC'}</p>
+                          <p className="text-sm font-semibold text-text-primary truncate">{opponent?.name ?? 'TBC'}</p>
                           <p className="text-xs text-text-muted mt-0.5">{formatWhen(f.scheduled_date)}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">

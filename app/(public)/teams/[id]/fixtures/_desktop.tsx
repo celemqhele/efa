@@ -77,12 +77,12 @@ export default function Desktop({ data }: { data: any }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-navy-light/30 border-b border-border/60">
-                <th className="text-left py-4 px-6 text-[10px] font-bold text-text-muted uppercase tracking-widest">Date</th>
-                <th className="text-left py-4 px-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Competition</th>
-                <th className="text-left py-4 px-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Opponent</th>
-                <th className="text-center py-4 px-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Score</th>
-                <th className="text-center py-4 pl-4 pr-6 text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</th>
+              <tr className="border-b-2 border-accent/30 bg-bg-base">
+                <th className="text-left py-3.5 px-6 text-[11px] font-bold text-text-muted uppercase tracking-wider">Date</th>
+                <th className="text-left py-3.5 px-4 text-[11px] font-bold text-text-muted uppercase tracking-wider">Competition</th>
+                <th className="text-left py-3.5 px-4 text-[11px] font-bold text-text-muted uppercase tracking-wider">Opponent</th>
+                <th className="text-center py-3.5 px-4 text-[11px] font-bold text-text-muted uppercase tracking-wider">Score</th>
+                <th className="text-center py-3.5 pl-4 pr-6 text-[11px] font-bold text-text-muted uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -134,7 +134,7 @@ export default function Desktop({ data }: { data: any }) {
                       <td className="py-4 px-4">
                         <span className="text-xs font-semibold text-text-primary">{tournamentLabel}</span>
                       </td>
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 min-w-0">
                         <div className="flex items-center gap-3">
                           {opponent?.logo_league_folder ? (
                             <TeamLogo
@@ -147,7 +147,7 @@ export default function Desktop({ data }: { data: any }) {
                           ) : (
                             <div className="w-7 h-7 rounded bg-bg-base shrink-0 flex items-center justify-center text-[9px] text-text-muted">?</div>
                           )}
-                          <span className="text-sm font-semibold text-text-primary">
+                          <span className="text-sm font-semibold text-text-primary truncate">
                             {isHome ? 'vs' : '@'} {opponent?.name ?? 'TBC'}
                           </span>
                         </div>

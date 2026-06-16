@@ -74,7 +74,7 @@ export default function Desktop({ data }: DesktopProps) {
 
   if (!user) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-text-primary">My Fixtures</h1>
         <div className="bg-bg-surface border border-border rounded-xl p-12 text-center space-y-4">
           <CircleDot className="w-10 h-10 text-text-muted mx-auto" />
@@ -87,7 +87,7 @@ export default function Desktop({ data }: DesktopProps) {
 
   if (teamIds.length === 0) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-text-primary">My Fixtures</h1>
         <div className="bg-bg-surface border border-border rounded-xl p-12 text-center space-y-4">
           <Crosshair className="w-10 h-10 text-text-muted mx-auto" />
@@ -138,13 +138,13 @@ export default function Desktop({ data }: DesktopProps) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border bg-bg-base/50">
-                        <th className="text-left text-text-muted font-bold text-xs uppercase tracking-wider px-4 py-3 w-20">Time</th>
-                        <th className="text-left text-text-muted font-bold text-xs uppercase tracking-wider px-4 py-3 w-24">Comp</th>
-                        <th className="text-left text-text-muted font-bold text-xs uppercase tracking-wider px-4 py-3">Home</th>
-                        <th className="text-center text-text-muted font-bold text-xs uppercase tracking-wider px-4 py-3 w-20">Score</th>
-                        <th className="text-left text-text-muted font-bold text-xs uppercase tracking-wider px-4 py-3">Away</th>
-                        <th className="text-center text-text-muted font-bold text-xs uppercase tracking-wider px-4 py-3 w-28">Status</th>
+                      <tr className="border-b-2 border-accent/30 bg-bg-base">
+                        <th className="text-left text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5 w-20">Time</th>
+                        <th className="text-left text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5 w-24">Comp</th>
+                        <th className="text-left text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5">Home</th>
+                        <th className="text-center text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5 w-20">Score</th>
+                        <th className="text-left text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5">Away</th>
+                        <th className="text-center text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5 w-28">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -175,7 +175,7 @@ export default function Desktop({ data }: DesktopProps) {
                                 {typeStyle.label}
                               </span>
                             </td>
-                            <td className="px-4 py-3.5">
+                            <td className="px-4 py-3.5 min-w-0">
                               <div className="flex items-center gap-2.5">
                                 {home?.logo_league_folder && (
                                   <TeamLogo
@@ -183,10 +183,10 @@ export default function Desktop({ data }: DesktopProps) {
                                     teamSlug={home.logo_team_slug}
                                     context="fixture_card"
                                     alt={home.name}
-                                    className="w-7 h-7"
+                                    className="w-7 h-7 shrink-0"
                                   />
                                 )}
-                                <span className="font-semibold text-text-primary">{home?.name ?? 'TBC'}</span>
+                                <span className="font-semibold text-text-primary truncate">{home?.name ?? 'TBC'}</span>
                               </div>
                             </td>
                             <td className="px-4 py-3.5 text-center">
@@ -196,7 +196,7 @@ export default function Desktop({ data }: DesktopProps) {
                                 <span className="text-xs font-black uppercase tracking-widest text-text-muted">vs</span>
                               )}
                             </td>
-                            <td className="px-4 py-3.5">
+                            <td className="px-4 py-3.5 min-w-0">
                               <div className="flex items-center gap-2.5">
                                 {away?.logo_league_folder && (
                                   <TeamLogo
@@ -204,10 +204,10 @@ export default function Desktop({ data }: DesktopProps) {
                                     teamSlug={away.logo_team_slug}
                                     context="fixture_card"
                                     alt={away.name}
-                                    className="w-7 h-7"
+                                    className="w-7 h-7 shrink-0"
                                   />
                                 )}
-                                <span className="font-semibold text-text-primary">{away?.name ?? 'TBC'}</span>
+                                <span className="font-semibold text-text-primary truncate">{away?.name ?? 'TBC'}</span>
                               </div>
                             </td>
                             <td className="px-4 py-3.5 text-center">

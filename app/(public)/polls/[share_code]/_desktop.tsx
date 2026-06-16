@@ -255,10 +255,10 @@ export default function Desktop({ data }: { data: any }) {
 
                   return (
                     <tr key={team.slug} className={`hover:bg-accent/5 transition-colors ${taken && !isMine ? 'opacity-50' : ''}`}>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-3 min-w-0">
                         <div className="flex items-center gap-3">
-                          <Image src={logoSrc(league.folder, team.slug)} alt={team.name} width={32} height={32} className="object-contain rounded" />
-                          <span className={`font-medium ${isMine ? 'text-accent' : 'text-text-primary'}`}>{team.name}</span>
+                          <Image src={logoSrc(league.folder, team.slug)} alt={team.name} width={32} height={32} className="object-contain rounded shrink-0" />
+                          <span className={`font-medium truncate ${isMine ? 'text-accent' : 'text-text-primary'}`}>{team.name}</span>
                         </div>
                       </td>
                       <td className="px-5 py-3">

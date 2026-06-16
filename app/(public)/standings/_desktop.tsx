@@ -50,7 +50,7 @@ function StandingsTable({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; m
                 onClick={() => window.location.href = `/teams/${row.team_id}`}
               >
                 <td className={`text-center font-bold px-3 py-3.5 ${isTopThree ? 'text-accent' : 'text-text-muted'}`}>{index + 1}</td>
-                <td className="px-3 py-3.5">
+                <td className="px-3 py-3.5 min-w-0">
                   <div className="flex items-center gap-3">
                     {row.team?.logo_league_folder && (
                       <TeamLogo
@@ -61,9 +61,9 @@ function StandingsTable({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; m
                         className="w-7 h-7 shrink-0"
                       />
                     )}
-                    <span className="font-semibold text-text-primary">{row.team?.name ?? 'Unknown team'}</span>
+                    <span className="font-semibold text-text-primary truncate">{row.team?.name ?? 'Unknown team'}</span>
                     {qualifies && (
-                      <span className="text-[10px] font-black text-accent bg-accent/10 border border-accent/20 rounded px-1.5 py-0.5">Q</span>
+                      <span className="text-[10px] font-black text-accent bg-accent/10 border border-accent/20 rounded px-1.5 py-0.5 shrink-0">Q</span>
                     )}
                   </div>
                 </td>

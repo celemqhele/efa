@@ -26,7 +26,7 @@ const TROPHY_LABEL: Record<string, string> = {
 }
 
 const TROPHY_COLOR: Record<string, string> = {
-  league: 'border-gold/40 bg-gold/10',
+  league: 'border-accent/40 bg-accent/10',
   tournament_club: 'border-blue-500/40 bg-blue-500/10',
   tournament_international: 'border-green-500/40 bg-green-500/10',
   ucl: 'border-blue-500/40 bg-blue-500/10',
@@ -36,7 +36,7 @@ const TROPHY_COLOR: Record<string, string> = {
 }
 
 const TROPHY_TEXT: Record<string, string> = {
-  league: 'text-gold',
+  league: 'text-accent',
   tournament_club: 'text-blue-400',
   tournament_international: 'text-green-400',
   ucl: 'text-blue-400',
@@ -85,7 +85,7 @@ export default function Desktop({ data }: DesktopProps) {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="text-center py-6">
-        <p className="text-gold text-sm font-semibold uppercase tracking-widest mb-2">
+        <p className="text-accent text-sm font-semibold uppercase tracking-widest mb-2">
           EFA Official Records
         </p>
         <h1 className="text-4xl font-black text-text-primary">Hall of Fame</h1>
@@ -96,12 +96,12 @@ export default function Desktop({ data }: DesktopProps) {
 
       <div>
         <h2 className="section-header">
-          <span className="text-gold">🏆</span> All-Time Records
+          <span className="text-accent">🏆</span> All-Time Records
         </h2>
         <div className="grid grid-cols-3 gap-6">
           {mostTotal && (
-            <div className="bg-bg-elevated border border-gold/30 rounded-xl p-6 text-center hover:scale-[1.02] hover:shadow-lg transition-all duration-200">
-              <p className="text-xs font-semibold text-gold uppercase tracking-widest mb-3">
+            <div className="bg-bg-elevated border border-accent/30 rounded-xl p-6 text-center hover:scale-[1.02] hover:shadow-lg transition-all duration-200">
+              <p className="text-xs font-semibold text-accent uppercase tracking-widest mb-3">
                 Most Trophies Overall
               </p>
               <Image
@@ -111,14 +111,14 @@ export default function Desktop({ data }: DesktopProps) {
                 className="object-contain mx-auto mb-2"
               />
               <p className="font-bold text-text-primary">{mostTotal[1].team.name}</p>
-              <p className="text-3xl font-black text-gold mt-1">{mostTotal[1].total}</p>
+              <p className="text-3xl font-black text-accent mt-1">{mostTotal[1].total}</p>
               <p className="text-xs text-text-muted">trophies</p>
             </div>
           )}
 
           {mostPL && (
-            <div className="bg-bg-elevated border border-gold/20 rounded-xl p-6 text-center hover:scale-[1.02] hover:shadow-lg transition-all duration-200">
-              <p className="text-xs font-semibold text-gold uppercase tracking-widest mb-3">
+            <div className="bg-bg-elevated border border-accent/20 rounded-xl p-6 text-center hover:scale-[1.02] hover:shadow-lg transition-all duration-200">
+              <p className="text-xs font-semibold text-accent uppercase tracking-widest mb-3">
                 🏆 Most League Titles
               </p>
               <Image
@@ -128,7 +128,7 @@ export default function Desktop({ data }: DesktopProps) {
                 className="object-contain mx-auto mb-2"
               />
               <p className="font-bold text-text-primary">{mostPL[1].team.name}</p>
-              <p className="text-3xl font-black text-gold mt-1">{mostPL[1].byType['league']}</p>
+              <p className="text-3xl font-black text-accent mt-1">{mostPL[1].byType['league']}</p>
               <p className="text-xs text-text-muted">league titles</p>
             </div>
           )}
@@ -169,13 +169,13 @@ export default function Desktop({ data }: DesktopProps) {
                   {allTimeRecords.map(([tid, data], idx) => (
                     <tr key={tid} className="hover:bg-accent/5 transition-colors">
                       <td className="px-5 py-3">
-                        <Link href={`/teams/${tid}`} className="flex items-center gap-3 hover:text-gold transition-colors">
+                        <Link href={`/teams/${tid}`} className="flex items-center gap-3 hover:text-accent transition-colors">
                           <span className="text-text-muted text-xs w-5 shrink-0 font-bold">#{idx + 1}</span>
                           <Image src={getTeamLogo(data.team.logo_league_folder, data.team.logo_team_slug, 'standings_row')} alt={data.team.name} width={28} height={28} className="object-contain shrink-0" />
                           <span className="font-semibold text-text-primary">{data.team.name}</span>
                         </Link>
                       </td>
-                      <td className="px-5 py-3 text-center font-black text-gold">{data.total}</td>
+                      <td className="px-5 py-3 text-center font-black text-accent">{data.total}</td>
                       <td className="px-5 py-3 text-center text-text-secondary">{data.byType['league'] ?? '—'}</td>
                       <td className="px-5 py-3 text-center text-text-secondary">{data.byType['tournament_club'] ?? '—'}</td>
                       <td className="px-5 py-3 text-center text-text-secondary">{data.byType['tournament_international'] ?? '—'}</td>
@@ -191,7 +191,7 @@ export default function Desktop({ data }: DesktopProps) {
 
       <div>
         <h2 className="section-header">
-          <span className="text-gold">🏆</span> Season Archives
+          <span className="text-accent">🏆</span> Season Archives
         </h2>
 
         {seasons.length === 0 ? (
