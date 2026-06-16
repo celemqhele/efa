@@ -4,7 +4,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
-import { Trophy, Crosshair, CalendarDays, ChevronRight } from 'lucide-react'
+import { Trophy, Crosshair, CalendarDays } from 'lucide-react'
 
 const TYPE_STYLES: Record<string, { label: string; colour: string }> = {
   league: { label: 'PL', colour: 'bg-accent/10 text-accent border-accent/25' },
@@ -70,7 +70,7 @@ function ResultCard({ f, teamIds }: { f: any; teamIds: string[] }) {
   return (
     <Link
       href={`/fixtures/${f.id}`}
-      className={`card flex items-center gap-3 border-l-4 ${borderAccent} active:scale-[0.98] transition-transform`}
+      className={`flex items-center gap-3 px-4 py-3.5 min-h-[60px] bg-bg-surface border border-border rounded-xl border-l-4 ${borderAccent} active:bg-accent/5 transition-colors`}
     >
       {opponent?.logo_league_folder && (
         <TeamLogo
@@ -89,7 +89,7 @@ function ResultCard({ f, teamIds }: { f: any; teamIds: string[] }) {
           </span>
           <span className="text-[10px] text-text-muted font-semibold">MD{f.matchday}</span>
         </div>
-        <p className="text-sm font-semibold text-foreground-primary truncate">
+        <p className="text-sm font-semibold text-text-primary truncate">
           {opponent?.name ?? 'TBC'}
         </p>
         <p className="text-[10px] text-text-muted mt-0.5">{formatWhen(f.scheduled_date)}</p>
@@ -98,7 +98,7 @@ function ResultCard({ f, teamIds }: { f: any; teamIds: string[] }) {
       <div className="flex flex-col items-end gap-1 shrink-0">
         {result ? (
           <>
-            <span className="text-xl font-black text-foreground-primary tabular-nums leading-none">
+            <span className="text-xl font-black text-text-primary tabular-nums leading-none">
               {myScore}–{oppScore}
             </span>
             {resultBadge && (
@@ -135,9 +135,9 @@ export default function Mobile({ data }: MobileProps) {
 
   if (!user) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-xl font-bold text-foreground-primary">My Results</h1>
-        <div className="card p-10 text-center space-y-3">
+      <div className="px-4 pb-8 space-y-5">
+        <h1 className="text-lg font-bold text-text-primary">My Results</h1>
+        <div className="bg-bg-surface border border-border rounded-xl p-10 text-center space-y-3">
           <Trophy className="w-10 h-10 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">Log in to see your team&apos;s past results.</p>
           <Link href="/login" className="btn-gold inline-block text-sm">Log in</Link>
@@ -148,9 +148,9 @@ export default function Mobile({ data }: MobileProps) {
 
   if (teamIds.length === 0) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-xl font-bold text-foreground-primary">My Results</h1>
-        <div className="card p-10 text-center space-y-3">
+      <div className="px-4 pb-8 space-y-5">
+        <h1 className="text-lg font-bold text-text-primary">My Results</h1>
+        <div className="bg-bg-surface border border-border rounded-xl p-10 text-center space-y-3">
           <Crosshair className="w-10 h-10 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">You don&apos;t have a team yet.</p>
           <Link href="/select-team" className="btn-gold inline-block text-sm">Pick a team</Link>
@@ -160,7 +160,7 @@ export default function Mobile({ data }: MobileProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 pb-8 space-y-5">
       <div className="flex items-center gap-3">
         {primaryTeam?.logo_league_folder && (
           <TeamLogo
@@ -172,37 +172,37 @@ export default function Mobile({ data }: MobileProps) {
           />
         )}
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-foreground-primary">My Results</h1>
+          <h1 className="text-lg font-bold text-text-primary">My Results</h1>
           {primaryTeam && (
-            <p className="text-xs text-accent truncate">{primaryTeam.name}</p>
+            <p className="text-xs text-accent font-medium truncate">{primaryTeam.name}</p>
           )}
         </div>
-        <Link href="/fixtures" className="text-xs font-semibold text-accent shrink-0">
+        <Link href="/fixtures" className="text-sm font-semibold text-accent shrink-0 hover:text-accent-hover transition-colors">
           Upcoming →
         </Link>
       </div>
 
       {(fixturesWithResults?.length ?? 0) > 0 && (
         <div className="grid grid-cols-3 gap-2">
-          <div className="card flex flex-col items-center py-3 gap-0.5 border-l-4 border-l-green-500/40">
+          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-green-500/40 flex flex-col items-center py-3 gap-0.5">
             <span className="text-xl font-black text-green-500 leading-none">{wins}</span>
-            <span className="text-[10px] uppercase tracking-widest text-text-muted font-semibold">Won</span>
+            <span className="text-[10px] uppercase tracking-widest text-text-muted font-bold">Won</span>
           </div>
-          <div className="card flex flex-col items-center py-3 gap-0.5 border-l-4 border-l-slate-500/20">
+          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-slate-500/20 flex flex-col items-center py-3 gap-0.5">
             <span className="text-xl font-black text-text-muted leading-none">{draws}</span>
-            <span className="text-[10px] uppercase tracking-widest text-text-muted font-semibold">Drawn</span>
+            <span className="text-[10px] uppercase tracking-widest text-text-muted font-bold">Drawn</span>
           </div>
-          <div className="card flex flex-col items-center py-3 gap-0.5 border-l-4 border-l-red-500/40">
+          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-red-500/40 flex flex-col items-center py-3 gap-0.5">
             <span className="text-xl font-black text-red-500 leading-none">{losses}</span>
-            <span className="text-[10px] uppercase tracking-widest text-text-muted font-semibold">Lost</span>
+            <span className="text-[10px] uppercase tracking-widest text-text-muted font-bold">Lost</span>
           </div>
         </div>
       )}
 
       {fixturesWithResults.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-text-muted">
+        <div className="bg-bg-surface border border-border rounded-xl p-8 text-center">
           <CalendarDays className="w-8 h-8 text-text-muted mx-auto mb-2" />
-          No results yet.
+          <p className="text-sm text-text-muted">No results yet.</p>
         </div>
       ) : (
         <div className="space-y-5">
@@ -211,13 +211,13 @@ export default function Mobile({ data }: MobileProps) {
             return (
               <section key={monthKey}>
                 <div className="flex items-center gap-2 mb-2.5 px-1">
-                  <div className="w-1 h-4 rounded-full bg-accent" />
+                  <span className="w-1 h-4 rounded-full bg-accent" />
                   <h2 className="text-xs font-black uppercase tracking-widest text-text-muted">
                     {formatMonth(fixturesInGroup[0]?.scheduled_date)}
                   </h2>
-                  <span className="text-[10px] text-text-muted">({fixturesInGroup.length})</span>
+                  <span className="text-[10px] text-text-muted font-medium ml-auto">({fixturesInGroup.length})</span>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {fixturesInGroup.map((f: any) => (
                     <ResultCard key={f.id} f={f} teamIds={teamIds} />
                   ))}
