@@ -8,7 +8,7 @@ interface TrophyWithRelations {
   team_id: string
   tournament_id: string
   season_id: string
-  trophy_type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
+  trophy_type: 'league' | 'tournament_club' | 'tournament_international' | 'ucl' | 'europa' | 'super_cup' | 'friendlies'
   awarded_at: string
   team: {
     id: string

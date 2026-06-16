@@ -9,6 +9,9 @@ const TROPHY_ICONS: Record<string, React.ReactNode> = {
   league: <Trophy className="w-4 h-4 text-accent" />,
   tournament_club: <Star className="w-4 h-4 text-accent" />,
   tournament_international: <Globe className="w-4 h-4 text-accent" />,
+  ucl: <Globe className="w-4 h-4 text-blue-400" />,
+  europa: <Globe className="w-4 h-4 text-orange-400" />,
+  super_cup: <Medal className="w-4 h-4 text-purple-400" />,
   friendlies: <Medal className="w-4 h-4 text-accent" />,
 }
 
@@ -16,6 +19,9 @@ const TROPHY_LABEL: Record<string, string> = {
   league: 'Premier League',
   tournament_club: 'Tournament (Clubs)',
   tournament_international: 'Tournament (Intl)',
+  ucl: 'UCL',
+  europa: 'Europa',
+  super_cup: 'Super Cup',
   friendlies: 'Friendly',
 }
 
@@ -23,6 +29,9 @@ const TROPHY_COLOR: Record<string, string> = {
   league: 'border-gold/40 bg-gold/10',
   tournament_club: 'border-blue-500/40 bg-blue-500/10',
   tournament_international: 'border-green-500/40 bg-green-500/10',
+  ucl: 'border-blue-500/40 bg-blue-500/10',
+  europa: 'border-orange-500/40 bg-orange-500/10',
+  super_cup: 'border-purple-500/40 bg-purple-500/10',
   friendlies: 'border-purple-500/40 bg-purple-500/10',
 }
 
@@ -30,6 +39,9 @@ const TROPHY_TEXT: Record<string, string> = {
   league: 'text-gold',
   tournament_club: 'text-blue-400',
   tournament_international: 'text-green-400',
+  ucl: 'text-blue-400',
+  europa: 'text-orange-400',
+  super_cup: 'text-purple-400',
   friendlies: 'text-purple-400',
 }
 
@@ -38,7 +50,7 @@ interface TrophyWithRelations {
   team_id: string
   tournament_id: string
   season_id: string
-  trophy_type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
+  trophy_type: 'league' | 'tournament_club' | 'tournament_international' | 'ucl' | 'europa' | 'super_cup' | 'friendlies'
   awarded_at: string
   team: {
     id: string
@@ -192,7 +204,7 @@ export default function Mobile({ data }: MobileProps) {
                   </div>
 
                   <div className="p-4 space-y-3">
-                    {(['league', 'tournament_club', 'tournament_international', 'friendlies'] as const).map((type) => {
+                    {(['league', 'tournament_club', 'tournament_international', 'ucl', 'europa', 'super_cup', 'friendlies'] as const).map((type) => {
                       const winner = byType[type]
                       return (
                         <div key={type} className={`rounded-xl border p-4 text-center ${winner ? TROPHY_COLOR[type] : 'border-border opacity-40'}`}>
