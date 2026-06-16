@@ -8,7 +8,7 @@ import MatchroomCode from '@/components/ui/MatchroomCode'
 import ReactionsPanel from '@/components/ui/ReactionsPanel'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import {
-  Gamepad2, Home, Plane, BarChart3, Swords, Sword, Dna, TrendingUp,
+  Gamepad2, Home, Plane, BarChart3, Swords, Dna, TrendingUp,
   MessageSquare, CheckCircle, Hourglass, Zap, Check, X,
   Crown, Drama, Brain, Shield, Dumbbell,
   ArrowLeftRight, Triangle, Crosshair, Scale,
@@ -28,15 +28,7 @@ const DNA_ICONS: Record<string, React.ReactNode> = {
   scale: <Scale className="w-3.5 h-3.5" />,
 }
 
-function StatBar({
-  label,
-  home,
-  away,
-}: {
-  label: string
-  home: number | null
-  away: number | null
-}) {
+function StatBar({ label, home, away }: { label: string; home: number | null; away: number | null }) {
   const h = home ?? 0
   const a = away ?? 0
   const total = h + a || 1
@@ -46,60 +38,30 @@ function StatBar({
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-text-muted">
-        <span className="font-semibold text-text-primary">{h}</span>
+        <span className="font-semibold text-text-primary tabular-nums">{h}</span>
         <span className="uppercase tracking-wider">{label}</span>
-        <span className="font-semibold text-text-primary">{a}</span>
+        <span className="font-semibold text-text-primary tabular-nums">{a}</span>
       </div>
       <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-elevated">
-        <div
-          className="bg-accent transition-all duration-500"
-          style={{ width: `${homePct}%` }}
-        />
-        <div
-          className="bg-bg-surface0 transition-all duration-500"
-          style={{ width: `${awayPct}%` }}
-        />
+        <div className="bg-accent transition-all duration-500" style={{ width: `${homePct}%` }} />
+        <div className="bg-bg-elevated transition-all duration-500" style={{ width: `${awayPct}%` }} />
       </div>
     </div>
   )
 }
 
-function ProbabilityBar({
-  home,
-  draw,
-  away,
-  homeName,
-  awayName,
-}: {
-  home: number
-  draw: number
-  away: number
-  homeName: string
-  awayName: string
-}) {
+function ProbabilityBar({ home, draw, away, homeName, awayName }: { home: number; draw: number; away: number; homeName: string; awayName: string }) {
   return (
     <div className="space-y-3">
       <div className="flex justify-between text-sm font-semibold">
-        <span className="text-feedback-success">{home}%</span>
+        <span className="text-feedback-success tabular-nums">{home}%</span>
         <span className="text-text-muted">{draw}% Draw</span>
-        <span className="text-accent">{away}%</span>
+        <span className="text-accent tabular-nums">{away}%</span>
       </div>
       <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
-        <div
-          className="bg-feedback-success rounded-l-full transition-all duration-700"
-          style={{ width: `${home}%` }}
-          title={`${homeName} win ${home}%`}
-        />
-        <div
-          className="bg-text-muted transition-all duration-700"
-          style={{ width: `${draw}%` }}
-          title={`Draw ${draw}%`}
-        />
-        <div
-          className="bg-accent rounded-r-full transition-all duration-700"
-          style={{ width: `${away}%` }}
-          title={`${awayName} win ${away}%`}
-        />
+        <div className="bg-feedback-success rounded-l-full transition-all duration-700" style={{ width: `${home}%` }} title={`${homeName} win ${home}%`} />
+        <div className="bg-text-muted transition-all duration-700" style={{ width: `${draw}%` }} title={`Draw ${draw}%`} />
+        <div className="bg-accent rounded-r-full transition-all duration-700" style={{ width: `${away}%` }} title={`${awayName} win ${away}%`} />
       </div>
       <div className="flex justify-between text-xs text-text-muted">
         <span>{homeName}</span>
@@ -111,37 +73,12 @@ function ProbabilityBar({
 
 export default function Desktop({ data }: { data: any }) {
   const {
-    id,
-    fixture,
-    result,
-    matchStats,
-    homeTeam,
-    awayTeam,
-    tournament,
-    homeManager,
-    awayManager,
-    user,
-    isHomeManager,
-    isAwayManager,
-    isManager,
-    probability,
-    h2hList,
-    homeDNA,
-    awayDNA,
-    homeStanding,
-    awayStanding,
-    confirmationStatus,
-    conf1,
-    conf2,
-    hasResult,
-    waitingReports,
-    reactionCounts,
-    userReactionEmojis,
-    comments,
-    topLevel,
-    replies,
-    homeCoachNote,
-    awayCoachNote,
+    id, fixture, result, matchStats, homeTeam, awayTeam, tournament,
+    homeManager, awayManager, user, isHomeManager, isAwayManager, isManager,
+    probability, h2hList, homeDNA, awayDNA, homeStanding, awayStanding,
+    confirmationStatus, conf1, conf2, hasResult, waitingReports,
+    reactionCounts, userReactionEmojis, comments, topLevel, replies,
+    homeCoachNote, awayCoachNote,
   } = data
 
   const matchStatEntries = matchStats ? [
@@ -160,8 +97,7 @@ export default function Desktop({ data }: { data: any }) {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* ── Match Hero ──────────────────────────────────────────────────── */}
-      <div className="card p-8">
+      <div className="bg-bg-surface border border-border rounded-2xl p-8 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
         <div className="text-center mb-6">
           <span className="text-sm font-medium text-accent uppercase tracking-widest">
             {tournament?.name ?? 'Match'} · Matchday {fixture.matchday}
@@ -169,10 +105,7 @@ export default function Desktop({ data }: { data: any }) {
           {fixture.scheduled_date && (
             <p className="text-text-muted text-sm mt-1">
               {new Date(fixture.scheduled_date).toLocaleDateString('en-GB', {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
+                weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
               })}
             </p>
           )}
@@ -181,37 +114,19 @@ export default function Desktop({ data }: { data: any }) {
         {hasResult ? (
           <div className="flex items-center justify-center gap-10">
             <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <Image
-                src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
-                alt={homeTeam.name}
-                width={64}
-                height={64}
-                className="object-contain group-hover:scale-105 transition-transform"
-              />
+              <Image src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')} alt={homeTeam.name} width={64} height={64} className="object-contain group-hover:scale-105 transition-transform" />
               <div className="text-center">
                 <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
                 <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
-
             <div className="flex items-center gap-5">
-              <span className="text-6xl font-black text-text-primary tabular-nums">
-                {result.home_score}
-              </span>
+              <span className="text-6xl font-black text-text-primary tabular-nums">{result.home_score}</span>
               <span className="text-3xl font-bold text-text-muted">–</span>
-              <span className="text-6xl font-black text-text-primary tabular-nums">
-                {result.away_score}
-              </span>
+              <span className="text-6xl font-black text-text-primary tabular-nums">{result.away_score}</span>
             </div>
-
             <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <Image
-                src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
-                alt={awayTeam.name}
-                width={64}
-                height={64}
-                className="object-contain group-hover:scale-105 transition-transform"
-              />
+              <Image src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')} alt={awayTeam.name} width={64} height={64} className="object-contain group-hover:scale-105 transition-transform" />
               <div className="text-center">
                 <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
                 <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
@@ -221,31 +136,17 @@ export default function Desktop({ data }: { data: any }) {
         ) : (
           <div className="flex items-center justify-center gap-10">
             <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <Image
-                src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
-                alt={homeTeam.name}
-                width={64}
-                height={64}
-                className="object-contain group-hover:scale-105 transition-transform"
-              />
+              <Image src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')} alt={homeTeam.name} width={64} height={64} className="object-contain group-hover:scale-105 transition-transform" />
               <div className="text-center">
                 <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
                 <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
-
             <div className="text-center">
               <span className="text-5xl font-black text-text-muted tracking-widest">VS</span>
             </div>
-
             <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <Image
-                src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
-                alt={awayTeam.name}
-                width={64}
-                height={64}
-                className="object-contain group-hover:scale-105 transition-transform"
-              />
+              <Image src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')} alt={awayTeam.name} width={64} height={64} className="object-contain group-hover:scale-105 transition-transform" />
               <div className="text-center">
                 <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
                 <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
@@ -257,14 +158,9 @@ export default function Desktop({ data }: { data: any }) {
         {result?.is_abandoned && (
           <div className="mt-6 text-center space-y-2">
             <div className="flex items-center justify-center gap-2">
-              <span className="inline-block bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+              <span className="inline-block bg-feedback-error/10 text-feedback-error border border-feedback-error/30 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
                 Abandoned —{' '}
-                {result.abandoned_type === 'home'
-                  ? homeTeam.name
-                  : result.abandoned_type === 'away'
-                  ? awayTeam.name
-                  : 'Both teams'}{' '}
-                left
+                {result.abandoned_type === 'home' ? homeTeam.name : result.abandoned_type === 'away' ? awayTeam.name : 'Both teams'} left
               </span>
               <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? homeTeam.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? awayTeam.name : ''} forfeited. Score at time: ${result.home_score}-${result.away_score}. This penalty was applied to the aggregate.`} />
             </div>
@@ -272,55 +168,38 @@ export default function Desktop({ data }: { data: any }) {
         )}
       </div>
 
-      {/* ── PRE-MATCH SECTIONS ───────────────────────────────────────────── */}
       {!hasResult && (
         <>
-          {/* Coach's Analysis — always visible to managers */}
           {isManager && (homeCoachNote || awayCoachNote) && (
-            <div className="card p-6 border-accent/20">
-              <h2 className="section-header mb-4">
-                <Brain className="w-5 h-5 text-accent" /> Coach's Analysis
-              </h2>
+            <div className="bg-bg-surface border border-accent/20 rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+              <div className="flex items-center gap-2 mb-4">
+                <Brain className="w-4 h-4 text-accent" />
+                <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Coach&apos;s Analysis</h2>
+              </div>
               <div className="grid grid-cols-2 gap-6">
                 {isHomeManager && homeCoachNote && (
                   <div className="space-y-3">
-                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-                      {homeTeam.name} — vs {awayTeam.name}
-                    </p>
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">{homeTeam.name} — vs {awayTeam.name}</p>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-text-muted">Confidence:</span>
-                      <span className={`font-mono font-bold text-sm ${
-                        homeCoachNote.confidence.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {homeCoachNote.confidence}
-                      </span>
+                      <span className={`font-mono font-bold text-sm ${homeCoachNote.confidence.startsWith('+') ? 'text-feedback-success' : 'text-feedback-error'}`}>{homeCoachNote.confidence}</span>
                     </div>
                     {homeCoachNote.opponent_will_exploit?.length > 0 && (
                       <div>
-                        <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
-                          {awayTeam.name} will exploit
-                        </h4>
+                        <h4 className="text-xs font-semibold text-feedback-error uppercase tracking-wider mb-1.5">{awayTeam.name} will exploit</h4>
                         <ul className="space-y-1">
                           {homeCoachNote.opponent_will_exploit.map((p: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                              <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
-                              {p}
-                            </li>
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary"><span className="text-feedback-error shrink-0 mt-0.5">⚠</span>{p}</li>
                           ))}
                         </ul>
                       </div>
                     )}
                     {homeCoachNote.recommendations?.length > 0 && (
-                      <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
-                        <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
-                          Recommendation
-                        </h4>
+                      <div className="bg-accent/10 border border-accent/20 rounded-xl p-3">
+                        <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">Recommendation</h4>
                         <ul className="space-y-1">
                           {homeCoachNote.recommendations.map((r: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                              <span className="text-accent shrink-0 mt-0.5">›</span>
-                              {r}
-                            </li>
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary"><span className="text-accent shrink-0 mt-0.5">›</span>{r}</li>
                           ))}
                         </ul>
                       </div>
@@ -329,43 +208,27 @@ export default function Desktop({ data }: { data: any }) {
                 )}
                 {isAwayManager && awayCoachNote && (
                   <div className="space-y-3">
-                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-                      {awayTeam.name} — vs {homeTeam.name}
-                    </p>
+                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">{awayTeam.name} — vs {homeTeam.name}</p>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-text-muted">Confidence:</span>
-                      <span className={`font-mono font-bold text-sm ${
-                        awayCoachNote.confidence.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {awayCoachNote.confidence}
-                      </span>
+                      <span className={`font-mono font-bold text-sm ${awayCoachNote.confidence.startsWith('+') ? 'text-feedback-success' : 'text-feedback-error'}`}>{awayCoachNote.confidence}</span>
                     </div>
                     {awayCoachNote.opponent_will_exploit?.length > 0 && (
                       <div>
-                        <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
-                          {homeTeam.name} will exploit
-                        </h4>
+                        <h4 className="text-xs font-semibold text-feedback-error uppercase tracking-wider mb-1.5">{homeTeam.name} will exploit</h4>
                         <ul className="space-y-1">
                           {awayCoachNote.opponent_will_exploit.map((p: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                              <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
-                              {p}
-                            </li>
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary"><span className="text-feedback-error shrink-0 mt-0.5">⚠</span>{p}</li>
                           ))}
                         </ul>
                       </div>
                     )}
                     {awayCoachNote.recommendations?.length > 0 && (
-                      <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
-                        <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
-                          Recommendation
-                        </h4>
+                      <div className="bg-accent/10 border border-accent/20 rounded-xl p-3">
+                        <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">Recommendation</h4>
                         <ul className="space-y-1">
                           {awayCoachNote.recommendations.map((r: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                              <span className="text-accent shrink-0 mt-0.5">›</span>
-                              {r}
-                            </li>
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary"><span className="text-accent shrink-0 mt-0.5">›</span>{r}</li>
                           ))}
                         </ul>
                       </div>
@@ -376,69 +239,46 @@ export default function Desktop({ data }: { data: any }) {
             </div>
           )}
 
-          {/* Matchroom Instructions */}
-          <div className="card p-6 border-accent/20 bg-bg-elevated">
-            <h2 className="section-header mb-4">
-              <Gamepad2 className="w-5 h-5 text-accent" /> Matchroom Instructions
-            </h2>
+          <div className="bg-bg-surface border border-accent/20 rounded-2xl p-6 bg-bg-elevated shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-2 mb-4">
+              <Gamepad2 className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Matchroom Instructions</h2>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-start gap-4 p-5 rounded-lg bg-accent/10 border border-accent/20 hover:bg-accent/[0.15] transition-colors">
+              <div className="flex items-start gap-4 p-5 rounded-xl bg-accent/10 border border-accent/20 hover:bg-accent/15 transition-colors">
                 <Home className="w-6 h-6 text-accent shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-accent font-bold text-sm uppercase tracking-wider">
-                    HOME — {homeTeam.name}
-                  </p>
-                  {homeManager && (
-                    <p className="text-text-primary font-semibold">@{homeManager.username}</p>
-                  )}
-                  <p className="text-text-secondary text-sm mt-2">
-                    YOU CREATE THE MATCHROOM in eFootball
-                  </p>
+                  <p className="text-accent font-bold text-sm uppercase tracking-wider">HOME — {homeTeam.name}</p>
+                  {homeManager && <p className="text-text-primary font-semibold">@{homeManager.username}</p>}
+                  <p className="text-text-secondary text-sm mt-2">YOU CREATE THE MATCHROOM in eFootball</p>
                 </div>
               </div>
-              <div className="flex items-start gap-4 p-5 rounded-lg bg-bg-surface border border-border hover:bg-bg-elevated transition-colors">
+              <div className="flex items-start gap-4 p-5 rounded-xl bg-bg-elevated/50 border border-border hover:bg-bg-elevated transition-colors">
                 <Plane className="w-6 h-6 text-text-secondary shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-text-secondary font-bold text-sm uppercase tracking-wider">
-                    AWAY — {awayTeam.name}
-                  </p>
-                  {awayManager && (
-                    <p className="text-text-primary font-semibold">@{awayManager.username}</p>
-                  )}
-                  <p className="text-text-muted text-sm mt-2">
-                    You join the matchroom
-                  </p>
+                  <p className="text-text-secondary font-bold text-sm uppercase tracking-wider">AWAY — {awayTeam.name}</p>
+                  {awayManager && <p className="text-text-primary font-semibold">@{awayManager.username}</p>}
+                  <p className="text-text-muted text-sm mt-2">You join the matchroom</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Matchroom Code — inline with copy */}
-          <MatchroomCode
-            fixtureId={id}
-            initialCode={(fixture as any).matchroom_code ?? null}
-            isHomeManager={!!isHomeManager}
-          />
+          <MatchroomCode fixtureId={id} initialCode={(fixture as any).matchroom_code ?? null} isHomeManager={!!isHomeManager} />
 
-          {/* Win Probability */}
-          <div className="card p-6">
-            <h2 className="section-header mb-4">
-              <BarChart3 className="w-5 h-5 text-accent" /> Win Probability
-            </h2>
-            <ProbabilityBar
-              home={probability.home}
-              draw={probability.draw}
-              away={probability.away}
-              homeName={homeTeam.name}
-              awayName={awayTeam.name}
-            />
+          <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Win Probability</h2>
+            </div>
+            <ProbabilityBar home={probability.home} draw={probability.draw} away={probability.away} homeName={homeTeam.name} awayName={awayTeam.name} />
           </div>
 
-          {/* H2H Last 5 */}
-          <div className="card p-6">
-            <h2 className="section-header mb-4">
-              <Swords className="w-5 h-5 text-accent" /> Head to Head (Last 5)
-            </h2>
+          <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-2 mb-4">
+              <Swords className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Head to Head (Last 5)</h2>
+            </div>
             {h2hList.length === 0 ? (
               <p className="text-text-muted text-sm">No previous meetings.</p>
             ) : (
@@ -451,39 +291,25 @@ export default function Desktop({ data }: { data: any }) {
                   const ourScore = f.home_team_id === fixture.home_team_id ? hScore : aScore
                   const theirScore = f.home_team_id === fixture.home_team_id ? aScore : hScore
                   const outcome = ourScore > theirScore ? 'W' : ourScore < theirScore ? 'L' : 'D'
-                  const outcomeColor =
-                    outcome === 'W' ? 'text-feedback-success' : outcome === 'L' ? 'text-feedback-error' : 'text-feedback-warning'
+                  const outcomeColor = outcome === 'W' ? 'text-feedback-success' : outcome === 'L' ? 'text-feedback-error' : 'text-feedback-warning'
 
                   return (
-                    <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg bg-bg-elevated/30 hover:bg-bg-elevated/50 transition-colors">
+                    <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-bg-elevated/30 hover:bg-bg-elevated/50 transition-colors">
                       <Link href={`/teams/${hTeam.id}`} className="flex items-center gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
                         {hTeam.logo_league_folder && (
-                          <Image
-                            src={getTeamLogo(hTeam.logo_league_folder, hTeam.logo_team_slug, 'standings_row')}
-                            alt={hTeam.name}
-                            width={24} height={24}
-                            className="object-contain shrink-0"
-                          />
+                          <Image src={getTeamLogo(hTeam.logo_league_folder, hTeam.logo_team_slug, 'standings_row')} alt={hTeam.name} width={24} height={24} className="object-contain shrink-0" />
                         )}
                         <span className="text-xs text-text-muted truncate">{hTeam.name}</span>
                       </Link>
-
                       <Link href={`/fixtures/${f.id}`} className="font-bold text-text-primary tabular-nums text-sm px-3 hover:text-accent transition-colors shrink-0">
                         {hScore} – {aScore}
                       </Link>
-
                       <Link href={`/teams/${aTeam.id}`} className="flex items-center justify-end gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
                         <span className="text-xs text-text-muted text-right truncate">{aTeam.name}</span>
                         {aTeam.logo_league_folder && (
-                          <Image
-                            src={getTeamLogo(aTeam.logo_league_folder, aTeam.logo_team_slug, 'standings_row')}
-                            alt={aTeam.name}
-                            width={24} height={24}
-                            className="object-contain shrink-0"
-                          />
+                          <Image src={getTeamLogo(aTeam.logo_league_folder, aTeam.logo_team_slug, 'standings_row')} alt={aTeam.name} width={24} height={24} className="object-contain shrink-0" />
                         )}
                       </Link>
-
                       <span className={`text-xs font-black w-5 text-center shrink-0 ${outcomeColor}`}>{outcome}</span>
                     </div>
                   )
@@ -492,23 +318,18 @@ export default function Desktop({ data }: { data: any }) {
             )}
           </div>
 
-          {/* Team DNA — always-visible 2-column grid */}
-          <div className="card p-6">
-            <h2 className="section-header mb-4">
-              <Dna className="w-5 h-5 text-accent" /> Team DNA
-            </h2>
+          <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-2 mb-4">
+              <Dna className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Team DNA</h2>
+            </div>
             <div className="grid grid-cols-2 gap-6">
               <div className="bg-bg-elevated/30 rounded-xl p-4">
-                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
-                  {homeTeam.name}
-                </p>
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">{homeTeam.name}</p>
                 {homeDNA.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {homeDNA.map((dna: any) => (
-                      <span
-                        key={dna.label}
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border hover:scale-105 transition-transform ${dna.color}`}
-                      >
+                      <span key={dna.label} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border hover:scale-105 transition-transform ${dna.color}`}>
                         {DNA_ICONS[dna.iconName]} {dna.label}
                       </span>
                     ))}
@@ -518,16 +339,11 @@ export default function Desktop({ data }: { data: any }) {
                 )}
               </div>
               <div className="bg-bg-elevated/30 rounded-xl p-4">
-                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
-                  {awayTeam.name}
-                </p>
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">{awayTeam.name}</p>
                 {awayDNA.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {awayDNA.map((dna: any) => (
-                      <span
-                        key={dna.label}
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border hover:scale-105 transition-transform ${dna.color}`}
-                      >
+                      <span key={dna.label} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border hover:scale-105 transition-transform ${dna.color}`}>
                         {DNA_ICONS[dna.iconName]} {dna.label}
                       </span>
                     ))}
@@ -539,17 +355,17 @@ export default function Desktop({ data }: { data: any }) {
             </div>
           </div>
 
-          {/* Form */}
-          <div className="card p-6">
-            <h2 className="section-header mb-4">
-              <TrendingUp className="w-5 h-5 text-accent" /> Recent Form (Last 6)
-            </h2>
+          <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Recent Form (Last 6)</h2>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-bg-elevated/30">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-bg-elevated/30">
                 <span className="text-sm text-text-muted truncate min-w-0">{homeTeam.name}</span>
                 <FormStrip form={(homeStanding?.form ?? '').slice(-6)} />
               </div>
-              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-bg-elevated/30">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-bg-elevated/30">
                 <span className="text-sm text-text-muted truncate min-w-0">{awayTeam.name}</span>
                 <FormStrip form={(awayStanding?.form ?? '').slice(-6)} />
               </div>
@@ -558,15 +374,14 @@ export default function Desktop({ data }: { data: any }) {
         </>
       )}
 
-      {/* ── POST-MATCH SECTIONS ───────────────────────────────────────────── */}
       {hasResult && (
         <>
-          {/* Match Stats — 2-column grid, all visible */}
           {matchStats && (
-            <div className="card p-6">
-              <h2 className="section-header mb-4">
-                <BarChart3 className="w-5 h-5 text-accent" /> Match Statistics
-              </h2>
+            <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="w-4 h-4 text-accent" />
+                <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Match Statistics</h2>
+              </div>
               <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                 {matchStatEntries.map((stat) => (
                   <StatBar key={stat.label} label={stat.label} home={stat.home} away={stat.away} />
@@ -579,36 +394,31 @@ export default function Desktop({ data }: { data: any }) {
             </div>
           )}
 
-          {/* Reactions — expanded panel with hover effects */}
-          <div className="card p-6">
-            <h2 className="section-header mb-4">
-              <MessageSquare className="w-5 h-5 text-accent" /> Reactions
-            </h2>
-            <ReactionsPanel
-              fixtureId={id}
-              initialCounts={reactionCounts}
-              initialUserReactions={userReactionEmojis}
-              userId={user?.id ?? null}
-            />
+          <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center gap-2 mb-4">
+              <MessageSquare className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Reactions</h2>
+            </div>
+            <ReactionsPanel fixtureId={id} initialCounts={reactionCounts} initialUserReactions={userReactionEmojis} userId={user?.id ?? null} />
           </div>
         </>
       )}
 
-      {/* ── RESULT CONFIRMATION STATUS ───────────────────────────────────── */}
       {!hasResult && (
-        <div className="card p-6">
-          <h2 className="section-header">
-            <CheckCircle className="w-5 h-5 text-accent" /> Score Submission
-          </h2>
+        <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-2 mb-4">
+            <CheckCircle className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Score Submission</h2>
+          </div>
 
           {confirmationStatus === 'awaiting_confirmation' && (
-            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium">
+            <div className="p-4 rounded-xl bg-feedback-success/10 border border-feedback-success/30 text-feedback-success text-sm font-medium">
               Both scores match! Waiting for admin to finalise.
             </div>
           )}
 
           {confirmationStatus === 'scores_mismatch' && (
-            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium">
+            <div className="p-4 rounded-xl bg-feedback-error/10 border border-feedback-error/30 text-feedback-error text-sm font-medium">
               Scores don&apos;t match. Please contact an admin to resolve.
             </div>
           )}
@@ -618,9 +428,7 @@ export default function Desktop({ data }: { data: any }) {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">{homeTeam.name}</span>
                 {conf1 ? (
-                  <span className="text-green-400 font-semibold">
-                    Submitted: {conf1.home_score}–{conf1.away_score}
-                  </span>
+                  <span className="text-feedback-success font-semibold">Submitted: {conf1.home_score}–{conf1.away_score}</span>
                 ) : (
                   <span className="text-text-muted">Pending</span>
                 )}
@@ -628,9 +436,7 @@ export default function Desktop({ data }: { data: any }) {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-muted">{awayTeam.name}</span>
                 {conf2 ? (
-                  <span className="text-green-400 font-semibold">
-                    Submitted: {conf2.home_score}–{conf2.away_score}
-                  </span>
+                  <span className="text-feedback-success font-semibold">Submitted: {conf2.home_score}–{conf2.away_score}</span>
                 ) : (
                   <span className="text-text-muted">Pending</span>
                 )}
@@ -642,7 +448,7 @@ export default function Desktop({ data }: { data: any }) {
             <div className="mt-4">
               <Link
                 href={`/fixtures/${id}/submit`}
-                className="btn-gold inline-block"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)]"
               >
                 Submit Score
               </Link>
@@ -651,43 +457,35 @@ export default function Desktop({ data }: { data: any }) {
         </div>
       )}
 
-      {/* ── WAITING REPORTS ─────────────────────────────────────────────── */}
       {waitingReports && waitingReports.length > 0 && (
-        <div className="card p-6 border-yellow-500/30">
-          <h2 className="section-header">
-            <Hourglass className="w-5 h-5 text-accent" /> Waiting Reports
-          </h2>
-          <p className="text-sm text-yellow-400">
-            {waitingReports.length} team(s) have reported waiting for their opponent to be ready.
-          </p>
+        <div className="bg-bg-surface border border-feedback-warning/30 rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-2 mb-2">
+            <Hourglass className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Waiting Reports</h2>
+          </div>
+          <p className="text-sm text-feedback-warning">{waitingReports.length} team(s) have reported waiting for their opponent to be ready.</p>
         </div>
       )}
 
-      {/* ── DISCONNECT RULES ─────────────────────────────────────────────── */}
-      <div className="card p-6">
-        <h2 className="section-header mb-4">
-          <Zap className="w-5 h-5 text-accent" /> Disconnect Rules
-        </h2>
-
+      <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center gap-2 mb-4">
+          <Zap className="w-4 h-4 text-accent" />
+          <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Disconnect Rules</h2>
+        </div>
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <h3 className="text-sm font-semibold text-accent mb-3 uppercase tracking-wider">
-              Official Rules
-            </h3>
+            <h3 className="text-sm font-semibold text-accent mb-3 uppercase tracking-wider">Official Rules</h3>
             <ul className="space-y-1.5">
               {OFFICIAL_RULES.map((r: any, i: number) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors">
-                  {r.icon === 'check' ? <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" /> : r.icon === 'cross' ? <X className="w-4 h-4 text-red-500 shrink-0 mt-0.5" /> : <Home className="w-4 h-4 text-accent shrink-0 mt-0.5" />}
+                  {r.icon === 'check' ? <Check className="w-4 h-4 text-feedback-success shrink-0 mt-0.5" /> : r.icon === 'cross' ? <X className="w-4 h-4 text-feedback-error shrink-0 mt-0.5" /> : <Home className="w-4 h-4 text-accent shrink-0 mt-0.5" />}
                   <span>{r.rule}</span>
                 </li>
               ))}
             </ul>
           </div>
-
           <div>
-            <h3 className="text-sm font-semibold text-accent mb-3 uppercase tracking-wider">
-              Disconnect Restart Table
-            </h3>
+            <h3 className="text-sm font-semibold text-accent mb-3 uppercase tracking-wider">Disconnect Restart Table</h3>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b border-border">
@@ -698,7 +496,7 @@ export default function Desktop({ data }: { data: any }) {
               </thead>
               <tbody className="divide-y divide-border/50">
                 {DISCONNECT_RULES.map((rule: any, i: number) => (
-                  <tr key={i} className="text-text-secondary hover:bg-bg-elevated/20 transition-colors">
+                  <tr key={i} className="text-text-secondary hover:bg-accent/5 transition-colors">
                     <td className="py-2 pr-4 font-semibold text-accent">{rule.minute}</td>
                     <td className="py-2 pr-4">{rule.restart}</td>
                     <td className="py-2 text-text-muted">{rule.note}</td>
@@ -710,47 +508,35 @@ export default function Desktop({ data }: { data: any }) {
         </div>
       </div>
 
-      {/* ── BANTER BOARD ─────────────────────────────────────────────────── */}
-      <div className="card p-6">
-        <h2 className="section-header">
-          <MessageSquare className="w-5 h-5 text-accent" /> Banter Board
-          <span className="text-text-muted text-sm font-normal ml-auto">
-            {comments.length} comment{comments.length !== 1 ? 's' : ''}
-          </span>
-        </h2>
+      <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Banter Board</h2>
+          </div>
+          <span className="text-sm text-text-muted">{comments.length} comment{comments.length !== 1 ? 's' : ''}</span>
+        </div>
 
         {topLevel.length === 0 ? (
-          <p className="text-text-muted text-sm">
-            No comments yet. Be the first to drop some banter.
-          </p>
+          <p className="text-text-muted text-sm">No comments yet. Be the first to drop some banter.</p>
         ) : (
           <div className="space-y-4">
             {topLevel.map((comment: any) => {
-              const commentReplies = replies.filter(
-                (r: any) => r.parent_id === comment.id
-              )
+              const commentReplies = replies.filter((r: any) => r.parent_id === comment.id)
               return (
                 <div key={comment.id} className="space-y-2">
                   <div className="flex gap-3">
                     <div className="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-accent shrink-0">
                       {comment.author?.username?.[0]?.toUpperCase() ?? '?'}
                     </div>
-                    <div className="flex-1 p-3 rounded-lg bg-bg-elevated/40">
+                    <div className="flex-1 p-3 rounded-xl bg-bg-elevated/40">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-semibold text-accent">
-                          @{comment.author?.username ?? 'Unknown'}
-                        </span>
-                        <span className="text-xs text-text-muted">
-                          {new Date(comment.created_at).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                        </span>
+                        <span className="text-xs font-semibold text-accent">@{comment.author?.username ?? 'Unknown'}</span>
+                        <span className="text-xs text-text-muted">{new Date(comment.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                       </div>
                       <p className="text-sm text-text-secondary">{comment.content}</p>
                     </div>
                   </div>
-
                   {commentReplies.length > 0 && (
                     <div className="ml-11 space-y-2">
                       {commentReplies.map((reply: any) => (
@@ -758,17 +544,10 @@ export default function Desktop({ data }: { data: any }) {
                           <div className="w-6 h-6 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-text-muted shrink-0">
                             {reply.author?.username?.[0]?.toUpperCase() ?? '?'}
                           </div>
-                          <div className="flex-1 p-2.5 rounded-lg bg-bg-elevated/20 border border-border/50">
+                          <div className="flex-1 p-2.5 rounded-xl bg-bg-elevated/20 border border-border/50">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-semibold text-text-secondary">
-                                @{reply.author?.username ?? 'Unknown'}
-                              </span>
-                              <span className="text-xs text-text-muted">
-                                {new Date(reply.created_at).toLocaleDateString('en-GB', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                })}
-                              </span>
+                              <span className="text-xs font-semibold text-text-secondary">@{reply.author?.username ?? 'Unknown'}</span>
+                              <span className="text-xs text-text-muted">{new Date(reply.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                             </div>
                             <p className="text-xs text-text-muted">{reply.content}</p>
                           </div>
@@ -791,9 +570,9 @@ export default function Desktop({ data }: { data: any }) {
                   type="text"
                   name="content"
                   placeholder="Drop your banter here..."
-                  className="input-field flex-1"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-bg-elevated/50 border border-border text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50 transition-all"
                 />
-                <button type="submit" className="btn-gold shrink-0">
+                <button type="submit" className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)] shrink-0">
                   Post
                 </button>
               </div>

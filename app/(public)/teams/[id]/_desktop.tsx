@@ -4,15 +4,12 @@ import Link from 'next/link'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
-import type { DNAProfile, PersonalizedDescription } from '@/lib/dna-engine'
-import type { TeamState } from '@/lib/team-states'
 import TeamStateBadges from '@/components/ui/TeamStateBadge'
-import type { ManagerNote } from '@/lib/manager-notes'
 import TeamManagerAdmin from './TeamManagerAdmin'
 import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { Card } from '@/components/ui/Card'
-import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Sword, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, UserPlus, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History } from 'lucide-react'
+import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Sword, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, UserPlus, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History, ChevronRight } from 'lucide-react'
 
 const TROPHY_ICON: Record<string, string> = {
   league: 'trophy',
@@ -103,14 +100,13 @@ export default function Desktop({ data }: { data: any }) {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* ── Hero ── */}
       <Card>
-        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-32 relative">
+        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-32 relative rounded-t-2xl overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-t from-bg-surface to-transparent" />
         </div>
         <div className="px-6 pb-6 -mt-14 relative">
           <div className="flex items-end gap-6">
-            <div className="bg-bg-base rounded-lg overflow-hidden">
+            <div className="bg-bg-base rounded-2xl overflow-hidden ring-1 ring-border-subtle shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
               <Image
                 src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
                 alt={team.name}
@@ -142,14 +138,13 @@ export default function Desktop({ data }: { data: any }) {
             </div>
           </div>
 
-          {/* DNA Playstyle */}
           {dnaProfiles.length > 0 && (
             <div className="mt-6 space-y-6">
-              <h2 className="section-header">
-                <Crown className="w-5 h-5 text-accent" /> Playstyle
-              </h2>
+              <div className="flex items-center gap-2">
+                <Crown className="w-4 h-4 text-accent" />
+                <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Playstyle</h2>
+              </div>
 
-              {/* Profile badge + Level info inline */}
               <div className="flex items-center gap-4">
                 {(() => {
                   const dna = dnaProfiles[0]
@@ -177,14 +172,12 @@ export default function Desktop({ data }: { data: any }) {
                 })()}
               </div>
 
-              {/* About */}
               {dnaDescription?.about && (
                 <Card className="p-5">
                   <p className="text-text-secondary text-sm leading-relaxed">{dnaDescription.about}</p>
                 </Card>
               )}
 
-              {/* Two-column grid for tendencies + weaknesses */}
               <div className="grid grid-cols-2 gap-4">
                 {dnaDescription?.tendencies && dnaDescription.tendencies.length > 0 && (
                   <Card className="p-5 space-y-3">
@@ -205,7 +198,7 @@ export default function Desktop({ data }: { data: any }) {
                 )}
                 {dnaDescription?.weaknesses && dnaDescription.weaknesses.length > 0 && (
                   <Card className="p-5 space-y-3">
-                    <h3 className={`font-semibold text-sm ${isCurrentManager ? 'text-red-400' : 'text-red-400'}`}>
+                    <h3 className={`font-semibold text-sm text-red-400`}>
                       {isCurrentManager ? 'Vulnerabilities to Watch' : 'How to Exploit Their Weaknesses'}
                     </h3>
                     <ul className="space-y-1.5">
@@ -220,7 +213,6 @@ export default function Desktop({ data }: { data: any }) {
                 )}
               </div>
 
-              {/* Form States */}
               {teamStates.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-text-primary font-semibold text-sm">Form Indicators</h3>
@@ -232,12 +224,12 @@ export default function Desktop({ data }: { data: any }) {
         </div>
       </Card>
 
-      {/* ── Manager Observations ── */}
       {managerNotes.length > 0 && (
         <Card className="p-5">
-          <h2 className="section-header mb-3">
-            <ClipboardList className="w-5 h-5 text-accent" /> Manager Observations
-          </h2>
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardList className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Manager Observations</h2>
+          </div>
           <div className="space-y-2">
             {managerNotes.map((note: any, i: number) => {
               const dotColor = note.type === 'positive' ? 'bg-feedback-success'
@@ -254,7 +246,6 @@ export default function Desktop({ data }: { data: any }) {
         </Card>
       )}
 
-      {/* ── Admin Manager Controls ── */}
       {isAdmin && (
         <TeamManagerAdmin
           teamId={team.id}
@@ -266,12 +257,12 @@ export default function Desktop({ data }: { data: any }) {
         />
       )}
 
-      {/* ── Apply to Manage ── */}
       {currentUser && !isAdmin && !isCurrentManager && (
         <Card className="p-5 space-y-3">
-          <h2 className="section-header mb-1">
-            <UserPlus className="w-5 h-5 text-accent" /> Management Application
-          </h2>
+          <div className="flex items-center gap-2 mb-1">
+            <UserPlus className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Management Application</h2>
+          </div>
           <p className="text-sm text-text-secondary">
             {(team as any).manager_id
               ? 'This club currently has a manager. You can still apply — if approved, the current manager will be replaced.'
@@ -285,14 +276,14 @@ export default function Desktop({ data }: { data: any }) {
         </Card>
       )}
 
-      {/* ── Upcoming Fixtures (table) ── */}
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="section-header mb-0">
-            <Calendar className="w-5 h-5 text-accent" /> Upcoming Fixtures
-          </h2>
-          <Link href={`/teams/${team.id}/fixtures`} className="text-xs text-accent hover:text-accent-hover transition-colors">
-            All fixtures →
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Upcoming Fixtures</h2>
+          </div>
+          <Link href={`/teams/${team.id}/fixtures`} className="flex items-center gap-1 text-xs text-accent font-medium">
+            All fixtures <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
         {!upcomingFixtures?.length ? (
@@ -301,7 +292,7 @@ export default function Desktop({ data }: { data: any }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b-2 border-accent/20">
+                <tr className="text-left text-xs text-text-muted font-semibold uppercase tracking-wider">
                   <th className="pb-3 pr-4">Opponent</th>
                   <th className="pb-3 pr-4">Competition</th>
                   <th className="pb-3 pr-4">Date</th>
@@ -330,7 +321,7 @@ export default function Desktop({ data }: { data: any }) {
                               className="w-7 h-7 shrink-0"
                             />
                           ) : (
-                            <div className="w-7 h-7 rounded bg-bg-base flex items-center justify-center text-xs text-text-muted shrink-0">?</div>
+                            <div className="w-7 h-7 rounded-xl bg-bg-base flex items-center justify-center text-xs text-text-muted shrink-0">?</div>
                           )}
                           <span className="font-medium text-text-primary truncate">
                             <span className="text-text-muted font-normal">{isHome ? 'vs' : '@'}</span> {opponent?.name ?? 'TBD'}
@@ -355,14 +346,14 @@ export default function Desktop({ data }: { data: any }) {
         )}
       </Card>
 
-      {/* ── Recent Results (table) ── */}
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="section-header mb-0">
-            <Flag className="w-5 h-5 text-accent" /> Recent Results
-          </h2>
-          <Link href={`/teams/${team.id}/fixtures`} className="text-xs text-accent hover:text-accent-hover transition-colors">
-            All results →
+          <div className="flex items-center gap-2">
+            <Flag className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Recent Results</h2>
+          </div>
+          <Link href={`/teams/${team.id}/fixtures`} className="flex items-center gap-1 text-xs text-accent font-medium">
+            All results <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
         {!sortedRecentResults?.length ? (
@@ -371,7 +362,7 @@ export default function Desktop({ data }: { data: any }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b-2 border-accent/20">
+                <tr className="text-left text-xs text-text-muted font-semibold uppercase tracking-wider">
                   <th className="pb-3 pr-4">Outcome</th>
                   <th className="pb-3 pr-4">Opponent</th>
                   <th className="pb-3 pr-4">Score</th>
@@ -398,8 +389,8 @@ export default function Desktop({ data }: { data: any }) {
                   return (
                     <tr key={f.id} className="hover:bg-accent/5 transition-colors">
                       <td className="py-3 pr-4">
-                        <span className={`inline-flex w-7 h-7 rounded items-center justify-center text-xs font-black ${
-                          won ? 'bg-feedback-success/20 text-feedback-success' : drew ? 'bg-feedback-warning/20 text-feedback-warning' : 'bg-feedback-error/20 text-feedback-error'
+                        <span className={`inline-flex w-7 h-7 rounded-lg items-center justify-center text-xs font-black ${
+                          won ? 'bg-feedback-success/15 text-feedback-success' : drew ? 'bg-feedback-warning/15 text-feedback-warning' : 'bg-feedback-error/15 text-feedback-error'
                         }`}>
                           {outcomeLetter}
                         </span>
@@ -415,7 +406,7 @@ export default function Desktop({ data }: { data: any }) {
                               className="w-7 h-7 shrink-0"
                             />
                           ) : (
-                            <div className="w-7 h-7 rounded bg-bg-base flex items-center justify-center text-xs text-text-muted shrink-0">?</div>
+                            <div className="w-7 h-7 rounded-xl bg-bg-base flex items-center justify-center text-xs text-text-muted shrink-0">?</div>
                           )}
                           <span className="font-medium text-text-primary truncate">
                             <span className="text-text-muted font-normal">{isHome ? 'vs' : '@'}</span> {opponent?.name ?? 'Unknown'}
@@ -440,17 +431,17 @@ export default function Desktop({ data }: { data: any }) {
         )}
       </Card>
 
-      {/* ── Season Stats (static grid) ── */}
       <Card className="p-5">
-        <h2 className="section-header">
-          <BarChart3 className="w-5 h-5 text-accent" /> Season Statistics
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart3 className="w-4 h-4 text-accent" />
+          <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">
+            Season Statistics
+          </h2>
           {currentStanding?.tournament?.name && (
-            <span className="ml-2 text-xs font-normal text-text-muted normal-case tracking-normal">
-              {currentStanding.tournament.name}
-            </span>
+            <span className="text-xs text-text-muted font-normal ml-1">· {currentStanding.tournament.name}</span>
           )}
-        </h2>
-        <div className="grid grid-cols-8 gap-3">
+        </div>
+        <div className="grid grid-cols-4 gap-3">
           {[
             { label: 'P', value: totalPlayed },
             { label: 'W', value: totalWins },
@@ -461,9 +452,9 @@ export default function Desktop({ data }: { data: any }) {
             { label: 'GD', value: totalGD >= 0 ? `+${totalGD}` : totalGD },
             { label: 'PTS', value: totalPoints },
           ].map(({ label, value }) => (
-            <div key={label} className="text-center p-3 rounded-lg bg-border-subtle/30 hover:bg-accent/5 transition-colors">
-              <p className="text-xl font-black text-text-primary">{value}</p>
-              <p className="text-xs text-text-muted font-medium mt-0.5">{label}</p>
+            <div key={label} className="text-center p-3.5 rounded-xl bg-bg-elevated/50 border border-border/50 hover:border-accent/20 transition-colors shadow-[0_0.5px_1px_rgba(0,0,0,0.04)]">
+              <p className="text-xl font-black text-text-primary tabular-nums">{value}</p>
+              <p className="text-xs text-text-muted font-semibold mt-0.5 tracking-wide uppercase">{label}</p>
             </div>
           ))}
         </div>
@@ -479,19 +470,19 @@ export default function Desktop({ data }: { data: any }) {
             </div>
           )}
           {unbeatenRun > 0 && (
-            <span className="inline-flex items-center gap-1 bg-accent-muted border border-accent/30 text-accent text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="inline-flex items-center gap-1 bg-feedback-success/10 border border-feedback-success/20 text-feedback-success text-xs font-bold px-2.5 py-0.5 rounded-full">
               {unbeatenRun}-game unbeaten run
             </span>
           )}
         </div>
       </Card>
 
-      {/* ── Recent Form ── */}
       {currentForm && (
         <Card className="p-5">
-          <h2 className="section-header">
-            <TrendingUp className="w-5 h-5 text-accent" /> Recent Form
-          </h2>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Recent Form</h2>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-text-muted">Last 6</span>
             <FormStrip form={currentForm} />
@@ -499,11 +490,11 @@ export default function Desktop({ data }: { data: any }) {
         </Card>
       )}
 
-      {/* ── Trophy Cabinet (2-column) ── */}
       <Card className="p-5">
-        <h2 className="section-header">
-          <Trophy className="w-5 h-5 text-accent" /> Trophy Cabinet
-        </h2>
+        <div className="flex items-center gap-2 mb-4">
+          <Trophy className="w-4 h-4 text-accent" />
+          <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Trophy Cabinet</h2>
+        </div>
         {(trophies ?? []).length === 0 ? (
           <p className="text-text-muted text-sm">No trophies yet. Glory awaits.</p>
         ) : (
@@ -511,7 +502,7 @@ export default function Desktop({ data }: { data: any }) {
             {(trophies ?? []).map((trophy: any) => (
               <div
                 key={trophy.id}
-                className="flex items-center gap-4 p-4 rounded-lg border border-accent/20 bg-accent-muted/10 hover:bg-accent-muted/20 transition-colors"
+                className="flex items-center gap-4 p-4 rounded-xl border border-accent/20 bg-accent/5 hover:bg-accent/10 transition-colors"
               >
                 {(() => {
                   const iconName = TROPHY_ICON[trophy.trophy_type] ?? 'trophy'
@@ -532,12 +523,12 @@ export default function Desktop({ data }: { data: any }) {
         )}
       </Card>
 
-      {/* ── Season History ── */}
       {data.standings?.length > 0 && (
         <Card className="p-5">
-          <h2 className="section-header">
-            <History className="w-5 h-5 text-accent" /> Season History
-          </h2>
+          <div className="flex items-center gap-2 mb-4">
+            <History className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Season History</h2>
+          </div>
           <div className="space-y-3">
             {[...(data.standings as any[])]
               .sort((a: any, b: any) => {
@@ -546,15 +537,15 @@ export default function Desktop({ data }: { data: any }) {
                 return 0
               })
               .map((s: any) => (
-                <div key={s.id} className="p-4 rounded-lg bg-border-subtle/30">
+                <div key={s.id} className="p-4 rounded-xl bg-bg-elevated/50 border border-border/50">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-xs font-semibold text-accent uppercase tracking-wider">
                       {s.tournament?.name ?? 'Tournament'}
                     </p>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       s.tournament?.status === 'active'
-                        ? 'bg-feedback-success/20 text-feedback-success'
-                        : 'bg-text-muted/20 text-text-muted'
+                        ? 'bg-feedback-success/15 text-feedback-success'
+                        : 'bg-text-muted/15 text-text-muted'
                     }`}>
                       {s.tournament?.status === 'active' ? 'Current' : 'Completed'}
                     </span>
@@ -570,7 +561,7 @@ export default function Desktop({ data }: { data: any }) {
                       { label: 'PTS', val: s.points },
                     ].map(({ label, val }) => (
                       <div key={label}>
-                        <p className="font-bold text-text-primary">{val}</p>
+                        <p className="font-bold text-text-primary tabular-nums">{val ?? 0}</p>
                         <p className="text-text-muted">{label}</p>
                       </div>
                     ))}
@@ -581,12 +572,12 @@ export default function Desktop({ data }: { data: any }) {
         </Card>
       )}
 
-      {/* ── Manager History ── */}
       {(tenures ?? []).length > 0 && (
         <Card className="p-5">
-          <h2 className="section-header">
-            <User className="w-5 h-5 text-accent" /> Manager History
-          </h2>
+          <div className="flex items-center gap-2 mb-4">
+            <User className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Manager History</h2>
+          </div>
           <div className="space-y-3">
             {(tenures as any[]).map((tenure: any) => {
               const isCurrent = !tenure.ended_at
@@ -596,13 +587,13 @@ export default function Desktop({ data }: { data: any }) {
                   key={tenure.id}
                   className={`rounded-xl border p-4 ${
                     isCurrent
-                      ? 'border-accent/30 bg-accent-muted/20'
-                      : 'border-border bg-bg-base/20'
+                      ? 'border-accent/30 bg-accent/5'
+                      : 'border-border bg-bg-surface'
                   }`}
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-black shrink-0 ${
-                      isCurrent ? 'bg-accent-muted text-accent' : 'bg-border text-text-muted'
+                      isCurrent ? 'bg-accent/10 text-accent ring-1 ring-accent/20' : 'bg-bg-elevated text-text-muted ring-1 ring-border-subtle'
                     }`}>
                       {(tenure.manager_username?.[0] ?? '?').toUpperCase()}
                     </div>
@@ -610,7 +601,7 @@ export default function Desktop({ data }: { data: any }) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-bold text-text-primary">@{tenure.manager_username}</p>
                         {isCurrent && (
-                          <span className="text-xs bg-accent-muted text-accent border border-accent/30 px-1.5 py-0.5 rounded-full font-semibold">
+                          <span className="text-xs bg-accent/10 text-accent border border-accent/20 px-1.5 py-0.5 rounded-full font-semibold">
                             Current
                           </span>
                         )}
@@ -624,20 +615,20 @@ export default function Desktop({ data }: { data: any }) {
                     </div>
                     <div className="flex gap-5 shrink-0 text-center">
                       <div>
-                        <p className="text-lg font-black text-feedback-success">{tenure.wins}</p>
+                        <p className="text-lg font-black text-feedback-success tabular-nums">{tenure.wins}</p>
                         <p className="text-xs text-text-muted font-medium">Wins</p>
                       </div>
                       <div>
-                        <p className="text-lg font-black text-feedback-warning">{tenure.draws}</p>
+                        <p className="text-lg font-black text-feedback-warning tabular-nums">{tenure.draws}</p>
                         <p className="text-xs text-text-muted font-medium">Draws</p>
                       </div>
                       <div>
-                        <p className="text-lg font-black text-feedback-error">{tenure.losses}</p>
+                        <p className="text-lg font-black text-feedback-error tabular-nums">{tenure.losses}</p>
                         <p className="text-xs text-text-muted font-medium">Losses</p>
                       </div>
                       {played > 0 && (
                         <div>
-                          <p className="text-lg font-black text-text-secondary">{played}</p>
+                          <p className="text-lg font-black text-text-secondary tabular-nums">{played}</p>
                           <p className="text-xs text-text-muted font-medium">Played</p>
                         </div>
                       )}
@@ -650,18 +641,18 @@ export default function Desktop({ data }: { data: any }) {
         </Card>
       )}
 
-      {/* ── H2H (always visible) ── */}
       <Card className="p-5">
-        <h2 className="section-header">
-          <Swords className="w-5 h-5 text-accent" /> Head-to-Head Record
-        </h2>
+        <div className="flex items-center gap-2 mb-4">
+          <Swords className="w-4 h-4 text-accent" />
+          <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Head-to-Head Record</h2>
+        </div>
         {h2hEntries.length === 0 ? (
           <p className="mt-2 text-text-muted text-sm">No completed matches on record.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b-2 border-accent/20">
+                <tr className="text-left text-xs text-text-muted font-semibold uppercase tracking-wider">
                   <th className="pb-3 pr-4">Opponent</th>
                   <th className="pb-3 text-center pr-3">P</th>
                   <th className="pb-3 text-center pr-3">W</th>
@@ -681,11 +672,11 @@ export default function Desktop({ data }: { data: any }) {
                         {rec.name}
                       </Link>
                     </td>
-                    <td className="py-3 text-center">{rec.played}</td>
-                    <td className="py-3 text-center text-feedback-success font-semibold">{rec.wins}</td>
-                    <td className="py-3 text-center text-feedback-warning font-semibold">{rec.draws}</td>
-                    <td className="py-3 text-center text-feedback-error font-semibold">{rec.losses}</td>
-                    <td className="py-3 text-center text-text-muted">
+                    <td className="py-3 text-center tabular-nums">{rec.played}</td>
+                    <td className="py-3 text-center text-feedback-success font-semibold tabular-nums">{rec.wins}</td>
+                    <td className="py-3 text-center text-feedback-warning font-semibold tabular-nums">{rec.draws}</td>
+                    <td className="py-3 text-center text-feedback-error font-semibold tabular-nums">{rec.losses}</td>
+                    <td className="py-3 text-center text-text-muted tabular-nums">
                       {rec.gf}–{rec.ga}
                     </td>
                   </tr>

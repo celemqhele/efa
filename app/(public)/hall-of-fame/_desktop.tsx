@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { getTeamLogo } from '@/lib/logo-resolver'
-import { Trophy, Star, Globe, Medal } from 'lucide-react'
+import { Trophy, Star, Globe, Medal, Award, Crown } from 'lucide-react'
 
 const TROPHY_ICONS: Record<string, React.ReactNode> = {
   league: <Trophy className="w-4 h-4 text-accent" />,
@@ -83,7 +83,7 @@ export default function Desktop({ data }: DesktopProps) {
   const { seasons, allTimeRecords, mostPL, mostUCL, mostTotal } = data
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-8">
       <div className="text-center py-6">
         <p className="text-accent text-sm font-semibold uppercase tracking-widest mb-2">
           EFA Official Records
@@ -95,12 +95,13 @@ export default function Desktop({ data }: DesktopProps) {
       </div>
 
       <div>
-        <h2 className="section-header">
-          <span className="text-accent">🏆</span> All-Time Records
-        </h2>
+        <div className="flex items-center gap-2 mb-4">
+          <Award className="w-4 h-4 text-accent" />
+          <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">All-Time Records</h2>
+        </div>
         <div className="grid grid-cols-3 gap-6">
           {mostTotal && (
-            <div className="bg-bg-elevated border border-accent/30 rounded-xl p-6 text-center hover:scale-[1.02] hover:shadow-lg transition-all duration-200">
+            <div className="bg-bg-elevated border border-accent/30 rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-200 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
               <p className="text-xs font-semibold text-accent uppercase tracking-widest mb-3">
                 Most Trophies Overall
               </p>
@@ -117,9 +118,9 @@ export default function Desktop({ data }: DesktopProps) {
           )}
 
           {mostPL && (
-            <div className="bg-bg-elevated border border-accent/20 rounded-xl p-6 text-center hover:scale-[1.02] hover:shadow-lg transition-all duration-200">
+            <div className="bg-bg-elevated border border-accent/20 rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-200 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
               <p className="text-xs font-semibold text-accent uppercase tracking-widest mb-3">
-                🏆 Most League Titles
+                <Trophy className="w-3.5 h-3.5 inline-block -mt-0.5" /> Most League Titles
               </p>
               <Image
                 src={getTeamLogo(mostPL[1].team.logo_league_folder, mostPL[1].team.logo_team_slug, 'news_thumb')}
@@ -134,9 +135,9 @@ export default function Desktop({ data }: DesktopProps) {
           )}
 
           {mostUCL && (
-            <div className="bg-bg-elevated border border-blue-500/20 rounded-xl p-6 text-center hover:scale-[1.02] hover:shadow-lg transition-all duration-200">
+            <div className="bg-bg-elevated border border-blue-500/20 rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-200 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
               <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-3">
-                🌍 Most UCL Wins
+                <Globe className="w-3.5 h-3.5 inline-block -mt-0.5" /> Most UCL Wins
               </p>
               <Image
                 src={getTeamLogo(mostUCL[1].team.logo_league_folder, mostUCL[1].team.logo_team_slug, 'news_thumb')}
@@ -152,11 +153,11 @@ export default function Desktop({ data }: DesktopProps) {
         </div>
 
         {allTimeRecords.length > 0 && (
-          <div className="mt-6 bg-bg-elevated border border-border rounded-xl overflow-hidden">
+          <div className="mt-6 bg-bg-elevated border border-border rounded-2xl overflow-hidden shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-bg-base border-b-2 border-accent/20">
+                  <tr className="bg-bg-base">
                     <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Team</th>
                     <th className="text-center px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Total</th>
                     <th className="text-center px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">PL</th>
@@ -170,16 +171,16 @@ export default function Desktop({ data }: DesktopProps) {
                     <tr key={tid} className="hover:bg-accent/5 transition-colors">
                       <td className="px-5 py-3">
                         <Link href={`/teams/${tid}`} className="flex items-center gap-3 hover:text-accent transition-colors">
-                          <span className="text-text-muted text-xs w-5 shrink-0 font-bold">#{idx + 1}</span>
+                          <span className="text-text-muted text-xs w-5 shrink-0 font-bold tabular-nums">#{idx + 1}</span>
                           <Image src={getTeamLogo(data.team.logo_league_folder, data.team.logo_team_slug, 'standings_row')} alt={data.team.name} width={28} height={28} className="object-contain shrink-0" />
                           <span className="font-semibold text-text-primary">{data.team.name}</span>
                         </Link>
                       </td>
-                      <td className="px-5 py-3 text-center font-black text-accent">{data.total}</td>
-                      <td className="px-5 py-3 text-center text-text-secondary">{data.byType['league'] ?? '—'}</td>
-                      <td className="px-5 py-3 text-center text-text-secondary">{data.byType['tournament_club'] ?? '—'}</td>
-                      <td className="px-5 py-3 text-center text-text-secondary">{data.byType['tournament_international'] ?? '—'}</td>
-                      <td className="px-5 py-3 text-center text-text-secondary">{data.byType['friendlies'] ?? '—'}</td>
+                      <td className="px-5 py-3 text-center font-black text-accent tabular-nums">{data.total}</td>
+                      <td className="px-5 py-3 text-center text-text-secondary tabular-nums">{data.byType['league'] ?? '—'}</td>
+                      <td className="px-5 py-3 text-center text-text-secondary tabular-nums">{data.byType['tournament_club'] ?? '—'}</td>
+                      <td className="px-5 py-3 text-center text-text-secondary tabular-nums">{data.byType['tournament_international'] ?? '—'}</td>
+                      <td className="px-5 py-3 text-center text-text-secondary tabular-nums">{data.byType['friendlies'] ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -190,12 +191,13 @@ export default function Desktop({ data }: DesktopProps) {
       </div>
 
       <div>
-        <h2 className="section-header">
-          <span className="text-accent">🏆</span> Season Archives
-        </h2>
+        <div className="flex items-center gap-2 mb-4">
+          <Crown className="w-4 h-4 text-accent" />
+          <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Season Archives</h2>
+        </div>
 
         {seasons.length === 0 ? (
-          <div className="bg-bg-elevated border border-border rounded-xl p-8 text-center text-text-muted">
+          <div className="bg-bg-elevated border border-border rounded-2xl p-8 text-center text-text-muted text-sm">
             No season results recorded yet. History is being written.
           </div>
         ) : (
@@ -207,8 +209,8 @@ export default function Desktop({ data }: DesktopProps) {
               }
 
               return (
-                <div key={seasonName} className="bg-bg-elevated border border-border rounded-xl overflow-hidden">
-                  <div className="px-5 py-3 bg-gradient-to-r from-gold/10 to-transparent border-b border-border flex items-center justify-between">
+                <div key={seasonName} className="bg-bg-elevated border border-border rounded-2xl overflow-hidden shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+                  <div className="px-5 py-3.5 bg-gradient-to-r from-accent/10 to-transparent border-b border-border flex items-center justify-between">
                     <h3 className="font-black text-text-primary text-lg">{seasonName}</h3>
                     <span className="text-xs text-text-muted">{seasonTrophies.length} title{seasonTrophies.length !== 1 ? 's' : ''}</span>
                   </div>
@@ -219,7 +221,7 @@ export default function Desktop({ data }: DesktopProps) {
                       return (
                         <div key={type} className={`rounded-xl border p-4 text-center transition-all duration-200 ${
                           winner
-                            ? `${TROPHY_COLOR[type]} hover:scale-[1.03] hover:shadow-md`
+                            ? `${TROPHY_COLOR[type]} hover:shadow-md`
                             : 'border-border opacity-40'
                         }`}>
                           <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${winner ? TROPHY_TEXT[type] : 'text-text-muted'}`}>

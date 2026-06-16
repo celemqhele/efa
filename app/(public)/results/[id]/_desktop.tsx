@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
+import { Card } from '@/components/ui/Card'
 import { AlertTriangle, BarChart3, Camera, ArrowLeft, ChevronRight } from 'lucide-react'
 
 export default function Desktop({ data }: { data: any }) {
@@ -23,18 +24,15 @@ export default function Desktop({ data }: { data: any }) {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Breadcrumb */}
       <Link href="/results" className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors">
         <ArrowLeft className="w-3.5 h-3.5" />
         Results
       </Link>
 
-      {/* ── Hero Score Card ────────────────────────────────────────────── */}
-      <div className="card overflow-hidden">
-        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-24 relative" />
+      <Card>
+        <div className="bg-gradient-to-br from-bg-base via-accent/10 to-bg-surface h-24 relative rounded-t-2xl overflow-hidden" />
         <div className="px-10 py-8 -mt-8 relative">
           <div className="relative flex items-center justify-between gap-8">
-            {/* Home team */}
             <div className="flex items-center gap-5 flex-1 justify-end">
               <div className="text-right">
                 <Link href={`/teams/${home?.id}`} className="text-lg font-bold text-text-primary hover:text-accent transition-colors block">{home?.name}</Link>
@@ -45,7 +43,6 @@ export default function Desktop({ data }: { data: any }) {
               )}
             </div>
 
-            {/* Score */}
             <div className="text-center shrink-0">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <span className={`text-xs font-bold uppercase tracking-widest ${tournamentColor}`}>{tournament?.name}</span>
@@ -62,7 +59,6 @@ export default function Desktop({ data }: { data: any }) {
               )}
             </div>
 
-            {/* Away team */}
             <div className="flex items-center gap-5 flex-1">
               {away?.logo_league_folder && (
                 <Image src={getTeamLogo(away.logo_league_folder, away.logo_team_slug, 'match_detail_hero')} alt={away.name} width={64} height={64} className="object-contain w-16 h-16" />
@@ -76,35 +72,35 @@ export default function Desktop({ data }: { data: any }) {
 
           {result.is_abandoned && (
             <div className="mt-4 flex items-center gap-3 justify-center">
-              <div className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs font-medium inline-flex items-center gap-1.5">
+              <div className="px-3 py-1.5 bg-feedback-error/10 border border-feedback-error/30 rounded-xl text-feedback-error text-xs font-medium inline-flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5" /> Abandoned ({result.abandoned_type === 'both' ? 'Mutual' : `${result.abandoned_type} team`})
               </div>
               <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? home?.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? away?.name : ''} forfeited. Score at time: ${result.home_score}-${result.away_score}. This penalty was applied to the aggregate.`} />
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-5 gap-6">
-        {/* ── Stats Table ──────────────────────────────────────────────── */}
-        <div className="col-span-3 card p-6">
-          <h2 className="text-sm font-black text-text-primary uppercase tracking-widest flex items-center gap-2 mb-4">
-            <BarChart3 className="w-5 h-5 text-accent" /> Match Statistics
-          </h2>
+        <div className="col-span-3 bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Match Statistics</h2>
+          </div>
 
           {statDefs.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/60">
-                    <th className="text-right py-3 pr-6 text-[10px] font-bold text-text-muted uppercase tracking-widest w-[80px]">{home?.name}</th>
-                    <th className="text-left py-3 px-6 text-[10px] font-bold text-text-muted uppercase tracking-widest">Statistic</th>
-                    <th className="text-left py-3 pl-6 text-[10px] font-bold text-text-muted uppercase tracking-widest w-[80px]">{away?.name}</th>
+                    <th className="text-right py-3 pr-6 text-[10px] font-bold text-text-muted uppercase tracking-wider w-[80px]">{home?.name}</th>
+                    <th className="text-left py-3 px-6 text-[10px] font-bold text-text-muted uppercase tracking-wider">Statistic</th>
+                    <th className="text-left py-3 pl-6 text-[10px] font-bold text-text-muted uppercase tracking-wider w-[80px]">{away?.name}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {statDefs.map((s) => (
-                    <tr key={s.key} className="border-b border-border/20 hover:bg-black/[0.02] transition-colors">
+                    <tr key={s.key} className="border-b border-border/20 hover:bg-accent/5 transition-colors">
                       <td className="text-right py-3 pr-6 font-semibold text-text-primary tabular-nums">{s.h}{s.unit}</td>
                       <td className="py-3 px-6 text-xs text-text-muted font-medium">{s.label}</td>
                       <td className="py-3 pl-6 font-semibold text-text-primary tabular-nums">{s.a}{s.unit}</td>
@@ -118,19 +114,19 @@ export default function Desktop({ data }: { data: any }) {
           )}
         </div>
 
-        {/* ── Sidebar ──────────────────────────────────────────────────── */}
         <div className="col-span-2 space-y-6">
           {result.screenshot_url && (
-            <div className="card p-6">
-              <h2 className="text-sm font-black text-text-primary uppercase tracking-widest flex items-center gap-2 mb-4">
-                <Camera className="w-5 h-5 text-accent" /> Match Screenshot
-              </h2>
-              <img src={result.screenshot_url} alt="Match screenshot" className="w-full rounded-lg border border-border" />
+            <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+              <div className="flex items-center gap-2 mb-4">
+                <Camera className="w-4 h-4 text-accent" />
+                <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Match Screenshot</h2>
+              </div>
+              <img src={result.screenshot_url} alt="Match screenshot" className="w-full rounded-xl border border-border" />
             </div>
           )}
 
           {fixture?.id && (
-            <Link href={`/fixtures/${fixture.id}`} className="btn-outline w-full text-center py-3 block text-sm font-semibold flex items-center justify-center gap-1.5">
+            <Link href={`/fixtures/${fixture.id}`} className="flex items-center justify-center gap-1.5 text-sm font-semibold text-accent border border-accent/30 rounded-xl py-3 px-5 hover:bg-accent/5 transition-colors">
               View Full Fixture Details <ChevronRight className="w-4 h-4" />
             </Link>
           )}

@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import TeamLogo from '@/components/ui/TeamLogo'
+import { ChevronLeft } from 'lucide-react'
 
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   scheduled: { label: 'Scheduled', pill: 'bg-text-muted/20 text-text-muted border-text-muted/30' },
@@ -43,13 +44,12 @@ export default function Desktop({ data }: { data: any }) {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Link
           href={`/teams/${team.id}`}
-          className="w-10 h-10 rounded-lg flex items-center justify-center border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors"
+          className="w-10 h-10 rounded-xl flex items-center justify-center border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors"
         >
-          ‹
+          <ChevronLeft className="w-4 h-4" />
         </Link>
         <div className="flex items-center gap-3">
           {team.logo_league_folder && (
@@ -58,7 +58,7 @@ export default function Desktop({ data }: { data: any }) {
               teamSlug={team.logo_team_slug}
               context="standings_row"
               alt={team.name}
-              className="w-12 h-12"
+              className="w-12 h-12 shrink-0"
             />
           )}
           <div>
@@ -72,17 +72,16 @@ export default function Desktop({ data }: { data: any }) {
         </div>
       </div>
 
-      {/* Unified table */}
-      <div className="card overflow-hidden">
+      <div className="bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b-2 border-accent/30 bg-bg-base">
-                <th className="text-left py-3.5 px-6 text-[11px] font-bold text-text-muted uppercase tracking-wider">Date</th>
-                <th className="text-left py-3.5 px-4 text-[11px] font-bold text-text-muted uppercase tracking-wider">Competition</th>
-                <th className="text-left py-3.5 px-4 text-[11px] font-bold text-text-muted uppercase tracking-wider">Opponent</th>
-                <th className="text-center py-3.5 px-4 text-[11px] font-bold text-text-muted uppercase tracking-wider">Score</th>
-                <th className="text-center py-3.5 pl-4 pr-6 text-[11px] font-bold text-text-muted uppercase tracking-wider">Status</th>
+              <tr className="bg-bg-base">
+                <th className="text-left py-3.5 px-6 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Date</th>
+                <th className="text-left py-3.5 px-4 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Competition</th>
+                <th className="text-left py-3.5 px-4 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Opponent</th>
+                <th className="text-center py-3.5 px-4 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Score</th>
+                <th className="text-center py-3.5 pl-4 pr-6 text-[11px] font-semibold text-text-muted uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -115,21 +114,21 @@ export default function Desktop({ data }: { data: any }) {
 
                   let resultBadge: React.ReactNode = null
                   if (won) {
-                    resultBadge = <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-feedback-success/20 text-feedback-success border border-feedback-success/30">W</span>
+                    resultBadge = <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-feedback-success/20 text-feedback-success border border-feedback-success/30">W</span>
                   } else if (lost) {
-                    resultBadge = <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-feedback-error/20 text-feedback-error border border-feedback-error/30">L</span>
+                    resultBadge = <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-feedback-error/20 text-feedback-error border border-feedback-error/30">L</span>
                   } else if (drew) {
-                    resultBadge = <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted border border-text-muted/30">D</span>
+                    resultBadge = <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-text-muted/20 text-text-muted border border-text-muted/30">D</span>
                   }
 
                   return (
                     <tr
                       key={f.id}
-                      className="border-b border-border/20 transition-colors hover:bg-black/[0.02] cursor-pointer"
+                      className="border-b border-border/20 transition-colors hover:bg-accent/5 cursor-pointer"
                       onClick={() => window.location.href = result ? `/results/${result.id}` : `/fixtures/${f.id}`}
                     >
                       <td className="py-4 px-6 whitespace-nowrap">
-                        <span className="text-xs text-text-muted font-mono">{formatWhen(f.scheduled_date)}</span>
+                        <span className="text-xs text-text-muted font-mono tabular-nums">{formatWhen(f.scheduled_date)}</span>
                       </td>
                       <td className="py-4 px-4">
                         <span className="text-xs font-semibold text-text-primary">{tournamentLabel}</span>
@@ -145,7 +144,7 @@ export default function Desktop({ data }: { data: any }) {
                               className="w-7 h-7 shrink-0"
                             />
                           ) : (
-                            <div className="w-7 h-7 rounded bg-bg-base shrink-0 flex items-center justify-center text-[9px] text-text-muted">?</div>
+                            <div className="w-7 h-7 rounded-xl bg-bg-base shrink-0 flex items-center justify-center text-[9px] text-text-muted">?</div>
                           )}
                           <span className="text-sm font-semibold text-text-primary truncate">
                             {isHome ? 'vs' : '@'} {opponent?.name ?? 'TBC'}
@@ -167,7 +166,7 @@ export default function Desktop({ data }: { data: any }) {
                         <div className="flex items-center justify-center gap-2">
                           {resultBadge}
                           {!result && (
-                            <span className={`text-[9px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
+                            <span className={`text-[9px] px-2 py-0.5 rounded-md border font-semibold ${statusInfo.pill}`}>
                               {statusInfo.label}
                             </span>
                           )}

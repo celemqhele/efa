@@ -4,7 +4,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
-import { Trophy, Crosshair, CalendarDays } from 'lucide-react'
+import { Trophy, Crosshair, CalendarDays, ChevronRight } from 'lucide-react'
 
 const TYPE_STYLES: Record<string, { label: string; colour: string }> = {
   league: { label: 'PL', colour: 'bg-accent/10 text-accent border-accent/25' },
@@ -59,16 +59,18 @@ interface DesktopProps {
 }
 
 export default function Desktop({ data }: DesktopProps) {
-  const { user, teams, teamIds, fixturesWithResults, grouped, sortedKeys, primaryTeam, wins, draws, losses } = data
+  const { user, teamIds, fixturesWithResults, grouped, sortedKeys, primaryTeam, wins, draws, losses } = data
 
   if (!user) {
     return (
       <div className="max-w-7xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-text-primary">My Results</h1>
-        <div className="bg-bg-surface border border-border rounded-xl p-12 text-center space-y-3">
+        <div className="bg-bg-surface border border-border rounded-2xl p-12 text-center space-y-4">
           <Trophy className="w-10 h-10 text-text-muted mx-auto" />
-          <p className="text-text-muted">Log in to see your team&apos;s past results.</p>
-          <Link href="/login" className="btn-gold inline-block">Log in</Link>
+          <p className="text-text-muted text-sm">Log in to see your team&apos;s past results.</p>
+          <Link href="/login" className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)]">
+            Log in
+          </Link>
         </div>
       </div>
     )
@@ -78,10 +80,12 @@ export default function Desktop({ data }: DesktopProps) {
     return (
       <div className="max-w-7xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-text-primary">My Results</h1>
-        <div className="bg-bg-surface border border-border rounded-xl p-12 text-center space-y-3">
+        <div className="bg-bg-surface border border-border rounded-2xl p-12 text-center space-y-4">
           <Crosshair className="w-10 h-10 text-text-muted mx-auto" />
-          <p className="text-text-muted">You don&apos;t have a team yet.</p>
-          <Link href="/select-team" className="btn-gold inline-block">Pick a team</Link>
+          <p className="text-text-muted text-sm">You don&apos;t have a team yet.</p>
+          <Link href="/select-team" className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)]">
+            Pick a team
+          </Link>
         </div>
       </div>
     )
@@ -97,7 +101,7 @@ export default function Desktop({ data }: DesktopProps) {
               teamSlug={primaryTeam.logo_team_slug}
               context="fixture_card"
               alt={primaryTeam.name}
-              className="w-10 h-10"
+              className="w-10 h-10 shrink-0"
             />
           )}
           <div>
@@ -105,42 +109,42 @@ export default function Desktop({ data }: DesktopProps) {
             {primaryTeam && <p className="text-sm text-accent font-medium">{primaryTeam.name}</p>}
           </div>
         </div>
-        <Link href="/fixtures" className="text-sm font-semibold text-accent hover:text-accent-hover transition-colors">
-          Upcoming →
+        <Link href="/fixtures" className="flex items-center gap-1 text-sm font-semibold text-accent hover:text-accent-hover transition-colors">
+          Upcoming <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
 
       {(fixturesWithResults?.length ?? 0) > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-feedback-success/40 flex flex-col items-center py-4 gap-0.5">
-            <span className="text-2xl font-black text-feedback-success leading-none">{wins}</span>
-            <span className="text-xs uppercase tracking-widest text-text-muted font-bold">Won</span>
+          <div className="bg-feedback-success/5 border border-feedback-success/15 rounded-2xl flex flex-col items-center py-5 gap-1">
+            <span className="text-2xl font-black text-feedback-success leading-none tabular-nums">{wins}</span>
+            <span className="text-xs uppercase tracking-widest text-feedback-success font-bold">Won</span>
           </div>
-          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-text-muted/30 flex flex-col items-center py-4 gap-0.5">
-            <span className="text-2xl font-black text-text-muted leading-none">{draws}</span>
-            <span className="text-xs uppercase tracking-widest text-text-muted font-bold">Drawn</span>
+          <div className="bg-bg-elevated/50 border border-border-subtle rounded-2xl flex flex-col items-center py-5 gap-1">
+            <span className="text-2xl font-black text-text-muted leading-none tabular-nums">{draws}</span>
+            <span className="text-xs uppercase tracking-widest text-text-secondary font-bold">Drawn</span>
           </div>
-          <div className="bg-bg-surface border border-border rounded-xl border-l-4 border-l-feedback-error/40 flex flex-col items-center py-4 gap-0.5">
-            <span className="text-2xl font-black text-feedback-error leading-none">{losses}</span>
-            <span className="text-xs uppercase tracking-widest text-text-muted font-bold">Lost</span>
+          <div className="bg-feedback-error/5 border border-feedback-error/15 rounded-2xl flex flex-col items-center py-5 gap-1">
+            <span className="text-2xl font-black text-feedback-error leading-none tabular-nums">{losses}</span>
+            <span className="text-xs uppercase tracking-widest text-feedback-error font-bold">Lost</span>
           </div>
         </div>
       )}
 
       {fixturesWithResults.length === 0 ? (
-        <div className="bg-bg-surface border border-border rounded-xl p-12 text-center">
+        <div className="bg-bg-surface border border-border rounded-2xl p-12 text-center">
           <CalendarDays className="w-10 h-10 text-text-muted mx-auto mb-3" />
-          <p className="text-text-muted">No results yet.</p>
+          <p className="text-text-muted text-sm">No results yet.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {sortedKeys.map((monthKey) => {
             const fixturesInGroup = grouped[monthKey]!
             return (
-              <section key={monthKey} className="bg-bg-surface border border-border rounded-xl overflow-hidden">
-                <div className="px-6 py-3.5 bg-bg-base border-b-2 border-accent/20 flex items-center gap-2">
-                  <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">
+              <section key={monthKey} className="bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+                <div className="px-6 py-3.5 bg-bg-base flex items-center gap-3">
+                  <span className="w-1 h-4 rounded-full bg-accent shrink-0" />
+                  <h2 className="text-sm font-bold tracking-wide text-text-muted">
                     {formatMonth(fixturesInGroup[0]?.scheduled_date)}
                   </h2>
                   <span className="text-xs text-text-muted font-medium ml-auto">({fixturesInGroup.length})</span>
@@ -185,7 +189,7 @@ export default function Desktop({ data }: DesktopProps) {
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className={`text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded border ${typeStyle.colour}`}>
+                            <span className={`text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded-md border ${typeStyle.colour}`}>
                               {typeStyle.label}
                             </span>
                             <span className="text-[10px] text-text-muted font-semibold">MD{f.matchday}</span>
@@ -200,7 +204,7 @@ export default function Desktop({ data }: DesktopProps) {
                                 {myScore}–{oppScore}
                               </span>
                               {resultBadge && (
-                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${resultBadge.cls}`}>
+                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border ${resultBadge.cls}`}>
                                   {resultBadge.label}
                                 </span>
                               )}

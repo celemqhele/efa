@@ -42,7 +42,6 @@ export default function Desktop({ data }: { data: any }) {
   const [takenTeams, setTakenTeams] = useState<Set<string>>(new Set())
   const [myApps, setMyApps] = useState<PollApp[]>([])
 
-  // Load taken slots and my applications on mount
   useState(() => {
     fetch(`/api/polls/${poll.share_code}`)
       .then((r) => r.json())
@@ -139,7 +138,6 @@ export default function Desktop({ data }: { data: any }) {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
       <div className="text-center">
         <h1 className="text-2xl font-bold text-text-primary">{poll.title}</h1>
         {poll.description && (
@@ -162,21 +160,19 @@ export default function Desktop({ data }: { data: any }) {
         </Card>
       )}
 
-      {/* Alerts */}
       {error && (
-        <div className="bg-feedback-error/10 border border-feedback-error/30 rounded-lg p-4 text-feedback-error text-sm">
+        <div className="bg-feedback-error/10 border border-feedback-error/30 rounded-2xl p-4 text-feedback-error text-sm">
           {error}
         </div>
       )}
       {success && (
-        <div className="bg-feedback-success/10 border border-feedback-success/30 rounded-lg p-4 text-feedback-success text-sm">
+        <div className="bg-feedback-success/10 border border-feedback-success/30 rounded-2xl p-4 text-feedback-success text-sm">
           {success}
         </div>
       )}
 
-      {/* My Applications */}
       {myApps.length > 0 && (
-        <div className="bg-bg-elevated border border-border rounded-xl overflow-hidden">
+        <div className="bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
           <div className="px-5 py-3 border-b border-border">
             <h2 className="font-semibold text-text-primary flex items-center gap-2">
               <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
@@ -187,7 +183,7 @@ export default function Desktop({ data }: { data: any }) {
             {myApps.map((app) => (
               <div key={app.id} className="flex items-center justify-between px-5 py-3 hover:bg-accent/5 transition-colors">
                 <div className="flex items-center gap-3">
-                  <Image src={logoSrc(app.team_league, app.team_slug)} alt={app.team_name} width={28} height={28} className="object-contain rounded" />
+                  <Image src={logoSrc(app.team_league, app.team_slug)} alt={app.team_name} width={28} height={28} className="object-contain rounded shrink-0" />
                   <span className="text-sm text-text-primary font-medium">{app.team_name}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
                     app.status === 'pending' ? 'text-feedback-warning border-feedback-warning/30 bg-feedback-warning/5' :
@@ -207,17 +203,16 @@ export default function Desktop({ data }: { data: any }) {
         </div>
       )}
 
-      {/* Filters */}
       <div className="flex gap-4">
         <input
           type="search"
           placeholder="Search teams..."
-          className="input-field flex-1"
+          className="flex-1 px-4 py-2.5 rounded-xl bg-bg-surface border border-border text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50 transition-all"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <select
-          className="input-field w-auto"
+          className="px-4 py-2.5 rounded-xl bg-bg-surface border border-border text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50 transition-all"
           value={selectedLeague}
           onChange={(e) => setSelectedLeague(e.target.value)}
         >
@@ -228,18 +223,17 @@ export default function Desktop({ data }: { data: any }) {
         </select>
       </div>
 
-      {/* Team table by league */}
       {filteredLeagues.map((league: any) => (
         <div key={league.folder}>
-          <h2 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
-            <span>{league.country}</span>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-semibold text-text-primary">{league.country}</span>
             <span className="text-text-muted text-sm font-normal">— {league.league}</span>
             <span className="ml-auto text-xs text-text-muted">{league.teams.length} teams</span>
-          </h2>
-          <div className="bg-bg-elevated border border-border rounded-xl overflow-hidden">
+          </div>
+          <div className="bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-bg-base border-b-2 border-accent/20">
+                <tr className="bg-bg-base">
                   <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Team</th>
                   <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
                   <th className="text-right px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Action</th>
@@ -294,7 +288,7 @@ export default function Desktop({ data }: { data: any }) {
 
       {filteredLeagues.length === 0 && (
         <Card className="p-12 text-center">
-          <p className="text-text-muted">No teams match your search.</p>
+          <p className="text-text-muted text-sm">No teams match your search.</p>
         </Card>
       )}
     </div>

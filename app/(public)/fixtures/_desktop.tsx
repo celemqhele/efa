@@ -4,7 +4,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
-import { CircleDot, Crosshair, CalendarDays } from 'lucide-react'
+import { CircleDot, Crosshair, CalendarDays, ChevronRight } from 'lucide-react'
 
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   scheduled: { label: 'Scheduled', pill: 'bg-slate-500/20 text-text-muted border-slate-500/30' },
@@ -76,10 +76,12 @@ export default function Desktop({ data }: DesktopProps) {
     return (
       <div className="max-w-7xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-text-primary">My Fixtures</h1>
-        <div className="bg-bg-surface border border-border rounded-xl p-12 text-center space-y-4">
+        <div className="bg-bg-surface border border-border rounded-2xl p-12 text-center space-y-4">
           <CircleDot className="w-10 h-10 text-text-muted mx-auto" />
-          <p className="text-text-muted">Log in to see your team&apos;s fixtures.</p>
-          <Link href="/login" className="btn-gold inline-block">Log in</Link>
+          <p className="text-text-muted text-sm">Log in to see your team&apos;s fixtures.</p>
+          <Link href="/login" className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)]">
+            Log in
+          </Link>
         </div>
       </div>
     )
@@ -89,10 +91,12 @@ export default function Desktop({ data }: DesktopProps) {
     return (
       <div className="max-w-7xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-text-primary">My Fixtures</h1>
-        <div className="bg-bg-surface border border-border rounded-xl p-12 text-center space-y-4">
+        <div className="bg-bg-surface border border-border rounded-2xl p-12 text-center space-y-4">
           <Crosshair className="w-10 h-10 text-text-muted mx-auto" />
-          <p className="text-text-muted">You don&apos;t have a team yet.</p>
-          <Link href="/select-team" className="btn-gold inline-block">Pick a team</Link>
+          <p className="text-text-muted text-sm">You don&apos;t have a team yet.</p>
+          <Link href="/select-team" className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)]">
+            Pick a team
+          </Link>
         </div>
       </div>
     )
@@ -108,7 +112,7 @@ export default function Desktop({ data }: DesktopProps) {
               teamSlug={primaryTeam.logo_team_slug}
               context="fixture_card"
               alt={primaryTeam.name}
-              className="w-10 h-10"
+              className="w-10 h-10 shrink-0"
             />
           )}
           <div>
@@ -116,35 +120,37 @@ export default function Desktop({ data }: DesktopProps) {
             {primaryTeam && <p className="text-sm text-accent font-medium">{primaryTeam.name}</p>}
           </div>
         </div>
-        <Link href="/results" className="text-sm font-semibold text-accent hover:text-accent-hover transition-colors">View Results →</Link>
+        <Link href="/results" className="flex items-center gap-1 text-sm font-semibold text-accent hover:text-accent-hover transition-colors">
+          Results <ChevronRight className="w-4 h-4" />
+        </Link>
       </div>
 
       {upcoming.length === 0 ? (
-        <div className="bg-bg-surface border border-border rounded-xl p-12 text-center">
+        <div className="bg-bg-surface border border-border rounded-2xl p-12 text-center">
           <CalendarDays className="w-10 h-10 text-text-muted mx-auto mb-3" />
-          <p className="text-text-muted font-medium">No upcoming fixtures.</p>
+          <p className="text-text-muted font-medium text-sm">No upcoming fixtures.</p>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-5">
           {sortedKeys.map((dateKey) => {
             const fixturesInGroup = grouped[dateKey]!
             return (
-              <section key={dateKey} className="bg-bg-surface border border-border rounded-xl overflow-hidden">
-                <div className="px-6 py-3.5 bg-bg-base border-b-2 border-accent/20 flex items-center gap-2">
-                  <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-text-muted">{formatDateGroup(dateKey)}</h2>
+              <section key={dateKey} className="bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+                <div className="px-6 py-3.5 bg-bg-base flex items-center gap-3">
+                  <span className="w-1 h-4 rounded-full bg-accent shrink-0" />
+                  <h2 className="text-sm font-bold tracking-wide text-text-muted">{formatDateGroup(dateKey)}</h2>
                   <span className="text-xs text-text-muted font-medium ml-auto">({fixturesInGroup.length})</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b-2 border-accent/30 bg-bg-base">
-                        <th className="text-left text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5 w-20">Time</th>
-                        <th className="text-left text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5 w-24">Comp</th>
-                        <th className="text-left text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5">Home</th>
-                        <th className="text-center text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5 w-20">Score</th>
-                        <th className="text-left text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5">Away</th>
-                        <th className="text-center text-text-muted font-bold uppercase tracking-wider text-[11px] px-4 py-3.5 w-28">Status</th>
+                      <tr className="bg-bg-base">
+                        <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 w-20">Time</th>
+                        <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 w-24">Comp</th>
+                        <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5">Home</th>
+                        <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 w-20">Score</th>
+                        <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5">Away</th>
+                        <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 w-28">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -168,10 +174,10 @@ export default function Desktop({ data }: DesktopProps) {
                             onClick={() => window.location.href = `/fixtures/${f.id}`}
                           >
                             <td className="px-4 py-3.5">
-                              <span className="font-mono text-text-muted text-xs font-semibold">{time ?? '—'}</span>
+                              <span className="font-mono text-text-muted text-xs font-semibold tabular-nums">{time ?? '—'}</span>
                             </td>
                             <td className="px-4 py-3.5">
-                              <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded border ${typeStyle.colour}`}>
+                              <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md border ${typeStyle.colour}`}>
                                 {typeStyle.label}
                               </span>
                             </td>
@@ -212,7 +218,7 @@ export default function Desktop({ data }: DesktopProps) {
                             </td>
                             <td className="px-4 py-3.5 text-center">
                               <div className="flex items-center justify-center gap-1.5">
-                                <span className={`text-[10px] px-2.5 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
+                                <span className={`text-[10px] px-2.5 py-0.5 rounded-md border font-semibold ${statusInfo.pill}`}>
                                   {statusInfo.label}
                                 </span>
                                 {f.matchday && <span className="text-[10px] text-text-muted">MD{f.matchday}</span>}

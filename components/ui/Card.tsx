@@ -9,10 +9,10 @@ interface CardProps {
 }
 
 export function Card({ children, className = '', variant = 'surface', id, style }: CardProps) {
-  const baseStyles = 'border rounded-lg transition-colors duration-base'
+  const baseStyles = 'border rounded-2xl transition-colors duration-base'
   const variants = {
-    surface: 'bg-bg-surface border-border',
-    elevated: 'bg-bg-elevated border-border-subtle shadow-md',
+    surface: 'bg-bg-surface border-border shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]',
+    elevated: 'bg-bg-elevated border-border-subtle shadow-[0_2px_8px_rgba(0,0,0,0.08)]',
   }
 
   return (

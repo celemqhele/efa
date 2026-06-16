@@ -7,6 +7,7 @@ import { format, parseISO } from 'date-fns'
 import CalendarGrid from './CalendarGrid'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -38,29 +39,29 @@ export default function Desktop({ data }: DesktopProps) {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {nextFixture && daysUntilNext != null && (
-        <Card className="p-space-4 sm:p-space-5 hover:border-accent/40 transition-all group">
+        <Card className="p-5 hover:border-accent/40 transition-all group">
           <Link href={`/fixtures/${nextFixture.id}`} className="block">
-            <div className="flex items-center gap-space-4 flex-wrap sm:flex-nowrap">
-              <div className="shrink-0 text-center bg-accent/10 border border-accent/30 rounded-xl px-space-4 py-space-3 min-w-[80px]">
+            <div className="flex items-center gap-5 flex-wrap sm:flex-nowrap">
+              <div className="shrink-0 text-center bg-accent/10 border border-accent/30 rounded-xl px-5 py-3 min-w-[80px]">
                 {daysUntilNext === 0 ? (
                   <>
                     <p className="text-2xl font-black text-accent leading-none">TODAY</p>
-                    <p className="text-[10px] text-text-muted mt-space-1">Match day</p>
+                    <p className="text-[10px] text-text-muted mt-1">Match day</p>
                   </>
                 ) : (
                   <>
                     <p className="text-3xl font-black text-accent leading-none">{daysUntilNext}</p>
-                    <p className="text-[10px] text-text-muted mt-space-0.5">day{daysUntilNext !== 1 ? 's' : ''}</p>
+                    <p className="text-[10px] text-text-muted mt-0.5">day{daysUntilNext !== 1 ? 's' : ''}</p>
                   </>
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-space-2">
+                <p className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-2">
                   Next Fixture
                 </p>
-                <div className="flex items-center gap-space-3">
-                  <div className="flex items-center gap-space-2 flex-1 min-w-0 justify-end">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
                     <span className="text-sm font-bold text-text-primary truncate">
                       {nextFixture.home_team?.name ?? 'TBD'}
                     </span>
@@ -77,7 +78,7 @@ export default function Desktop({ data }: DesktopProps) {
 
                   <span className="text-xs font-bold text-accent shrink-0">vs</span>
 
-                  <div className="flex items-center gap-space-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
                     {nextFixture.away_team?.logo_league_folder && (
                       <Image
                         src={getTeamLogo(nextFixture.away_team.logo_league_folder, nextFixture.away_team.logo_team_slug, 'standings_row')}
@@ -92,16 +93,14 @@ export default function Desktop({ data }: DesktopProps) {
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-text-muted mt-space-1.5">
+                <p className="text-xs text-text-muted mt-1.5">
                   {nextFixture.scheduled_date
                     ? format(parseISO(nextFixture.scheduled_date), "EEEE, d MMMM yyyy 'at' HH:mm")
                     : 'Date TBD'}
                 </p>
               </div>
 
-              <span className="text-text-muted group-hover:text-accent transition-colors text-sm shrink-0">
-                →
-              </span>
+              <ChevronRight className="w-4 h-4 text-text-muted group-hover:text-accent transition-colors shrink-0" />
             </div>
           </Link>
         </Card>
@@ -113,30 +112,30 @@ export default function Desktop({ data }: DesktopProps) {
             {MONTH_NAMES[month - 1]} {year}
           </h1>
           {userTeams.length > 0 && (
-            <p className="text-sm text-accent mt-space-0.5">{userTeams.map(t => t.name).join(', ')}</p>
+            <p className="text-sm text-accent mt-0.5">{userTeams.map(t => t.name).join(', ')}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-space-2">
+        <div className="flex items-center gap-2">
           <Link
             href={`/calendar?month=${monthParam(prev.year, prev.month)}`}
-            className="w-space-9 h-space-9 rounded-lg flex items-center justify-center border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors font-bold"
+            className="w-9 h-9 rounded-xl flex items-center justify-center border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors"
             aria-label="Previous month"
           >
-            ←
+            <ChevronLeft className="w-4 h-4" />
           </Link>
           <Link
             href="/calendar"
-            className="px-space-3 py-space-1.5 rounded-lg border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors text-xs font-semibold"
+            className="px-3 py-1.5 rounded-xl border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors text-xs font-semibold"
           >
             Today
           </Link>
           <Link
             href={`/calendar?month=${monthParam(next.year, next.month)}`}
-            className="w-space-9 h-space-9 rounded-lg flex items-center justify-center border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors font-bold"
+            className="w-9 h-9 rounded-xl flex items-center justify-center border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors"
             aria-label="Next month"
           >
-            →
+            <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
       </div>
@@ -150,7 +149,7 @@ export default function Desktop({ data }: DesktopProps) {
         />
       </Card>
 
-      <div className="flex flex-wrap gap-space-4 px-space-1">
+      <div className="flex flex-wrap gap-4 px-1">
         {[
           { color: 'bg-feedback-success/30', label: 'Confirmed' },
           { color: 'bg-feedback-warning/30', label: 'Awaiting result' },
@@ -158,18 +157,18 @@ export default function Desktop({ data }: DesktopProps) {
           { color: 'bg-text-muted/30', label: 'Scheduled' },
           { color: 'bg-feedback-warning/20', label: 'Season break' },
         ].map(({ color, label }) => (
-          <div key={label} className="flex items-center gap-space-1.5">
-            <span className={`w-space-3 h-space-1.5 rounded-full ${color}`} />
+          <div key={label} className="flex items-center gap-1.5">
+            <span className={`w-3 h-1.5 rounded-full ${color}`} />
             <span className="text-xs text-text-muted">{label}</span>
           </div>
         ))}
       </div>
 
       {!user && (
-        <Card className="p-space-5 flex items-center gap-space-4 flex-wrap">
+        <Card className="p-5 flex items-center gap-5 flex-wrap">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-text-primary">See your team&apos;s fixtures</p>
-            <p className="text-xs text-text-muted mt-space-0.5">
+            <p className="text-xs text-text-muted mt-0.5">
               Sign in to filter the calendar to your team&apos;s schedule.
             </p>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Vote } from 'lucide-react'
+import { Vote, ChevronRight } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
@@ -72,21 +72,20 @@ export default function Desktop({ data }: DesktopProps) {
 
       {polls.length === 0 ? (
         <Card className="p-12 text-center">
-          <p className="text-4xl mb-4">∅</p>
-          <p className="text-text-muted">No polls available yet.</p>
+          <p className="text-text-muted text-sm">No polls available yet.</p>
         </Card>
       ) : (
         <div className="space-y-6">
           {openPolls.length > 0 && (
             <section>
-              <h2 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-3">
                 <span className="w-1 h-4 rounded-full bg-accent shrink-0" />
-                Open Polls
-              </h2>
-              <div className="bg-bg-elevated border border-border rounded-xl overflow-hidden">
+                <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Open Polls</h2>
+              </div>
+              <div className="bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-bg-base border-b-2 border-accent/20">
+                    <tr className="bg-bg-base">
                       <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Title</th>
                       <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Description</th>
                       <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Created</th>
@@ -114,7 +113,7 @@ export default function Desktop({ data }: DesktopProps) {
                             href={`/polls/${poll.share_code}`}
                             className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:text-accent/80 transition-colors"
                           >
-                            Vote <span>→</span>
+                            Vote <ChevronRight className="w-3 h-3" />
                           </Link>
                         </td>
                       </tr>
@@ -127,14 +126,14 @@ export default function Desktop({ data }: DesktopProps) {
 
           {visibleClosed.length > 0 && (
             <section>
-              <h2 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-3">
                 <span className="w-1 h-4 rounded-full bg-border shrink-0" />
-                Closed Polls
-              </h2>
-              <div className="bg-bg-elevated border border-border rounded-xl overflow-hidden">
+                <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Closed Polls</h2>
+              </div>
+              <div className="bg-bg-surface border border-border rounded-2xl overflow-hidden shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-bg-base border-b-2 border-accent/20">
+                    <tr className="bg-bg-base">
                       <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Title</th>
                       <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Description</th>
                       <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Closed</th>
@@ -162,7 +161,7 @@ export default function Desktop({ data }: DesktopProps) {
                             href={`/polls/${poll.share_code}`}
                             className="inline-flex items-center gap-1 text-xs font-semibold text-text-muted hover:text-accent transition-colors"
                           >
-                            Results <span>→</span>
+                            Results <ChevronRight className="w-3 h-3" />
                           </Link>
                         </td>
                       </tr>
