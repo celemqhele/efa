@@ -45,7 +45,7 @@ function QuickActions() {
         <Link
           key={a.href}
           href={a.href}
-          className={`snap-start shrink-0 whitespace-nowrap text-xs font-semibold px-4 py-2.5 rounded-lg min-h-[44px] flex items-center justify-center transition-colors ${
+          className={`snap-start shrink-0 whitespace-nowrap text-sm font-semibold px-5 py-3 rounded-lg min-h-[48px] flex items-center justify-center transition-colors ${
             a.variant === 'gold'
               ? 'bg-accent text-bg-surface'
               : 'border border-border text-text-secondary'
@@ -61,11 +61,11 @@ function QuickActions() {
 
 function StatCard({ icon, label, count, accent }: { icon: React.ReactNode; label: string; count: number; accent: string }) {
   return (
-    <div className={`flex items-center gap-3 py-3 px-3 bg-bg-surface border border-border rounded-xl ${accent}`}>
+    <div className={`snap-start shrink-0 w-[160px] flex items-center gap-3 py-4 px-4 bg-bg-surface border border-border rounded-xl ${accent}`}>
       <div className="shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-lg font-black text-text-primary leading-none">{count}</p>
-        <p className="text-[10px] uppercase tracking-widest text-text-muted font-semibold mt-0.5">{label}</p>
+        <p className="text-xl font-black text-text-primary leading-none">{count}</p>
+        <p className="text-[11px] uppercase tracking-widest text-text-muted font-semibold mt-0.5">{label}</p>
       </div>
     </div>
   )
@@ -81,7 +81,7 @@ function FixtureDueCard({ fx }: { fx: any }) {
 
   return (
     <div className="bg-bg-base border border-border rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
+      <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <span className="text-text-muted text-xs font-semibold">MD{fx.matchday}</span>
         <div className="flex items-center gap-2">
           {timeLabel && <span className="text-text-muted text-xs font-mono">{timeLabel}</span>}
@@ -90,38 +90,38 @@ function FixtureDueCard({ fx }: { fx: any }) {
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
-        <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
+      <div className="flex items-center gap-2 px-4 pb-3 pt-1">
+        <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
           {fx.home_team?.logo_league_folder && (
             <Image
               src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')}
               alt=""
-              width={24} height={24}
+              width={28} height={28}
               className="object-contain shrink-0"
             />
           )}
-          <span className="text-xs font-semibold text-text-primary text-center leading-tight truncate max-w-full">
+          <span className="text-sm font-semibold text-text-primary text-center leading-tight truncate max-w-full">
             {fx.home_team?.name}
           </span>
         </div>
         <div className="shrink-0 px-1">
-          <span className="text-[10px] font-black uppercase tracking-widest text-text-muted/70">vs</span>
+          <span className="text-xs font-black uppercase tracking-widest text-text-muted/70">vs</span>
         </div>
-        <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
+        <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
           {fx.away_team?.logo_league_folder && (
             <Image
               src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')}
               alt=""
-              width={24} height={24}
+              width={28} height={28}
               className="object-contain shrink-0"
             />
           )}
-          <span className="text-xs font-semibold text-text-primary text-center leading-tight truncate max-w-full">
+          <span className="text-sm font-semibold text-text-primary text-center leading-tight truncate max-w-full">
             {fx.away_team?.name}
           </span>
         </div>
       </div>
-      <div className="border-t border-border px-3 py-2 flex justify-end">
+      <div className="border-t border-border px-4 py-2.5 flex justify-end">
         <DashboardFixtureActions
           fixtureId={fx.id}
           status={fx.status}
@@ -139,12 +139,12 @@ function FixtureDueCard({ fx }: { fx: any }) {
 
 function ConflictCard({ fx, confs }: { fx: any; confs: any[] }) {
   return (
-    <div className="bg-bg-base border border-red-500/20 rounded-xl px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2 mb-1.5">
+    <div className="bg-bg-base border border-red-500/20 rounded-xl px-4 py-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
           <span className="text-xs text-text-muted font-semibold shrink-0">MD{fx.matchday}</span>
-          <span className="text-xs text-text-primary font-medium truncate">
+          <span className="text-sm text-text-primary font-medium truncate">
             {(fx.home_team as any)?.name} vs {(fx.away_team as any)?.name}
           </span>
         </div>
@@ -156,7 +156,7 @@ function ConflictCard({ fx, confs }: { fx: any; confs: any[] }) {
           </span>
         ))}
       </div>
-      <Link href={`/admin/results/submit?fixture=${fx.id}`} className="block text-center text-xs font-semibold px-3 py-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 min-h-[36px] leading-none">
+      <Link href={`/admin/results/submit?fixture=${fx.id}`} className="block text-center text-sm font-semibold px-4 py-3 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 min-h-[48px] leading-none flex items-center justify-center">
         Resolve
       </Link>
     </div>
@@ -168,7 +168,7 @@ function SectionCard({ title, icon, count, children, defaultOpen = false }: {
 }) {
   return (
     <details className="bg-bg-surface border border-border rounded-xl overflow-hidden group" open={defaultOpen}>
-      <summary className="flex items-center gap-2 px-4 py-3.5 cursor-pointer list-none select-none min-h-[44px] transition-colors">
+      <summary className="flex items-center gap-2 px-4 py-4 cursor-pointer list-none select-none min-h-[48px] transition-colors">
         <div className="shrink-0">{icon}</div>
         <span className="text-sm font-bold text-text-primary flex-1">{title}</span>
         {count !== undefined && (
@@ -188,29 +188,38 @@ function SectionCard({ title, icon, count, children, defaultOpen = false }: {
 export default function Mobile({ data }: { data: any }) {
   const { tournaments, countMap, dueFixtures, dueCount, conflictFixtures, conflictMap, conflictCount, pendingConfirmations, pendingCount, changeRequests, requestCount, flaggedTeams, flaggedCount, managerMap, auditLog } = data
 
+  const statCards = [
+    { icon: <AlertTriangle className="w-5 h-5 text-red-400" />, label: 'Conflicts', count: conflictCount, accent: conflictCount > 0 ? 'border-l-4 border-l-red-500/40' : '' },
+    { icon: <CalendarDays className="w-5 h-5 text-accent" />, label: 'Fixtures Due', count: dueCount, accent: '' },
+    { icon: <Hourglass className="w-5 h-5 text-yellow-400" />, label: 'Pending', count: pendingCount, accent: '' },
+    { icon: <RefreshCw className="w-5 h-5 text-blue-400" />, label: 'Requests', count: requestCount, accent: '' },
+    { icon: <Flag className="w-5 h-5 text-red-400" />, label: 'Flagged', count: flaggedCount, accent: '' },
+  ]
+
   return (
-    <div className="px-3 pb-6 space-y-4">
-      <div>
-        <h1 className="text-lg font-bold text-text-primary">Admin Dashboard</h1>
-        <p className="text-xs text-text-muted mt-0.5">
-          {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: APP_TIME_ZONE })}
-        </p>
+    <div className="px-4 pb-8 space-y-5">
+      <div className="flex items-center gap-2">
+        <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
+        <div>
+          <h1 className="text-xl font-bold text-text-primary">Admin Dashboard</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: APP_TIME_ZONE })}
+          </p>
+        </div>
       </div>
 
       <QuickActions />
 
-      <div className="grid grid-cols-2 gap-2">
-        <StatCard icon={<AlertTriangle className="w-4 h-4 text-red-400" />} label="Conflicts" count={conflictCount} accent={conflictCount > 0 ? 'border-l-4 border-l-red-500/40' : ''} />
-        <StatCard icon={<CalendarDays className="w-4 h-4 text-accent" />} label="Fixtures Due" count={dueCount} accent="" />
-        <StatCard icon={<Hourglass className="w-4 h-4 text-yellow-400" />} label="Pending" count={pendingCount} accent="" />
-        <StatCard icon={<RefreshCw className="w-4 h-4 text-blue-400" />} label="Requests" count={requestCount} accent="" />
-        <StatCard icon={<Flag className="w-4 h-4 text-red-400" />} label="Flagged" count={flaggedCount} accent="" />
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 snap-x snap-mandatory">
+        {statCards.map((s, i) => (
+          <StatCard key={i} {...s} />
+        ))}
       </div>
 
       {conflictCount > 0 && (
         <div className="bg-bg-surface border border-red-500/30 rounded-xl p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-400" />
+            <AlertTriangle className="w-5 h-5 text-red-400" />
             <h2 className="text-sm font-bold text-text-primary flex-1">Result Conflicts</h2>
             <span className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 rounded-full px-2 py-0.5 font-semibold">
               {conflictCount}
@@ -225,7 +234,7 @@ export default function Mobile({ data }: { data: any }) {
       )}
 
       <div className="space-y-3">
-        <SectionCard title="Tournaments" icon={<Trophy className="w-4 h-4 text-accent" />} count={tournaments?.length} defaultOpen>
+        <SectionCard title="Tournaments" icon={<Trophy className="w-5 h-5 text-accent" />} count={tournaments?.length} defaultOpen>
           {(tournaments ?? []).length === 0 ? (
             <p className="text-sm text-text-muted">No active tournaments.</p>
           ) : (
@@ -236,7 +245,7 @@ export default function Mobile({ data }: { data: any }) {
                   ? 'text-green-400 bg-green-500/10 border-green-500/20'
                   : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
                 return (
-                  <div key={t.id} className="bg-bg-base border border-border rounded-xl px-3 py-2.5">
+                  <div key={t.id} className="bg-bg-base border border-border rounded-xl px-4 py-3">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-text-primary truncate">{t.name}</p>
@@ -257,17 +266,17 @@ export default function Mobile({ data }: { data: any }) {
                   </div>
                 )
               })}
-              <Link href="/admin/tournaments" className="block text-center text-sm font-semibold px-4 py-2.5 rounded-lg border border-border text-text-secondary min-h-[44px] leading-none flex items-center justify-center">
+              <Link href="/admin/tournaments" className="block text-center text-sm font-semibold px-5 py-3 rounded-lg border border-border text-text-secondary min-h-[48px] leading-none flex items-center justify-center">
                 Manage Tournaments
               </Link>
             </div>
           )}
         </SectionCard>
 
-        <SectionCard title="Fixtures Due" icon={<CalendarDays className="w-4 h-4 text-accent" />} count={dueCount} defaultOpen>
+        <SectionCard title="Fixtures Due" icon={<CalendarDays className="w-5 h-5 text-accent" />} count={dueCount} defaultOpen>
           {dueCount === 0 ? (
-            <div className="text-center py-4 text-text-muted">
-              <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-1.5" />
+            <div className="text-center py-6 text-text-muted">
+              <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-1.5" />
               <p className="text-sm">All caught up — no fixtures due.</p>
             </div>
           ) : (
@@ -293,23 +302,23 @@ export default function Mobile({ data }: { data: any }) {
           )}
         </SectionCard>
 
-        <SectionCard title="Pending Confirmations" icon={<Hourglass className="w-4 h-4 text-yellow-400" />} count={pendingCount}>
+        <SectionCard title="Pending Confirmations" icon={<Hourglass className="w-5 h-5 text-yellow-400" />} count={pendingCount}>
           {pendingCount === 0 ? (
             <p className="text-sm text-text-muted">No pending confirmations.</p>
           ) : (
             <div className="space-y-2">
               {((pendingConfirmations ?? []) as any[]).map((fx: any) => (
-                <div key={fx.id} className="flex items-center justify-between gap-2 bg-bg-base border border-border rounded-xl px-3 py-2.5">
+                <div key={fx.id} className="flex items-center justify-between gap-2 bg-bg-base border border-border rounded-xl px-4 py-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {fx.home_team?.logo_league_folder && (
-                        <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={16} height={16} className="object-contain shrink-0" />
+                        <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={20} height={20} className="object-contain shrink-0" />
                       )}
                       <span className="text-sm font-medium text-text-primary truncate">{fx.home_team?.name}</span>
                       <span className="text-[10px] text-text-muted">vs</span>
                       <span className="text-sm font-medium text-text-primary truncate">{fx.away_team?.name}</span>
                       {fx.away_team?.logo_league_folder && (
-                        <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={16} height={16} className="object-contain shrink-0" />
+                        <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={20} height={20} className="object-contain shrink-0" />
                       )}
                     </div>
                     <p className="text-[10px] text-text-muted mt-0.5">
@@ -317,7 +326,7 @@ export default function Mobile({ data }: { data: any }) {
                       {fx.scheduled_date && ` · ${new Date(fx.scheduled_date).toLocaleDateString('en-GB')}`}
                     </p>
                   </div>
-                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="text-sm font-semibold px-3 py-2 rounded-lg bg-accent text-bg-surface min-h-[36px] flex items-center shrink-0">
+                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="text-sm font-semibold px-4 py-3 rounded-lg bg-accent text-bg-surface min-h-[48px] flex items-center shrink-0">
                     Finalise
                   </Link>
                 </div>
@@ -326,18 +335,18 @@ export default function Mobile({ data }: { data: any }) {
           )}
         </SectionCard>
 
-        <SectionCard title="Team Change Requests" icon={<RefreshCw className="w-4 h-4 text-blue-400" />} count={requestCount}>
+        <SectionCard title="Team Change Requests" icon={<RefreshCw className="w-5 h-5 text-blue-400" />} count={requestCount}>
           {requestCount === 0 ? (
             <p className="text-sm text-text-muted">No pending requests.</p>
           ) : (
             <div className="space-y-2">
               {((changeRequests ?? []) as any[]).map((req: any) => (
-                <div key={req.id} className="bg-bg-base border border-border rounded-xl px-3 py-2.5">
+                <div key={req.id} className="bg-bg-base border border-border rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-2">
                     {req.requesting_user?.avatar_url ? (
-                      <Image src={req.requesting_user.avatar_url} alt={req.requesting_user.username} width={24} height={24} className="rounded-full object-cover shrink-0" />
+                      <Image src={req.requesting_user.avatar_url} alt={req.requesting_user.username} width={28} height={28} className="rounded-full object-cover shrink-0" />
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-border flex items-center justify-center text-[10px] text-text-muted shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-border flex items-center justify-center text-[10px] text-text-muted shrink-0">
                         {req.requesting_user?.username?.[0]?.toUpperCase()}
                       </div>
                     )}
@@ -350,7 +359,7 @@ export default function Mobile({ data }: { data: any }) {
                       </div>
                     </div>
                     {req.requested_team?.logo_league_folder && (
-                      <Image src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')} alt={req.requested_team.name} width={28} height={28} className="object-contain shrink-0" />
+                      <Image src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')} alt={req.requested_team.name} width={32} height={32} className="object-contain shrink-0" />
                     )}
                   </div>
                   <TeamRequestButtons requestId={req.id} />
@@ -360,15 +369,15 @@ export default function Mobile({ data }: { data: any }) {
           )}
         </SectionCard>
 
-        <SectionCard title="Flagged Teams" icon={<Flag className="w-4 h-4 text-red-400" />} count={flaggedCount}>
+        <SectionCard title="Flagged Teams" icon={<Flag className="w-5 h-5 text-red-400" />} count={flaggedCount}>
           {flaggedCount === 0 ? (
             <p className="text-sm text-text-muted">No flagged teams.</p>
           ) : (
             <div className="space-y-2">
               {((flaggedTeams ?? []) as any[]).map((team: any) => (
-                <div key={team.id} className="flex items-center gap-3 bg-bg-base border border-red-500/20 rounded-xl px-3 py-2.5">
+                <div key={team.id} className="flex items-center gap-3 bg-bg-base border border-red-500/20 rounded-xl px-4 py-3">
                   {team.logo_league_folder && (
-                    <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={28} height={28} className="object-contain shrink-0" />
+                    <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={32} height={32} className="object-contain shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-text-primary truncate">{team.name}</p>
@@ -386,7 +395,7 @@ export default function Mobile({ data }: { data: any }) {
           )}
         </SectionCard>
 
-        <SectionCard title="Recent Audit Log" icon={<ClipboardList className="w-4 h-4 text-text-muted" />}>
+        <SectionCard title="Recent Audit Log" icon={<ClipboardList className="w-5 h-5 text-text-muted" />}>
           {(auditLog?.length ?? 0) === 0 ? (
             <p className="text-sm text-text-muted">No audit entries.</p>
           ) : (

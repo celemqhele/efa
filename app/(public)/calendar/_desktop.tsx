@@ -36,7 +36,7 @@ export default function Desktop({ data }: DesktopProps) {
   const { year, month, fixtures, breaks, user, userTeams, nextFixture, daysUntilNext, prev, next } = data
 
   return (
-    <div className="space-y-space-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {nextFixture && daysUntilNext != null && (
         <Card className="p-space-4 sm:p-space-5 hover:border-accent/40 transition-all group">
           <Link href={`/fixtures/${nextFixture.id}`} className="block">

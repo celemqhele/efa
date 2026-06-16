@@ -28,34 +28,6 @@ function getCreatorName(poll: Poll): string {
   return c?.username ?? 'Unknown'
 }
 
-function PollCard({ poll, creator, closed }: { poll: Poll; creator: string; closed?: boolean }) {
-  return (
-    <Link href={`/polls/${poll.share_code}`} className="block">
-      <Card className={`p-space-4 transition-colors hover:border-accent/40 ${closed ? 'opacity-60' : ''}`}>
-        <div className="flex items-start justify-between gap-space-3">
-          <div className="space-y-space-1 min-w-0">
-            <h3 className="font-medium text-text-primary text-sm">{poll.title}</h3>
-            {poll.description && (
-              <p className="text-xs text-text-muted line-clamp-2">{poll.description}</p>
-            )}
-            <p className="text-[10px] text-text-muted">
-              Created {new Date(poll.created_at).toLocaleDateString()} by {creator}
-              {poll.closed_at && ` · Closed ${new Date(poll.closed_at).toLocaleDateString()}`}
-            </p>
-          </div>
-          <span className={`shrink-0 text-[10px] px-space-2 py-space-0.5 rounded-full border font-medium ${
-            poll.status === 'open'
-              ? 'bg-feedback-success/10 border-feedback-success/30 text-feedback-success'
-              : 'bg-bg-elevated border-border text-text-muted'
-          }`}>
-            {poll.status === 'open' ? 'Open' : 'Closed'}
-          </span>
-        </div>
-      </Card>
-    </Link>
-  )
-}
-
 export default function Mobile({ data }: MobileProps) {
   const { polls } = data
   const [showClosed, setShowClosed] = useState(false)
@@ -89,60 +61,102 @@ export default function Mobile({ data }: MobileProps) {
   const visibleClosed = showClosed ? [...recentClosed, ...oldClosed] : recentClosed
 
   return (
-    <div className="min-h-screen bg-bg-base px-4 py-8">
-      <div className="max-w-2xl mx-auto space-y-space-6">
-        <div className="flex items-center gap-space-3">
-          <Vote className="w-7 h-7 text-accent" />
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary">Polls</h1>
-            <p className="text-text-muted text-sm">Browse active and past polls</p>
-          </div>
+    <div className="px-4 pb-8 space-y-5">
+      <div className="flex items-center gap-3 bg-bg-elevated border border-border rounded-xl p-4">
+        <Vote className="w-6 h-6 text-accent shrink-0" />
+        <div>
+          <h1 className="text-lg font-bold text-text-primary">Polls</h1>
+          <p className="text-text-muted text-xs">Browse active and past polls</p>
         </div>
-
-        {polls.length === 0 ? (
-          <Card className="p-space-12 text-center">
-            <p className="text-4xl mb-space-4">∅</p>
-            <p className="text-text-muted">No polls available yet.</p>
-          </Card>
-        ) : (
-          <>
-            {openPolls.length > 0 && (
-              <section>
-                <h2 className="font-semibold text-text-primary mb-space-3">Open Polls</h2>
-                <div className="space-y-space-3">
-                  {openPolls.map((poll) => (
-                    <PollCard key={poll.id} poll={poll} creator={getCreatorName(poll)} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {visibleClosed.length > 0 && (
-              <section>
-                <h2 className="font-semibold text-text-primary mb-space-3">Closed Polls</h2>
-                <div className="space-y-space-3">
-                  {visibleClosed.map((poll) => (
-                    <PollCard key={poll.id} poll={poll} creator={getCreatorName(poll)} closed />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {oldClosed.length > 0 && (
-              <div className="text-center">
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowClosed(!showClosed)}
-                >
-                  {showClosed
-                    ? `Hide older closed polls`
-                    : `Show closed polls (${oldClosed.length})`}
-                </Button>
-              </div>
-            )}
-          </>
-        )}
       </div>
+
+      {polls.length === 0 ? (
+        <Card className="p-8 text-center">
+          <p className="text-3xl mb-3">∅</p>
+          <p className="text-text-muted text-sm">No polls available yet.</p>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {openPolls.length > 0 && (
+            <section>
+              <h2 className="font-semibold text-text-primary mb-2 flex items-center gap-2 text-sm">
+                <span className="w-1 h-4 rounded-full bg-accent shrink-0" />
+                Open Polls ({openPolls.length})
+              </h2>
+              <div className="space-y-3">
+                {openPolls.map((poll) => (
+                  <div key={poll.id} className="bg-bg-elevated border border-border rounded-xl overflow-hidden">
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-medium text-text-primary text-sm">{poll.title}</h3>
+                        <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border font-medium bg-feedback-success/10 border-feedback-success/30 text-feedback-success">
+                          Open
+                        </span>
+                      </div>
+                      {poll.description && (
+                        <p className="text-xs text-text-muted line-clamp-2">{poll.description}</p>
+                      )}
+                      <p className="text-[10px] text-text-muted">
+                        Created {new Date(poll.created_at).toLocaleDateString()} by {getCreatorName(poll)}
+                      </p>
+                    </div>
+                    <Link href={`/polls/${poll.share_code}`} className="block min-h-[48px] flex items-center justify-center border-t border-border text-sm font-medium text-accent hover:bg-accent/5 transition-colors">
+                      Vote Now →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {visibleClosed.length > 0 && (
+            <section>
+              <h2 className="font-semibold text-text-primary mb-2 flex items-center gap-2 text-sm">
+                <span className="w-1 h-4 rounded-full bg-border shrink-0" />
+                Closed Polls
+              </h2>
+              <div className="space-y-3">
+                {visibleClosed.map((poll) => (
+                  <div key={poll.id} className="bg-bg-elevated border border-border rounded-xl overflow-hidden opacity-70">
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-medium text-text-primary text-sm">{poll.title}</h3>
+                        <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border font-medium bg-bg-elevated border-border text-text-muted">
+                          Closed
+                        </span>
+                      </div>
+                      {poll.description && (
+                        <p className="text-xs text-text-muted line-clamp-2">{poll.description}</p>
+                      )}
+                      <p className="text-[10px] text-text-muted">
+                        Created {new Date(poll.created_at).toLocaleDateString()} by {getCreatorName(poll)}
+                        {poll.closed_at && ` · Closed ${new Date(poll.closed_at).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                    <Link href={`/polls/${poll.share_code}`} className="block min-h-[48px] flex items-center justify-center border-t border-border text-sm font-medium text-text-muted hover:text-accent transition-colors">
+                      View Results →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {oldClosed.length > 0 && (
+            <div className="text-center">
+              <Button
+                variant="ghost"
+                className="min-h-[48px]"
+                onClick={() => setShowClosed(!showClosed)}
+              >
+                {showClosed
+                  ? `Hide older closed polls`
+                  : `Show closed polls (${oldClosed.length})`}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

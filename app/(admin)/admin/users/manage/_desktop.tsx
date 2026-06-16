@@ -10,7 +10,7 @@ export default function Desktop({ data }: { data: any }) {
   const { profiles, teamByManager, changeRequests, managerApplications, profileMap } = data
 
   return (
-    <div className="max-w-6xl mx-auto space-y-space-8">
+    <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">User Management</h1>
@@ -31,7 +31,7 @@ export default function Desktop({ data }: { data: any }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="bg-bg-base border-b-2 border-accent/20">
                   <th className="text-left text-xs text-text-muted pb-space-2 pr-space-4">Applicant</th>
                   <th className="text-left text-xs text-text-muted pb-space-2 pr-space-4">Wants to Manage</th>
                   <th className="text-left text-xs text-text-muted pb-space-2 pr-space-4">Current Manager</th>
@@ -104,7 +104,7 @@ export default function Desktop({ data }: { data: any }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="bg-bg-base border-b-2 border-accent/20">
                   <th className="text-left text-xs text-text-muted pb-space-2 pr-space-4">User</th>
                   <th className="text-left text-xs text-text-muted pb-space-2 pr-space-4">From</th>
                   <th className="text-left text-xs text-text-muted pb-space-2 pr-space-4">Requested Team</th>
@@ -159,7 +159,7 @@ export default function Desktop({ data }: { data: any }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="bg-bg-base border-b-2 border-accent/20">
                 <th className="text-left text-xs text-text-muted pb-space-3 pr-space-4">User</th>
                 <th className="text-left text-xs text-text-muted pb-space-3 pr-space-4">Role</th>
                 <th className="text-left text-xs text-text-muted pb-space-3 pr-space-4">Team</th>

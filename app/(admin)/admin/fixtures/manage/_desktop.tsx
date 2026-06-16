@@ -69,7 +69,7 @@ export default function Desktop({ data }: { data: any }) {
   const orderedTypes = TYPE_ORDER.filter((t) => (grouped[t]?.length ?? 0) > 0)
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Fixture Management</h1>
         <p className="text-text-muted text-sm mt-1">
@@ -82,116 +82,115 @@ export default function Desktop({ data }: { data: any }) {
       <ScheduleRoundPanel />
 
       {orderedTypes.length === 0 ? (
-        <div className="card p-12 text-center text-text-muted">
-          <CalendarDays className="w-10 h-10 text-text-muted mx-auto mb-3" />
-          <p>No fixtures scheduled for this day.</p>
+        <div className="bg-bg-surface border border-border rounded-xl p-12 text-center text-text-muted space-y-3">
+          <CalendarDays className="w-10 h-10 text-text-muted mx-auto" />
+          <p className="text-sm">No fixtures scheduled for this day.</p>
         </div>
       ) : (
         <div className="space-y-6">
           {orderedTypes.map((type) => {
             const sectionFixtures = grouped[type] ?? []
             return (
-              <section key={type} className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded border ${TYPE_ACCENT[type] ?? 'text-text-muted border-border'}`}>
-                    {TYPE_LABELS[type] ?? type}
-                  </h2>
-                  <span className="text-xs text-text-muted">
-                    {sectionFixtures.length} {sectionFixtures.length === 1 ? 'fixture' : 'fixtures'}
-                  </span>
-                </div>
-
-                <div className="card overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border bg-bg-elevated/50">
-                          <th className="text-left text-xs text-text-muted py-3 px-4 w-20">Time</th>
-                          <th className="text-left text-xs text-text-muted py-3 px-4">Home</th>
-                          <th className="text-center text-xs text-text-muted py-3 px-2">Score</th>
-                          <th className="text-left text-xs text-text-muted py-3 px-4">Away</th>
-                          <th className="text-left text-xs text-text-muted py-3 px-4">Status</th>
-                          <th className="text-left text-xs text-text-muted py-3 px-4">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {sectionFixtures.map((fx: any) => {
-                          const result = fx.result?.[0]
-                          const statusCls = STATUS_COLOURS[fx.status] ?? STATUS_COLOURS.scheduled
-                          const homeTeam = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
-                          const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
-                          const time = fixtureTime(fx.scheduled_date)
-                          const round = fx.round_type && fx.round_type !== 'group'
-                            ? ROUND_LABELS[fx.round_type] ?? fx.round_type.toUpperCase()
-                            : null
-                          return (
-                            <tr key={fx.id} className="hover:bg-bg-base transition-colors">
-                              <td className="py-3 px-4">
-                                <div className="text-text-primary font-bold font-mono text-sm">{time ?? '—'}</div>
-                                <div className="text-text-muted text-[10px] uppercase">
-                                  {round ?? `MD${fx.matchday}`}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  {homeTeam?.logo_league_folder && (
-                                    <Image
-                                      src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'standings_row')}
-                                      alt={homeTeam.name}
-                                      width={28} height={28}
-                                      className="object-contain shrink-0"
-                                    />
-                                  )}
-                                  <span className="text-text-primary font-medium">{homeTeam?.name}</span>
-                                </div>
-                              </td>
-                              <td className="py-3 px-2 text-center">
-                                {result ? (
-                                  <span className="text-text-primary font-bold text-base">
-                                    {result.home_score} – {result.away_score}
-                                  </span>
-                                ) : (
-                                  <span className="text-text-muted">vs</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  {awayTeam?.logo_league_folder && (
-                                    <Image
-                                      src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'standings_row')}
-                                      alt={awayTeam.name}
-                                      width={28} height={28}
-                                      className="object-contain shrink-0"
-                                    />
-                                  )}
-                                  <span className="text-text-primary font-medium">{awayTeam?.name}</span>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4">
-                                <span className={`text-xs px-2 py-0.5 rounded border ${statusCls}`}>
-                                  {fx.status.replaceAll('_', ' ')}
-                                </span>
-                                {fx.is_postponed && (
-                                  <span className="text-orange-400 text-xs ml-1">P</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">
-                                <FixtureActions
-                                  fixtureId={fx.id}
-                                  currentDate={fx.scheduled_date}
-                                  status={fx.status}
-                                  homeTeamId={homeTeam?.id ?? ''}
-                                  homeTeamName={homeTeam?.name ?? ''}
-                                  awayTeamId={awayTeam?.id ?? ''}
-                                  awayTeamName={awayTeam?.name ?? ''}
-                                />
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+              <section key={type} className="bg-bg-surface border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-4 bg-bg-base border-b-2 border-accent/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h2 className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded border ${TYPE_ACCENT[type] ?? 'text-text-muted border-border'}`}>
+                        {TYPE_LABELS[type] ?? type}
+                      </h2>
+                      <span className="text-xs text-text-muted">
+                        {sectionFixtures.length} {sectionFixtures.length === 1 ? 'fixture' : 'fixtures'}
+                      </span>
+                    </div>
                   </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-bg-base border-b-2 border-accent/20">
+                        <th className="text-left text-text-muted font-semibold text-[10px] uppercase tracking-widest px-5 py-3">Time</th>
+                        <th className="text-left text-text-muted font-semibold text-[10px] uppercase tracking-widest px-5 py-3">Round</th>
+                        <th className="text-left text-text-muted font-semibold text-[10px] uppercase tracking-widest px-5 py-3">Home</th>
+                        <th className="text-center text-text-muted font-semibold text-[10px] uppercase tracking-widest px-5 py-3">Score</th>
+                        <th className="text-left text-text-muted font-semibold text-[10px] uppercase tracking-widest px-5 py-3">Away</th>
+                        <th className="text-left text-text-muted font-semibold text-[10px] uppercase tracking-widest px-5 py-3">Status</th>
+                        <th className="text-right text-text-muted font-semibold text-[10px] uppercase tracking-widest px-5 py-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionFixtures.map((fx: any) => {
+                        const result = fx.result?.[0]
+                        const statusCls = STATUS_COLOURS[fx.status] ?? STATUS_COLOURS.scheduled
+                        const homeTeam = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
+                        const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
+                        const time = fixtureTime(fx.scheduled_date)
+                        const round = fx.round_type && fx.round_type !== 'group'
+                          ? ROUND_LABELS[fx.round_type] ?? fx.round_type.toUpperCase()
+                          : null
+                        return (
+                          <tr key={fx.id} className="border-b border-border hover:bg-bg-base/60 transition-colors">
+                            <td className="px-5 py-4">
+                              <span className="text-text-primary font-bold font-mono text-sm">{time ?? '—'}</span>
+                            </td>
+                            <td className="px-5 py-4 text-text-muted text-xs uppercase">
+                              {round ?? `MD${fx.matchday}`}
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2">
+                                {homeTeam?.logo_league_folder && (
+                                  <Image
+                                    src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'standings_row')}
+                                    alt={homeTeam.name}
+                                    width={24} height={24}
+                                    className="object-contain shrink-0"
+                                  />
+                                )}
+                                <span className="text-text-primary font-medium">{homeTeam?.name ?? 'TBC'}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              {result ? (
+                                <span className="text-text-primary font-bold text-base">
+                                  {result.home_score} – {result.away_score}
+                                </span>
+                              ) : (
+                                <span className="text-text-muted">vs</span>
+                              )}
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2 justify-end">
+                                <span className="text-text-primary font-medium">{awayTeam?.name ?? 'TBC'}</span>
+                                {awayTeam?.logo_league_folder && (
+                                  <Image
+                                    src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'standings_row')}
+                                    alt={awayTeam.name}
+                                    width={24} height={24}
+                                    className="object-contain shrink-0"
+                                  />
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className={`text-[10px] px-2 py-0.5 rounded border ${statusCls}`}>
+                                {fx.status.replaceAll('_', ' ')}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              <FixtureActions
+                                fixtureId={fx.id}
+                                currentDate={fx.scheduled_date}
+                                status={fx.status}
+                                homeTeamId={homeTeam?.id ?? ''}
+                                homeTeamName={homeTeam?.name ?? ''}
+                                awayTeamId={awayTeam?.id ?? ''}
+                                awayTeamName={awayTeam?.name ?? ''}
+                              />
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </section>
             )

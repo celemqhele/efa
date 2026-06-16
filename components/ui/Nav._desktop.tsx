@@ -30,35 +30,40 @@ export default function NavDesktop({ profile, unreadCount = 0, handleLogout }: N
 
   return (
     <nav className="sticky top-0 z-50 bg-bg-surface/95 backdrop-blur border-b border-border">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2 shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
             <Image
               src="/efa-logo-white.png"
               alt="EFA"
               width={28}
               height={28}
-              className="w-7 h-7 object-contain"
+              className="w-7 h-7 object-contain transition-transform duration-200 group-hover:scale-105"
             />
-            <span className="font-bold text-text-primary text-sm">
-              Efootball Federal Association
-            </span>
+            <div>
+              <span className="font-bold text-text-primary text-sm leading-tight block">
+                Efootball Federal Association
+              </span>
+            </div>
           </Link>
 
-          <div className="flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  pathname === link.href
-                    ? 'bg-accent-muted text-accent'
-                    : 'text-text-muted hover:text-text-primary hover:bg-bg-elevated'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <div className="flex items-center gap-1">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                    isActive
+                      ? 'bg-accent/10 text-accent'
+                      : 'text-text-muted hover:text-text-primary hover:bg-bg-elevated/50'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
           </div>
 
           <div className="flex items-center gap-1">
@@ -68,7 +73,7 @@ export default function NavDesktop({ profile, unreadCount = 0, handleLogout }: N
 
                 <Link
                   href="/notifications"
-                  className="relative p-2 rounded-md text-text-muted hover:text-text-primary transition-colors"
+                  className="relative p-2 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-elevated/50 transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -84,9 +89,9 @@ export default function NavDesktop({ profile, unreadCount = 0, handleLogout }: N
                 {isAdmin && (
                   <Link
                     href="/admin/dashboard"
-                    className="flex items-center gap-1 px-3 py-1 bg-accent-muted border border-accent/30 text-accent rounded-md text-xs font-medium hover:bg-accent/20 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 border border-accent/25 text-accent rounded-lg text-xs font-semibold hover:bg-accent/20 transition-colors"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                     Admin
@@ -95,7 +100,7 @@ export default function NavDesktop({ profile, unreadCount = 0, handleLogout }: N
 
                 <Link
                   href="/profile"
-                  className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-bg-elevated transition-colors"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-bg-elevated/50 transition-colors"
                 >
                   {profile.avatar_url ? (
                     <img src={profile.avatar_url} alt="" className="w-7 h-7 rounded-full object-contain bg-bg-elevated" />
@@ -106,22 +111,22 @@ export default function NavDesktop({ profile, unreadCount = 0, handleLogout }: N
                       </span>
                     </div>
                   )}
-                  <span className="text-xs font-medium text-text-secondary">{profile.username}</span>
+                  <span className="text-xs font-medium text-text-secondary hidden xl:inline">{profile.username}</span>
                 </Link>
 
                 <button
                   onClick={handleLogout}
-                  className="text-xs text-text-muted hover:text-feedback-error transition-colors px-2 py-1"
+                  className="text-xs text-text-muted hover:text-feedback-error transition-colors px-2.5 py-1.5 rounded-lg hover:bg-feedback-error/5"
                 >
                   Logout
                 </button>
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link href="/login" className="text-xs text-text-muted hover:text-text-primary transition-colors px-3 py-1">
+                <Link href="/login" className="text-xs font-medium text-text-muted hover:text-text-primary transition-colors px-3 py-1.5">
                   Login
                 </Link>
-                <Link href="/register" className="text-xs font-bold px-3 py-1.5 rounded-lg bg-accent text-bg-base hover:bg-accent/90 transition-colors">
+                <Link href="/register" className="text-xs font-bold px-3.5 py-1.5 rounded-lg bg-accent text-bg-base hover:bg-accent/90 transition-colors">
                   Register
                 </Link>
               </div>

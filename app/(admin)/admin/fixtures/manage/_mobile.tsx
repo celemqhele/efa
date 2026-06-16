@@ -67,12 +67,15 @@ export default function Mobile({ data }: { data: any }) {
   const orderedTypes = TYPE_ORDER.filter((t) => (grouped[t]?.length ?? 0) > 0)
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-text-primary">Fixture Management</h1>
-        <p className="text-text-muted text-xs mt-1">
-          {fixtures.length} fixture{fixtures.length === 1 ? '' : 's'} on {format(parseISO(selectedDate), 'EEE d MMM yyyy')}
-        </p>
+    <div className="px-4 pb-8 space-y-5">
+      <div className="flex items-center gap-2">
+        <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
+        <div>
+          <h1 className="text-xl font-bold text-text-primary">Fixture Management</h1>
+          <p className="text-text-muted text-xs mt-1">
+            {fixtures.length} fixture{fixtures.length === 1 ? '' : 's'} on {format(parseISO(selectedDate), 'EEE d MMM yyyy')}
+          </p>
+        </div>
       </div>
 
       <DateNav currentDate={selectedDate} todayKey={todayKey} basePath="/admin/fixtures/manage" />
@@ -80,26 +83,26 @@ export default function Mobile({ data }: { data: any }) {
       <ScheduleRoundPanel />
 
       {orderedTypes.length === 0 ? (
-        <div className="card p-8 text-center text-text-muted">
-          <CalendarDays className="w-8 h-8 text-text-muted mx-auto mb-2" />
+        <div className="bg-bg-surface border border-border rounded-xl p-8 text-center text-text-muted space-y-2">
+          <CalendarDays className="w-10 h-10 text-text-muted mx-auto" />
           <p className="text-sm">No fixtures scheduled for this day.</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {orderedTypes.map((type) => {
             const sectionFixtures = grouped[type] ?? []
             return (
-              <section key={type} className="space-y-2">
+              <section key={type} className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${TYPE_ACCENT[type] ?? 'text-text-muted border-border'}`}>
                     {TYPE_LABELS[type] ?? type}
                   </h2>
-                  <span className="text-[10px] text-text-muted">
+                  <span className="text-xs text-text-muted">
                     {sectionFixtures.length} {sectionFixtures.length === 1 ? 'fixture' : 'fixtures'}
                   </span>
                 </div>
 
-                <div className="card divide-y divide-border">
+                <div className="space-y-2">
                   {sectionFixtures.map((fx: any) => {
                     const result = fx.result?.[0]
                     const statusCls = STATUS_COLOURS[fx.status] ?? STATUS_COLOURS.scheduled
@@ -110,10 +113,10 @@ export default function Mobile({ data }: { data: any }) {
                       ? ROUND_LABELS[fx.round_type] ?? fx.round_type.toUpperCase()
                       : null
                     return (
-                      <div key={fx.id} className="px-3 py-3 space-y-2">
+                      <div key={fx.id} className="bg-bg-surface border border-border rounded-xl p-4 space-y-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           {time && (
-                            <span className="text-text-muted text-xs font-bold font-mono">{time}</span>
+                            <span className="text-text-muted text-sm font-bold font-mono">{time}</span>
                           )}
                           {round && (
                             <span className="text-text-muted text-[10px] font-semibold uppercase">{round}</span>
@@ -123,7 +126,7 @@ export default function Mobile({ data }: { data: any }) {
                             {fx.status.replaceAll('_', ' ')}
                           </span>
                         </div>
-                        <p className="text-text-primary text-sm font-semibold">
+                        <p className="text-text-primary text-base font-semibold">
                           {homeTeam?.name ?? 'TBC'}
                           <span className="text-text-muted font-normal mx-1.5">
                             {result ? `${result.home_score}–${result.away_score}` : 'vs'}

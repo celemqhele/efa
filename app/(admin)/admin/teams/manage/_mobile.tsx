@@ -4,7 +4,6 @@ import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamManageActions from './TeamManageActions'
 import AddTeamForm from './AddTeamForm'
-import { Card } from '@/components/ui/Card'
 import { AlertTriangle } from 'lucide-react'
 
 export default function Mobile({ data }: { data: any }) {
@@ -12,25 +11,28 @@ export default function Mobile({ data }: { data: any }) {
   const managerMap = data.managerMap as Record<string, { username: string; avatar_url: string | null }>
 
   return (
-    <div className="space-y-space-4">
-      <div className="flex items-center justify-between">
+    <div className="px-4 pb-8 space-y-5">
+      <div className="flex items-center gap-2">
+        <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
         <div>
           <h1 className="text-xl font-bold text-text-primary">Team Management</h1>
-          <p className="text-text-muted text-xs mt-space-1">{(teams?.length ?? 0)} teams registered</p>
+          <p className="text-text-muted text-xs mt-0.5">{(teams?.length ?? 0)} teams registered</p>
         </div>
       </div>
 
       <AddTeamForm />
 
-      <Card className="p-space-3">
-        <h2 className="section-header">All Teams</h2>
+      <div className="bg-bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="px-4 py-3.5 bg-bg-base border-b-2 border-accent/20">
+          <h2 className="text-sm font-bold text-text-primary">All Teams</h2>
+        </div>
 
-        <div className="space-y-space-2">
+        <div className="divide-y divide-border">
           {(teams ?? []).map((team) => {
             const manager = team.manager_id ? managerMap[team.manager_id] : null
             return (
-              <div key={team.id} className="bg-bg-elevated rounded-lg p-space-3 space-y-space-2 border border-border">
-                <div className="flex items-center gap-space-3">
+              <div key={team.id} className="p-4 space-y-3">
+                <div className="flex items-center gap-3">
                   {team.logo_league_folder ? (
                     <Image
                       src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
@@ -46,15 +48,17 @@ export default function Mobile({ data }: { data: any }) {
                     <p className="text-text-muted text-xs truncate">{team.logo_league_folder?.split('.')[0] ?? '-'}</p>
                   </div>
                   {team.abandon_count >= 3 && (
-                    <span className="text-feedback-error font-bold text-xs shrink-0"><AlertTriangle className="w-3 h-3 inline" /> {team.abandon_count}</span>
+                    <span className="text-red-400 font-bold text-xs shrink-0 flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" /> {team.abandon_count}
+                    </span>
                   )}
                 </div>
-                <div className="flex items-center justify-between gap-space-2">
-                  <div className="flex items-center gap-space-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
                     {manager ? (
                       <>
                         {manager.avatar_url ? (
-                          <Image src={manager.avatar_url} alt="" width={20} height={20} className="rounded-full object-cover" />
+                          <Image src={manager.avatar_url} alt="" width={22} height={22} className="rounded-full object-cover" />
                         ) : (
                           <div className="w-5 h-5 rounded-full bg-bg-base flex items-center justify-center text-xs text-text-muted">
                             {manager.username?.[0]?.toUpperCase()}
@@ -63,7 +67,7 @@ export default function Mobile({ data }: { data: any }) {
                         <span className="text-text-secondary text-xs">{manager.username}</span>
                       </>
                     ) : (
-                      <span className="text-feedback-success text-xs">(Available)</span>
+                      <span className="text-green-400 text-xs">(Available)</span>
                     )}
                   </div>
                   <TeamManageActions
@@ -77,7 +81,7 @@ export default function Mobile({ data }: { data: any }) {
             )
           })}
         </div>
-      </Card>
+      </div>
     </div>
   )
 }

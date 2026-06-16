@@ -9,7 +9,7 @@ import ReactionsPanel from '@/components/ui/ReactionsPanel'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import {
   Gamepad2, Home, Plane, BarChart3, Swords, Sword, Dna, TrendingUp,
-  MessageSquare, CheckCircle, Hourglass, Zap, Check, X, ChevronDown,
+  MessageSquare, CheckCircle, Hourglass, Zap, Check, X,
   Crown, Drama, Brain, Shield, Dumbbell,
   ArrowLeftRight, Triangle, Crosshair, Scale,
 } from 'lucide-react'
@@ -144,16 +144,30 @@ export default function Desktop({ data }: { data: any }) {
     awayCoachNote,
   } = data
 
+  const matchStatEntries = matchStats ? [
+    { label: 'Possession %', home: matchStats.home_possession, away: matchStats.away_possession },
+    { label: 'Shots', home: matchStats.home_shots, away: matchStats.away_shots },
+    { label: 'Shots on Target', home: matchStats.home_shots_on_target, away: matchStats.away_shots_on_target },
+    { label: 'Passes', home: matchStats.home_passes, away: matchStats.away_passes },
+    { label: 'Successful Passes', home: matchStats.home_successful_passes, away: matchStats.away_successful_passes },
+    { label: 'Crosses', home: matchStats.home_crosses, away: matchStats.away_crosses },
+    { label: 'Corners', home: matchStats.home_corners, away: matchStats.away_corners },
+    { label: 'Fouls', home: matchStats.home_fouls, away: matchStats.away_fouls },
+    { label: 'Saves', home: matchStats.home_saves, away: matchStats.away_saves },
+    { label: 'Interceptions', home: matchStats.home_interceptions, away: matchStats.away_interceptions },
+    { label: 'Tackles', home: matchStats.home_tackles, away: matchStats.away_tackles },
+  ] : []
+
   return (
-    <div className="space-y-6">
-      {/* ── Match Header ─────────────────────────────────────────────────── */}
-      <div className="card p-6">
-        <div className="text-center mb-4">
-          <span className="text-xs font-medium text-gold uppercase tracking-widest">
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* ── Match Hero ──────────────────────────────────────────────────── */}
+      <div className="card p-8">
+        <div className="text-center mb-6">
+          <span className="text-sm font-medium text-gold uppercase tracking-widest">
             {tournament?.name ?? 'Match'} · Matchday {fixture.matchday}
           </span>
           {fixture.scheduled_date && (
-            <p className="text-text-muted text-xs mt-1">
+            <p className="text-text-muted text-sm mt-1">
               {new Date(fixture.scheduled_date).toLocaleDateString('en-GB', {
                 weekday: 'short',
                 day: 'numeric',
@@ -165,88 +179,83 @@ export default function Desktop({ data }: { data: any }) {
         </div>
 
         {hasResult ? (
-          /* ── POST-MATCH SCORE ─────────────────────────────────────────── */
-          <div className="flex items-center justify-between gap-4">
-            {/* Home */}
-            <Link href={`/teams/${homeTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="flex items-center justify-center gap-10">
+            <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
               <Image
                 src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
                 alt={homeTeam.name}
-                width={80}
-                height={80}
-                className="object-contain"
+                width={64}
+                height={64}
+                className="object-contain group-hover:scale-105 transition-transform"
               />
               <div className="text-center">
-                <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
-                <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
+                <p className="font-bold text-foreground-primary text-lg">{homeTeam.name}</p>
+                <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
 
-            {/* Score */}
-            <div className="flex items-center gap-3">
-              <span className="text-5xl font-black text-foreground-primary tabular-nums">
+            <div className="flex items-center gap-5">
+              <span className="text-6xl font-black text-foreground-primary tabular-nums">
                 {result.home_score}
               </span>
-              <span className="text-2xl font-bold text-text-muted">–</span>
-              <span className="text-5xl font-black text-foreground-primary tabular-nums">
+              <span className="text-3xl font-bold text-text-muted">–</span>
+              <span className="text-6xl font-black text-foreground-primary tabular-nums">
                 {result.away_score}
               </span>
             </div>
 
-            {/* Away */}
-            <Link href={`/teams/${awayTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
+            <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
               <Image
                 src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
                 alt={awayTeam.name}
-                width={80}
-                height={80}
-                className="object-contain"
+                width={64}
+                height={64}
+                className="object-contain group-hover:scale-105 transition-transform"
               />
               <div className="text-center">
-                <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
-                <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
+                <p className="font-bold text-foreground-primary text-lg">{awayTeam.name}</p>
+                <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
               </div>
             </Link>
           </div>
         ) : (
-          /* ── PRE-MATCH TEAMS ──────────────────────────────────────────── */
-          <div className="flex items-center justify-between gap-4">
-            <Link href={`/teams/${homeTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="flex items-center justify-center gap-10">
+            <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
               <Image
                 src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
                 alt={homeTeam.name}
-                width={80}
-                height={80}
-                className="object-contain"
+                width={64}
+                height={64}
+                className="object-contain group-hover:scale-105 transition-transform"
               />
               <div className="text-center">
-                <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
-                <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
+                <p className="font-bold text-foreground-primary text-lg">{homeTeam.name}</p>
+                <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
 
             <div className="text-center">
-              <span className="text-3xl font-black text-foreground-muted">VS</span>
+              <span className="text-5xl font-black text-foreground-muted tracking-widest">VS</span>
             </div>
 
-            <Link href={`/teams/${awayTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
+            <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
               <Image
                 src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
                 alt={awayTeam.name}
-                width={80}
-                height={80}
-                className="object-contain"
+                width={64}
+                height={64}
+                className="object-contain group-hover:scale-105 transition-transform"
               />
               <div className="text-center">
-                <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
-                <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
+                <p className="font-bold text-foreground-primary text-lg">{awayTeam.name}</p>
+                <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
               </div>
             </Link>
           </div>
         )}
 
         {result?.is_abandoned && (
-          <div className="mt-4 text-center space-y-2">
+          <div className="mt-6 text-center space-y-2">
             <div className="flex items-center justify-center gap-2">
               <span className="inline-block bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
                 Abandoned —{' '}
@@ -266,25 +275,18 @@ export default function Desktop({ data }: { data: any }) {
       {/* ── PRE-MATCH SECTIONS ───────────────────────────────────────────── */}
       {!hasResult && (
         <>
-          {/* Coach's Analysis — only visible to the relevant managers */}
+          {/* Coach's Analysis — always visible to managers */}
           {isManager && (homeCoachNote || awayCoachNote) && (
-            <div className="card p-5 border-gold/20">
-              <details open className="group">
-                <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                  <h2 className="section-header">
-                    <Brain className="w-5 h-5 text-gold" /> Coach's Analysis
-                  </h2>
-                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-                </summary>
-                <div className="mt-4 lg:mt-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Home team analysis — only visible to home manager */}
+            <div className="card p-6 border-gold/20">
+              <h2 className="section-header mb-4">
+                <Brain className="w-5 h-5 text-gold" /> Coach's Analysis
+              </h2>
+              <div className="grid grid-cols-2 gap-6">
                 {isHomeManager && homeCoachNote && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                       {homeTeam.name} — vs {awayTeam.name}
                     </p>
-                    {/* Confidence */}
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-text-muted">Confidence:</span>
                       <span className={`font-mono font-bold text-sm ${
@@ -293,7 +295,6 @@ export default function Desktop({ data }: { data: any }) {
                         {homeCoachNote.confidence}
                       </span>
                     </div>
-                    {/* Opponent will exploit */}
                     {homeCoachNote.opponent_will_exploit?.length > 0 && (
                       <div>
                         <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
@@ -309,7 +310,6 @@ export default function Desktop({ data }: { data: any }) {
                         </ul>
                       </div>
                     )}
-                    {/* Recommendations */}
                     {homeCoachNote.recommendations?.length > 0 && (
                       <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
                         <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
@@ -327,13 +327,11 @@ export default function Desktop({ data }: { data: any }) {
                     )}
                   </div>
                 )}
-                {/* Away team analysis — only visible to away manager */}
                 {isAwayManager && awayCoachNote && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                       {awayTeam.name} — vs {homeTeam.name}
                     </p>
-                    {/* Confidence */}
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-text-muted">Confidence:</span>
                       <span className={`font-mono font-bold text-sm ${
@@ -342,7 +340,6 @@ export default function Desktop({ data }: { data: any }) {
                         {awayCoachNote.confidence}
                       </span>
                     </div>
-                    {/* Opponent will exploit */}
                     {awayCoachNote.opponent_will_exploit?.length > 0 && (
                       <div>
                         <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
@@ -358,7 +355,6 @@ export default function Desktop({ data }: { data: any }) {
                         </ul>
                       </div>
                     )}
-                    {/* Recommendations */}
                     {awayCoachNote.recommendations?.length > 0 && (
                       <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
                         <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
@@ -378,22 +374,16 @@ export default function Desktop({ data }: { data: any }) {
                 )}
               </div>
             </div>
-          </details>
-          </div>
           )}
 
           {/* Matchroom Instructions */}
-          <div className="card p-5 border-accent/20 bg-bg-elevated">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                <h2 className="section-header">
-                  <Gamepad2 className="w-5 h-5 text-gold" /> Matchroom Instructions
-                </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-              </summary>
-              <div className="mt-4 lg:mt-0 space-y-3">
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-gold/10 border border-gold/20">
-                <Home className="w-5 h-5 text-gold shrink-0 mt-0.5" />
+          <div className="card p-6 border-accent/20 bg-bg-elevated">
+            <h2 className="section-header mb-4">
+              <Gamepad2 className="w-5 h-5 text-gold" /> Matchroom Instructions
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-start gap-4 p-5 rounded-lg bg-gold/10 border border-gold/20 hover:bg-gold/[0.15] transition-colors">
+                <Home className="w-6 h-6 text-gold shrink-0 mt-0.5" />
                 <div>
                   <p className="text-gold font-bold text-sm uppercase tracking-wider">
                     HOME — {homeTeam.name}
@@ -401,13 +391,13 @@ export default function Desktop({ data }: { data: any }) {
                   {homeManager && (
                     <p className="text-foreground-primary font-semibold">@{homeManager.username}</p>
                   )}
-                  <p className="text-foreground-secondary text-sm mt-1">
+                  <p className="text-foreground-secondary text-sm mt-2">
                     YOU CREATE THE MATCHROOM in eFootball
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-bg-surface border border-border">
-                <Plane className="w-5 h-5 text-foreground-secondary shrink-0 mt-0.5" />
+              <div className="flex items-start gap-4 p-5 rounded-lg bg-bg-surface border border-border hover:bg-bg-elevated transition-colors">
+                <Plane className="w-6 h-6 text-foreground-secondary shrink-0 mt-0.5" />
                 <div>
                   <p className="text-foreground-secondary font-bold text-sm uppercase tracking-wider">
                     AWAY — {awayTeam.name}
@@ -415,16 +405,15 @@ export default function Desktop({ data }: { data: any }) {
                   {awayManager && (
                     <p className="text-foreground-primary font-semibold">@{awayManager.username}</p>
                   )}
-                  <p className="text-text-muted text-sm mt-1">
+                  <p className="text-text-muted text-sm mt-2">
                     You join the matchroom
                   </p>
                 </div>
               </div>
             </div>
-          </details>
           </div>
 
-          {/* Matchroom Code — editable by home manager, visible to all */}
+          {/* Matchroom Code — inline with copy */}
           <MatchroomCode
             fixtureId={id}
             initialCode={(fixture as any).matchroom_code ?? null}
@@ -432,15 +421,10 @@ export default function Desktop({ data }: { data: any }) {
           />
 
           {/* Win Probability */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                <h2 className="section-header">
-                  <BarChart3 className="w-5 h-5 text-gold" /> Win Probability
-                </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-              </summary>
-              <div className="mt-4 lg:mt-0">
+          <div className="card p-6">
+            <h2 className="section-header mb-4">
+              <BarChart3 className="w-5 h-5 text-gold" /> Win Probability
+            </h2>
             <ProbabilityBar
               home={probability.home}
               draw={probability.draw}
@@ -448,31 +432,22 @@ export default function Desktop({ data }: { data: any }) {
               homeName={homeTeam.name}
               awayName={awayTeam.name}
             />
-            </div>
-          </details>
           </div>
 
           {/* H2H Last 5 */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                <h2 className="section-header">
-                  <Swords className="w-5 h-5 text-gold" /> Head to Head (Last 5)
-                </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-              </summary>
-              <div className="mt-4 lg:mt-0">
+          <div className="card p-6">
+            <h2 className="section-header mb-4">
+              <Swords className="w-5 h-5 text-gold" /> Head to Head (Last 5)
+            </h2>
             {h2hList.length === 0 ? (
               <p className="text-text-muted text-sm">No previous meetings.</p>
             ) : (
               <div className="space-y-2">
                 {h2hList.map((f: any) => {
-                  // Determine which team was home/away in this specific h2h fixture
                   const hTeam = f.home_team_id === fixture.home_team_id ? homeTeam : awayTeam
                   const aTeam = f.home_team_id === fixture.home_team_id ? awayTeam : homeTeam
                   const hScore = f.result.home_score
                   const aScore = f.result.away_score
-                  // From current home team's perspective
                   const ourScore = f.home_team_id === fixture.home_team_id ? hScore : aScore
                   const theirScore = f.home_team_id === fixture.home_team_id ? aScore : hScore
                   const outcome = ourScore > theirScore ? 'W' : ourScore < theirScore ? 'L' : 'D'
@@ -480,8 +455,7 @@ export default function Desktop({ data }: { data: any }) {
                     outcome === 'W' ? 'text-green-400' : outcome === 'L' ? 'text-red-400' : 'text-yellow-400'
 
                   return (
-                    <div key={f.id} className="flex items-center gap-2 p-3 rounded-lg bg-navy-border/30">
-                      {/* Home team — clickable logo */}
+                    <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg bg-navy-border/30 hover:bg-navy-border/50 transition-colors">
                       <Link href={`/teams/${hTeam.id}`} className="flex items-center gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
                         {hTeam.logo_league_folder && (
                           <Image
@@ -494,12 +468,10 @@ export default function Desktop({ data }: { data: any }) {
                         <span className="text-xs text-text-muted">{hTeam.name}</span>
                       </Link>
 
-                      {/* Score — links to that fixture */}
-                      <Link href={`/fixtures/${f.id}`} className="font-bold text-foreground-primary tabular-nums text-sm px-2 hover:text-gold transition-colors shrink-0">
+                      <Link href={`/fixtures/${f.id}`} className="font-bold text-foreground-primary tabular-nums text-sm px-3 hover:text-gold transition-colors shrink-0">
                         {hScore} – {aScore}
                       </Link>
 
-                      {/* Away team — clickable logo */}
                       <Link href={`/teams/${aTeam.id}`} className="flex items-center justify-end gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
                         <span className="text-xs text-text-muted text-right">{aTeam.name}</span>
                         {aTeam.logo_league_folder && (
@@ -512,30 +484,22 @@ export default function Desktop({ data }: { data: any }) {
                         )}
                       </Link>
 
-                      {/* Outcome badge */}
                       <span className={`text-xs font-black w-5 text-center shrink-0 ${outcomeColor}`}>{outcome}</span>
                     </div>
                   )
                 })}
               </div>
             )}
-            </div>
-          </details>
           </div>
 
-          {/* Team DNA */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                <h2 className="section-header">
-                  <Dna className="w-5 h-5 text-gold" /> Team DNA
-                </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-              </summary>
-              <div className="mt-4 lg:mt-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+          {/* Team DNA — always-visible 2-column grid */}
+          <div className="card p-6">
+            <h2 className="section-header mb-4">
+              <Dna className="w-5 h-5 text-gold" /> Team DNA
+            </h2>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-navy-border/20 rounded-xl p-4">
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
                   {homeTeam.name}
                 </p>
                 {homeDNA.length > 0 ? (
@@ -543,7 +507,7 @@ export default function Desktop({ data }: { data: any }) {
                     {homeDNA.map((dna: any) => (
                       <span
                         key={dna.label}
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${dna.color}`}
+                        className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border hover:scale-105 transition-transform ${dna.color}`}
                       >
                         {DNA_ICONS[dna.iconName]} {dna.label}
                       </span>
@@ -553,8 +517,8 @@ export default function Desktop({ data }: { data: any }) {
                   <p className="text-foreground-muted text-xs">Not enough data</p>
                 )}
               </div>
-              <div>
-                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+              <div className="bg-navy-border/20 rounded-xl p-4">
+                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">
                   {awayTeam.name}
                 </p>
                 {awayDNA.length > 0 ? (
@@ -562,7 +526,7 @@ export default function Desktop({ data }: { data: any }) {
                     {awayDNA.map((dna: any) => (
                       <span
                         key={dna.label}
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${dna.color}`}
+                        className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border hover:scale-105 transition-transform ${dna.color}`}
                       >
                         {DNA_ICONS[dna.iconName]} {dna.label}
                       </span>
@@ -573,30 +537,23 @@ export default function Desktop({ data }: { data: any }) {
                 )}
               </div>
             </div>
-            </div>
-          </details>
           </div>
 
           {/* Form */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                <h2 className="section-header">
-                  <TrendingUp className="w-5 h-5 text-gold" /> Recent Form (Last 6)
-                </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-              </summary>
-              <div className="mt-4 lg:mt-0 space-y-3">
-              <div className="flex items-center justify-between gap-2">
+          <div className="card p-6">
+            <h2 className="section-header mb-4">
+              <TrendingUp className="w-5 h-5 text-gold" /> Recent Form (Last 6)
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-navy-border/20">
                 <span className="text-sm text-text-muted truncate min-w-0">{homeTeam.name}</span>
                 <FormStrip form={(homeStanding?.form ?? '').slice(-6)} />
               </div>
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-navy-border/20">
                 <span className="text-sm text-text-muted truncate min-w-0">{awayTeam.name}</span>
                 <FormStrip form={(awayStanding?.form ?? '').slice(-6)} />
               </div>
             </div>
-          </details>
           </div>
         </>
       )}
@@ -604,62 +561,42 @@ export default function Desktop({ data }: { data: any }) {
       {/* ── POST-MATCH SECTIONS ───────────────────────────────────────────── */}
       {hasResult && (
         <>
-          {/* Match Stats */}
+          {/* Match Stats — 2-column grid, all visible */}
           {matchStats && (
-            <div className="card p-5">
-              <details open className="group">
-                <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                  <h2 className="section-header">
-                    <BarChart3 className="w-5 h-5 text-gold" /> Match Statistics
-                  </h2>
-                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-                </summary>
-                <div className="mt-4 lg:mt-0 space-y-3">
-                <StatBar label="Possession %" home={matchStats.home_possession} away={matchStats.away_possession} />
-                <StatBar label="Shots" home={matchStats.home_shots} away={matchStats.away_shots} />
-                <StatBar label="Shots on Target" home={matchStats.home_shots_on_target} away={matchStats.away_shots_on_target} />
-                <StatBar label="Passes" home={matchStats.home_passes} away={matchStats.away_passes} />
-                <StatBar label="Successful Passes" home={matchStats.home_successful_passes} away={matchStats.away_successful_passes} />
-                <StatBar label="Crosses" home={matchStats.home_crosses} away={matchStats.away_crosses} />
-                <StatBar label="Corners" home={matchStats.home_corners} away={matchStats.away_corners} />
-                <StatBar label="Fouls" home={matchStats.home_fouls} away={matchStats.away_fouls} />
-                <StatBar label="Saves" home={matchStats.home_saves} away={matchStats.away_saves} />
-                <StatBar label="Interceptions" home={matchStats.home_interceptions} away={matchStats.away_interceptions} />
-                <StatBar label="Tackles" home={matchStats.home_tackles} away={matchStats.away_tackles} />
+            <div className="card p-6">
+              <h2 className="section-header mb-4">
+                <BarChart3 className="w-5 h-5 text-gold" /> Match Statistics
+              </h2>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                {matchStatEntries.map((stat) => (
+                  <StatBar key={stat.label} label={stat.label} home={stat.home} away={stat.away} />
+                ))}
               </div>
-              <div className="flex justify-between text-xs text-text-muted mt-3 pt-3 border-t border-navy-border">
+              <div className="flex justify-between text-xs text-text-muted mt-4 pt-4 border-t border-navy-border">
                 <span className="font-semibold text-foreground-secondary">{homeTeam.name}</span>
                 <span className="font-semibold text-foreground-secondary">{awayTeam.name}</span>
+              </div>
             </div>
-          </details>
-          </div>
           )}
 
-          {/* Emoji Reactions */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                <h2 className="section-header">
-                  <MessageSquare className="w-5 h-5 text-gold" /> Reactions
-                </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-              </summary>
-              <div className="mt-4 lg:mt-0">
+          {/* Reactions — expanded panel with hover effects */}
+          <div className="card p-6">
+            <h2 className="section-header mb-4">
+              <MessageSquare className="w-5 h-5 text-gold" /> Reactions
+            </h2>
             <ReactionsPanel
               fixtureId={id}
               initialCounts={reactionCounts}
               initialUserReactions={userReactionEmojis}
               userId={user?.id ?? null}
             />
-            </div>
-          </details>
           </div>
         </>
       )}
 
       {/* ── RESULT CONFIRMATION STATUS ───────────────────────────────────── */}
       {!hasResult && (
-        <div className="card p-5">
+        <div className="card p-6">
           <h2 className="section-header">
             <CheckCircle className="w-5 h-5 text-gold" /> Score Submission
           </h2>
@@ -716,7 +653,7 @@ export default function Desktop({ data }: { data: any }) {
 
       {/* ── WAITING REPORTS ─────────────────────────────────────────────── */}
       {waitingReports && waitingReports.length > 0 && (
-        <div className="card p-5 border-yellow-500/30">
+        <div className="card p-6 border-yellow-500/30">
           <h2 className="section-header">
             <Hourglass className="w-5 h-5 text-accent" /> Waiting Reports
           </h2>
@@ -727,23 +664,19 @@ export default function Desktop({ data }: { data: any }) {
       )}
 
       {/* ── DISCONNECT RULES ─────────────────────────────────────────────── */}
-      <details className="card p-5 group">
-        <summary className="section-header cursor-pointer list-none flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-gold" /> Disconnect Rules
-          </span>
-          <span className="text-text-muted text-xs group-open:hidden">Tap to expand</span>
-          <span className="text-text-muted text-xs hidden group-open:inline">Collapse</span>
-        </summary>
+      <div className="card p-6">
+        <h2 className="section-header mb-4">
+          <Zap className="w-5 h-5 text-gold" /> Disconnect Rules
+        </h2>
 
-        <div className="mt-4 space-y-4">
+        <div className="grid grid-cols-2 gap-6">
           <div>
-            <h3 className="text-sm font-semibold text-gold mb-2 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-gold mb-3 uppercase tracking-wider">
               Official Rules
             </h3>
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {OFFICIAL_RULES.map((r: any, i: number) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-foreground-secondary">
+                <li key={i} className="flex items-start gap-2 text-sm text-foreground-secondary hover:text-foreground-primary transition-colors">
                   {r.icon === 'check' ? <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" /> : r.icon === 'cross' ? <X className="w-4 h-4 text-red-500 shrink-0 mt-0.5" /> : <Home className="w-4 h-4 text-gold shrink-0 mt-0.5" />}
                   <span>{r.rule}</span>
                 </li>
@@ -752,35 +685,33 @@ export default function Desktop({ data }: { data: any }) {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gold mb-2 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-gold mb-3 uppercase tracking-wider">
               Disconnect Restart Table
             </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b border-navy-border">
-                    <th className="pb-2 pr-4">Minute of DC</th>
-                    <th className="pb-2 pr-4">Restart</th>
-                    <th className="pb-2">Note</th>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-text-muted uppercase tracking-wider border-b border-navy-border">
+                  <th className="pb-2 pr-4">Minute of DC</th>
+                  <th className="pb-2 pr-4">Restart</th>
+                  <th className="pb-2">Note</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-navy-border/50">
+                {DISCONNECT_RULES.map((rule: any, i: number) => (
+                  <tr key={i} className="text-foreground-secondary hover:bg-navy-border/20 transition-colors">
+                    <td className="py-2 pr-4 font-semibold text-gold">{rule.minute}</td>
+                    <td className="py-2 pr-4">{rule.restart}</td>
+                    <td className="py-2 text-text-muted">{rule.note}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-navy-border/50">
-                  {DISCONNECT_RULES.map((rule: any, i: number) => (
-                    <tr key={i} className="text-foreground-secondary">
-                      <td className="py-2 pr-4 font-semibold text-gold">{rule.minute}</td>
-                      <td className="py-2 pr-4">{rule.restart}</td>
-                      <td className="py-2 text-text-muted">{rule.note}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </details>
+      </div>
 
       {/* ── BANTER BOARD ─────────────────────────────────────────────────── */}
-      <div className="card p-5">
+      <div className="card p-6">
         <h2 className="section-header">
           <MessageSquare className="w-5 h-5 text-gold" /> Banter Board
           <span className="text-text-muted text-sm font-normal ml-auto">
@@ -820,7 +751,6 @@ export default function Desktop({ data }: { data: any }) {
                     </div>
                   </div>
 
-                  {/* Replies */}
                   {commentReplies.length > 0 && (
                     <div className="ml-11 space-y-2">
                       {commentReplies.map((reply: any) => (

@@ -26,11 +26,11 @@ function TournamentCard({ tournament, participantCount, fixtureCount, completedC
   const progress = fixtureCount > 0 ? Math.round((completedCount / fixtureCount) * 100) : 0
 
   return (
-    <div className="bg-bg-surface border border-border rounded-xl p-4 space-y-3">
+    <div className="bg-bg-surface border border-border rounded-xl p-5 space-y-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="text-text-primary font-bold text-sm truncate">{tournament.name}</h3>
-          {tournament.season && <p className="text-text-muted text-[10px] mt-0.5">{tournament.season.name}</p>}
+          <h3 className="text-text-primary font-bold text-base truncate">{tournament.name}</h3>
+          {tournament.season && <p className="text-text-muted text-xs mt-0.5">{tournament.season.name}</p>}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className={`text-[10px] px-2 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
@@ -39,43 +39,43 @@ function TournamentCard({ tournament, participantCount, fixtureCount, completedC
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="bg-bg-base rounded-lg py-2">
-          <p className="text-accent font-bold text-base">{participantCount}</p>
-          <p className="text-text-muted text-[10px]">Teams</p>
+        <div className="bg-bg-base rounded-lg py-3">
+          <p className="text-accent font-bold text-lg">{participantCount}</p>
+          <p className="text-text-muted text-[11px]">Teams</p>
         </div>
-        <div className="bg-bg-base rounded-lg py-2">
-          <p className="text-text-primary font-bold text-base">{fixtureCount}</p>
-          <p className="text-text-muted text-[10px]">Fixtures</p>
+        <div className="bg-bg-base rounded-lg py-3">
+          <p className="text-text-primary font-bold text-lg">{fixtureCount}</p>
+          <p className="text-text-muted text-[11px]">Fixtures</p>
         </div>
-        <div className="bg-bg-base rounded-lg py-2">
-          <p className="text-green-400 font-bold text-base">{completedCount}</p>
-          <p className="text-text-muted text-[10px]">Played</p>
+        <div className="bg-bg-base rounded-lg py-3">
+          <p className="text-green-400 font-bold text-lg">{completedCount}</p>
+          <p className="text-text-muted text-[11px]">Played</p>
         </div>
       </div>
 
       {fixtureCount > 0 && (
         <div>
-          <div className="flex justify-between text-[10px] text-text-muted mb-1">
+          <div className="flex justify-between text-xs text-text-muted mb-1">
             <span>Progress</span>
             <span>{progress}%</span>
           </div>
-          <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-border rounded-full overflow-hidden">
             <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
       )}
 
-      <div className="space-y-1.5 pt-1">
-        <div className="grid grid-cols-3 gap-1.5">
-          <Link href={`/admin/fixtures/manage?tournament=${tournament.id}`} className="text-[10px] font-semibold text-center px-2 py-2 rounded-lg border border-border text-text-secondary min-h-[36px] flex items-center justify-center">
+      <div className="space-y-2 pt-1">
+        <div className="grid grid-cols-3 gap-2">
+          <Link href={`/admin/fixtures/manage?tournament=${tournament.id}`} className="text-xs font-semibold text-center px-2 py-3 rounded-lg border border-border text-text-secondary min-h-[48px] flex items-center justify-center">
             Fixtures
           </Link>
-          <Link href={`/standings?t=${tournament.id}`} className="text-[10px] font-semibold text-center px-2 py-2 rounded-lg border border-border text-text-secondary min-h-[36px] flex items-center justify-center">
+          <Link href={`/standings?t=${tournament.id}`} className="text-xs font-semibold text-center px-2 py-3 rounded-lg border border-border text-text-secondary min-h-[48px] flex items-center justify-center">
             Standings
           </Link>
           <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-2">
           <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
           <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
           <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
@@ -89,13 +89,16 @@ export default function Mobile({ data }: { data: any }) {
   const { tournaments, participantCounts, fixtureCounts, completedCounts, grouped } = data
 
   return (
-    <div className="px-3 pb-6 space-y-4">
+    <div className="px-4 pb-8 space-y-5">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-text-primary">Tournaments</h1>
-          <p className="text-xs text-text-muted mt-0.5">{(tournaments?.length ?? 0)} total</p>
+        <div className="flex items-center gap-2">
+          <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
+          <div>
+            <h1 className="text-xl font-bold text-text-primary">Tournaments</h1>
+            <p className="text-xs text-text-muted mt-0.5">{(tournaments?.length ?? 0)} total</p>
+          </div>
         </div>
-        <Link href="/admin/tournaments/create" className="text-sm font-semibold px-4 py-2.5 rounded-lg bg-accent text-bg-surface min-h-[44px] flex items-center">
+        <Link href="/admin/tournaments/create" className="text-sm font-semibold px-5 py-3 rounded-lg bg-accent text-bg-surface min-h-[48px] flex items-center">
           + Create
         </Link>
       </div>
@@ -105,7 +108,7 @@ export default function Mobile({ data }: { data: any }) {
           <Trophy className="w-10 h-10 text-text-muted mx-auto" />
           <p className="text-base font-medium text-text-primary">No tournaments yet</p>
           <p className="text-sm text-text-muted">Create your first tournament to get started.</p>
-          <Link href="/admin/tournaments/create" className="inline-block text-sm font-semibold px-5 py-2.5 rounded-lg bg-accent text-bg-surface min-h-[44px] leading-none">
+          <Link href="/admin/tournaments/create" className="inline-block text-sm font-semibold px-5 py-3 rounded-lg bg-accent text-bg-surface min-h-[48px] leading-none">
             Create Tournament
           </Link>
         </div>

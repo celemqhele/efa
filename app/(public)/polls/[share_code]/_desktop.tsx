@@ -138,149 +138,165 @@ export default function Desktop({ data }: { data: any }) {
   }
 
   return (
-    <div className="min-h-screen bg-bg-base px-4 py-8">
-      <div className="max-w-4xl mx-auto space-y-space-6">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-text-primary">{poll.title}</h1>
-          {poll.description && (
-            <p className="text-text-muted text-sm mt-space-1">{poll.description}</p>
-          )}
-          <span className={`inline-block mt-space-2 text-xs px-space-2 py-space-1 rounded-full border font-medium ${
-            isOpen
-              ? 'bg-feedback-success/10 border-feedback-success/30 text-feedback-success'
-              : 'bg-bg-elevated border-border text-text-muted'
-          }`}>
-            {isOpen ? 'Open for applications' : 'Closed'}
-          </span>
-        </div>
-
-        {!user && (
-          <Card className="p-space-4 text-center">
-            <p className="text-sm text-text-muted">
-              <a href="/login" className="text-accent underline">Log in</a> to apply for teams.
-            </p>
-          </Card>
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-text-primary">{poll.title}</h1>
+        {poll.description && (
+          <p className="text-text-muted text-sm mt-1">{poll.description}</p>
         )}
-
-        {/* Alerts */}
-        {error && (
-          <div className="bg-feedback-error/10 border border-feedback-error/30 rounded-lg p-space-3 text-feedback-error text-sm">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="bg-feedback-success/10 border border-feedback-success/30 rounded-lg p-space-3 text-feedback-success text-sm">
-            {success}
-          </div>
-        )}
-
-        {/* My Applications */}
-        {myApps.length > 0 && (
-          <Card className="p-space-5">
-            <h2 className="font-semibold text-text-primary mb-space-3">My Applications</h2>
-            <div className="space-y-space-2">
-              {myApps.map((app) => (
-                <div key={app.id} className="flex items-center justify-between bg-bg-elevated rounded-lg px-space-3 py-space-2">
-                  <div className="flex items-center gap-space-2">
-                    <Image src={logoSrc(app.team_league, app.team_slug)} alt={app.team_name} width={24} height={24} className="object-contain rounded" />
-                    <span className="text-sm text-text-primary">{app.team_name}</span>
-                    <span className={`text-[10px] px-space-1.5 py-space-0.5 rounded-full border ${
-                      app.status === 'pending' ? 'text-feedback-warning border-feedback-warning/30 bg-feedback-warning/5' :
-                      app.status === 'approved' ? 'text-feedback-success border-feedback-success/30 bg-feedback-success/5' :
-                      app.status === 'denied' ? 'text-feedback-error border-feedback-error/30 bg-feedback-error/5' :
-                      'text-text-muted border-border'
-                    }`}>{app.status}</span>
-                  </div>
-                  {app.status === 'pending' && (
-                    <Button variant="ghost" className="text-xs" onClick={() => handleWithdraw(app.id, app.team_league, app.team_slug)}>
-                      Withdraw
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {/* Filters */}
-        <div className="flex gap-space-3">
-          <input
-            type="search"
-            placeholder="Search teams..."
-            className="input-field flex-1"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            className="input-field w-auto"
-            value={selectedLeague}
-            onChange={(e) => setSelectedLeague(e.target.value)}
-          >
-            <option value="">All leagues</option>
-            {leagues.map((l: any) => (
-              <option key={l.folder} value={l.folder}>{l.league}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Team grid by league */}
-        {filteredLeagues.map((league: any) => (
-          <div key={league.folder}>
-            <h2 className="font-semibold text-text-primary mb-space-2 flex items-center gap-space-2">
-              <span>{league.country}</span>
-              <span className="text-text-muted text-xs font-normal">— {league.league}</span>
-            </h2>
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-space-2">
-              {league.teams.map((team: any) => {
-                const taken = isTeamTaken(league.folder, team.slug)
-                const myApp = myAppFor(league.folder, team.slug)
-                const isMine = !!myApp
-                const isLoading = loadingTeam === teamKey(league.folder, team.slug)
-                const disabled = !isOpen || taken || isLoading || !user
-
-                return (
-                  <button
-                    key={team.slug}
-                    disabled={isMine || (disabled && !isMine)}
-                    onClick={() => !isMine && handleApply(league.folder, team.slug, team.name)}
-                    className={`flex flex-col items-center gap-space-1.5 p-space-2 rounded-xl border transition-all text-left h-auto
-                      ${isMine
-                        ? 'border-accent bg-accent/10'
-                        : taken
-                        ? 'cursor-not-allowed border-border bg-bg-base opacity-50'
-                        : 'border-border bg-bg-surface hover:border-accent/40 hover:bg-accent/5 cursor-pointer'
-                      }`}
-                  >
-                    <div className="w-10 h-10 flex items-center justify-center">
-                      <Image
-                        src={logoSrc(league.folder, team.slug)}
-                        alt={team.name}
-                        width={40}
-                        height={40}
-                        className="object-contain"
-                        onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3' }}
-                      />
-                    </div>
-                    <span className="text-[10px] text-center leading-tight text-text-secondary font-medium line-clamp-2 w-full">
-                      {team.name}
-                    </span>
-                    {isMine && <span className="text-[9px] text-accent font-medium">Applied</span>}
-                    {taken && !isMine && <span className="text-[9px] text-text-muted font-medium">Taken</span>}
-                    {isLoading && <span className="text-[9px] text-accent">Applying...</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-
-        {filteredLeagues.length === 0 && (
-          <Card className="p-space-12 text-center">
-            <p className="text-text-muted">No teams match your search.</p>
-          </Card>
-        )}
+        <span className={`inline-block mt-2 text-xs px-3 py-1 rounded-full border font-medium ${
+          isOpen
+            ? 'bg-feedback-success/10 border-feedback-success/30 text-feedback-success'
+            : 'bg-bg-elevated border-border text-text-muted'
+        }`}>
+          {isOpen ? 'Open for applications' : 'Closed'}
+        </span>
       </div>
+
+      {!user && (
+        <Card className="p-4 text-center">
+          <p className="text-sm text-text-muted">
+            <a href="/login" className="text-accent underline">Log in</a> to apply for teams.
+          </p>
+        </Card>
+      )}
+
+      {/* Alerts */}
+      {error && (
+        <div className="bg-feedback-error/10 border border-feedback-error/30 rounded-lg p-4 text-feedback-error text-sm">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-feedback-success/10 border border-feedback-success/30 rounded-lg p-4 text-feedback-success text-sm">
+          {success}
+        </div>
+      )}
+
+      {/* My Applications */}
+      {myApps.length > 0 && (
+        <div className="bg-bg-elevated border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-border">
+            <h2 className="font-semibold text-text-primary flex items-center gap-2">
+              <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
+              My Applications
+            </h2>
+          </div>
+          <div className="divide-y divide-border/60">
+            {myApps.map((app) => (
+              <div key={app.id} className="flex items-center justify-between px-5 py-3 hover:bg-accent/5 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Image src={logoSrc(app.team_league, app.team_slug)} alt={app.team_name} width={28} height={28} className="object-contain rounded" />
+                  <span className="text-sm text-text-primary font-medium">{app.team_name}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                    app.status === 'pending' ? 'text-feedback-warning border-feedback-warning/30 bg-feedback-warning/5' :
+                    app.status === 'approved' ? 'text-feedback-success border-feedback-success/30 bg-feedback-success/5' :
+                    app.status === 'denied' ? 'text-feedback-error border-feedback-error/30 bg-feedback-error/5' :
+                    'text-text-muted border-border'
+                  }`}>{app.status}</span>
+                </div>
+                {app.status === 'pending' && (
+                  <Button variant="ghost" className="text-xs" onClick={() => handleWithdraw(app.id, app.team_league, app.team_slug)}>
+                    Withdraw
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex gap-4">
+        <input
+          type="search"
+          placeholder="Search teams..."
+          className="input-field flex-1"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          className="input-field w-auto"
+          value={selectedLeague}
+          onChange={(e) => setSelectedLeague(e.target.value)}
+        >
+          <option value="">All leagues</option>
+          {leagues.map((l: any) => (
+            <option key={l.folder} value={l.folder}>{l.league}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Team table by league */}
+      {filteredLeagues.map((league: any) => (
+        <div key={league.folder}>
+          <h2 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
+            <span>{league.country}</span>
+            <span className="text-text-muted text-sm font-normal">— {league.league}</span>
+            <span className="ml-auto text-xs text-text-muted">{league.teams.length} teams</span>
+          </h2>
+          <div className="bg-bg-elevated border border-border rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-bg-base border-b-2 border-accent/20">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Team</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-text-muted uppercase tracking-wider">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {league.teams.map((team: any) => {
+                  const taken = isTeamTaken(league.folder, team.slug)
+                  const myApp = myAppFor(league.folder, team.slug)
+                  const isMine = !!myApp
+                  const isLoading = loadingTeam === teamKey(league.folder, team.slug)
+                  const disabled = !isOpen || taken || isLoading || !user
+
+                  return (
+                    <tr key={team.slug} className={`hover:bg-accent/5 transition-colors ${taken && !isMine ? 'opacity-50' : ''}`}>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <Image src={logoSrc(league.folder, team.slug)} alt={team.name} width={32} height={32} className="object-contain rounded" />
+                          <span className={`font-medium ${isMine ? 'text-accent' : 'text-text-primary'}`}>{team.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        {isMine ? (
+                          <span className="text-xs font-medium text-accent">Applied</span>
+                        ) : taken ? (
+                          <span className="text-xs text-text-muted">Taken</span>
+                        ) : (
+                          <span className="text-xs text-feedback-success">Available</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        {isMine ? (
+                          <Button variant="ghost" className="text-xs" onClick={() => handleWithdraw(myApp!.id, league.folder, team.slug)}>
+                            Withdraw
+                          </Button>
+                        ) : !disabled ? (
+                          <Button variant="primary" className="text-xs" onClick={() => handleApply(league.folder, team.slug, team.name)}>
+                            {isLoading ? 'Applying...' : 'Apply'}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-text-muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      {filteredLeagues.length === 0 && (
+        <Card className="p-12 text-center">
+          <p className="text-text-muted">No teams match your search.</p>
+        </Card>
+      )}
     </div>
   )
 }

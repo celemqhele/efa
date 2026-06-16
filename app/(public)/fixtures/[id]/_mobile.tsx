@@ -44,13 +44,13 @@ function StatBar({
   const awayPct = 100 - homePct
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5 w-full">
       <div className="flex justify-between text-xs text-text-muted">
         <span className="font-semibold text-foreground-primary">{h}</span>
         <span className="uppercase tracking-wider">{label}</span>
         <span className="font-semibold text-foreground-primary">{a}</span>
       </div>
-      <div className="flex h-1.5 rounded-full overflow-hidden bg-navy-border">
+      <div className="flex h-2 rounded-full overflow-hidden bg-navy-border">
         <div
           className="bg-gold transition-all duration-500"
           style={{ width: `${homePct}%` }}
@@ -144,10 +144,24 @@ export default function Mobile({ data }: { data: any }) {
     awayCoachNote,
   } = data
 
+  const matchStatEntries = matchStats ? [
+    { label: 'Possession %', home: matchStats.home_possession, away: matchStats.away_possession },
+    { label: 'Shots', home: matchStats.home_shots, away: matchStats.away_shots },
+    { label: 'Shots on Target', home: matchStats.home_shots_on_target, away: matchStats.away_shots_on_target },
+    { label: 'Passes', home: matchStats.home_passes, away: matchStats.away_passes },
+    { label: 'Successful Passes', home: matchStats.home_successful_passes, away: matchStats.away_successful_passes },
+    { label: 'Crosses', home: matchStats.home_crosses, away: matchStats.away_crosses },
+    { label: 'Corners', home: matchStats.home_corners, away: matchStats.away_corners },
+    { label: 'Fouls', home: matchStats.home_fouls, away: matchStats.away_fouls },
+    { label: 'Saves', home: matchStats.home_saves, away: matchStats.away_saves },
+    { label: 'Interceptions', home: matchStats.home_interceptions, away: matchStats.away_interceptions },
+    { label: 'Tackles', home: matchStats.home_tackles, away: matchStats.away_tackles },
+  ] : []
+
   return (
-    <div className="space-y-6">
-      {/* ── Match Header ─────────────────────────────────────────────────── */}
-      <div className="card p-6">
+    <div className="px-4 pb-8 space-y-5">
+      {/* ── Match Hero ──────────────────────────────────────────────────── */}
+      <div className="bg-bg-surface border border-border rounded-xl p-5">
         <div className="text-center mb-4">
           <span className="text-xs font-medium text-gold uppercase tracking-widest">
             {tournament?.name ?? 'Match'} · Matchday {fixture.matchday}
@@ -165,15 +179,13 @@ export default function Mobile({ data }: { data: any }) {
         </div>
 
         {hasResult ? (
-          /* ── POST-MATCH SCORE ─────────────────────────────────────────── */
-          <div className="flex items-center justify-between gap-4">
-            {/* Home */}
-            <Link href={`/teams/${homeTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="flex flex-col items-center gap-4">
+            <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
               <Image
                 src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
                 alt={homeTeam.name}
-                width={80}
-                height={80}
+                width={64}
+                height={64}
                 className="object-contain"
               />
               <div className="text-center">
@@ -182,8 +194,7 @@ export default function Mobile({ data }: { data: any }) {
               </div>
             </Link>
 
-            {/* Score */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <span className="text-5xl font-black text-foreground-primary tabular-nums">
                 {result.home_score}
               </span>
@@ -193,13 +204,12 @@ export default function Mobile({ data }: { data: any }) {
               </span>
             </div>
 
-            {/* Away */}
-            <Link href={`/teams/${awayTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
+            <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
               <Image
                 src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
                 alt={awayTeam.name}
-                width={80}
-                height={80}
+                width={64}
+                height={64}
                 className="object-contain"
               />
               <div className="text-center">
@@ -209,14 +219,13 @@ export default function Mobile({ data }: { data: any }) {
             </Link>
           </div>
         ) : (
-          /* ── PRE-MATCH TEAMS ──────────────────────────────────────────── */
-          <div className="flex items-center justify-between gap-4">
-            <Link href={`/teams/${homeTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="flex flex-col items-center gap-4">
+            <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
               <Image
                 src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
                 alt={homeTeam.name}
-                width={80}
-                height={80}
+                width={64}
+                height={64}
                 className="object-contain"
               />
               <div className="text-center">
@@ -229,12 +238,12 @@ export default function Mobile({ data }: { data: any }) {
               <span className="text-3xl font-black text-foreground-muted">VS</span>
             </div>
 
-            <Link href={`/teams/${awayTeam.id}`} className="flex-1 flex flex-col items-center gap-3 hover:opacity-80 transition-opacity">
+            <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
               <Image
                 src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
                 alt={awayTeam.name}
-                width={80}
-                height={80}
+                width={64}
+                height={64}
                 className="object-contain"
               />
               <div className="text-center">
@@ -268,163 +277,153 @@ export default function Mobile({ data }: { data: any }) {
         <>
           {/* Coach's Analysis — only visible to the relevant managers */}
           {isManager && (homeCoachNote || awayCoachNote) && (
-            <div className="card p-5 border-gold/20">
-              <details open className="group">
-                <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+            <div className="bg-bg-surface border border-border rounded-xl p-5 border-gold/20">
+              <details className="group">
+                <summary className="list-none flex items-center justify-between cursor-pointer min-h-[48px]">
                   <h2 className="section-header">
                     <Brain className="w-5 h-5 text-gold" /> Coach's Analysis
                   </h2>
-                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 shrink-0" />
                 </summary>
-                <div className="mt-4 lg:mt-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Home team analysis — only visible to home manager */}
-                {isHomeManager && homeCoachNote && (
-                  <div className="space-y-3">
-                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-                      {homeTeam.name} — vs {awayTeam.name}
-                    </p>
-                    {/* Confidence */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-text-muted">Confidence:</span>
-                      <span className={`font-mono font-bold text-sm ${
-                        homeCoachNote.confidence.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {homeCoachNote.confidence}
-                      </span>
+                <div className="mt-4 space-y-4">
+                  {isHomeManager && homeCoachNote && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                        {homeTeam.name} — vs {awayTeam.name}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-muted">Confidence:</span>
+                        <span className={`font-mono font-bold text-sm ${
+                          homeCoachNote.confidence.startsWith('+') ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {homeCoachNote.confidence}
+                        </span>
+                      </div>
+                      {homeCoachNote.opponent_will_exploit?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
+                            {awayTeam.name} will exploit
+                          </h4>
+                          <ul className="space-y-1">
+                            {homeCoachNote.opponent_will_exploit.map((p: string, i: number) => (
+                              <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
+                                <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
+                                {p}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {homeCoachNote.recommendations?.length > 0 && (
+                        <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
+                          <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
+                            Recommendation
+                          </h4>
+                          <ul className="space-y-1">
+                            {homeCoachNote.recommendations.map((r: string, i: number) => (
+                              <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
+                                <span className="text-accent shrink-0 mt-0.5">›</span>
+                                {r}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-                    {/* Opponent will exploit */}
-                    {homeCoachNote.opponent_will_exploit?.length > 0 && (
-                      <div>
-                        <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
-                          {awayTeam.name} will exploit
-                        </h4>
-                        <ul className="space-y-1">
-                          {homeCoachNote.opponent_will_exploit.map((p: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                              <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
-                              {p}
-                            </li>
-                          ))}
-                        </ul>
+                  )}
+                  {isAwayManager && awayCoachNote && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                        {awayTeam.name} — vs {homeTeam.name}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-muted">Confidence:</span>
+                        <span className={`font-mono font-bold text-sm ${
+                          awayCoachNote.confidence.startsWith('+') ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {awayCoachNote.confidence}
+                        </span>
                       </div>
-                    )}
-                    {/* Recommendations */}
-                    {homeCoachNote.recommendations?.length > 0 && (
-                      <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
-                        <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
-                          Recommendation
-                        </h4>
-                        <ul className="space-y-1">
-                          {homeCoachNote.recommendations.map((r: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                              <span className="text-accent shrink-0 mt-0.5">›</span>
-                              {r}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* Away team analysis — only visible to away manager */}
-                {isAwayManager && awayCoachNote && (
-                  <div className="space-y-3">
-                    <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-                      {awayTeam.name} — vs {homeTeam.name}
-                    </p>
-                    {/* Confidence */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-text-muted">Confidence:</span>
-                      <span className={`font-mono font-bold text-sm ${
-                        awayCoachNote.confidence.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {awayCoachNote.confidence}
-                      </span>
+                      {awayCoachNote.opponent_will_exploit?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
+                            {homeTeam.name} will exploit
+                          </h4>
+                          <ul className="space-y-1">
+                            {awayCoachNote.opponent_will_exploit.map((p: string, i: number) => (
+                              <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
+                                <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
+                                {p}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {awayCoachNote.recommendations?.length > 0 && (
+                        <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
+                          <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
+                            Recommendation
+                          </h4>
+                          <ul className="space-y-1">
+                            {awayCoachNote.recommendations.map((r: string, i: number) => (
+                              <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
+                                <span className="text-accent shrink-0 mt-0.5">›</span>
+                                {r}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-                    {/* Opponent will exploit */}
-                    {awayCoachNote.opponent_will_exploit?.length > 0 && (
-                      <div>
-                        <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1.5">
-                          {homeTeam.name} will exploit
-                        </h4>
-                        <ul className="space-y-1">
-                          {awayCoachNote.opponent_will_exploit.map((p: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                              <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
-                              {p}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {/* Recommendations */}
-                    {awayCoachNote.recommendations?.length > 0 && (
-                      <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
-                        <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-1.5">
-                          Recommendation
-                        </h4>
-                        <ul className="space-y-1">
-                          {awayCoachNote.recommendations.map((r: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                              <span className="text-accent shrink-0 mt-0.5">›</span>
-                              {r}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </details>
             </div>
-          </details>
-          </div>
           )}
 
           {/* Matchroom Instructions */}
-          <div className="card p-5 border-accent/20 bg-bg-elevated">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+          <div className="bg-bg-surface border border-border rounded-xl p-5 border-accent/20 bg-bg-elevated">
+            <details className="group">
+              <summary className="list-none flex items-center justify-between cursor-pointer min-h-[48px]">
                 <h2 className="section-header">
                   <Gamepad2 className="w-5 h-5 text-gold" /> Matchroom Instructions
                 </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 shrink-0" />
               </summary>
-              <div className="mt-4 lg:mt-0 space-y-3">
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-gold/10 border border-gold/20">
-                <Home className="w-5 h-5 text-gold shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-gold font-bold text-sm uppercase tracking-wider">
-                    HOME — {homeTeam.name}
-                  </p>
-                  {homeManager && (
-                    <p className="text-foreground-primary font-semibold">@{homeManager.username}</p>
-                  )}
-                  <p className="text-foreground-secondary text-sm mt-1">
-                    YOU CREATE THE MATCHROOM in eFootball
-                  </p>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-gold/10 border border-gold/20">
+                  <Home className="w-5 h-5 text-gold shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-gold font-bold text-sm uppercase tracking-wider">
+                      HOME — {homeTeam.name}
+                    </p>
+                    {homeManager && (
+                      <p className="text-foreground-primary font-semibold">@{homeManager.username}</p>
+                    )}
+                    <p className="text-foreground-secondary text-sm mt-1">
+                      YOU CREATE THE MATCHROOM in eFootball
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-bg-surface border border-border">
+                  <Plane className="w-5 h-5 text-foreground-secondary shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-foreground-secondary font-bold text-sm uppercase tracking-wider">
+                      AWAY — {awayTeam.name}
+                    </p>
+                    {awayManager && (
+                      <p className="text-foreground-primary font-semibold">@{awayManager.username}</p>
+                    )}
+                    <p className="text-text-muted text-sm mt-1">
+                      You join the matchroom
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-bg-surface border border-border">
-                <Plane className="w-5 h-5 text-foreground-secondary shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-foreground-secondary font-bold text-sm uppercase tracking-wider">
-                    AWAY — {awayTeam.name}
-                  </p>
-                  {awayManager && (
-                    <p className="text-foreground-primary font-semibold">@{awayManager.username}</p>
-                  )}
-                  <p className="text-text-muted text-sm mt-1">
-                    You join the matchroom
-                  </p>
-                </div>
-              </div>
-            </div>
-          </details>
+            </details>
           </div>
 
-          {/* Matchroom Code — editable by home manager, visible to all */}
+          {/* Matchroom Code — full-width, prominent */}
           <MatchroomCode
             fixtureId={id}
             initialCode={(fixture as any).matchroom_code ?? null}
@@ -432,171 +431,165 @@ export default function Mobile({ data }: { data: any }) {
           />
 
           {/* Win Probability */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+          <div className="bg-bg-surface border border-border rounded-xl p-5">
+            <details className="group">
+              <summary className="list-none flex items-center justify-between cursor-pointer min-h-[48px]">
                 <h2 className="section-header">
                   <BarChart3 className="w-5 h-5 text-gold" /> Win Probability
                 </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 shrink-0" />
               </summary>
-              <div className="mt-4 lg:mt-0">
-            <ProbabilityBar
-              home={probability.home}
-              draw={probability.draw}
-              away={probability.away}
-              homeName={homeTeam.name}
-              awayName={awayTeam.name}
-            />
-            </div>
-          </details>
+              <div className="mt-4">
+                <ProbabilityBar
+                  home={probability.home}
+                  draw={probability.draw}
+                  away={probability.away}
+                  homeName={homeTeam.name}
+                  awayName={awayTeam.name}
+                />
+              </div>
+            </details>
           </div>
 
           {/* H2H Last 5 */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+          <div className="bg-bg-surface border border-border rounded-xl p-5">
+            <details className="group">
+              <summary className="list-none flex items-center justify-between cursor-pointer min-h-[48px]">
                 <h2 className="section-header">
                   <Swords className="w-5 h-5 text-gold" /> Head to Head (Last 5)
                 </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 shrink-0" />
               </summary>
-              <div className="mt-4 lg:mt-0">
-            {h2hList.length === 0 ? (
-              <p className="text-text-muted text-sm">No previous meetings.</p>
-            ) : (
-              <div className="space-y-2">
-                {h2hList.map((f: any) => {
-                  // Determine which team was home/away in this specific h2h fixture
-                  const hTeam = f.home_team_id === fixture.home_team_id ? homeTeam : awayTeam
-                  const aTeam = f.home_team_id === fixture.home_team_id ? awayTeam : homeTeam
-                  const hScore = f.result.home_score
-                  const aScore = f.result.away_score
-                  // From current home team's perspective
-                  const ourScore = f.home_team_id === fixture.home_team_id ? hScore : aScore
-                  const theirScore = f.home_team_id === fixture.home_team_id ? aScore : hScore
-                  const outcome = ourScore > theirScore ? 'W' : ourScore < theirScore ? 'L' : 'D'
-                  const outcomeColor =
-                    outcome === 'W' ? 'text-green-400' : outcome === 'L' ? 'text-red-400' : 'text-yellow-400'
+              <div className="mt-4">
+                {h2hList.length === 0 ? (
+                  <p className="text-text-muted text-sm">No previous meetings.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {h2hList.map((f: any) => {
+                      const hTeam = f.home_team_id === fixture.home_team_id ? homeTeam : awayTeam
+                      const aTeam = f.home_team_id === fixture.home_team_id ? awayTeam : homeTeam
+                      const hScore = f.result.home_score
+                      const aScore = f.result.away_score
+                      const ourScore = f.home_team_id === fixture.home_team_id ? hScore : aScore
+                      const theirScore = f.home_team_id === fixture.home_team_id ? aScore : hScore
+                      const outcome = ourScore > theirScore ? 'W' : ourScore < theirScore ? 'L' : 'D'
+                      const outcomeColor =
+                        outcome === 'W' ? 'text-green-400' : outcome === 'L' ? 'text-red-400' : 'text-yellow-400'
 
-                  return (
-                    <div key={f.id} className="flex items-center gap-2 p-3 rounded-lg bg-navy-border/30">
-                      {/* Home team — clickable logo */}
-                      <Link href={`/teams/${hTeam.id}`} className="flex items-center gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
-                        {hTeam.logo_league_folder && (
-                          <Image
-                            src={getTeamLogo(hTeam.logo_league_folder, hTeam.logo_team_slug, 'standings_row')}
-                            alt={hTeam.name}
-                            width={24} height={24}
-                            className="object-contain shrink-0"
-                          />
-                        )}
-                        <span className="text-xs text-text-muted">{hTeam.name}</span>
-                      </Link>
+                      return (
+                        <div key={f.id} className="flex items-center gap-2 p-3 rounded-lg bg-navy-border/30 min-h-[48px]">
+                          <Link href={`/teams/${hTeam.id}`} className="flex items-center gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
+                            {hTeam.logo_league_folder && (
+                              <Image
+                                src={getTeamLogo(hTeam.logo_league_folder, hTeam.logo_team_slug, 'standings_row')}
+                                alt={hTeam.name}
+                                width={24} height={24}
+                                className="object-contain shrink-0"
+                              />
+                            )}
+                            <span className="text-xs text-text-muted">{hTeam.name}</span>
+                          </Link>
 
-                      {/* Score — links to that fixture */}
-                      <Link href={`/fixtures/${f.id}`} className="font-bold text-foreground-primary tabular-nums text-sm px-2 hover:text-gold transition-colors shrink-0">
-                        {hScore} – {aScore}
-                      </Link>
+                          <Link href={`/fixtures/${f.id}`} className="font-bold text-foreground-primary tabular-nums text-sm px-2 hover:text-gold transition-colors shrink-0">
+                            {hScore} – {aScore}
+                          </Link>
 
-                      {/* Away team — clickable logo */}
-                      <Link href={`/teams/${aTeam.id}`} className="flex items-center justify-end gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
-                        <span className="text-xs text-text-muted text-right">{aTeam.name}</span>
-                        {aTeam.logo_league_folder && (
-                          <Image
-                            src={getTeamLogo(aTeam.logo_league_folder, aTeam.logo_team_slug, 'standings_row')}
-                            alt={aTeam.name}
-                            width={24} height={24}
-                            className="object-contain shrink-0"
-                          />
-                        )}
-                      </Link>
+                          <Link href={`/teams/${aTeam.id}`} className="flex items-center justify-end gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
+                            <span className="text-xs text-text-muted text-right">{aTeam.name}</span>
+                            {aTeam.logo_league_folder && (
+                              <Image
+                                src={getTeamLogo(aTeam.logo_league_folder, aTeam.logo_team_slug, 'standings_row')}
+                                alt={aTeam.name}
+                                width={24} height={24}
+                                className="object-contain shrink-0"
+                              />
+                            )}
+                          </Link>
 
-                      {/* Outcome badge */}
-                      <span className={`text-xs font-black w-5 text-center shrink-0 ${outcomeColor}`}>{outcome}</span>
-                    </div>
-                  )
-                })}
+                          <span className={`text-xs font-black w-5 text-center shrink-0 ${outcomeColor}`}>{outcome}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-            </div>
-          </details>
+            </details>
           </div>
 
-          {/* Team DNA */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                <h2 className="section-header">
-                  <Dna className="w-5 h-5 text-gold" /> Team DNA
-                </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-              </summary>
-              <div className="mt-4 lg:mt-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
-                  {homeTeam.name}
-                </p>
-                {homeDNA.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {homeDNA.map((dna: any) => (
-                      <span
-                        key={dna.label}
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${dna.color}`}
-                      >
-                        {DNA_ICONS[dna.iconName]} {dna.label}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-foreground-muted text-xs">Not enough data</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
-                  {awayTeam.name}
-                </p>
-                {awayDNA.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {awayDNA.map((dna: any) => (
-                      <span
-                        key={dna.label}
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${dna.color}`}
-                      >
-                        {DNA_ICONS[dna.iconName]} {dna.label}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-foreground-muted text-xs">Not enough data</p>
-                )}
-              </div>
+          {/* Team DNA — collapsible per team */}
+          <div className="bg-bg-surface border border-border rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Dna className="w-5 h-5 text-gold" />
+              <h2 className="section-header">Team DNA</h2>
             </div>
+            <div className="space-y-3">
+              <details className="bg-navy-border/20 rounded-lg group">
+                <summary className="list-none flex items-center justify-between px-4 py-3 cursor-pointer min-h-[48px]">
+                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{homeTeam.name}</span>
+                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 shrink-0" />
+                </summary>
+                <div className="px-4 pb-4">
+                  {homeDNA.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {homeDNA.map((dna: any) => (
+                        <span
+                          key={dna.label}
+                          className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${dna.color}`}
+                        >
+                          {DNA_ICONS[dna.iconName]} {dna.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-foreground-muted text-xs">Not enough data</p>
+                  )}
+                </div>
+              </details>
+              <details className="bg-navy-border/20 rounded-lg group">
+                <summary className="list-none flex items-center justify-between px-4 py-3 cursor-pointer min-h-[48px]">
+                  <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{awayTeam.name}</span>
+                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 shrink-0" />
+                </summary>
+                <div className="px-4 pb-4">
+                  {awayDNA.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {awayDNA.map((dna: any) => (
+                        <span
+                          key={dna.label}
+                          className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border ${dna.color}`}
+                        >
+                          {DNA_ICONS[dna.iconName]} {dna.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-foreground-muted text-xs">Not enough data</p>
+                  )}
+                </div>
+              </details>
             </div>
-          </details>
           </div>
 
           {/* Form */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+          <div className="bg-bg-surface border border-border rounded-xl p-5">
+            <details className="group">
+              <summary className="list-none flex items-center justify-between cursor-pointer min-h-[48px]">
                 <h2 className="section-header">
                   <TrendingUp className="w-5 h-5 text-gold" /> Recent Form (Last 6)
                 </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 shrink-0" />
               </summary>
-              <div className="mt-4 lg:mt-0 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-text-muted truncate min-w-0">{homeTeam.name}</span>
-                <FormStrip form={(homeStanding?.form ?? '').slice(-6)} />
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-text-muted truncate min-w-0">{homeTeam.name}</span>
+                  <FormStrip form={(homeStanding?.form ?? '').slice(-6)} />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-text-muted truncate min-w-0">{awayTeam.name}</span>
+                  <FormStrip form={(awayStanding?.form ?? '').slice(-6)} />
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-text-muted truncate min-w-0">{awayTeam.name}</span>
-                <FormStrip form={(awayStanding?.form ?? '').slice(-6)} />
-              </div>
-            </div>
-          </details>
+            </details>
           </div>
         </>
       )}
@@ -604,62 +597,52 @@ export default function Mobile({ data }: { data: any }) {
       {/* ── POST-MATCH SECTIONS ───────────────────────────────────────────── */}
       {hasResult && (
         <>
-          {/* Match Stats */}
+          {/* Match Stats — horizontal snap scroll */}
           {matchStats && (
-            <div className="card p-5">
-              <details open className="group">
-                <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
+            <div className="bg-bg-surface border border-border rounded-xl p-5">
+              <details className="group">
+                <summary className="list-none flex items-center justify-between cursor-pointer min-h-[48px]">
                   <h2 className="section-header">
                     <BarChart3 className="w-5 h-5 text-gold" /> Match Statistics
                   </h2>
-                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
+                  <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 shrink-0" />
                 </summary>
-                <div className="mt-4 lg:mt-0 space-y-3">
-                <StatBar label="Possession %" home={matchStats.home_possession} away={matchStats.away_possession} />
-                <StatBar label="Shots" home={matchStats.home_shots} away={matchStats.away_shots} />
-                <StatBar label="Shots on Target" home={matchStats.home_shots_on_target} away={matchStats.away_shots_on_target} />
-                <StatBar label="Passes" home={matchStats.home_passes} away={matchStats.away_passes} />
-                <StatBar label="Successful Passes" home={matchStats.home_successful_passes} away={matchStats.away_successful_passes} />
-                <StatBar label="Crosses" home={matchStats.home_crosses} away={matchStats.away_crosses} />
-                <StatBar label="Corners" home={matchStats.home_corners} away={matchStats.away_corners} />
-                <StatBar label="Fouls" home={matchStats.home_fouls} away={matchStats.away_fouls} />
-                <StatBar label="Saves" home={matchStats.home_saves} away={matchStats.away_saves} />
-                <StatBar label="Interceptions" home={matchStats.home_interceptions} away={matchStats.away_interceptions} />
-                <StatBar label="Tackles" home={matchStats.home_tackles} away={matchStats.away_tackles} />
-              </div>
-              <div className="flex justify-between text-xs text-text-muted mt-3 pt-3 border-t border-navy-border">
-                <span className="font-semibold text-foreground-secondary">{homeTeam.name}</span>
-                <span className="font-semibold text-foreground-secondary">{awayTeam.name}</span>
+                <div className="mt-4">
+                  <div className="flex gap-4 snap-x snap-mandatory overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
+                    {matchStatEntries.map((stat) => (
+                      <div key={stat.label} className="snap-start shrink-0 w-[80vw] max-w-xs">
+                        <StatBar label={stat.label} home={stat.home} away={stat.away} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-xs text-text-muted mt-3 pt-3 border-t border-navy-border">
+                    <span className="font-semibold text-foreground-secondary">{homeTeam.name}</span>
+                    <span className="font-semibold text-foreground-secondary">{awayTeam.name}</span>
+                  </div>
+                </div>
+              </details>
             </div>
-          </details>
-          </div>
           )}
 
-          {/* Emoji Reactions */}
-          <div className="card p-5">
-            <details open className="group">
-              <summary className="list-none lg:pointer-events-none flex items-center justify-between cursor-pointer">
-                <h2 className="section-header">
-                  <MessageSquare className="w-5 h-5 text-gold" /> Reactions
-                </h2>
-                <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 lg:hidden shrink-0" />
-              </summary>
-              <div className="mt-4 lg:mt-0">
+          {/* Reactions — inline emoji row */}
+          <div className="bg-bg-surface border border-border rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageSquare className="w-5 h-5 text-gold" />
+              <h2 className="section-header">Reactions</h2>
+            </div>
             <ReactionsPanel
               fixtureId={id}
               initialCounts={reactionCounts}
               initialUserReactions={userReactionEmojis}
               userId={user?.id ?? null}
             />
-            </div>
-          </details>
           </div>
         </>
       )}
 
       {/* ── RESULT CONFIRMATION STATUS ───────────────────────────────────── */}
       {!hasResult && (
-        <div className="card p-5">
+        <div className="bg-bg-surface border border-border rounded-xl p-5">
           <h2 className="section-header">
             <CheckCircle className="w-5 h-5 text-gold" /> Score Submission
           </h2>
@@ -716,7 +699,7 @@ export default function Mobile({ data }: { data: any }) {
 
       {/* ── WAITING REPORTS ─────────────────────────────────────────────── */}
       {waitingReports && waitingReports.length > 0 && (
-        <div className="card p-5 border-yellow-500/30">
+        <div className="bg-bg-surface border border-border rounded-xl p-5 border-yellow-500/30">
           <h2 className="section-header">
             <Hourglass className="w-5 h-5 text-accent" /> Waiting Reports
           </h2>
@@ -727,8 +710,8 @@ export default function Mobile({ data }: { data: any }) {
       )}
 
       {/* ── DISCONNECT RULES ─────────────────────────────────────────────── */}
-      <details className="card p-5 group">
-        <summary className="section-header cursor-pointer list-none flex items-center justify-between">
+      <details className="bg-bg-surface border border-border rounded-xl p-5 group">
+        <summary className="section-header cursor-pointer list-none flex items-center justify-between min-h-[48px]">
           <span className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-gold" /> Disconnect Rules
           </span>
@@ -780,7 +763,7 @@ export default function Mobile({ data }: { data: any }) {
       </details>
 
       {/* ── BANTER BOARD ─────────────────────────────────────────────────── */}
-      <div className="card p-5">
+      <div className="bg-bg-surface border border-border rounded-xl p-5">
         <h2 className="section-header">
           <MessageSquare className="w-5 h-5 text-gold" /> Banter Board
           <span className="text-text-muted text-sm font-normal ml-auto">
@@ -820,7 +803,6 @@ export default function Mobile({ data }: { data: any }) {
                     </div>
                   </div>
 
-                  {/* Replies */}
                   {commentReplies.length > 0 && (
                     <div className="ml-11 space-y-2">
                       {commentReplies.map((reply: any) => (

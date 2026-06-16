@@ -10,7 +10,7 @@ export default function Mobile({ data }: { data: any }) {
   const { profiles, teamByManager, changeRequests, managerApplications, profileMap } = data
 
   return (
-    <div className="space-y-space-6">
+    <div className="px-4 pb-8 space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-text-primary">User Management</h1>

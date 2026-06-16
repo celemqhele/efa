@@ -1,7 +1,6 @@
 'use client'
 import Link from 'next/link'
 import TeamLogo from '@/components/ui/TeamLogo'
-import { Card } from '@/components/ui/Card'
 
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   scheduled: { label: 'Scheduled', pill: 'bg-text-muted/20 text-text-muted border-text-muted/30' },
@@ -16,13 +15,6 @@ const TYPE_LABELS: Record<string, string> = {
   tournament_club: 'Tournament',
   tournament_international: 'Intl',
   friendlies: 'Friendly',
-}
-
-const TYPE_ACCENT: Record<string, string> = {
-  league: 'text-accent border-accent/40 bg-accent/5',
-  tournament_club: 'text-blue-500 border-blue-500/40 bg-blue-500/5',
-  tournament_international: 'text-orange-500 border-orange-500/40 bg-orange-500/5',
-  friendlies: 'text-purple-500 border-purple-500/40 bg-purple-500/5',
 }
 
 function formatWhen(dateStr: string | null): string {
@@ -41,95 +33,19 @@ function formatWhen(dateStr: string | null): string {
   }
 }
 
-function FixtureRow({ f, siblingIds, resultsByFixture }: { f: any; siblingIds: string[]; resultsByFixture: Record<string, any> }) {
-  const homeTeam = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team
-  const awayTeam = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team
-
-  const isHome = homeTeam ? siblingIds.includes(homeTeam.id) : siblingIds.includes(f.home_team_id)
-  const opponent = isHome ? awayTeam : homeTeam
-
-  const result = resultsByFixture[f.id]
-
-  const myScore = isHome ? result?.home_score : result?.away_score
-  const oppScore = isHome ? result?.away_score : result?.home_score
-
-  const hasResult = result != null && myScore != null && oppScore != null
-  const won = hasResult && myScore > oppScore
-  const lost = hasResult && myScore < oppScore
-  const drew = hasResult && myScore === oppScore
-
-  const tournament = f.tournament
-  const tournamentType = tournament?.type ?? 'unknown'
-  const tournamentLabel = TYPE_LABELS[tournamentType] ?? tournament?.name ?? '—'
-  const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
-
-  let resultBadge: React.ReactNode = null
-  if (won) {
-    resultBadge = <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-feedback-success/20 text-feedback-success border border-feedback-success/30">W</span>
-  } else if (lost) {
-    resultBadge = <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-feedback-error/20 text-feedback-error border border-feedback-error/30">L</span>
-  } else if (drew) {
-    resultBadge = <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted border border-text-muted/30">D</span>
-  }
-
-  return (
-    <Link
-      href={result ? `/results/${result.id}` : `/fixtures/${f.id}`}
-      className="flex items-center gap-3 px-4 py-3 border border-border rounded-lg bg-bg-surface hover:border-accent/30 hover:bg-black/[0.03] transition-all"
-    >
-      <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border whitespace-nowrap ${TYPE_ACCENT[tournamentType] ?? 'text-text-muted border-border'}`}>
-        {tournamentLabel}
-      </div>
-
-      <div className="text-xs text-text-muted font-mono shrink-0 w-8 text-center">
-        {isHome ? 'vs' : '@'}
-      </div>
-
-      {opponent?.logo_league_folder ? (
-        <TeamLogo
-          leagueFolder={opponent.logo_league_folder}
-          teamSlug={opponent.logo_team_slug}
-          context="standings_row"
-          alt={opponent.name}
-          className="w-8 h-8 shrink-0"
-        />
-      ) : (
-        <div className="w-8 h-8 rounded bg-bg-base shrink-0 flex items-center justify-center text-[10px] text-text-muted">?</div>
-      )}
-
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-text-primary truncate">
-          {opponent?.name ?? 'TBC'}
-        </p>
-        <p className="text-[10px] text-text-muted mt-0.5">
-          {formatWhen(f.scheduled_date)}
-        </p>
-      </div>
-
-      <div className="text-right shrink-0 flex flex-col items-end gap-1">
-        {result ? (
-          <span className="text-base font-black text-text-primary tabular-nums">
-            {myScore}–{oppScore}
-          </span>
-        ) : (
-          <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
-            {statusInfo.label}
-          </span>
-        )}
-        {resultBadge}
-      </div>
-    </Link>
-  )
-}
-
 export default function Desktop({ data }: { data: any }) {
   const { team, siblingIds, upcoming, past, resultsByFixture } = data
 
+  const allFixtures = [
+    ...upcoming.map((f: any) => ({ ...f, _section: 'upcoming' as const })),
+    ...past.map((f: any) => ({ ...f, _section: 'past' as const })),
+  ]
+
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link 
+        <Link
           href={`/teams/${team.id}`}
           className="w-10 h-10 rounded-lg flex items-center justify-center border border-border text-text-muted hover:border-accent/50 hover:text-accent transition-colors"
         >
@@ -150,43 +66,121 @@ export default function Desktop({ data }: { data: any }) {
             <p className="text-sm text-accent font-medium">{team.name}</p>
           </div>
         </div>
+        <div className="ml-auto flex gap-4 text-xs text-text-muted">
+          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-accent" /> {upcoming.length} Upcoming</span>
+          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-feedback-success" /> {past.length} Results</span>
+        </div>
       </div>
 
-      {/* Upcoming */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-accent" />
-          Upcoming
-          <span className="ml-auto text-text-muted font-normal">{upcoming.length}</span>
-        </h2>
-        {upcoming.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-text-muted">
-            No upcoming fixtures scheduled.
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {upcoming.map((f: any) => <FixtureRow key={f.id} f={f} siblingIds={siblingIds} resultsByFixture={resultsByFixture} />)}
-          </div>
-        )}
-      </section>
+      {/* Unified table */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-navy-light/30 border-b border-border/60">
+                <th className="text-left py-4 px-6 text-[10px] font-bold text-text-muted uppercase tracking-widest">Date</th>
+                <th className="text-left py-4 px-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Competition</th>
+                <th className="text-left py-4 px-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Opponent</th>
+                <th className="text-center py-4 px-4 text-[10px] font-bold text-text-muted uppercase tracking-widest">Score</th>
+                <th className="text-center py-4 pl-4 pr-6 text-[10px] font-bold text-text-muted uppercase tracking-widest">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allFixtures.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-sm text-text-muted">No fixtures found for this team.</td>
+                </tr>
+              ) : (
+                allFixtures.map((f: any) => {
+                  const homeTeam = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team
+                  const awayTeam = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team
 
-      {/* Past Results */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-feedback-success" />
-          Past Results
-          <span className="ml-auto text-text-muted font-normal">{past.length}</span>
-        </h2>
-        {past.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-text-muted">
-            No past results on record.
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {past.map((f: any) => <FixtureRow key={f.id} f={f} siblingIds={siblingIds} resultsByFixture={resultsByFixture} />)}
-          </div>
-        )}
-      </section>
+                  const isHome = homeTeam ? siblingIds.includes(homeTeam.id) : siblingIds.includes(f.home_team_id)
+                  const opponent = isHome ? awayTeam : homeTeam
+
+                  const result = resultsByFixture[f.id]
+
+                  const myScore = isHome ? result?.home_score : result?.away_score
+                  const oppScore = isHome ? result?.away_score : result?.home_score
+
+                  const hasResult = result != null && myScore != null && oppScore != null
+                  const won = hasResult && myScore > oppScore
+                  const lost = hasResult && myScore < oppScore
+                  const drew = hasResult && myScore === oppScore
+
+                  const tournament = f.tournament
+                  const tournamentType = tournament?.type ?? 'unknown'
+                  const tournamentLabel = TYPE_LABELS[tournamentType] ?? tournament?.name ?? '—'
+                  const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
+
+                  let resultBadge: React.ReactNode = null
+                  if (won) {
+                    resultBadge = <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-feedback-success/20 text-feedback-success border border-feedback-success/30">W</span>
+                  } else if (lost) {
+                    resultBadge = <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-feedback-error/20 text-feedback-error border border-feedback-error/30">L</span>
+                  } else if (drew) {
+                    resultBadge = <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-text-muted/20 text-text-muted border border-text-muted/30">D</span>
+                  }
+
+                  return (
+                    <tr
+                      key={f.id}
+                      className="border-b border-border/20 transition-colors hover:bg-black/[0.02] cursor-pointer"
+                      onClick={() => window.location.href = result ? `/results/${result.id}` : `/fixtures/${f.id}`}
+                    >
+                      <td className="py-4 px-6 whitespace-nowrap">
+                        <span className="text-xs text-text-muted font-mono">{formatWhen(f.scheduled_date)}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-xs font-semibold text-text-primary">{tournamentLabel}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          {opponent?.logo_league_folder ? (
+                            <TeamLogo
+                              leagueFolder={opponent.logo_league_folder}
+                              teamSlug={opponent.logo_team_slug}
+                              context="standings_row"
+                              alt={opponent.name}
+                              className="w-7 h-7 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-7 h-7 rounded bg-bg-base shrink-0 flex items-center justify-center text-[9px] text-text-muted">?</div>
+                          )}
+                          <span className="text-sm font-semibold text-text-primary">
+                            {isHome ? 'vs' : '@'} {opponent?.name ?? 'TBC'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-center py-4 px-4">
+                        {result ? (
+                          <span className={`text-base font-black tabular-nums ${
+                            won ? 'text-feedback-success' : lost ? 'text-feedback-error' : 'text-text-primary'
+                          }`}>
+                            {myScore}–{oppScore}
+                          </span>
+                        ) : (
+                          <span className="text-text-muted text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="text-center py-4 pl-4 pr-6">
+                        <div className="flex items-center justify-center gap-2">
+                          {resultBadge}
+                          {!result && (
+                            <span className={`text-[9px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
+                              {statusInfo.label}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
