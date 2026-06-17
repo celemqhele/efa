@@ -46,7 +46,6 @@ function formatMonth(dateStr: string | null): string {
 function ResultCard({ f, teamIds }: { f: any; teamIds: string[] }) {
   const home = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team
   const away = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team
-  const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
   const result = f._result
 
   const isHome = teamIds.includes(home?.id)
@@ -56,9 +55,6 @@ function ResultCard({ f, teamIds }: { f: any; teamIds: string[] }) {
   const won = result != null && myScore != null && oppScore != null && myScore > oppScore
   const lost = result != null && myScore != null && oppScore != null && myScore < oppScore
   const drew = result != null && myScore != null && oppScore != null && myScore === oppScore
-
-  const tournamentType = t?.type ?? 'unknown'
-  const typeStyle = TYPE_STYLES[tournamentType] ?? { label: t?.name ?? '—', colour: 'bg-slate-500/10 text-text-muted border-slate-500/25' }
 
   let resultBadge: { label: string; cls: string } | null = null
   if (won) resultBadge = { label: 'W', cls: 'bg-green-500/15 text-green-500 border-green-500/30' }
@@ -88,12 +84,6 @@ function ResultCard({ f, teamIds }: { f: any; teamIds: string[] }) {
         </p>
         <p className="text-[10px] text-text-muted">
           {formatWhen(f.scheduled_date)}
-          <span className={`ml-1.5 text-[9px] font-bold tracking-wider px-1 py-0.5 rounded border ${typeStyle.colour}`}>
-            {typeStyle.label}
-          </span>
-          {f.matchday && (
-            <span className="ml-1 text-[9px] text-text-muted font-semibold">MD{f.matchday}</span>
-          )}
         </p>
       </div>
 
@@ -133,14 +123,14 @@ interface MobileProps {
 }
 
 export default function Mobile({ data }: MobileProps) {
-  const { user, teams, teamIds, fixturesWithResults, grouped, sortedKeys, primaryTeam, wins, draws, losses } = data
+  const { user, teamIds, fixturesWithResults, grouped, sortedKeys, primaryTeam, wins, draws, losses } = data
 
   if (!user) {
     return (
       <div className="px-4 pb-8 space-y-5">
-        <h1 className="text-lg font-bold text-text-primary">My Results</h1>
+        <h1 className="text-base font-bold text-text-primary">My Results</h1>
         <div className="bg-bg-surface border border-border rounded-xl p-10 text-center space-y-3">
-          <Trophy className="w-10 h-10 text-text-muted mx-auto" />
+          <Trophy className="w-8 h-8 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">Log in to see your team&apos;s past results.</p>
           <Link href="/login" className="btn-gold inline-block text-sm">Log in</Link>
         </div>
@@ -151,9 +141,9 @@ export default function Mobile({ data }: MobileProps) {
   if (teamIds.length === 0) {
     return (
       <div className="px-4 pb-8 space-y-5">
-        <h1 className="text-lg font-bold text-text-primary">My Results</h1>
+        <h1 className="text-base font-bold text-text-primary">My Results</h1>
         <div className="bg-bg-surface border border-border rounded-xl p-10 text-center space-y-3">
-          <Crosshair className="w-10 h-10 text-text-muted mx-auto" />
+          <Crosshair className="w-8 h-8 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">You don&apos;t have a team yet.</p>
           <Link href="/select-team" className="btn-gold inline-block text-sm">Pick a team</Link>
         </div>
@@ -163,23 +153,23 @@ export default function Mobile({ data }: MobileProps) {
 
   return (
     <div className="px-4 pb-8 space-y-5">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {primaryTeam?.logo_league_folder && (
           <TeamLogo
             leagueFolder={primaryTeam.logo_league_folder}
             teamSlug={primaryTeam.logo_team_slug}
             context="fixture_card"
             alt={primaryTeam.name}
-            className="w-10 h-10"
+            className="w-8 h-8 shrink-0"
           />
         )}
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-text-primary">My Results</h1>
+          <h1 className="text-sm font-bold text-text-primary">My Results</h1>
           {primaryTeam && (
-            <p className="text-xs text-accent font-medium truncate">{primaryTeam.name}</p>
+            <p className="text-[10px] text-accent font-medium truncate">{primaryTeam.name}</p>
           )}
         </div>
-        <Link href="/fixtures" className="text-sm font-semibold text-accent shrink-0 hover:text-accent-hover transition-colors">
+        <Link href="/fixtures" className="text-xs font-semibold text-accent shrink-0 hover:text-accent-hover transition-colors">
           Upcoming →
         </Link>
       </div>
@@ -213,10 +203,26 @@ export default function Mobile({ data }: MobileProps) {
             return (
               <section key={monthKey}>
                 <div className="flex items-center gap-2 mb-2.5 px-1">
-                  <span className="w-1 h-4 rounded-full bg-accent" />
+                  <span className="w-1 h-4 rounded-full bg-accent shrink-0" />
                   <h2 className="text-xs font-black uppercase tracking-widest text-text-muted">
                     {formatMonth(fixturesInGroup[0]?.scheduled_date)}
                   </h2>
+                  {(() => {
+                    const first = fixturesInGroup[0]!
+                    const t = Array.isArray(first.tournament) ? first.tournament[0] : first.tournament
+                    const tt = t?.type ?? 'unknown'
+                    const ts = TYPE_STYLES[tt] ?? { label: t?.name ?? '—', colour: 'bg-slate-500/10 text-text-muted border-slate-500/25' }
+                    return (
+                      <>
+                        <span className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded border ${ts.colour}`}>
+                          {ts.label}
+                        </span>
+                        {first.matchday && (
+                          <span className="text-[9px] text-text-muted font-semibold">MD{first.matchday}</span>
+                        )}
+                      </>
+                    )
+                  })()}
                   <span className="text-[10px] text-text-muted font-medium ml-auto">({fixturesInGroup.length})</span>
                 </div>
                 <div className="space-y-2.5">
