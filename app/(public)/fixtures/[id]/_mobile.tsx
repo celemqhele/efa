@@ -8,7 +8,7 @@ import MatchroomCode from '@/components/ui/MatchroomCode'
 import ReactionsPanel from '@/components/ui/ReactionsPanel'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import {
-  Gamepad2, Home, Plane, BarChart3, Swords, Sword, Dna, TrendingUp,
+  Gamepad2, Home, Plane, BarChart3, Swords, Dna, TrendingUp,
   MessageSquare, CheckCircle, Hourglass, Zap, Check, X, ChevronDown,
   Crown, Drama, Brain, Shield, Dumbbell,
   ArrowLeftRight, Triangle, Crosshair, Scale,
@@ -19,7 +19,7 @@ const DNA_ICONS: Record<string, React.ReactNode> = {
   theater: <Drama className="w-3.5 h-3.5" />,
   zap: <Zap className="w-3.5 h-3.5" />,
   brain: <Brain className="w-3.5 h-3.5" />,
-  dagger: <Sword className="w-3.5 h-3.5" />,
+  dagger: <Swords className="w-3.5 h-3.5" />,
   shield: <Shield className="w-3.5 h-3.5" />,
   muscle: <Dumbbell className="w-3.5 h-3.5" />,
   arrows_horizontal: <ArrowLeftRight className="w-3.5 h-3.5" />,

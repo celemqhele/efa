@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { LEVEL_LABELS, type PersonalizedDescription } from '@/lib/dna-engine'
 import {
-  Crown, Drama, Zap, Brain, Sword, Shield, Dumbbell,
+  Crown, Drama, Zap, Brain, Swords, Shield, Dumbbell,
   ArrowLeftRight, Triangle, Crosshair, Scale,
 } from 'lucide-react'
 import { Button } from './Button'
@@ -13,7 +13,7 @@ const DNA_ICONS: Record<string, React.ReactNode> = {
   theater: <Drama className="w-4 h-4" />,
   zap: <Zap className="w-4 h-4" />,
   brain: <Brain className="w-4 h-4" />,
-  dagger: <Sword className="w-4 h-4" />,
+  dagger: <Swords className="w-4 h-4" />,
   shield: <Shield className="w-4 h-4" />,
   muscle: <Dumbbell className="w-4 h-4" />,
   arrows_horizontal: <ArrowLeftRight className="w-4 h-4" />,
@@ -27,7 +27,7 @@ const DNA_ICONS_LARGE: Record<string, React.ReactNode> = {
   theater: <Drama className="w-7 h-7" />,
   zap: <Zap className="w-7 h-7" />,
   brain: <Brain className="w-7 h-7" />,
-  dagger: <Sword className="w-7 h-7" />,
+  dagger: <Swords className="w-7 h-7" />,
   shield: <Shield className="w-7 h-7" />,
   muscle: <Dumbbell className="w-7 h-7" />,
   arrows_horizontal: <ArrowLeftRight className="w-7 h-7" />,

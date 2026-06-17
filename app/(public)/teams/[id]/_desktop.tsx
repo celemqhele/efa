@@ -9,7 +9,7 @@ import TeamManagerAdmin from './TeamManagerAdmin'
 import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { Card } from '@/components/ui/Card'
-import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Sword, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, UserPlus, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History, ChevronRight } from 'lucide-react'
+import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, UserPlus, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History, ChevronRight } from 'lucide-react'
 
 const TROPHY_ICON: Record<string, string> = {
   league: 'trophy',
@@ -30,7 +30,7 @@ const DNA_ICONS: Record<string, React.ReactNode> = {
   theater: <Drama className="w-4 h-4" />,
   zap: <Zap className="w-4 h-4" />,
   brain: <Brain className="w-4 h-4" />,
-  dagger: <Sword className="w-4 h-4" />,
+  dagger: <Swords className="w-4 h-4" />,
   shield: <Shield className="w-4 h-4" />,
   muscle: <Dumbbell className="w-4 h-4" />,
   arrows_horizontal: <ArrowLeftRight className="w-4 h-4" />,
