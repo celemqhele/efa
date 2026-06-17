@@ -257,6 +257,7 @@ export async function POST(request: Request) {
       tournament_id,
       round_type,
       matchday,
+      status,
       home_team_id,
       away_team_id,
       home_team:teams!fixtures_home_team_id_fkey(id, manager_id, name),
@@ -374,7 +375,9 @@ export async function POST(request: Request) {
   }
 
   // ── Standings + tournament progression (non-fatal) ────────────────────────
-  try {
+  if (fixture.status === 'confirmed') {
+    console.log('[finalise-result] fixture already confirmed — skipping standings update')
+  } else try {
     const roundType: string = fixture.round_type ?? ''
     const tournamentId: string = fixture.tournament_id ?? ''
     const homeTeamId: string | null = fixture.home_team_id ?? null
@@ -423,7 +426,6 @@ export async function POST(request: Request) {
       }
     } else if (['qf', 'sf', 'final'].includes(roundType)) {
       if (bothAbsent && roundType !== 'final') {
-        // Find best eliminated team from group stage to replace the absent teams
         const { data: allKO } = await adminSupabase
           .from('fixtures')
           .select('home_team_id, away_team_id')
