@@ -12,32 +12,32 @@ export default function Mobile({ data }: { data: any }) {
   const { userTeam, tournament, standings, nextDate, upcomingFixtures, latestResults, unbeaten } = data
 
   return (
-    <div>
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-bg-surface to-bg-base border border-border p-space-4 sm:p-space-6 mb-space-4 sm:mb-space-6 shadow-sm">
+    <div className="overflow-x-hidden">
+      <Card className="relative overflow-hidden bg-gradient-to-br from-bg-surface to-bg-base p-space-3 sm:p-space-4 mb-space-4 sm:mb-space-6">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-accent),transparent_70%)] opacity-5" />
         <div className="relative">
           <div className="flex items-center gap-space-2 sm:gap-space-3 mb-space-1 sm:mb-space-2">
             <Image
               src="/efa-logo-white.png"
               alt="EFA"
-              width={40}
-              height={40}
-              className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+              width={32}
+              height={32}
+              className="w-6 h-6 sm:w-8 sm:h-8 object-contain"
             />
             <div>
-              <h1 className="text-base sm:text-xl font-bold text-text-primary">Efootball Federal Association</h1>
-              <p className="text-[11px] sm:text-xs text-accent">Season 2025/26 — Live</p>
+              <h1 className="text-sm sm:text-base font-bold text-text-primary">Efootball Federal Association</h1>
+              <p className="text-[10px] sm:text-[11px] text-accent">Season 2025/26 — Live</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-space-2 mt-space-3 sm:mt-space-4">
-            <Button as={Link} href="/standings" variant="primary" className="text-xs px-space-3 sm:px-space-4 min-h-[36px] sm:min-h-0">View Standings</Button>
-            <Button as={Link} href="/fixtures" variant="secondary" className="text-xs px-space-3 sm:px-space-4 min-h-[36px] sm:min-h-0">Fixtures</Button>
+          <div className="flex flex-wrap gap-space-2 mt-space-2 sm:mt-space-3">
+            <Button as={Link} href="/standings" variant="primary" className="text-xs px-space-3 sm:px-space-4 min-h-[32px] sm:min-h-0">View Standings</Button>
+            <Button as={Link} href="/fixtures" variant="secondary" className="text-xs px-space-3 sm:px-space-4 min-h-[32px] sm:min-h-0">Fixtures</Button>
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div className="grid lg:grid-cols-3 gap-space-6">
-        <div className="lg:col-span-2 space-y-space-6">
+      <div className="space-y-space-4 lg:grid lg:grid-cols-3 lg:gap-space-6">
+        <div className="lg:col-span-2 space-y-space-4 lg:space-y-space-6">
           <Card className="p-space-3 sm:p-space-4">
             <div className="flex items-center justify-between mb-space-2 sm:mb-space-3">
               <div>
@@ -49,7 +49,7 @@ export default function Mobile({ data }: { data: any }) {
                   </p>
                 )}
               </div>
-              <Link href="/fixtures" className="text-xs text-accent hover:text-accent-hover font-medium">View all →</Link>
+              <Link href="/fixtures" className="text-xs text-accent hover:text-accent-hover font-medium shrink-0">View all →</Link>
             </div>
 
             {!upcomingFixtures.length ? (
@@ -57,8 +57,8 @@ export default function Mobile({ data }: { data: any }) {
             ) : (
               <div className="divide-y divide-border">
                 {upcomingFixtures.map((f: any) => (
-                  <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-space-2 sm:py-space-3 gap-space-1 sm:gap-space-3 hover:bg-bg-base/50 -mx-space-3 sm:-mx-space-4 px-space-3 sm:px-space-4 transition-colors">
-                    <div className="flex-1 flex items-center gap-space-1 sm:gap-space-2">
+                  <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-space-2 sm:py-space-3 gap-space-1 sm:gap-space-3 hover:bg-bg-base/50 transition-colors rounded-lg">
+                    <div className="flex-1 flex items-center gap-space-1 sm:gap-space-2 min-w-0">
                       {f.home_team?.logo_league_folder && (
                         <TeamLogo
                           leagueFolder={f.home_team.logo_league_folder}
@@ -71,7 +71,7 @@ export default function Mobile({ data }: { data: any }) {
                       <span className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.home_team?.name}</span>
                     </div>
 
-                    <div className="text-center min-w-[36px] sm:min-w-[60px]">
+                    <div className="text-center shrink-0 min-w-[36px] sm:min-w-[60px]">
                       {f.results?.[0] ? (
                         <span className="text-text-primary font-bold text-xs sm:text-sm">
                           {f.results[0].home_score}–{f.results[0].away_score}
@@ -89,8 +89,8 @@ export default function Mobile({ data }: { data: any }) {
                       </div>
                     </div>
 
-                    <div className="flex-1 flex items-center justify-end gap-space-1 sm:gap-space-2">
-                      <span className="text-xs sm:text-sm font-medium text-text-primary truncate text-right">{f.away_team?.name}</span>
+                    <div className="flex-1 flex items-center justify-end gap-space-1 sm:gap-space-2 min-w-0">
+                      <span className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.away_team?.name}</span>
                       {f.away_team?.logo_league_folder && (
                         <TeamLogo
                           leagueFolder={f.away_team.logo_league_folder}
@@ -110,7 +110,7 @@ export default function Mobile({ data }: { data: any }) {
           <Card className="p-space-3 sm:p-space-4">
             <div className="flex items-center justify-between mb-space-2 sm:mb-space-3">
               <h2 className="section-header mb-0">Latest Results</h2>
-              <Link href="/results" className="text-xs text-accent hover:text-accent-hover font-medium">View all →</Link>
+              <Link href="/results" className="text-xs text-accent hover:text-accent-hover font-medium shrink-0">View all →</Link>
             </div>
 
             {!latestResults?.length ? (
@@ -121,18 +121,18 @@ export default function Mobile({ data }: { data: any }) {
                   const f = r.fixtures
                   if (!f) return null
                   return (
-                    <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-space-1.5 sm:py-space-2 px-space-2 sm:px-space-3 rounded-lg hover:bg-bg-base transition-colors border border-transparent hover:border-border">
-                      <div className="flex items-center gap-space-1 sm:gap-space-2 flex-1">
+                    <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-space-1.5 sm:py-space-2 px-0 rounded-lg hover:bg-bg-base transition-colors border border-transparent hover:border-border">
+                      <div className="flex items-center gap-space-1 sm:gap-space-2 flex-1 min-w-0">
                         {f.home_team?.logo_league_folder && (
                           <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt={f.home_team.name} className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" />
                         )}
                         <span className="text-xs sm:text-sm text-text-primary font-medium truncate">{f.home_team?.name}</span>
                       </div>
-                      <div className="mx-space-1 sm:mx-space-3 text-center">
+                      <div className="mx-space-1 sm:mx-space-3 text-center shrink-0">
                         <span className="text-text-primary font-bold text-xs sm:text-sm">{r.home_score}–{r.away_score}</span>
                       </div>
-                      <div className="flex items-center gap-space-1 sm:gap-space-2 flex-1 justify-end">
-                        <span className="text-xs sm:text-sm text-text-primary font-medium truncate text-right">{f.away_team?.name}</span>
+                      <div className="flex items-center gap-space-1 sm:gap-space-2 flex-1 justify-end min-w-0">
+                        <span className="text-xs sm:text-sm text-text-primary font-medium truncate">{f.away_team?.name}</span>
                         {f.away_team?.logo_league_folder && (
                           <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt={f.away_team.name} className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" />
                         )}
@@ -145,14 +145,14 @@ export default function Mobile({ data }: { data: any }) {
           </Card>
         </div>
 
-        <div className="space-y-space-6">
+        <div className="space-y-space-4 lg:space-y-space-6">
           {standings && standings.length > 0 && (
             <Card className="p-space-4">
               <div className="flex items-center justify-between mb-space-3">
                 <h2 className="section-header mb-0">
                   <span className="text-accent">PL</span> Top 6
                 </h2>
-                <Link href="/standings" className="text-xs text-accent font-medium">Full table →</Link>
+                <Link href="/standings" className="text-xs text-accent font-medium shrink-0">Full table →</Link>
               </div>
               <div className="space-y-space-1">
                 {standings.map((s: any, idx: number) => {
@@ -173,8 +173,8 @@ export default function Mobile({ data }: { data: any }) {
                         />
                       )}
                       <span className="flex-1 text-xs text-text-primary truncate font-medium">{team?.name}</span>
-                      {s.unbeaten_run >= 3 && <Flame className="w-3.5 h-3.5 text-orange-400 inline" />}
-                      <span className="text-xs font-bold text-text-primary w-5 text-right">{s.points}</span>
+                      {s.unbeaten_run >= 3 && <Flame className="w-3.5 h-3.5 text-orange-400 inline shrink-0" />}
+                      <span className="text-xs font-bold text-text-primary w-5 text-right shrink-0">{s.points}</span>
                     </Link>
                   )
                 })}
@@ -189,10 +189,10 @@ export default function Mobile({ data }: { data: any }) {
                 {unbeaten.map((u: any, i: number) => (
                   <div key={i} className="flex items-center gap-space-2">
                     {u.teams?.logo_league_folder && (
-                      <Image src={getTeamLogo(u.teams.logo_league_folder, u.teams.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain" />
+                      <Image src={getTeamLogo(u.teams.logo_league_folder, u.teams.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain shrink-0" />
                     )}
                     <span className="flex-1 text-sm text-text-primary truncate">{u.teams?.name}</span>
-                    <span className="text-xs bg-feedback-success/20 text-feedback-success px-space-2 py-0.5 rounded font-bold">
+                    <span className="text-xs bg-feedback-success/20 text-feedback-success px-space-2 py-0.5 rounded font-bold shrink-0">
                       {u.unbeaten_run} unbeaten
                     </span>
                   </div>

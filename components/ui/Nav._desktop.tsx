@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { House, CalendarDays, ListChecks, LayoutDashboard, Bell, LogOut } from 'lucide-react'
+import { House, CalendarDays, ListChecks, Trophy, LayoutDashboard, Bell, LogOut } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
 
 interface NavDesktopProps {
@@ -22,6 +22,7 @@ function getNavLinks(): { href: string; label: string; icon: any }[] {
     { href: '/', label: 'Home', icon: House },
     { href: '/fixtures', label: 'Fixtures', icon: CalendarDays },
     { href: '/results', label: 'Results', icon: ListChecks },
+    { href: '/standings', label: 'Standings', icon: Trophy },
   ]
 }
 

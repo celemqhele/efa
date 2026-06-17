@@ -181,7 +181,7 @@ export default function GlobalSearch() {
       {open && (
         <div
           ref={overlayRef}
-          className="fixed inset-0 z-[100] bg-bg-primary flex flex-col sm:hidden animate-fade-in"
+          className="fixed inset-0 z-[100] bg-bg-base flex flex-col sm:hidden animate-fade-in"
         >
           {/* Search bar with close */}
           <div className="flex items-center gap-3 px-4 pt-safe-area-top pb-3 border-b border-border">

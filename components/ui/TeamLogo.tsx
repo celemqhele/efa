@@ -26,7 +26,7 @@ export default function TeamLogo({ leagueFolder, teamSlug, context, alt, classNa
   const size = SIZE_PX[context]
 
   return (
-    <div className={`inline-flex items-center justify-center ${className}`}>
+    <div className={`inline-flex items-center justify-center overflow-hidden ${className}`}>
       <Image
         src={src}
         alt={alt}

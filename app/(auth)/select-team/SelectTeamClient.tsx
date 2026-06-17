@@ -60,15 +60,15 @@ export default function SelectTeamClient({ clubs }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-bg-base px-4 py-8">
+    <div className="min-h-screen bg-bg-base px-4 py-6">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center mb-3">
-            <span className="text-bg-base font-black text-lg">EFA</span>
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center mb-2">
+            <span className="text-bg-base font-black text-base">EFA</span>
           </div>
-          <h1 className="text-2xl font-bold text-text-primary">Choose Your Club</h1>
-          <p className="text-text-secondary text-sm mt-1">
+          <h1 className="text-xl font-bold text-text-primary">Choose Your Club</h1>
+          <p className="text-text-secondary text-xs mt-0.5">
             {available.length} club{available.length !== 1 ? 's' : ''} available to manage
           </p>
         </div>
