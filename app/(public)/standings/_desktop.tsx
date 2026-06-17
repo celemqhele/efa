@@ -107,14 +107,14 @@ export default function Desktop({ data }: DesktopProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-[760px] mx-auto space-y-3">
       {tournaments && tournaments.length > 1 && (
         <div className="flex items-center gap-3">
           <label className="text-xs font-semibold text-text-muted uppercase tracking-wider shrink-0">Tournament</label>
           <select
             value={activeTournamentId}
             onChange={(e) => router.push(`/standings?tournament=${e.target.value}`)}
-            className="bg-bg-surface/80 backdrop-saturate-150 backdrop-blur-2xl border border-border rounded-xl px-3 py-1.5 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer appearance-none"
+            className="bg-bg-surface border border-border rounded-xl px-3 py-1.5 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer"
           >
             {tournaments.map((t: any) => (
               <option key={t.id} value={t.id}>
@@ -129,12 +129,9 @@ export default function Desktop({ data }: DesktopProps) {
         <div className="bg-bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
             <span className="w-1 h-4 rounded-full bg-accent shrink-0" />
-            <div>
-              <h2 className="text-sm font-bold text-text-primary">League Standings</h2>
-              {activeTournament?.name && (
-                <p className="text-[11px] text-text-muted">{activeTournament.name}</p>
-              )}
-            </div>
+            {activeTournament?.name && (
+              <p className="text-xs text-text-muted font-medium">{activeTournament.name}</p>
+            )}
           </div>
           {leagueStandings.length > 0 ? (
             <div className="p-4 space-y-3">
@@ -152,12 +149,9 @@ export default function Desktop({ data }: DesktopProps) {
         <div className="bg-bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
             <span className="w-1 h-4 rounded-full bg-accent shrink-0" />
-            <div>
-              <h2 className="text-sm font-bold text-text-primary">Group Standings</h2>
-              {activeTournament?.name && (
-                <p className="text-[11px] text-text-muted">{activeTournament.name}</p>
-              )}
-            </div>
+            {activeTournament?.name && (
+              <p className="text-xs text-text-muted font-medium">{activeTournament.name}</p>
+            )}
           </div>
           {Object.keys(groupStandings).length > 0 ? (
             <div className="p-4 space-y-5">
