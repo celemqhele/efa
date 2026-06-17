@@ -4,7 +4,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
-import { CircleDot, Crosshair, CalendarDays, ChevronRight } from 'lucide-react'
+import { Trophy, Crosshair, CalendarDays, ChevronRight } from 'lucide-react'
 
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   scheduled: { label: 'Scheduled', pill: 'bg-slate-500/20 text-text-muted border-slate-500/30' },
@@ -56,6 +56,20 @@ function formatDateGroup(dateStr: string | null): string {
   }
 }
 
+function formatWhen(dateStr: string | null): string {
+  if (!dateStr) return 'TBD'
+  try {
+    const d = parseISO(dateStr)
+    const timePart = d.toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit',
+      timeZone: APP_TIME_ZONE,
+    })
+    return timePart
+  } catch {
+    return dateStr
+  }
+}
+
 interface DesktopProps {
   data: {
     user: any
@@ -77,7 +91,7 @@ export default function Desktop({ data }: DesktopProps) {
       <div className="max-w-7xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-text-primary">My Fixtures</h1>
         <div className="bg-bg-surface border border-border rounded-2xl p-12 text-center space-y-4">
-          <CircleDot className="w-10 h-10 text-text-muted mx-auto" />
+          <Trophy className="w-10 h-10 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">Log in to see your team&apos;s fixtures.</p>
           <Link href="/login" className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)]">
             Log in
@@ -141,94 +155,67 @@ export default function Desktop({ data }: DesktopProps) {
                   <h2 className="text-sm font-bold tracking-wide text-text-muted">{formatDateGroup(dateKey)}</h2>
                   <span className="text-xs text-text-muted font-medium ml-auto">({fixturesInGroup.length})</span>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-bg-base">
-                        <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 w-20">Time</th>
-                        <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 w-24">Comp</th>
-                        <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5">Home</th>
-                        <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 w-20">Score</th>
-                        <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5">Away</th>
-                        <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 w-28">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {fixturesInGroup.map((f: any) => {
-                        const home = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team
-                        const away = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team
-                        const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
-                        const isHome = teamIds.includes(home?.id)
-                        const result = f._result
-                        const myScore = isHome ? result?.home_score : result?.away_score
-                        const oppScore = isHome ? result?.away_score : result?.home_score
-                        const tournamentType = t?.type ?? 'unknown'
-                        const typeStyle = TYPE_STYLES[tournamentType] ?? { label: t?.name ?? '—', colour: 'bg-slate-500/10 text-text-muted border-slate-500/25' }
-                        const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
-                        const time = formatTime(f.scheduled_date)
+                <div className="divide-y divide-border/50">
+                  {fixturesInGroup.map((f: any) => {
+                    const home = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team
+                    const away = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team
+                    const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
+                    const isHome = teamIds.includes(home?.id)
+                    const opponent = isHome ? away : home
+                    const result = f._result
+                    const myScore = isHome ? result?.home_score : result?.away_score
+                    const oppScore = isHome ? result?.away_score : result?.home_score
+                    const tournamentType = t?.type ?? 'unknown'
+                    const typeStyle = TYPE_STYLES[tournamentType] ?? { label: t?.name ?? '—', colour: 'bg-slate-500/10 text-text-muted border-slate-500/25' }
+                    const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
 
-                        return (
-                          <tr
-                            key={f.id}
-                            className="border-b border-border/50 hover:bg-accent/5 transition-colors cursor-pointer"
-                            onClick={() => window.location.href = `/fixtures/${f.id}`}
-                          >
-                            <td className="px-4 py-3.5">
-                              <span className="font-mono text-text-muted text-xs font-semibold tabular-nums">{time ?? '—'}</span>
-                            </td>
-                            <td className="px-4 py-3.5">
-                              <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md border ${typeStyle.colour}`}>
-                                {typeStyle.label}
+                    return (
+                      <Link
+                        key={f.id}
+                        href={`/fixtures/${f.id}`}
+                        className="flex items-center gap-4 px-6 py-4 hover:bg-accent/5 transition-colors"
+                      >
+                        {opponent?.logo_league_folder && (
+                          <TeamLogo
+                            leagueFolder={opponent.logo_league_folder}
+                            teamSlug={opponent.logo_team_slug}
+                            context="fixture_card"
+                            alt={opponent.name}
+                            className="w-10 h-10 shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className={`text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded-md border ${typeStyle.colour}`}>
+                              {typeStyle.label}
+                            </span>
+                            {f.matchday && <span className="text-[10px] text-text-muted font-semibold">MD{f.matchday}</span>}
+                          </div>
+                          <p className="text-sm font-semibold text-text-primary truncate">{opponent?.name ?? 'TBC'}</p>
+                          <p className="text-xs text-text-muted mt-0.5">{formatWhen(f.scheduled_date)}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {result ? (
+                            <>
+                              <span className="text-xl font-black text-text-primary tabular-nums leading-none">
+                                {myScore}–{oppScore}
                               </span>
-                            </td>
-                            <td className="px-4 py-3.5 min-w-0">
-                              <div className="flex items-center gap-2.5 justify-end flex-row-reverse">
-                                <span className="font-semibold text-text-primary truncate">{home?.name ?? 'TBC'}</span>
-                                {home?.logo_league_folder && (
-                                  <TeamLogo
-                                    leagueFolder={home.logo_league_folder}
-                                    teamSlug={home.logo_team_slug}
-                                    context="fixture_card"
-                                    alt={home.name}
-                                    className="w-7 h-7 shrink-0"
-                                  />
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3.5 text-center">
-                              {result ? (
-                                <span className="text-lg font-black text-text-primary tabular-nums leading-none">{myScore}–{oppScore}</span>
-                              ) : (
-                                <span className="text-xs font-black uppercase tracking-widest text-text-muted">vs</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3.5 min-w-0">
-                              <div className="flex items-center gap-2.5">
-                                {away?.logo_league_folder && (
-                                  <TeamLogo
-                                    leagueFolder={away.logo_league_folder}
-                                    teamSlug={away.logo_team_slug}
-                                    context="fixture_card"
-                                    alt={away.name}
-                                    className="w-7 h-7 shrink-0"
-                                  />
-                                )}
-                                <span className="font-semibold text-text-primary truncate">{away?.name ?? 'TBC'}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3.5 text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <span className={`text-[10px] px-2.5 py-0.5 rounded-md border font-semibold ${statusInfo.pill}`}>
-                                  {statusInfo.label}
-                                </span>
-                                {f.matchday && <span className="text-[10px] text-text-muted">MD{f.matchday}</span>}
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${statusInfo.pill}`}>
+                                {statusInfo.label}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-base font-black uppercase tracking-widest text-text-muted leading-none">vs</span>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${statusInfo.pill}`}>
+                                {statusInfo.label}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </Link>
+                    )
+                  })}
                 </div>
               </section>
             )
