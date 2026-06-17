@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { House, BarChart3, CalendarDays, ListChecks, Calendar, Trophy, ScrollText, LayoutDashboard, Bell, LogOut } from 'lucide-react'
+import { House, BarChart3, CalendarDays, ListChecks, Calendar, LayoutDashboard, Bell, LogOut } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
 
 interface NavDesktopProps {
@@ -28,8 +28,7 @@ function getNavLinks(isAdmin: boolean): { href: string; label: string; icon: any
       ? [{ href: '/admin/calendar?scope=mine', label: 'Calendar', icon: Calendar }]
       : [{ href: '/calendar', label: 'Calendar', icon: Calendar }]
     ),
-    { href: '/hall-of-fame', label: 'Hall of Fame', icon: Trophy },
-    { href: '/rules', label: 'Rules', icon: ScrollText },
+
   ]
   return links
 }

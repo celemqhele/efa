@@ -1,47 +1,16 @@
 'use client'
-import Image from 'next/image'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import TeamLogo from '@/components/ui/TeamLogo'
-import { Trophy, ClipboardList, CalendarDays, Flame, Vote, ArrowRight, TrendingUp, Swords } from 'lucide-react'
+import { Trophy, ClipboardList, CalendarDays, Flame, Vote, ArrowRight } from 'lucide-react'
 
 export default function Desktop({ data }: { data: any }) {
-  const { userTeam, tournament, standings, nextDate, upcomingFixtures, latestResults, unbeaten } = data
+  const { userTeam, standings, nextDate, upcomingFixtures, latestResults, unbeaten } = data
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-bg-surface to-bg-base border border-border p-8 shadow-sm">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-accent),transparent_70%)] opacity-5" />
-        <div className="relative">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center ring-1 ring-accent/20">
-              <Image
-                src="/efa-logo-white.png"
-                alt="EFA"
-                width={28}
-                height={28}
-                className="w-7 h-7 object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-text-primary">Efootball Federal Association</h1>
-              <p className="text-sm text-accent font-medium">Season 2025/26</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 mt-5">
-            <Button as={Link} href="/standings" variant="primary" className="text-sm px-5 h-9 gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Standings
-            </Button>
-            <Button as={Link} href="/fixtures" variant="secondary" className="text-sm px-5 h-9 gap-2">
-              <Swords className="w-4 h-4" />
-              Fixtures
-            </Button>
-          </div>
-        </div>
-      </div>
+
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
