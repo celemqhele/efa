@@ -2,6 +2,7 @@
 
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { goalDifference } from '@/lib/standings-core'
 
 const TOURNAMENT_TYPE_LABELS: Record<string, string> = {
@@ -23,15 +24,15 @@ function StandingsTable({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; m
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-bg-base">
-            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-3 py-3.5 w-10">#</th>
-            <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-3 py-3.5">Team</th>
-            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-3 py-3.5 w-10">P</th>
-            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-3 py-3.5 w-10">W</th>
-            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-3 py-3.5 w-10">D</th>
-            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-3 py-3.5 w-10">L</th>
-            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-3 py-3.5 w-10">A</th>
-            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-3 py-3.5 w-14">GD</th>
-            <th className="text-center text-accent font-bold uppercase tracking-wider text-[11px] px-3 py-3.5 w-14 bg-accent/5">Pts</th>
+            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-2 py-2 w-8">#</th>
+            <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[11px] px-2 py-2">Team</th>
+            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-2 py-2 w-8">P</th>
+            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-2 py-2 w-8">W</th>
+            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-2 py-2 w-8">D</th>
+            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-2 py-2 w-8">L</th>
+            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-2 py-2 w-8">A</th>
+            <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[11px] px-2 py-2 w-12">GD</th>
+            <th className="text-center text-accent font-bold uppercase tracking-wider text-[11px] px-2 py-2 w-12 bg-accent/5">Pts</th>
           </tr>
         </thead>
         <tbody>
@@ -49,31 +50,31 @@ function StandingsTable({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; m
                 className={`border-l-4 ${borderColor} ${index % 2 === 0 ? 'bg-bg-surface' : 'bg-bg-base'} hover:bg-accent/5 transition-colors cursor-pointer`}
                 onClick={() => window.location.href = `/teams/${row.team_id}`}
               >
-                <td className={`text-center font-bold px-3 py-3.5 tabular-nums ${isTopThree ? 'text-accent' : 'text-text-muted'}`}>{index + 1}</td>
-                <td className="px-3 py-3.5 min-w-0">
-                  <div className="flex items-center gap-3">
+                <td className={`text-center font-bold px-2 py-2 tabular-nums ${isTopThree ? 'text-accent' : 'text-text-muted'}`}>{index + 1}</td>
+                <td className="px-2 py-2 min-w-0">
+                  <div className="flex items-center gap-2">
                     {row.team?.logo_league_folder && (
                       <TeamLogo
                         leagueFolder={row.team.logo_league_folder}
                         teamSlug={row.team.logo_team_slug}
                         context="standings_row"
                         alt={row.team.name}
-                        className="w-7 h-7 shrink-0"
+                        className="w-6 h-6 shrink-0"
                       />
                     )}
-                    <span className="font-semibold text-text-primary truncate">{row.team?.name ?? 'Unknown team'}</span>
+                    <span className="font-semibold text-text-primary truncate text-sm">{row.team?.name ?? 'Unknown team'}</span>
                     {qualifies && (
                       <span className="text-[10px] font-bold text-accent bg-accent/10 border border-accent/20 rounded-md px-1.5 py-0.5 shrink-0">Q</span>
                     )}
                   </div>
                 </td>
-                <td className="text-center font-medium text-text-secondary px-3 py-3.5 tabular-nums">{row.played ?? 0}</td>
-                <td className="text-center font-medium text-text-secondary px-3 py-3.5 tabular-nums">{row.wins ?? 0}</td>
-                <td className="text-center font-medium text-text-secondary px-3 py-3.5 tabular-nums">{row.draws ?? 0}</td>
-                <td className="text-center font-medium text-text-secondary px-3 py-3.5 tabular-nums">{row.losses ?? 0}</td>
-                <td className={`text-center font-medium px-3 py-3.5 tabular-nums ${(row.absent ?? 0) > 0 ? 'text-orange-400' : 'text-text-secondary'}`}>{row.absent ?? 0}</td>
-                <td className={`text-center font-semibold px-3 py-3.5 tabular-nums ${gd >= 0 ? 'text-feedback-success' : 'text-feedback-error'}`}>{gd > 0 ? `+${gd}` : gd}</td>
-                <td className="text-center font-black text-accent px-3 py-3.5 tabular-nums bg-accent/[0.03]">{row.points ?? 0}</td>
+                <td className="text-center font-medium text-text-secondary px-2 py-2 tabular-nums text-sm">{row.played ?? 0}</td>
+                <td className="text-center font-medium text-text-secondary px-2 py-2 tabular-nums text-sm">{row.wins ?? 0}</td>
+                <td className="text-center font-medium text-text-secondary px-2 py-2 tabular-nums text-sm">{row.draws ?? 0}</td>
+                <td className="text-center font-medium text-text-secondary px-2 py-2 tabular-nums text-sm">{row.losses ?? 0}</td>
+                <td className={`text-center font-medium px-2 py-2 tabular-nums text-sm ${(row.absent ?? 0) > 0 ? 'text-orange-400' : 'text-text-secondary'}`}>{row.absent ?? 0}</td>
+                <td className={`text-center font-semibold px-2 py-2 tabular-nums text-sm ${gd >= 0 ? 'text-feedback-success' : 'text-feedback-error'}`}>{gd > 0 ? `+${gd}` : gd}</td>
+                <td className="text-center font-black text-accent px-2 py-2 tabular-nums text-sm bg-accent/[0.03]">{row.points ?? 0}</td>
               </tr>
             )
           })}
@@ -94,6 +95,7 @@ interface DesktopProps {
 }
 
 export default function Desktop({ data }: DesktopProps) {
+  const router = useRouter()
   const { tournaments, activeTournamentId, activeTournament, leagueStandings, groupStandings } = data
 
   if (!activeTournamentId || !activeTournament) {
@@ -105,82 +107,78 @@ export default function Desktop({ data }: DesktopProps) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4">
       {tournaments && tournaments.length > 1 && (
-        <div className="flex items-center gap-0.5 bg-bg-elevated/50 rounded-2xl p-1 w-fit">
-          {tournaments.map((t: any) => {
-            const isActive = t.id === activeTournamentId
-            return (
-              <Link
-                key={t.id}
-                href={`/standings?tournament=${t.id}`}
-                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
-                  isActive
-                    ? 'bg-accent text-bg-base shadow-sm'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-elevated/80'
-                }`}
-              >
+        <div className="flex items-center gap-3">
+          <label className="text-xs font-semibold text-text-muted uppercase tracking-wider shrink-0">Tournament</label>
+          <select
+            value={activeTournamentId}
+            onChange={(e) => router.push(`/standings?tournament=${e.target.value}`)}
+            className="bg-bg-surface/80 backdrop-saturate-150 backdrop-blur-2xl border border-border rounded-xl px-3 py-1.5 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer appearance-none"
+          >
+            {tournaments.map((t: any) => (
+              <option key={t.id} value={t.id}>
                 {TOURNAMENT_TYPE_LABELS[t.type] ?? t.name}
-              </Link>
-            )
-          })}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
       {activeTournament?.type === 'league' ? (
         <div className="bg-bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-border flex items-center gap-3">
-            <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
+          <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-accent shrink-0" />
             <div>
-              <h2 className="text-base font-bold text-text-primary">League Standings</h2>
+              <h2 className="text-sm font-bold text-text-primary">League Standings</h2>
               {activeTournament?.name && (
-                <p className="text-xs text-text-muted mt-0.5">{activeTournament.name}</p>
+                <p className="text-[11px] text-text-muted">{activeTournament.name}</p>
               )}
             </div>
           </div>
           {leagueStandings.length > 0 ? (
-            <div className="p-6 space-y-4">
+            <div className="p-4 space-y-3">
               <StandingsTable rows={leagueStandings} mode="league" />
-              <div className="flex gap-6 text-xs text-text-muted">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-accent" />UCL places</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-500" />Europa places</span>
+              <div className="flex gap-5 text-[11px] text-text-muted">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-accent" />UCL places</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500" />Europa places</span>
               </div>
             </div>
           ) : (
-            <div className="p-8 text-center text-sm text-text-muted">No teams found for this tournament.</div>
+            <div className="p-6 text-center text-sm text-text-muted">No teams found for this tournament.</div>
           )}
         </div>
       ) : activeTournament?.type === 'tournament_club' || activeTournament?.type === 'tournament_international' ? (
         <div className="bg-bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-border flex items-center gap-3">
-            <span className="w-1 h-5 rounded-full bg-accent shrink-0" />
+          <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-accent shrink-0" />
             <div>
-              <h2 className="text-base font-bold text-text-primary">Group Standings</h2>
+              <h2 className="text-sm font-bold text-text-primary">Group Standings</h2>
               {activeTournament?.name && (
-                <p className="text-xs text-text-muted mt-0.5">{activeTournament.name}</p>
+                <p className="text-[11px] text-text-muted">{activeTournament.name}</p>
               )}
             </div>
           </div>
           {Object.keys(groupStandings).length > 0 ? (
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-5">
               {Object.entries(groupStandings)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([groupName, rows]) => (
-                  <div key={groupName} className="space-y-3">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-accent flex items-center gap-2">
-                      <span className="w-0.5 h-4 rounded-full bg-accent/40" />
+                  <div key={groupName} className="space-y-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-accent flex items-center gap-2">
+                      <span className="w-0.5 h-3 rounded-full bg-accent/40" />
                       {formatGroupTitle(groupName)}
                     </h3>
                     <StandingsTable rows={rows} mode="group" qualifiersPerGroup={activeTournament?.settings?.qualifiers_per_group ?? 2} />
                   </div>
                 ))}
-              <div className="flex items-center gap-1.5 text-xs text-text-muted">
-                <span className="w-3 h-3 rounded-sm bg-accent" />
+              <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                <span className="w-2.5 h-2.5 rounded-sm bg-accent" />
                 Top {activeTournament?.settings?.qualifiers_per_group ?? 2} qualify
               </div>
             </div>
           ) : (
-            <div className="p-8 text-center text-sm text-text-muted">No teams found for this tournament.</div>
+            <div className="p-6 text-center text-sm text-text-muted">No teams found for this tournament.</div>
           )}
         </div>
       ) : (

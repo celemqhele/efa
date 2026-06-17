@@ -184,15 +184,6 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                           />
                         )}
                       </div>
-                      <div className="flex items-center gap-1 mt-0.5 min-w-0">
-                        <span className="text-[9px] text-text-secondary truncate">
-                          {f.home_team?.name?.split(' ').slice(-1)[0]}
-                        </span>
-                        <span className="text-[9px] text-text-secondary">v</span>
-                        <span className="text-[9px] text-text-secondary truncate">
-                          {f.away_team?.name?.split(' ').slice(-1)[0]}
-                        </span>
-                      </div>
                       <div className={`mt-0.5 h-1 w-full rounded-full ${STATUS_PILL[f.status]?.split(' ')[0] ?? 'bg-border/20'}`} />
                     </Link>
                   )
