@@ -11,21 +11,39 @@ export default async function AdminDashboardPage() {
 
   const { data: tournaments } = await supabase
     .from('tournaments')
-    .select('id, name, type, status, season_id')
+    .select(`
+      id, name, type, status, created_at,
+      season:seasons!tournaments_season_id_fkey(id, name, status)
+    `)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
 
   const tournamentIds = ((tournaments ?? []) as any[]).map((t) => t.id)
-  const { data: fixtureCounts } = tournamentIds.length
+
+  const { data: participants } = tournamentIds.length
     ? await supabase
-        .from('fixtures')
+        .from('tournament_participants')
         .select('tournament_id')
         .in('tournament_id', tournamentIds)
     : { data: [] }
+  const participantCounts: Record<string, number> = {}
+  for (const p of (participants ?? []) as any[]) {
+    participantCounts[p.tournament_id] = (participantCounts[p.tournament_id] ?? 0) + 1
+  }
 
-  const countMap: Record<string, number> = {}
-  for (const f of (fixtureCounts ?? []) as any[]) {
-    countMap[f.tournament_id] = (countMap[f.tournament_id] ?? 0) + 1
+  const { data: fixtures } = tournamentIds.length
+    ? await supabase
+        .from('fixtures')
+        .select('tournament_id, status')
+        .in('tournament_id', tournamentIds)
+    : { data: [] }
+  const fixtureCounts: Record<string, number> = {}
+  const completedCounts: Record<string, number> = {}
+  for (const f of (fixtures ?? []) as any[]) {
+    fixtureCounts[f.tournament_id] = (fixtureCounts[f.tournament_id] ?? 0) + 1
+    if (f.status === 'confirmed') {
+      completedCounts[f.tournament_id] = (completedCounts[f.tournament_id] ?? 0) + 1
+    }
   }
 
   const todayKey = await getAppTodayKey(supabase)
@@ -71,41 +89,6 @@ export default async function AdminDashboardPage() {
         .in('id', conflictFixtureIds)
     : { data: [] }
 
-  const { data: pendingConfirmations } = await supabase
-    .from('fixtures')
-    .select(`
-      id, matchday, scheduled_date,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug)
-    `)
-    .eq('status', 'awaiting_confirmation')
-    .order('scheduled_date', { ascending: true })
-    .limit(10)
-
-  const { data: changeRequests } = await supabase
-    .from('team_change_requests')
-    .select(`
-      id, status, created_at,
-      requesting_user:profiles!team_change_requests_requesting_user_id_fkey(id, username, avatar_url),
-      requested_team:teams!team_change_requests_requested_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-      current_team:teams!team_change_requests_current_team_id_fkey(id, name)
-    `)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-
-  const { data: flaggedTeams } = await supabase
-    .from('teams')
-    .select('id, name, logo_league_folder, logo_team_slug, abandon_count, manager_id')
-    .gte('abandon_count', 3)
-    .order('abandon_count', { ascending: false })
-
-  const managerIds = ((flaggedTeams ?? []) as any[]).filter((t: any) => t.manager_id).map((t: any) => t.manager_id!)
-  const { data: flaggedManagers } = managerIds.length
-    ? await supabase.from('profiles').select('id, username').in('id', managerIds)
-    : { data: [] }
-  const managerMap: Record<string, string> = {}
-  for (const m of (flaggedManagers ?? []) as any[]) managerMap[m.id] = m.username
-
   const { data: auditLog } = await supabase
     .from('audit_log')
     .select('id, action, target_type, target_id, details, created_at, admin:profiles!audit_log_admin_id_fkey(username)')
@@ -115,19 +98,14 @@ export default async function AdminDashboardPage() {
   return (
     <Shell data={{
       tournaments: (tournaments ?? []) as any[],
-      countMap,
+      participantCounts,
+      fixtureCounts,
+      completedCounts,
       dueFixtures: (dueFixtures ?? []) as any[],
       dueCount: dueFixtures?.length ?? 0,
       conflictFixtures: (conflictFixtures ?? []) as any[],
       conflictCount: conflictFixtures?.length ?? 0,
       conflictMap,
-      pendingConfirmations: (pendingConfirmations ?? []) as any[],
-      pendingCount: pendingConfirmations?.length ?? 0,
-      changeRequests: (changeRequests ?? []) as any[],
-      requestCount: changeRequests?.length ?? 0,
-      flaggedTeams: (flaggedTeams ?? []) as any[],
-      flaggedCount: flaggedTeams?.length ?? 0,
-      managerMap,
       auditLog: (auditLog ?? []) as any[],
     }} />
   )

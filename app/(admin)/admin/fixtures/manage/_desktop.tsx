@@ -8,6 +8,7 @@ import { APP_TIME_ZONE } from '@/lib/app-time'
 import ScheduleRoundPanel from './ScheduleRoundPanel'
 import { CalendarDays } from 'lucide-react'
 import { getTeamLogo } from '@/lib/logo-resolver'
+import { cleanTeamName } from '@/lib/clean-team-name'
 
 const TYPE_ORDER = ['league', 'tournament_club', 'tournament_international', 'friendlies'] as const
 
@@ -69,7 +70,7 @@ export default function Desktop({ data }: { data: any }) {
   const orderedTypes = TYPE_ORDER.filter((t) => (grouped[t]?.length ?? 0) > 0)
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-[88rem] mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Fixture Management</h1>
         <p className="text-text-muted text-sm mt-1">
@@ -145,7 +146,7 @@ export default function Desktop({ data }: { data: any }) {
                                     className="object-contain shrink-0"
                                   />
                                 )}
-                                <span className="text-text-primary font-medium">{homeTeam?.name ?? 'TBC'}</span>
+                                <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(homeTeam?.name) ?? 'TBC'}</span>
                               </div>
                             </td>
                             <td className="px-5 py-4 text-center">
@@ -159,7 +160,7 @@ export default function Desktop({ data }: { data: any }) {
                             </td>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-2 justify-end">
-                                <span className="text-text-primary font-medium">{awayTeam?.name ?? 'TBC'}</span>
+                                <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(awayTeam?.name) ?? 'TBC'}</span>
                                 {awayTeam?.logo_league_folder && (
                                   <Image
                                     src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'standings_row')}
@@ -181,9 +182,9 @@ export default function Desktop({ data }: { data: any }) {
                                 currentDate={fx.scheduled_date}
                                 status={fx.status}
                                 homeTeamId={homeTeam?.id ?? ''}
-                                homeTeamName={homeTeam?.name ?? ''}
+                                homeTeamName={cleanTeamName(homeTeam?.name) ?? ''}
                                 awayTeamId={awayTeam?.id ?? ''}
-                                awayTeamName={awayTeam?.name ?? ''}
+                                awayTeamName={cleanTeamName(awayTeam?.name) ?? ''}
                               />
                             </td>
                           </tr>

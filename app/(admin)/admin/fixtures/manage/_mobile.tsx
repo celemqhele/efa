@@ -6,6 +6,7 @@ import DateNav from '@/components/ui/DateNav'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import ScheduleRoundPanel from './ScheduleRoundPanel'
 import { CalendarDays } from 'lucide-react'
+import { cleanTeamName } from '@/lib/clean-team-name'
 
 const TYPE_ORDER = ['league', 'tournament_club', 'tournament_international', 'friendlies'] as const
 
@@ -127,20 +128,20 @@ export default function Mobile({ data }: { data: any }) {
                           </span>
                         </div>
                         <p className="text-text-primary text-base font-semibold">
-                          {homeTeam?.name ?? 'TBC'}
+                          {cleanTeamName(homeTeam?.name) ?? 'TBC'}
                           <span className="text-text-muted font-normal mx-1.5">
                             {result ? `${result.home_score}–${result.away_score}` : 'vs'}
                           </span>
-                          {awayTeam?.name ?? 'TBC'}
+                          {cleanTeamName(awayTeam?.name) ?? 'TBC'}
                         </p>
                         <FixtureActions
                           fixtureId={fx.id}
                           currentDate={fx.scheduled_date}
                           status={fx.status}
                           homeTeamId={homeTeam?.id ?? ''}
-                          homeTeamName={homeTeam?.name ?? ''}
+                          homeTeamName={cleanTeamName(homeTeam?.name) ?? ''}
                           awayTeamId={awayTeam?.id ?? ''}
-                          awayTeamName={awayTeam?.name ?? ''}
+                          awayTeamName={cleanTeamName(awayTeam?.name) ?? ''}
                         />
                       </div>
                     )

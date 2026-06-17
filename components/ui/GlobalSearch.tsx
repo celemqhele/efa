@@ -144,7 +144,7 @@ export default function GlobalSearch() {
   const resultsPanel = (insideOverlay: boolean) => (
     <>
       {query.length >= 2 && (
-        <div className={insideOverlay ? '' : 'absolute top-full mt-1 left-0 right-0 bg-bg-elevated border border-border rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-y-auto'}>
+        <div className={insideOverlay ? '' : 'absolute bottom-full mb-1 left-0 right-0 bg-bg-elevated border border-border rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-y-auto'}>
           {loading ? (
             <div className="flex items-center justify-center py-6">
               <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />

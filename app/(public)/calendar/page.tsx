@@ -30,7 +30,7 @@ function nextMonth(year: number, month: number): { year: number; month: number }
 }
 
 interface PageProps {
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; scope?: string }>
 }
 
 export default async function CalendarPage({ searchParams }: PageProps) {
@@ -38,6 +38,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   const params = await searchParams
 
   const { year, month } = parseMonthParam(params.month)
+  const scope = params.scope === 'all' ? 'all' : 'mine'
 
   const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
   const lastDay = new Date(year, month, 0).getDate()
@@ -59,7 +60,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   let fixtureQuery = supabase
     .from('fixtures')
     .select(`
-      id, scheduled_date, status,
+      id, matchday, scheduled_date, status,
       home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
       away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
       result:results(home_score, away_score)
@@ -68,7 +69,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     .lte('scheduled_date', monthEnd + 'T23:59:59')
     .order('scheduled_date', { ascending: true })
 
-  if (userTeams.length > 0) {
+  if (scope === 'mine' && userTeams.length > 0) {
     const teamFilter = userTeams
       .flatMap(t => [`home_team_id.eq.${t.id}`, `away_team_id.eq.${t.id}`])
       .join(',')
@@ -101,7 +102,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     .order('scheduled_date', { ascending: true })
     .limit(1)
 
-  if (userTeams.length > 0) {
+  if (scope === 'mine' && userTeams.length > 0) {
     const teamFilter = userTeams
       .flatMap(t => [`home_team_id.eq.${t.id}`, `away_team_id.eq.${t.id}`])
       .join(',')
@@ -117,8 +118,5 @@ export default async function CalendarPage({ searchParams }: PageProps) {
     daysUntilNext = diff >= 0 ? diff : null
   }
 
-  const prev = prevMonth(year, month)
-  const nextN = nextMonth(year, month)
-
-  return <Shell data={{ year, month, fixtures: allFixtures, breaks: allBreaks, user, userTeams, nextFixture, daysUntilNext, prev, next: nextN }} />
+  return <Shell data={{ year, month, fixtures: allFixtures, breaks: allBreaks, user, userTeams, nextFixture, daysUntilNext, scope }} />
 }

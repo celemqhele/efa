@@ -3,14 +3,16 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { getTeamLogo } from '@/lib/logo-resolver'
-import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
-import RecalculateStandingsButton from '@/components/ui/RecalculateStandingsButton'
-import RecalculateManagerStatsButton from '@/components/ui/RecalculateManagerStatsButton'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 import DueFixturesExportButton from './DueFixturesExportButton'
 import NewsTopicExportButton from './NewsTopicExportButton'
+import DeleteTournamentButton from '@/app/(admin)/admin/tournaments/DeleteTournamentButton'
+import RunTournamentDrawButton from '@/app/(admin)/admin/tournaments/RunTournamentDrawButton'
+import GenerateKnockoutsButton from '@/app/(admin)/admin/tournaments/GenerateKnockoutsButton'
+import GenerateFriendliesButton from '@/app/(admin)/admin/tournaments/GenerateFriendliesButton'
 import { APP_TIME_ZONE } from '@/lib/app-time'
-import { Trophy, CheckCircle2, CalendarDays, RefreshCw, Flag, ClipboardList, Hourglass, AlertTriangle, ChevronRight } from 'lucide-react'
+import { Trophy, CheckCircle2, CalendarDays, ClipboardList, AlertTriangle, ChevronRight } from 'lucide-react'
+import { cleanTeamName } from '@/lib/clean-team-name'
 
 const STATUS_CLASSES: Record<string, string> = {
   scheduled: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
@@ -26,6 +28,9 @@ const TYPE_STYLES: Record<string, { label: string; colour: string }> = {
   ucl: { label: 'UCL', colour: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
   europa: { label: 'EL', colour: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
   super_cup: { label: 'SC', colour: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+  tournament_club: { label: 'Club', colour: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+  tournament_international: { label: 'Intl', colour: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
+  friendlies: { label: 'Friendly', colour: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
 }
 
 const ACTIONS = [
@@ -55,18 +60,6 @@ function QuickActions() {
         </Link>
       ))}
       <NewsTopicExportButton />
-    </div>
-  )
-}
-
-function StatCard({ icon, label, count, accent }: { icon: React.ReactNode; label: string; count: number; accent: string }) {
-  return (
-    <div className={`snap-start shrink-0 w-[160px] flex items-center gap-3 py-4 px-4 bg-bg-surface border border-border rounded-xl ${accent}`}>
-      <div className="shrink-0">{icon}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xl font-black text-text-primary leading-none">{count}</p>
-        <p className="text-[11px] uppercase tracking-widest text-text-muted font-semibold mt-0.5">{label}</p>
-      </div>
     </div>
   )
 }
@@ -101,7 +94,7 @@ function FixtureDueCard({ fx }: { fx: any }) {
             />
           )}
           <span className="text-sm font-semibold text-text-primary text-center leading-tight truncate max-w-full">
-            {fx.home_team?.name}
+            {cleanTeamName(fx.home_team?.name)}
           </span>
         </div>
         <div className="shrink-0 px-1">
@@ -117,7 +110,7 @@ function FixtureDueCard({ fx }: { fx: any }) {
             />
           )}
           <span className="text-sm font-semibold text-text-primary text-center leading-tight truncate max-w-full">
-            {fx.away_team?.name}
+            {cleanTeamName(fx.away_team?.name)}
           </span>
         </div>
       </div>
@@ -125,8 +118,8 @@ function FixtureDueCard({ fx }: { fx: any }) {
         <DashboardFixtureActions
           fixtureId={fx.id}
           status={fx.status}
-          homeTeamName={fx.home_team?.name}
-          awayTeamName={fx.away_team?.name}
+          homeTeamName={cleanTeamName(fx.home_team?.name) ?? ''}
+          awayTeamName={cleanTeamName(fx.away_team?.name) ?? ''}
           homeManagerName={fx.home_team?.manager?.username}
           homeManagerPhone={fx.home_team?.manager?.whatsapp_number}
           awayManagerName={fx.away_team?.manager?.username}
@@ -145,7 +138,7 @@ function ConflictCard({ fx, confs }: { fx: any; confs: any[] }) {
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
           <span className="text-xs text-text-muted font-semibold shrink-0">MD{fx.matchday}</span>
           <span className="text-sm text-text-primary font-medium truncate">
-            {(fx.home_team as any)?.name} vs {(fx.away_team as any)?.name}
+            {cleanTeamName((fx.home_team as any)?.name)} vs {cleanTeamName((fx.away_team as any)?.name)}
           </span>
         </div>
       </div>
@@ -186,15 +179,7 @@ function SectionCard({ title, icon, count, children, defaultOpen = false }: {
 }
 
 export default function Mobile({ data }: { data: any }) {
-  const { tournaments, countMap, dueFixtures, dueCount, conflictFixtures, conflictMap, conflictCount, pendingConfirmations, pendingCount, changeRequests, requestCount, flaggedTeams, flaggedCount, managerMap, auditLog } = data
-
-  const statCards = [
-    { icon: <AlertTriangle className="w-5 h-5 text-red-400" />, label: 'Conflicts', count: conflictCount, accent: conflictCount > 0 ? 'border-l-4 border-l-red-500/40' : '' },
-    { icon: <CalendarDays className="w-5 h-5 text-accent" />, label: 'Fixtures Due', count: dueCount, accent: '' },
-    { icon: <Hourglass className="w-5 h-5 text-yellow-400" />, label: 'Pending', count: pendingCount, accent: '' },
-    { icon: <RefreshCw className="w-5 h-5 text-blue-400" />, label: 'Requests', count: requestCount, accent: '' },
-    { icon: <Flag className="w-5 h-5 text-red-400" />, label: 'Flagged', count: flaggedCount, accent: '' },
-  ]
+  const { tournaments, participantCounts, fixtureCounts, completedCounts, dueFixtures, dueCount, conflictFixtures, conflictMap, conflictCount, auditLog } = data
 
   return (
     <div className="px-4 pb-8 space-y-5">
@@ -209,12 +194,6 @@ export default function Mobile({ data }: { data: any }) {
       </div>
 
       <QuickActions />
-
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 snap-x snap-mandatory">
-        {statCards.map((s, i) => (
-          <StatCard key={i} {...s} />
-        ))}
-      </div>
 
       {conflictCount > 0 && (
         <div className="bg-bg-surface border border-red-500/30 rounded-xl p-4 space-y-3">
@@ -238,30 +217,67 @@ export default function Mobile({ data }: { data: any }) {
           {(tournaments ?? []).length === 0 ? (
             <p className="text-sm text-text-muted">No active tournaments.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {((tournaments ?? []) as any[]).map((t: any) => {
                 const typeInfo = TYPE_STYLES[t.type] ?? { label: t.type, colour: 'text-slate-400 bg-slate-500/10 border-slate-500/20' }
                 const statusCls = t.status === 'active'
                   ? 'text-green-400 bg-green-500/10 border-green-500/20'
                   : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
+                const progress = (fixtureCounts[t.id] ?? 0) > 0 ? Math.round(((completedCounts[t.id] ?? 0) / (fixtureCounts[t.id] ?? 1)) * 100) : 0
                 return (
-                  <div key={t.id} className="bg-bg-base border border-border rounded-xl px-4 py-3">
-                    <div className="flex items-center justify-between gap-2">
+                  <div key={t.id} className="bg-bg-base border border-border rounded-xl p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-text-primary truncate">{t.name}</p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
-                        </div>
+                        <p className="text-sm font-bold text-text-primary truncate">{t.name}</p>
+                        {t.season && <p className="text-text-muted text-[10px] mt-0.5">{t.season.name}</p>}
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-accent font-black text-lg">{countMap[t.id] ?? 0}</p>
-                        <p className="text-[10px] text-text-muted">fixtures</p>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${typeInfo.colour}`}>{typeInfo.label}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>{t.status}</span>
                       </div>
                     </div>
-                    <div className="flex gap-1.5 mt-2">
-                      <RecalculateStandingsButton tournamentId={t.id} tournamentName={t.name} />
-                      <RecalculateManagerStatsButton tournamentId={t.id} tournamentName={t.name} />
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-bg-surface border border-border rounded-lg py-1.5">
+                        <p className="text-accent font-bold text-base">{participantCounts[t.id] ?? 0}</p>
+                        <p className="text-text-muted text-[10px]">Teams</p>
+                      </div>
+                      <div className="bg-bg-surface border border-border rounded-lg py-1.5">
+                        <p className="text-text-primary font-bold text-base">{fixtureCounts[t.id] ?? 0}</p>
+                        <p className="text-text-muted text-[10px]">Fixtures</p>
+                      </div>
+                      <div className="bg-bg-surface border border-border rounded-lg py-1.5">
+                        <p className="text-green-400 font-bold text-base">{completedCounts[t.id] ?? 0}</p>
+                        <p className="text-text-muted text-[10px]">Played</p>
+                      </div>
+                    </div>
+                    {(fixtureCounts[t.id] ?? 0) > 0 && (
+                      <div>
+                        <div className="flex justify-between text-[10px] text-text-muted mb-1">
+                          <span>Progress</span>
+                          <span>{progress}%</span>
+                        </div>
+                        <div className="w-full h-1 bg-border rounded-full overflow-hidden">
+                          <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      <Link href={`/admin/fixtures/manage?tournament=${t.id}`} className="text-[10px] font-semibold px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:border-accent hover:text-accent transition-colors">
+                        Fixtures
+                      </Link>
+                      {['tournament_club', 'tournament_international'].includes(t.type) && (
+                        <RunTournamentDrawButton tournamentId={t.id} tournamentName={t.name} type={t.type} />
+                      )}
+                      {['tournament_club', 'tournament_international'].includes(t.type) && (
+                        <GenerateKnockoutsButton tournamentId={t.id} tournamentName={t.name} type={t.type} />
+                      )}
+                      {t.type === 'friendlies' && (
+                        <GenerateFriendliesButton tournamentId={t.id} tournamentName={t.name} type={t.type} />
+                      )}
+                      <Link href={`/standings?t=${t.id}`} className="text-[10px] font-semibold px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:border-accent hover:text-accent transition-colors">
+                        View
+                      </Link>
+                      <DeleteTournamentButton tournamentId={t.id} tournamentName={t.name} />
                     </div>
                   </div>
                 )
@@ -286,10 +302,10 @@ export default function Mobile({ data }: { data: any }) {
                   fixtures={(dueFixtures ?? []).map((fx: any) => ({
                     id: fx.id, matchday: fx.matchday ?? null,
                     scheduled_date: fx.scheduled_date ?? null, status: fx.status,
-                    home_team_name: fx.home_team?.name ?? null,
+                    home_team_name: cleanTeamName(fx.home_team?.name) ?? null,
                     home_team_folder: fx.home_team?.logo_league_folder ?? null,
                     home_team_slug: fx.home_team?.logo_team_slug ?? null,
-                    away_team_name: fx.away_team?.name ?? null,
+                    away_team_name: cleanTeamName(fx.away_team?.name) ?? null,
                     away_team_folder: fx.away_team?.logo_league_folder ?? null,
                     away_team_slug: fx.away_team?.logo_team_slug ?? null,
                   }))}
@@ -297,99 +313,6 @@ export default function Mobile({ data }: { data: any }) {
               </div>
               {dueFixtures!.map((fx: any) => (
                 <FixtureDueCard key={fx.id} fx={fx} />
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Pending Confirmations" icon={<Hourglass className="w-5 h-5 text-yellow-400" />} count={pendingCount}>
-          {pendingCount === 0 ? (
-            <p className="text-sm text-text-muted">No pending confirmations.</p>
-          ) : (
-            <div className="space-y-2">
-              {((pendingConfirmations ?? []) as any[]).map((fx: any) => (
-                <div key={fx.id} className="flex items-center justify-between gap-2 bg-bg-base border border-border rounded-xl px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {fx.home_team?.logo_league_folder && (
-                        <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={20} height={20} className="object-contain shrink-0" />
-                      )}
-                      <span className="text-sm font-medium text-text-primary truncate">{fx.home_team?.name}</span>
-                      <span className="text-[10px] text-text-muted">vs</span>
-                      <span className="text-sm font-medium text-text-primary truncate">{fx.away_team?.name}</span>
-                      {fx.away_team?.logo_league_folder && (
-                        <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={20} height={20} className="object-contain shrink-0" />
-                      )}
-                    </div>
-                    <p className="text-[10px] text-text-muted mt-0.5">
-                      MD{fx.matchday}
-                      {fx.scheduled_date && ` · ${new Date(fx.scheduled_date).toLocaleDateString('en-GB')}`}
-                    </p>
-                  </div>
-                  <Link href={`/admin/results/submit?fixture=${fx.id}`} className="text-sm font-semibold px-4 py-3 rounded-lg bg-accent text-bg-surface min-h-[48px] flex items-center shrink-0">
-                    Finalise
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Team Change Requests" icon={<RefreshCw className="w-5 h-5 text-blue-400" />} count={requestCount}>
-          {requestCount === 0 ? (
-            <p className="text-sm text-text-muted">No pending requests.</p>
-          ) : (
-            <div className="space-y-2">
-              {((changeRequests ?? []) as any[]).map((req: any) => (
-                <div key={req.id} className="bg-bg-base border border-border rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    {req.requesting_user?.avatar_url ? (
-                      <Image src={req.requesting_user.avatar_url} alt={req.requesting_user.username} width={28} height={28} className="rounded-full object-cover shrink-0" />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-border flex items-center justify-center text-[10px] text-text-muted shrink-0">
-                        {req.requesting_user?.username?.[0]?.toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <span className="text-sm font-medium text-text-primary">{req.requesting_user?.username}</span>
-                      <div className="flex items-center gap-1 text-[10px] text-text-muted mt-0.5">
-                        <span>{req.current_team?.name ?? 'No team'}</span>
-                        <span>→</span>
-                        <span className="text-accent font-semibold">{req.requested_team?.name}</span>
-                      </div>
-                    </div>
-                    {req.requested_team?.logo_league_folder && (
-                      <Image src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')} alt={req.requested_team.name} width={32} height={32} className="object-contain shrink-0" />
-                    )}
-                  </div>
-                  <TeamRequestButtons requestId={req.id} />
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Flagged Teams" icon={<Flag className="w-5 h-5 text-red-400" />} count={flaggedCount}>
-          {flaggedCount === 0 ? (
-            <p className="text-sm text-text-muted">No flagged teams.</p>
-          ) : (
-            <div className="space-y-2">
-              {((flaggedTeams ?? []) as any[]).map((team: any) => (
-                <div key={team.id} className="flex items-center gap-3 bg-bg-base border border-red-500/20 rounded-xl px-4 py-3">
-                  {team.logo_league_folder && (
-                    <Image src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')} alt={team.name} width={32} height={32} className="object-contain shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary truncate">{team.name}</p>
-                    <p className="text-[10px] text-text-muted">
-                      Manager: {team.manager_id ? (managerMap[team.manager_id] ?? 'Unknown') : 'None'}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-red-400 font-black text-lg">{team.abandon_count}</span>
-                    <p className="text-[10px] text-text-muted">abandons</p>
-                  </div>
-                </div>
               ))}
             </div>
           )}

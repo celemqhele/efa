@@ -211,35 +211,49 @@ function TournamentCard({
         </div>
       )}
 
-      <div className="flex gap-2 pt-1">
+      <div className="flex divide-x divide-border border border-border rounded-xl overflow-hidden">
         <Link
           href={`/admin/fixtures/manage?tournament=${tournament.id}`}
-          className="btn-outline text-xs flex-1 text-center"
+          className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"
         >
           Fixtures
         </Link>
-        <RunTournamentDrawButton
-          tournamentId={tournament.id}
-          tournamentName={tournament.name}
-          type={tournament.type}
-        />
-        <GenerateKnockoutsButton 
-          tournamentId={tournament.id} 
-          tournamentName={tournament.name} 
-          type={tournament.type} 
-        />
-        <GenerateFriendliesButton 
-          tournamentId={tournament.id} 
-          tournamentName={tournament.name} 
-          type={tournament.type} 
-        />
+        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
+          <div className="flex-1 flex items-center justify-center">
+            <RunTournamentDrawButton
+              tournamentId={tournament.id}
+              tournamentName={tournament.name}
+              type={tournament.type}
+            />
+          </div>
+        )}
+        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
+          <div className="flex-1 flex items-center justify-center">
+            <GenerateKnockoutsButton
+              tournamentId={tournament.id}
+              tournamentName={tournament.name}
+              type={tournament.type}
+            />
+          </div>
+        )}
+        {tournament.type === 'friendlies' && (
+          <div className="flex-1 flex items-center justify-center">
+            <GenerateFriendliesButton
+              tournamentId={tournament.id}
+              tournamentName={tournament.name}
+              type={tournament.type}
+            />
+          </div>
+        )}
         <Link
           href={`/standings?t=${tournament.id}`}
-          className="btn-outline text-xs flex-1 text-center"
+          className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"
         >
           View
         </Link>
-        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
+        <div className="flex-1 flex items-center justify-center">
+          <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
+        </div>
       </div>
     </div>
   )
