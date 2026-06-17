@@ -126,7 +126,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
             return (
               <div
                 key={ds}
-                className={`relative bg-bg-base min-h-[100px] p-2 flex flex-col gap-1.5 transition-colors ${
+                className={`relative bg-bg-base min-h-[80px] p-2 flex flex-col gap-1 transition-colors ${
                   isToday ? 'ring-1 ring-inset ring-accent/60 bg-accent/[0.04]' : ''
                 } ${isPastDay && !dayFixtures.length ? 'opacity-50' : ''}`}
               >

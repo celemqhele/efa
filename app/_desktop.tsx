@@ -11,8 +11,8 @@ export default function Desktop({ data }: { data: any }) {
 
   return (
     <div className="space-y-8">
-      <div className="grid lg:grid-cols-2 gap-8">
-        <div className="space-y-6 lg:pr-4">
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="space-y-6">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -124,7 +124,7 @@ export default function Desktop({ data }: { data: any }) {
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">

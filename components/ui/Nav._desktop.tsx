@@ -40,7 +40,7 @@ export default function NavDesktop({ profile, unreadCount = 0, handleLogout }: N
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden lg:block">
+      <div className="sticky top-4 left-1/2 -translate-x-1/2 z-50 hidden lg:block">
         <nav className="flex items-center gap-2 bg-bg-surface/80 backdrop-saturate-150 backdrop-blur-2xl rounded-2xl px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-border/50">
           <Link href="/" className="flex items-center gap-2 shrink-0 pr-3 border-r border-border/40">
             <Image
@@ -133,7 +133,7 @@ export default function NavDesktop({ profile, unreadCount = 0, handleLogout }: N
         </nav>
       </div>
 
-      <div className="hidden lg:block h-24" />
+      <div className="hidden lg:block h-4" />
     </>
   )
 }
