@@ -1,7 +1,14 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  title: 'Results',
+  description: 'Latest EFA match results — scores, scorers, and match reports.',
+  openGraph: { title: 'Results | EFA', description: 'Latest EFA match results — scores, scorers, and match reports.' },
+}
 
 export default async function ResultsPage() {
   const supabase = await createClient()

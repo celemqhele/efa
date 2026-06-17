@@ -1,8 +1,14 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import PageWrapper from '@/components/ui/PageWrapper'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  description: 'EFA league platform — your home for competitive eFootball standings, fixtures, and results.',
+  openGraph: { description: 'Your home for competitive eFootball standings, fixtures, and results.' },
+}
 
 export default async function HomePage() {
   const supabase = await createClient()

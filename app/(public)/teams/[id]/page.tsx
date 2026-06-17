@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamDNAFromDB, buildTeamStatsMixed } from '@/lib/dna-engine'
@@ -12,6 +13,18 @@ export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ id: string }>
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: team } = await supabase.from('teams').select('name').eq('id', id).single() as any
+  const name = team?.name ?? 'Team'
+  return {
+    title: name,
+    description: `${name} — EFA team profile with stats, DNA analysis, and match history.`,
+    openGraph: { title: `${name} | EFA`, description: `${name} — EFA team profile with stats, DNA analysis, and match history.` },
+  }
 }
 
 export default async function TeamProfilePage({ params }: PageProps) {

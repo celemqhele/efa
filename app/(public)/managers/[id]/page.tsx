@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Shell from './_shell'
@@ -6,6 +7,18 @@ export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ id: string }>
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: profile } = await supabase.from('profiles').select('username').eq('id', id).single() as any
+  const name = profile?.username ?? 'Manager'
+  return {
+    title: `@${name}`,
+    description: `@${name} — EFA manager profile with career stats, trophies, and management history.`,
+    openGraph: { title: `@${name} | EFA`, description: `@${name} — EFA manager profile with career stats, trophies, and management history.` },
+  }
 }
 
 export default async function ManagerProfilePage({ params }: PageProps) {

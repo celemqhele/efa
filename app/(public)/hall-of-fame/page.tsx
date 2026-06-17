@@ -1,7 +1,14 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import Shell from './_shell'
 
 export const revalidate = 300
+
+export const metadata: Metadata = {
+  title: 'Hall of Fame',
+  description: 'EFA Hall of Fame — past champions, trophy winners, and legendary managers.',
+  openGraph: { title: 'Hall of Fame | EFA', description: 'EFA Hall of Fame — past champions, trophy winners, and legendary managers.' },
+}
 
 interface TrophyWithRelations {
   id: string

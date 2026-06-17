@@ -6,7 +6,7 @@ import GlobalNotifications from '@/components/ui/GlobalNotifications'
 import UpdateBanner from '@/components/ui/UpdateBanner'
 
 export const metadata: Metadata = {
-  title: 'EFA — Efootball Federal Association',
+  title: { default: 'EFA — Efootball Federal Association', template: '%s | EFA' },
   description: 'The official EFA league management platform for competitive eFootball.',
   manifest: '/manifest.json',
   icons: {
@@ -14,9 +14,12 @@ export const metadata: Metadata = {
     apple: '/icons/efa-icon-192.png',
   },
   openGraph: {
-    title: 'EFA — Efootball Federal Association',
-    description: 'Standings, fixtures, results, and more.',
+    siteName: 'EFA',
     type: 'website',
+    locale: 'en_GB',
+  },
+  twitter: {
+    card: 'summary_large_image',
   },
 }
 

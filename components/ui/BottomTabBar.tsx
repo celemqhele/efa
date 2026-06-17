@@ -114,12 +114,13 @@ export default function BottomTabBar({ profile, unreadCount = 0 }: BottomTabBarP
           <MobileMoreLink href="/rules" icon={ScrollText} label="Rules" onClick={closeMore} />
 
 
-          {profile && (
+          <div className="border-t border-border my-space-2" />
+          <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider pt-space-1 pb-space-1">
+            Account
+          </p>
+
+          {profile ? (
             <>
-              <div className="border-t border-border my-space-2" />
-              <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider pt-space-1 pb-space-1">
-                Account
-              </p>
               <MobileMoreLink href="/profile" icon={User} label="Profile" onClick={closeMore} />
               <MobileMoreLink
                 href="/notifications"
@@ -139,6 +140,8 @@ export default function BottomTabBar({ profile, unreadCount = 0 }: BottomTabBarP
                 Logout
               </button>
             </>
+          ) : (
+            <MobileMoreLink href="/login" icon={User} label="Log in" onClick={closeMore} />
           )}
         </div>
       </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
@@ -9,7 +10,21 @@ import ProfileActions from './ProfileActions'
 import { Card } from '@/components/ui/Card'
 import AvatarUpload from '@/components/ui/AvatarUpload'
 import ThemeSettings from '@/components/ui/ThemeSettings'
-import { Star, Shirt, Shield, RefreshCw, Calendar } from 'lucide-react'
+import { Star, Shirt, Shield, RefreshCw, Calendar, Gamepad2 } from 'lucide-react'
+
+const PLAYSTYLE_OPTIONS = [
+  'Tactical adaptive',
+  'Elite Dominators',
+  'Tiki-Taka',
+  'Gegenpressing',
+  'Disciplined Pressers',
+  'Quick Counter',
+  'Long Ball Counter',
+  'The Grinders',
+  'Out Wide',
+  'Set-Piece Specialists',
+  'Shoot-on-Sight',
+]
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null
@@ -30,6 +45,21 @@ export default function Mobile({ data }: { data: any }) {
     winRate,
     next3,
   } = data
+
+  const [playstyle, setPlaystyle] = useState(profile?.playstyle ?? '')
+  const [saving, setSaving] = useState(false)
+
+  async function savePlaystyle() {
+    setSaving(true)
+    try {
+      await fetch('/api/profile/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playstyle }),
+      })
+    } catch {}
+    setSaving(false)
+  }
 
   return (
     <div className="space-y-space-8 max-w-3xl mx-auto">
@@ -82,6 +112,30 @@ export default function Mobile({ data }: { data: any }) {
           )}
 
           <p className="text-xs text-text-muted">{user.email}</p>
+
+          {/* Playstyle selector */}
+          <div className="flex items-center gap-2 pt-space-1">
+            <Gamepad2 className="w-4 h-4 text-accent shrink-0" />
+            <select
+              value={playstyle}
+              onChange={(e) => setPlaystyle(e.target.value)}
+              className="flex-1 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
+            >
+              <option value="">Select playstyle…</option>
+              {PLAYSTYLE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            {playstyle !== (profile?.playstyle ?? '') && (
+              <button
+                onClick={savePlaystyle}
+                disabled={saving}
+                className="text-[10px] font-semibold bg-accent text-bg-base rounded-lg px-2.5 py-1.5 hover:bg-accent/90 transition-colors disabled:opacity-40 shrink-0"
+              >
+                {saving ? '…' : 'Save'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Quick Career Stats */}
