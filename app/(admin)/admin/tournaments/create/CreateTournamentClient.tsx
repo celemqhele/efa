@@ -3,6 +3,7 @@
 // File encoding: UTF-8
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { createClient } from '@/lib/supabase/client'
@@ -491,7 +492,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
 
       {/* Submit */}
       <div className="flex items-center justify-between gap-4">
-        <a href="/admin/tournaments" className="btn-outline">Cancel</a>
+        <Link href="/admin/tournaments" className="btn-outline">Cancel</Link>
         <button
           type="submit"
           disabled={loading}

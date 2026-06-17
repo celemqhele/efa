@@ -6,6 +6,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import { cropToStatsPanel, parseOcrText } from '@/lib/parse-screenshot-client'
 import { notify } from '@/lib/notifications'
 import ForfeitBalanceBadge from '@/components/ui/ForfeitBalanceBadge'
+import Link from 'next/link'
 import { CheckCircle2, AlertTriangle, Camera, Flag, CircleDot, Check } from 'lucide-react'
 
 interface Team {
@@ -434,7 +435,7 @@ export default function ResultSubmitClient({
           <button onClick={() => { setSubmitSuccess(false); resetOcr(); setSelectedFixtureId('') }} className="btn-outline">
             Submit Another
           </button>
-          <a href="/admin/dashboard" className="btn-gold">Back to Dashboard</a>
+          <Link href="/admin/dashboard" className="btn-gold">Back to Dashboard</Link>
         </div>
       </div>
     )
