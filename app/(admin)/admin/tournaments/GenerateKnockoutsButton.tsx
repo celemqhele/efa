@@ -20,9 +20,10 @@ interface Props {
   tournamentId: string
   tournamentName: string
   type: string
+  className?: string
 }
 
-export default function GenerateKnockoutsButton({ tournamentId, tournamentName, type }: Props) {
+export default function GenerateKnockoutsButton({ tournamentId, tournamentName, type, className = '' }: Props) {
   const [loading, setLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [shuffle, setShuffle] = useState(false)
@@ -81,7 +82,7 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
     <>
       <button
         onClick={() => setShowConfirm(true)}
-        className="btn-gold text-[10px] py-1 px-2 flex-1"
+        className={className || "text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"}
         disabled={loading}
       >
         Generate Knockouts

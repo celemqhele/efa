@@ -137,19 +137,13 @@ function TournamentCard({
           Fixtures
         </Link>
         {['tournament_club', 'tournament_international'].includes(tournament.type) && (
-          <div className="flex-1 flex items-center justify-center">
-            <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
-          </div>
+          <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors" />
         )}
         {['tournament_club', 'tournament_international'].includes(tournament.type) && (
-          <div className="flex-1 flex items-center justify-center">
-            <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
-          </div>
+          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors" />
         )}
         {tournament.type === 'friendlies' && (
-          <div className="flex-1 flex items-center justify-center">
-            <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
-          </div>
+          <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors" />
         )}
         <Link
           href={`/standings?t=${tournament.id}`}
@@ -157,9 +151,7 @@ function TournamentCard({
         >
           View
         </Link>
-        <div className="flex-1 flex items-center justify-center">
-          <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
-        </div>
+        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors hover:text-feedback-error" />
       </div>
     </div>
   )
@@ -356,13 +348,14 @@ export default function Desktop({ data }: { data: any }) {
           )}
         </div>
 
-        <div className="bg-bg-surface border border-border rounded-xl">
-          <div className="px-5 py-4 bg-bg-base border-b-2 border-accent/20">
-            <div className="flex items-center gap-2">
-              <ClipboardList className="w-5 h-5 text-text-muted" />
-              <h2 className="text-base font-bold text-text-primary">Recent Audit Log</h2>
-            </div>
-          </div>
+        <details className="bg-bg-surface border border-border rounded-xl overflow-hidden group">
+          <summary className="flex items-center gap-2 px-5 py-4 bg-bg-base cursor-pointer list-none select-none transition-colors hover:bg-bg-base/80">
+            <ClipboardList className="w-5 h-5 text-text-muted shrink-0" />
+            <h2 className="text-base font-bold text-text-primary flex-1">Recent Audit Log</h2>
+            <svg className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
           <div className="p-5 space-y-2 max-h-[400px] overflow-y-auto">
             {(auditLog?.length ?? 0) === 0 ? (
               <p className="text-sm text-text-muted">No audit entries.</p>
@@ -379,7 +372,7 @@ export default function Desktop({ data }: { data: any }) {
               ))
             )}
           </div>
-        </div>
+        </details>
       </div>
     </div>
   )

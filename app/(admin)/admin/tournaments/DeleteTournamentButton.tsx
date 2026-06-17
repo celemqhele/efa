@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ModalPortal from '@/components/ui/ModalPortal'
 
-export default function DeleteTournamentButton({ tournamentId, tournamentName }: {
+export default function DeleteTournamentButton({ tournamentId, tournamentName, className = '' }: {
   tournamentId: string
   tournamentName: string
+  className?: string
 }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -40,7 +41,7 @@ export default function DeleteTournamentButton({ tournamentId, tournamentName }:
     <>
       <button
         onClick={() => setOpen(true)}
-        className="text-[10px] py-1 px-2 rounded-md bg-feedback-error/20 text-feedback-error border border-feedback-error/30 hover:bg-feedback-error/30 transition-colors"
+        className={className || "text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"}
       >
         Delete
       </button>

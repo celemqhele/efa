@@ -33,9 +33,9 @@ export default function NewsTopicExportButton() {
     <button
       onClick={handleExport}
       disabled={loading}
-      className="btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5"
+      className="snap-start shrink-0 whitespace-nowrap text-sm font-semibold px-5 py-3 rounded-2xl min-h-[48px] flex items-center justify-center transition-colors bg-bg-surface/80 backdrop-saturate-150 backdrop-blur-2xl border border-border/50 text-text-primary hover:bg-bg-surface disabled:opacity-50"
     >
-      <FileText size={14} className="text-gold" />
+      <FileText className="w-4 h-4 mr-1.5" />
       {loading ? 'Generating…' : 'News Topic Export'}
     </button>
   )

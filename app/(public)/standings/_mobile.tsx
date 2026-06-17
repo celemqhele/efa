@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { goalDifference } from '@/lib/standings-core'
+import { ListCollapse, List } from 'lucide-react'
 
 const TOURNAMENT_TYPE_LABELS: Record<string, string> = {
   league: 'Premier League',
@@ -17,7 +19,73 @@ function formatGroupTitle(groupName: string) {
   return /^group\s+/i.test(clean) ? clean : `Group ${clean}`
 }
 
-function StandingsCard({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number }) {
+function StandingsCard({ rows, mode, qualifiersPerGroup = 2, extended }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number; extended: boolean }) {
+  if (extended) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-bg-base">
+              <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[10px] px-1.5 py-1.5 w-6">#</th>
+              <th className="text-left text-text-muted font-semibold uppercase tracking-wider text-[10px] px-1.5 py-1.5">Team</th>
+              <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[10px] px-1.5 py-1.5 w-6">P</th>
+              <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[10px] px-1.5 py-1.5 w-6">W</th>
+              <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[10px] px-1.5 py-1.5 w-6">D</th>
+              <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[10px] px-1.5 py-1.5 w-6">L</th>
+              <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[10px] px-1.5 py-1.5 w-6">A</th>
+              <th className="text-center text-text-muted font-semibold uppercase tracking-wider text-[10px] px-1.5 py-1.5 w-8">GD</th>
+              <th className="text-center text-accent font-bold uppercase tracking-wider text-[10px] px-1.5 py-1.5 w-8 bg-accent/5">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row: any, index: number) => {
+              const gd = goalDifference(row)
+              const qualifies = mode === 'group' && index < qualifiersPerGroup
+              const isTopThree = mode === 'league' && index < 3
+              const borderColor = mode === 'league'
+                ? index < 12 ? 'border-l-accent' : index < 20 ? 'border-l-blue-500' : 'border-l-transparent'
+                : qualifies ? 'border-l-accent' : 'border-l-transparent'
+
+              return (
+                <tr
+                  key={row.id ?? `${row.team_id}-${index}`}
+                  className={`border-l-4 ${borderColor} ${index % 2 === 0 ? 'bg-bg-surface' : 'bg-bg-base'}`}
+                  onClick={() => window.location.href = `/teams/${row.team_id}`}
+                >
+                  <td className={`text-center font-bold px-1.5 py-1.5 tabular-nums text-xs ${isTopThree ? 'text-accent' : 'text-text-muted'}`}>{index + 1}</td>
+                  <td className="px-1.5 py-1.5 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      {row.team?.logo_league_folder && (
+                        <TeamLogo
+                          leagueFolder={row.team.logo_league_folder}
+                          teamSlug={row.team.logo_team_slug}
+                          context="standings_row"
+                          alt={row.team.name}
+                          className="w-5 h-5 shrink-0"
+                        />
+                      )}
+                      <span className="font-semibold text-text-primary truncate text-xs">{row.team?.name ?? 'Unknown team'}</span>
+                      {qualifies && (
+                        <span className="text-[9px] font-bold text-accent bg-accent/10 border border-accent/20 rounded px-1 py-0.5 shrink-0">Q</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="text-center font-medium text-text-secondary px-1.5 py-1.5 tabular-nums text-xs">{row.played ?? 0}</td>
+                  <td className="text-center font-medium text-text-secondary px-1.5 py-1.5 tabular-nums text-xs">{row.wins ?? 0}</td>
+                  <td className="text-center font-medium text-text-secondary px-1.5 py-1.5 tabular-nums text-xs">{row.draws ?? 0}</td>
+                  <td className="text-center font-medium text-text-secondary px-1.5 py-1.5 tabular-nums text-xs">{row.losses ?? 0}</td>
+                  <td className={`text-center font-medium px-1.5 py-1.5 tabular-nums text-xs ${(row.absent ?? 0) > 0 ? 'text-orange-400' : 'text-text-secondary'}`}>{row.absent ?? 0}</td>
+                  <td className={`text-center font-semibold px-1.5 py-1.5 tabular-nums text-xs ${gd >= 0 ? 'text-feedback-success' : 'text-feedback-error'}`}>{gd > 0 ? `+${gd}` : gd}</td>
+                  <td className="text-center font-black text-accent px-1.5 py-1.5 tabular-nums text-xs bg-accent/[0.03]">{row.points ?? 0}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
   return (
     <div className="divide-y divide-border/50">
       {rows.map((row: any, index: number) => {
@@ -61,19 +129,16 @@ function StandingsCard({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; mo
               </div>
             </div>
 
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-bg-base">
-                <span className="text-[11px] font-bold text-text-primary">{row.wins ?? 0}</span>
-                <span className="text-[9px] text-text-muted">W</span>
-                <span className="text-[11px] text-text-primary">{row.draws ?? 0}</span>
-                <span className="text-[9px] text-text-muted">D</span>
-                <span className="text-[11px] text-text-primary">{row.losses ?? 0}</span>
-                <span className="text-[9px] text-text-muted">L</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] text-text-muted font-semibold uppercase">GP</span>
+                <span className="text-sm font-bold text-text-primary tabular-nums">{row.played ?? 0}</span>
               </div>
-              <span className={`text-xs font-semibold w-7 text-right ${gd >= 0 ? 'text-feedback-success' : 'text-feedback-error'}`}>
-                {gd > 0 ? `+${gd}` : gd}
-              </span>
-              <span className="text-base font-black text-accent w-8 text-right tabular-nums">{row.points ?? 0}</span>
+              <div className="w-px h-8 bg-border" />
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] text-text-muted font-semibold uppercase">Pts</span>
+                <span className="text-base font-black text-accent tabular-nums">{row.points ?? 0}</span>
+              </div>
             </div>
           </Link>
         )
@@ -94,6 +159,7 @@ interface MobileProps {
 
 export default function Mobile({ data }: MobileProps) {
   const { tournaments, activeTournamentId, activeTournament, leagueStandings, groupStandings } = data
+  const [extended, setExtended] = useState(false)
 
   if (!activeTournamentId || !activeTournament) {
     return (
@@ -126,6 +192,21 @@ export default function Mobile({ data }: MobileProps) {
         </div>
       )}
 
+      <div className="flex items-center gap-2">
+        <div className="flex-1" />
+        <button
+          onClick={() => setExtended(!extended)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+            extended
+              ? 'bg-accent text-bg-base border-accent'
+              : 'bg-bg-surface text-text-muted border-border'
+          }`}
+        >
+          {extended ? <ListCollapse className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
+          {extended ? 'Minimised' : 'Full Table'}
+        </button>
+      </div>
+
       {activeTournament?.type === 'league' ? (
         <div className="bg-bg-surface rounded-xl border border-border overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center gap-2">
@@ -134,7 +215,7 @@ export default function Mobile({ data }: MobileProps) {
           </div>
           {leagueStandings.length > 0 ? (
             <>
-              <StandingsCard rows={leagueStandings} mode="league" />
+              <StandingsCard rows={leagueStandings} mode="league" extended={extended} />
               <div className="flex items-center gap-4 px-4 py-3 border-t border-border bg-bg-base/50">
                 <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
                   <span className="w-2.5 h-2.5 rounded-sm bg-accent" />
@@ -166,7 +247,7 @@ export default function Mobile({ data }: MobileProps) {
                       <span className="w-0.5 h-4 rounded-full bg-accent/40" />
                       {formatGroupTitle(groupName)}
                     </h3>
-                    <StandingsCard rows={rows} mode="group" qualifiersPerGroup={activeTournament?.settings?.qualifiers_per_group ?? 2} />
+                    <StandingsCard rows={rows} mode="group" qualifiersPerGroup={activeTournament?.settings?.qualifiers_per_group ?? 2} extended={extended} />
                   </div>
                 ))}
               <div className="flex items-center gap-1.5 px-4 py-3 text-[11px] text-text-muted bg-bg-base/50">

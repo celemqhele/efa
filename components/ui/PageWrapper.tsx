@@ -41,7 +41,7 @@ export default async function PageWrapper({ children, fullWidth = false }: PageW
     <div className="min-h-screen bg-navy">
       <MobileGestures />
       <Nav profile={profile} unreadCount={unreadCount} />
-      <main className={fullWidth ? '' : 'max-w-7xl mx-auto px-6 pt-0 pb-space-8'}>
+      <main className={fullWidth ? '' : 'max-w-[1440px] mx-auto px-6 pt-0 pb-space-8'}>
         {children}
       </main>
       <BottomTabBar profile={profile} unreadCount={unreadCount} />

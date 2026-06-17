@@ -9,9 +9,10 @@ interface Props {
   tournamentId: string
   tournamentName: string
   type: string
+  className?: string
 }
 
-export default function GenerateFriendliesButton({ tournamentId, tournamentName, type }: Props) {
+export default function GenerateFriendliesButton({ tournamentId, tournamentName, type, className = '' }: Props) {
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [matches, setMatches] = useState(1)
@@ -46,7 +47,7 @@ export default function GenerateFriendliesButton({ tournamentId, tournamentName,
     <>
       <button
         onClick={() => setShowConfirm(true)}
-        className="btn-gold text-[10px] py-1 px-2 flex-1"
+        className={className || "text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"}
         disabled={loading}
       >
         Generate Fixtures

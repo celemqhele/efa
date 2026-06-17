@@ -33,12 +33,12 @@ export default function Mobile({ data }: { data: any }) {
   const hasUnread = unread.length > 0
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="px-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground-primary">Notifications</h1>
+          <h1 className="text-lg font-bold text-text-primary">Notifications</h1>
           {hasUnread && (
-            <p className="text-sm text-accent mt-0.5">
+            <p className="text-xs text-accent mt-0.5">
               {unread.length} unread
             </p>
           )}
@@ -47,16 +47,15 @@ export default function Mobile({ data }: { data: any }) {
       </div>
 
       {isAdmin && pendingRequests && pendingRequests.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2 border-b border-border">
-              <h2 className="section-header mb-0 gap-2">
-                <RefreshCw className="w-5 h-5 shrink-0" /> Pending Team Requests
-              <span className="ml-auto text-xs font-normal text-text-muted bg-bg-elevated px-2 py-0.5 rounded-full">
-                {pendingRequests.length}
-              </span>
-            </h2>
+        <div className="bg-bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="px-4 pt-3 pb-2 border-b border-border flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 shrink-0 text-text-muted" />
+            <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider">Pending Team Requests</h2>
+            <span className="ml-auto text-[10px] font-medium text-text-muted bg-bg-base px-1.5 py-0.5 rounded-full">
+              {pendingRequests.length}
+            </span>
           </div>
-          <div className="p-3 space-y-2">
+          <div className="p-2.5 space-y-2">
             {(pendingRequests as any[]).map((req: any) => (
               <TeamChangeRequestRow key={req.id} request={req} />
             ))}
@@ -65,24 +64,24 @@ export default function Mobile({ data }: { data: any }) {
       )}
 
       {allNotifications.length === 0 && (
-        <div className="card p-16 text-center">
-          <Bell className="w-12 h-12 mx-auto text-text-muted" />
-          <p className="text-text-muted font-medium">No notifications yet</p>
-          <p className="text-foreground-muted text-sm mt-1">
+        <div className="bg-bg-surface border border-border rounded-xl p-10 text-center">
+          <Bell className="w-8 h-8 mx-auto text-text-muted mb-2" />
+          <p className="text-sm text-text-muted font-medium">No notifications yet</p>
+          <p className="text-xs text-text-secondary mt-1">
             You&apos;ll see match reminders, result updates, and more here.
           </p>
         </div>
       )}
 
       {unread.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2 border-b border-border flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-            <h2 className="text-sm font-bold text-foreground-primary uppercase tracking-wider">
+        <div className="bg-bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="px-4 pt-3 pb-2 border-b border-border flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            <h2 className="text-xs font-bold text-text-primary uppercase tracking-wider">
               Unread ({unread.length})
             </h2>
           </div>
-          <div className="divide-y divide-slate-200/60">
+          <div className="divide-y divide-border/50">
             {unread.map((n: any) => (
               <NotificationRow key={n.id} notification={n} icon={getIcon(n.type)} />
             ))}
@@ -91,13 +90,13 @@ export default function Mobile({ data }: { data: any }) {
       )}
 
       {read.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 pt-4 pb-2 border-b border-border">
-            <h2 className="text-sm font-bold text-text-muted uppercase tracking-wider">
+        <div className="bg-bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="px-4 pt-3 pb-2 border-b border-border">
+            <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider">
               Earlier ({read.length})
             </h2>
           </div>
-          <div className="divide-y divide-slate-200/60 opacity-80">
+          <div className="divide-y divide-border/50 opacity-80">
             {read.map((n: any) => (
               <NotificationRow key={n.id} notification={n} icon={getIcon(n.type)} />
             ))}

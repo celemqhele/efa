@@ -27,7 +27,6 @@ interface BottomTabBarProps {
 
 const TABS = [
   { href: '/', label: 'Home', icon: House },
-  { href: '/standings', label: 'Standings', icon: Trophy },
   { href: '/fixtures', label: 'Fixtures', icon: ClipboardList },
   { href: '/results', label: 'Results', icon: Calendar },
 ] as const
@@ -57,8 +56,8 @@ export default function BottomTabBar({ profile, unreadCount = 0 }: BottomTabBarP
   return (
     <>
       {/* Tab bar */}
-      <div className="fixed bottom-0 inset-x-0 z-50 lg:hidden bg-bg-surface/95 backdrop-blur border-t border-border safe-area-bottom">
-        <div className="flex items-center justify-around h-14">
+      <div className="fixed bottom-0 inset-x-0 z-50 lg:hidden">
+        <div className="flex items-center justify-around h-14 mx-3 mb-3 rounded-2xl bg-bg-surface/80 backdrop-saturate-150 backdrop-blur-2xl border border-border/50 shadow-[0_8px_32px_rgba(0,0,0,0.12)] safe-area-bottom">
           {TABS.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
@@ -111,7 +110,6 @@ export default function BottomTabBar({ profile, unreadCount = 0 }: BottomTabBarP
             Navigation
           </p>
 
-          <MobileMoreLink href="/calendar" icon={Calendar} label="Calendar" onClick={closeMore} />
           <MobileMoreLink href="/hall-of-fame" icon={Award} label="Hall of Fame" onClick={closeMore} />
           <MobileMoreLink href="/rules" icon={ScrollText} label="Rules" onClick={closeMore} />
 
@@ -146,7 +144,7 @@ export default function BottomTabBar({ profile, unreadCount = 0 }: BottomTabBarP
       </div>
 
       {/* Spacer for tab bar height */}
-      <div className="h-14 lg:hidden" />
+      <div className="h-20 lg:hidden" />
     </>
   )
 }

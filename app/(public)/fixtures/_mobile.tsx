@@ -103,7 +103,7 @@ function FixtureCard({ f, teamIds }: { f: any; teamIds: string[] }) {
           <span className="text-xs font-semibold text-text-primary text-center truncate max-w-full leading-tight">{home?.name ?? 'TBC'}</span>
         </div>
 
-        <div className="flex flex-col items-center shrink-0 min-w-[52px]">
+        <div className="flex flex-col items-center shrink-0 min-w-[56px]">
           {result ? (
             <span className="text-lg font-black text-text-primary tabular-nums leading-none">{myScore}–{oppScore}</span>
           ) : time ? (
@@ -111,9 +111,15 @@ function FixtureCard({ f, teamIds }: { f: any; teamIds: string[] }) {
           ) : (
             <span className="text-[10px] font-black uppercase tracking-widest text-text-muted leading-none">vs</span>
           )}
-          {f.matchday && (
-            <span className="text-[9px] text-text-muted mt-1">MD{f.matchday}</span>
-          )}
+          <div className="flex items-center gap-1 mt-1 flex-wrap justify-center">
+            <span className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded border ${typeStyle.colour}`}>
+              {typeStyle.label}
+            </span>
+            <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
+              {statusInfo.label}
+            </span>
+            {resultBadge}
+          </div>
         </div>
 
         <div className="flex flex-col items-center gap-1 w-16 shrink-0">
@@ -128,16 +134,6 @@ function FixtureCard({ f, teamIds }: { f: any; teamIds: string[] }) {
           )}
           <span className="text-xs font-semibold text-text-primary text-center truncate max-w-full leading-tight">{away?.name ?? 'TBC'}</span>
         </div>
-      </div>
-
-      <div className="flex flex-col items-end gap-1.5 shrink-0">
-        <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded border ${typeStyle.colour}`}>
-          {typeStyle.label}
-        </span>
-        <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${statusInfo.pill}`}>
-          {statusInfo.label}
-        </span>
-        {resultBadge}
       </div>
     </Link>
   )

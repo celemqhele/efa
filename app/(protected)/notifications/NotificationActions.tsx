@@ -92,20 +92,20 @@ export function NotificationRow({
   return (
     <div
       onClick={hasLink ? handleClick : undefined}
-      className={`relative flex gap-4 px-4 py-4 transition-all ${
+      className={`relative flex gap-3 px-3 py-3 transition-all ${
         !notification.read
           ? 'border-l-[3px] border-l-accent bg-accent/5'
           : 'border-l-[3px] border-l-transparent'
       } ${hasLink ? 'cursor-pointer hover:bg-bg-base' : ''}`}
     >
       {/* Icon */}
-      <div className="shrink-0 w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-base mt-0.5">
+      <div className="shrink-0 w-7 h-7 rounded-full bg-bg-elevated flex items-center justify-center text-sm mt-0.5">
         {icon}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-1.5">
           <p className={`text-sm leading-snug ${notification.read ? 'text-text-muted' : 'text-text-primary font-semibold'}`}>
             {notification.title}
           </p>
@@ -115,7 +115,7 @@ export function NotificationRow({
         </div>
         <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">{notification.body}</p>
         {hasLink && (
-          <span className="inline-block mt-1.5 text-[10px] text-accent font-medium">
+          <span className="inline-block mt-1 text-[10px] text-accent font-medium">
             View details
           </span>
         )}
@@ -123,7 +123,7 @@ export function NotificationRow({
 
       {/* Unread dot */}
       {!notification.read && (
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent" />
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent" />
       )}
     </div>
   )

@@ -8,9 +8,10 @@ interface Props {
   tournamentId: string
   tournamentName: string
   type: string
+  className?: string
 }
 
-export default function RunTournamentDrawButton({ tournamentId, tournamentName, type }: Props) {
+export default function RunTournamentDrawButton({ tournamentId, tournamentName, type, className = '' }: Props) {
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [result, setResult] = useState<{ groups?: any[]; pairings?: any[]; iterations?: number } | null>(null)
@@ -56,7 +57,7 @@ export default function RunTournamentDrawButton({ tournamentId, tournamentName, 
     <>
       <button
         onClick={() => setShowConfirm(true)}
-        className="btn-outline text-[10px] py-1 px-2 flex-1"
+        className={className || "text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"}
         disabled={loading}
       >
         Run Draw

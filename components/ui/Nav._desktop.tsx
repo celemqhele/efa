@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { House, BarChart3, CalendarDays, ListChecks, Calendar, LayoutDashboard, Bell, LogOut } from 'lucide-react'
+import { House, CalendarDays, ListChecks, LayoutDashboard, Bell, LogOut } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
 
 interface NavDesktopProps {
@@ -14,29 +14,22 @@ interface NavDesktopProps {
 
 function isActiveLink(href: string, pathname: string): boolean {
   if (href === '/') return pathname === '/'
-  if (href === '/admin/calendar') return pathname.startsWith('/admin/calendar')
   return pathname === href || pathname.startsWith(href + '/')
 }
 
-function getNavLinks(isAdmin: boolean): { href: string; label: string; icon: any }[] {
-  const links = [
+function getNavLinks(): { href: string; label: string; icon: any }[] {
+  return [
     { href: '/', label: 'Home', icon: House },
-    { href: '/standings', label: 'Standings', icon: BarChart3 },
     { href: '/fixtures', label: 'Fixtures', icon: CalendarDays },
     { href: '/results', label: 'Results', icon: ListChecks },
-    ...(isAdmin
-      ? [{ href: '/admin/calendar?scope=mine', label: 'Calendar', icon: Calendar }]
-      : [{ href: '/calendar', label: 'Calendar', icon: Calendar }]
-    ),
   ]
-  return links
 }
 
 export default function NavDesktop({ profile, unreadCount = 0, handleLogout }: NavDesktopProps) {
   const pathname = usePathname()
   const isAdmin = profile?.role === 'admin'
 
-  const navLinks = getNavLinks(isAdmin)
+  const navLinks = getNavLinks()
 
   return (
     <>

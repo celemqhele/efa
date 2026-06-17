@@ -83,16 +83,18 @@ function ResultCard({ f, teamIds }: { f: any; teamIds: string[] }) {
       )}
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className={`text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded border ${typeStyle.colour}`}>
-            {typeStyle.label}
-          </span>
-          <span className="text-[10px] text-text-muted font-semibold">MD{f.matchday}</span>
-        </div>
-        <p className="text-sm font-semibold text-text-primary truncate">
+        <p className="text-sm font-semibold text-text-primary truncate mb-0.5">
           {opponent?.name ?? 'TBC'}
         </p>
-        <p className="text-[10px] text-text-muted mt-0.5">{formatWhen(f.scheduled_date)}</p>
+        <p className="text-[10px] text-text-muted">
+          {formatWhen(f.scheduled_date)}
+          <span className={`ml-1.5 text-[9px] font-bold tracking-wider px-1 py-0.5 rounded border ${typeStyle.colour}`}>
+            {typeStyle.label}
+          </span>
+          {f.matchday && (
+            <span className="ml-1 text-[9px] text-text-muted font-semibold">MD{f.matchday}</span>
+          )}
+        </p>
       </div>
 
       <div className="flex flex-col items-end gap-1 shrink-0">
