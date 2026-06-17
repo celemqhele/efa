@@ -26,8 +26,7 @@ export default function NavMobile({ profile, unreadCount = 0, handleLogout }: Na
       ? [{ href: '/admin/calendar?scope=mine', label: 'My Calendar' }]
       : [{ href: '/calendar', label: 'Calendar' }]
     ),
-    { href: '/hall-of-fame', label: 'Hall of Fame' },
-    { href: '/rules', label: 'Rules' },
+
   ]
 
   return (

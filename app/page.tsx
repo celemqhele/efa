@@ -132,6 +132,38 @@ export default async function HomePage() {
         .limit(3)
     : { data: null }
 
+  // Calendar data for current month
+  const now = new Date()
+  const calYear = now.getFullYear()
+  const calMonth = now.getMonth() + 1
+  const monthStart = `${calYear}-${String(calMonth).padStart(2, '0')}-01`
+  const lastDay = new Date(calYear, calMonth, 0).getDate()
+  const monthEnd = `${calYear}-${String(calMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+  let calQuery = supabase
+    .from('fixtures')
+    .select(`
+      id, scheduled_date, status,
+      home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
+      away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
+      result:results(home_score, away_score)
+    `)
+    .gte('scheduled_date', monthStart)
+    .lte('scheduled_date', monthEnd + 'T23:59:59')
+    .order('scheduled_date', { ascending: true })
+
+  if (teamOrFilter) {
+    calQuery = calQuery.or(teamOrFilter)
+  }
+
+  const { data: calFixtures } = await calQuery.limit(500)
+
+  const { data: breaksRaw } = await supabase
+    .from('season_breaks')
+    .select('id, break_start, break_end, reason')
+    .lte('break_start', monthEnd)
+    .gte('break_end', monthStart)
+
   const data = {
     userTeam,
     userTeamIds,
@@ -141,6 +173,7 @@ export default async function HomePage() {
     upcomingFixtures,
     latestResults,
     unbeaten,
+    calendar: { year: calYear, month: calMonth, fixtures: (calFixtures ?? []) as any[], breaks: (breaksRaw ?? []) as any[] },
   }
 
   return (

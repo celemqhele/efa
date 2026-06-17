@@ -3,17 +3,16 @@ import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
 import TeamLogo from '@/components/ui/TeamLogo'
-import { Trophy, ClipboardList, CalendarDays, Flame, Vote, ArrowRight } from 'lucide-react'
+import CalendarGrid from './(public)/calendar/CalendarGrid'
+import { Flame, ArrowRight } from 'lucide-react'
 
 export default function Desktop({ data }: { data: any }) {
-  const { userTeam, standings, nextDate, upcomingFixtures, latestResults, unbeaten } = data
+  const { userTeam, standings, nextDate, upcomingFixtures, latestResults, unbeaten, calendar } = data
 
   return (
     <div className="space-y-8">
-
-
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+      <div className="grid lg:grid-cols-2 gap-8">
+        <div className="space-y-6 lg:pr-4">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -126,12 +125,26 @@ export default function Desktop({ data }: { data: any }) {
         </div>
 
         <div className="space-y-6">
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">
+                {calendar?.month ? new Date(calendar.year, calendar.month - 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : ''}
+              </h2>
+              <Link href="/calendar" className="flex items-center gap-1 text-xs text-accent font-medium">
+                Full calendar <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            {calendar ? (
+              <CalendarGrid year={calendar.year} month={calendar.month} fixtures={calendar.fixtures} breaks={calendar.breaks} />
+            ) : (
+              <p className="text-sm text-text-muted py-8 text-center">No calendar data</p>
+            )}
+          </Card>
+
           {standings && standings.length > 0 && (
             <Card className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">
-                  Table
-                </h2>
+                <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Table</h2>
                 <Link href="/standings" className="flex items-center gap-1 text-xs text-accent font-medium">
                   Full table <ArrowRight className="w-3 h-3" />
                 </Link>
@@ -188,26 +201,6 @@ export default function Desktop({ data }: { data: any }) {
               </div>
             </Card>
           )}
-
-          <Card className="p-5">
-            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase mb-4">Quick Links</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { href: '/hall-of-fame', label: 'Hall of Fame', icon: Trophy },
-                { href: '/rules', label: 'Rules', icon: ClipboardList },
-                { href: '/calendar', label: 'Calendar', icon: CalendarDays },
-                { href: '/polls', label: 'Polls', icon: Vote },
-              ].map((link) => {
-                const Icon = link.icon
-                return (
-                  <Link key={link.href} href={link.href} className="flex flex-col items-center gap-2 p-4 rounded-xl bg-bg-elevated border border-border hover:border-accent/30 hover:bg-bg-elevated/80 transition-all group">
-                    <Icon className="w-5 h-5 text-accent group-hover:scale-110 transition-transform" />
-                    <span className="text-xs text-text-secondary font-medium">{link.label}</span>
-                  </Link>
-                )
-              })}
-            </div>
-          </Card>
         </div>
       </div>
     </div>
