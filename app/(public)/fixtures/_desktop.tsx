@@ -182,7 +182,8 @@ export default function Desktop({ data }: DesktopProps) {
                               </span>
                             </td>
                             <td className="px-4 py-3.5 min-w-0">
-                              <div className="flex items-center gap-2.5">
+                              <div className="flex items-center gap-2.5 justify-end flex-row-reverse">
+                                <span className="font-semibold text-text-primary truncate">{home?.name ?? 'TBC'}</span>
                                 {home?.logo_league_folder && (
                                   <TeamLogo
                                     leagueFolder={home.logo_league_folder}
@@ -192,7 +193,6 @@ export default function Desktop({ data }: DesktopProps) {
                                     className="w-7 h-7 shrink-0"
                                   />
                                 )}
-                                <span className="font-semibold text-text-primary truncate">{home?.name ?? 'TBC'}</span>
                               </div>
                             </td>
                             <td className="px-4 py-3.5 text-center">
