@@ -1,0 +1,41 @@
+-- Fix update_group_standings_atomic to include group_name
+-- The previous version was missing group_name in the INSERT and used
+-- ON CONFLICT (tournament_id, team_id) which doesn't match the actual
+-- table constraint (tournament_id, group_name, team_id).
+
+CREATE OR REPLACE FUNCTION update_group_standings_atomic(
+  p_tournament_id uuid,
+  p_team_id uuid,
+  p_group_name text,
+  p_played_inc int,
+  p_wins_inc int,
+  p_draws_inc int,
+  p_losses_inc int,
+  p_gf_inc int,
+  p_ga_inc int,
+  p_points_inc int,
+  p_absent_inc int DEFAULT 0,
+  p_gd_penalty_inc int DEFAULT 0
+)
+RETURNS void AS $$
+BEGIN
+  INSERT INTO group_standings (
+    tournament_id, group_name, team_id, played, wins, draws, losses, goals_for, goals_against, points,
+    absent, gd_penalty
+  ) VALUES (
+    p_tournament_id, p_group_name, p_team_id, p_played_inc, p_wins_inc, p_draws_inc, p_losses_inc, p_gf_inc, p_ga_inc, p_points_inc,
+    p_absent_inc, p_gd_penalty_inc
+  )
+  ON CONFLICT (tournament_id, group_name, team_id) DO UPDATE SET
+    played = group_standings.played + p_played_inc,
+    wins = group_standings.wins + p_wins_inc,
+    draws = group_standings.draws + p_draws_inc,
+    losses = group_standings.losses + p_losses_inc,
+    goals_for = group_standings.goals_for + p_gf_inc,
+    goals_against = group_standings.goals_against + p_ga_inc,
+    points = group_standings.points + p_points_inc,
+    absent = group_standings.absent + p_absent_inc,
+    gd_penalty = group_standings.gd_penalty + p_gd_penalty_inc,
+    updated_at = now();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

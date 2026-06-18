@@ -140,44 +140,6 @@ async function updateLeagueStandings(
   ])
 }
 
-async function updateGroupStandings(
-  db: any,
-  tournamentId: string,
-  homeTeamId: string,
-  awayTeamId: string,
-  homeScore: number,
-  awayScore: number
-) {
-  const homeWin = homeScore > awayScore
-  const awayWin = awayScore > homeScore
-  const draw = homeScore === awayScore
-
-  await Promise.all([
-    db.rpc('update_group_standings_atomic', {
-      p_tournament_id: tournamentId,
-      p_team_id: homeTeamId,
-      p_played_inc: 1,
-      p_wins_inc: homeWin ? 1 : 0,
-      p_draws_inc: draw ? 1 : 0,
-      p_losses_inc: awayWin ? 1 : 0,
-      p_gf_inc: homeScore,
-      p_ga_inc: awayScore,
-      p_points_inc: homeWin ? 3 : draw ? 1 : 0,
-    }),
-    db.rpc('update_group_standings_atomic', {
-      p_tournament_id: tournamentId,
-      p_team_id: awayTeamId,
-      p_played_inc: 1,
-      p_wins_inc: awayWin ? 1 : 0,
-      p_draws_inc: draw ? 1 : 0,
-      p_losses_inc: homeWin ? 1 : 0,
-      p_gf_inc: awayScore,
-      p_ga_inc: homeScore,
-      p_points_inc: awayWin ? 3 : draw ? 1 : 0,
-    }),
-  ])
-}
-
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -394,15 +356,6 @@ export async function POST(request: Request) {
     if (!bothAbsent) {
       if (roundType === 'league' && homeTeamId && awayTeamId) {
         await updateLeagueStandings(
-          adminSupabase,
-          tournamentId,
-          homeTeamId,
-          awayTeamId,
-          home_score,
-          away_score
-        )
-      } else if (roundType === 'group' && homeTeamId && awayTeamId) {
-        await updateGroupStandings(
           adminSupabase,
           tournamentId,
           homeTeamId,
