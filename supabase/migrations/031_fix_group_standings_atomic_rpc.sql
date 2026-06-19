@@ -1,8 +1,23 @@
--- Fix update_group_standings_atomic to include group_name
--- The previous version was missing group_name in the INSERT and used
--- ON CONFLICT (tournament_id, team_id) which doesn't match the actual
--- table constraint (tournament_id, group_name, team_id).
+-- Fix group_standings constraint and RPC function
+--
+-- The database had two unique constraints on group_standings:
+--   1. (tournament_id, group_name, team_id) — correct, from migration 001
+--   2. (tournament_id, team_id) — BOGUS, added out-of-band as
+--      "group_standings_tournament_team_unique"
+--
+-- The second constraint conflicts with the first: a team can only have
+-- ONE row per tournament regardless of group, which breaks group-stage
+-- standings when a team plays in only one group (the INSERT with ON CONFLICT
+-- on the 3-column constraint still violates the 2-column constraint).
+--
+-- Also fixes update_group_standings_atomic which was missing group_name
+-- and used ON CONFLICT (tournament_id, team_id) against the bogus constraint.
 
+-- Drop the bogus constraint
+ALTER TABLE group_standings
+  DROP CONSTRAINT IF EXISTS group_standings_tournament_team_unique;
+
+-- Recreate the RPC with proper group_name support
 CREATE OR REPLACE FUNCTION update_group_standings_atomic(
   p_tournament_id uuid,
   p_team_id uuid,
