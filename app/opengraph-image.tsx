@@ -5,7 +5,7 @@ export const contentType = 'image/png'
 
 export default async function OGImage() {
   const fontData = await fetch(
-    'https://fonts.gstatic.com/s/inter/v18/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.woff2',
+    'https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf',
   ).then((r) => r.arrayBuffer())
 
   return new ImageResponse(
