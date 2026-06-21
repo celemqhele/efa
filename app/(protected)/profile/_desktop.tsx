@@ -43,6 +43,9 @@ export default function Desktop({ data }: { data: any }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
       })
+      window.dispatchEvent(new CustomEvent('show-notification', {
+        detail: { title: 'Saved', message: 'Phone number updated', type: 'success' },
+      }))
     } catch {}
     setSaving(false)
   }
