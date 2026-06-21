@@ -10,7 +10,7 @@ import ProfileActions from './ProfileActions'
 import { Card } from '@/components/ui/Card'
 import AvatarUpload from '@/components/ui/AvatarUpload'
 import ThemeSettings from '@/components/ui/ThemeSettings'
-import { Star, Shirt, Shield, RefreshCw, Calendar, Gamepad2 } from 'lucide-react'
+import { Star, Shirt, Shield, RefreshCw, Calendar, Gamepad2, Phone } from 'lucide-react'
 
 const PLAYSTYLE_OPTIONS = [
   'Tactical adaptive',
@@ -47,7 +47,9 @@ export default function Mobile({ data }: { data: any }) {
   } = data
 
   const [playstyle, setPlaystyle] = useState(profile?.playstyle ?? '')
+  const [phone, setPhone] = useState(profile?.phone ?? '')
   const [saving, setSaving] = useState(false)
+  const [savingPhone, setSavingPhone] = useState(false)
 
   async function savePlaystyle() {
     setSaving(true)
@@ -59,6 +61,18 @@ export default function Mobile({ data }: { data: any }) {
       })
     } catch {}
     setSaving(false)
+  }
+
+  async function savePhone() {
+    setSavingPhone(true)
+    try {
+      await fetch('/api/profile/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      })
+    } catch {}
+    setSavingPhone(false)
   }
 
   return (
@@ -133,6 +147,27 @@ export default function Mobile({ data }: { data: any }) {
                 className="text-[10px] font-semibold bg-accent text-bg-base rounded-lg px-2.5 py-1.5 hover:bg-accent/90 transition-colors disabled:opacity-40 shrink-0"
               >
                 {saving ? '…' : 'Save'}
+              </button>
+            )}
+          </div>
+
+          {/* Phone number */}
+          <div className="flex items-center gap-2 pt-space-1">
+            <Phone className="w-4 h-4 text-accent shrink-0" />
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+27 12 345 6789"
+              className="flex-1 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
+            />
+            {phone !== (profile?.phone ?? '') && (
+              <button
+                onClick={savePhone}
+                disabled={savingPhone}
+                className="text-[10px] font-semibold bg-accent text-bg-base rounded-lg px-2.5 py-1.5 hover:bg-accent/90 transition-colors disabled:opacity-40 shrink-0"
+              >
+                {savingPhone ? '…' : 'Save'}
               </button>
             )}
           </div>

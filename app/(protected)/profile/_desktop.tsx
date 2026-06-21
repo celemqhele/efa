@@ -9,7 +9,8 @@ import ProfileActions from './ProfileActions'
 import { Card } from '@/components/ui/Card'
 import AvatarUpload from '@/components/ui/AvatarUpload'
 import ThemeSettings from '@/components/ui/ThemeSettings'
-import { Star, Shirt, Shield, RefreshCw, Calendar } from 'lucide-react'
+import { Star, Shirt, Shield, RefreshCw, Calendar, Phone } from 'lucide-react'
+import { useState } from 'react'
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null
@@ -17,7 +18,7 @@ function daysUntil(dateStr: string | null): number | null {
   return d
 }
 
-export default function Mobile({ data }: { data: any }) {
+export default function Desktop({ data }: { data: any }) {
   const {
     user,
     profile,
@@ -30,6 +31,21 @@ export default function Mobile({ data }: { data: any }) {
     winRate,
     next3,
   } = data
+
+  const [phone, setPhone] = useState(profile?.phone ?? '')
+  const [saving, setSaving] = useState(false)
+
+  async function savePhone() {
+    setSaving(true)
+    try {
+      await fetch('/api/profile/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      })
+    } catch {}
+    setSaving(false)
+  }
 
   return (
     <div className="space-y-space-8 max-w-3xl mx-auto">
@@ -82,6 +98,27 @@ export default function Mobile({ data }: { data: any }) {
           )}
 
           <p className="text-xs text-text-muted">{user.email}</p>
+
+          {/* Phone number */}
+          <div className="flex items-center gap-2 pt-space-1">
+            <Phone className="w-4 h-4 text-accent shrink-0" />
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+27 12 345 6789"
+              className="flex-1 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
+            />
+            {phone !== (profile?.phone ?? '') && (
+              <button
+                onClick={savePhone}
+                disabled={saving}
+                className="text-[10px] font-semibold bg-accent text-bg-base rounded-lg px-2.5 py-1.5 hover:bg-accent/90 transition-colors disabled:opacity-40 shrink-0"
+              >
+                {saving ? '…' : 'Save'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Quick Career Stats */}

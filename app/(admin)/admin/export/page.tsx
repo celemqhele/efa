@@ -381,7 +381,7 @@ export default async function ExportPage({ searchParams }: Props) {
             .from('teams')
             .select(`
               id, name, logo_league_folder, logo_team_slug,
-              manager:profiles!teams_manager_id_fkey(username)
+              manager:profiles!teams_manager_id_fkey(username, phone)
             `)
             .in('id', teamIds)
             .order('name', { ascending: true })
@@ -567,6 +567,7 @@ export default async function ExportPage({ searchParams }: Props) {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
                           {chunk.managers.map((m: any) => {
                             const managerName = Array.isArray(m.manager) ? m.manager[0]?.username : m.manager?.username
+                            const managerPhone = Array.isArray(m.manager) ? m.manager[0]?.phone : m.manager?.phone
                             return (
                               <div
                                 key={m.id}
@@ -584,6 +585,11 @@ export default async function ExportPage({ searchParams }: Props) {
                                   <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {managerName ?? 'VACANT'}
                                   </div>
+                                  {managerPhone && (
+                                    <div style={{ color: 'var(--export-muted)', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {managerPhone}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             )
@@ -821,6 +827,7 @@ export default async function ExportPage({ searchParams }: Props) {
                     ) : (
                       card.managers.map((m: any, mi: number) => {
                         const managerName = Array.isArray(m.manager) ? m.manager[0]?.username : m.manager?.username
+                        const managerPhone = Array.isArray(m.manager) ? m.manager[0]?.phone : m.manager?.phone
                         return (
                           <div
                             key={m.id}
@@ -838,6 +845,11 @@ export default async function ExportPage({ searchParams }: Props) {
                               <div style={{ color: accent, fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {managerName ?? 'VACANT'}
                               </div>
+                              {managerPhone && (
+                                <div style={{ color: 'var(--export-muted)', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {managerPhone}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )
