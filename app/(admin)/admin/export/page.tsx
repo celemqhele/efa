@@ -60,11 +60,13 @@ function StandingsTable({
   mode,
   accent,
   offset = 0,
+  qualifiersPerGroup = 2,
 }: {
   rows: any[]
   mode: 'league' | 'group'
   accent: string
   offset?: number
+  qualifiersPerGroup?: number
 }) {
   const rowEven: React.CSSProperties = { background: 'var(--export-row-bg)', borderRadius: '8px' }
   const rowOdd: React.CSSProperties = { background: 'transparent' }
@@ -101,7 +103,7 @@ function StandingsTable({
               : pos < 20
               ? '#3b82f6'
               : 'transparent'
-            : pos < 2 ? 'var(--color-accent)' : 'transparent'
+            : pos < qualifiersPerGroup ? 'var(--color-accent)' : 'transparent'
         return (
           <div
             key={s.id ?? i}
@@ -207,7 +209,7 @@ function StandingsTable({
             </div>
             {mode === 'group' && (
               <div style={{ width: '20px', textAlign: 'center' }}>
-                {pos < 2 && (
+                {pos < qualifiersPerGroup && (
                   <span style={{ fontSize: '10px', color: 'var(--color-accent)', fontWeight: 700 }}>Q</span>
                 )}
               </div>
@@ -221,7 +223,7 @@ function StandingsTable({
 
 type CardData = {
   key: string
-  tournament: { id: string; name: string; type: string }
+  tournament: { id: string; name: string; type: string; settings?: any }
   type: ExportType
   fixtures: any[]
   results: any[]
@@ -246,7 +248,7 @@ export default async function ExportPage({ searchParams }: Props) {
 
   const { data: _tournaments } = await supabase
     .from('tournaments')
-    .select('id, name, type, status')
+    .select('id, name, type, status, settings')
     .eq('status', 'active')
     .order('created_at', { ascending: true })
   const tournaments = (_tournaments ?? []) as any[]
@@ -536,12 +538,12 @@ export default async function ExportPage({ searchParams }: Props) {
                                 >
                                   GROUP {group}
                                 </div>
-                                <StandingsTable rows={rows} mode="group" accent={accent} />
+                                <StandingsTable rows={rows} mode="group" accent={accent} qualifiersPerGroup={card.tournament?.settings?.qualifiers_per_group ?? 2} />
                               </div>
                             ))}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
-                            <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top 2 qualify</span>
+                            <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top {card.tournament?.settings?.qualifiers_per_group ?? 2} qualify</span>
                           </div>
                         </div>
                       )}
@@ -800,12 +802,12 @@ export default async function ExportPage({ searchParams }: Props) {
                               >
                                 GROUP {group}
                               </div>
-                              <StandingsTable rows={rows} mode="group" accent={accent} />
+                              <StandingsTable rows={rows} mode="group" accent={accent} qualifiersPerGroup={card.tournament?.settings?.qualifiers_per_group ?? 2} />
                             </div>
                           ))}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
-                          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top 2 qualify</span>
+                          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Top {card.tournament?.settings?.qualifiers_per_group ?? 2} qualify</span>
                         </div>
                       </>
                     )}
