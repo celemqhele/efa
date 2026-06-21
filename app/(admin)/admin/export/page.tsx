@@ -344,14 +344,11 @@ export default async function ExportPage({ searchParams }: Props) {
         if (tournament.type !== 'league') {
           isChunked = true
           const groupEntries = Object.entries(gs).sort()
-          const groupChunkSize = 4 // 4 groups per image
-          for (let i = 0; i < groupEntries.length; i += groupChunkSize) {
-            const partNum = Math.floor(i / groupChunkSize) + 1
-            const chunkEntries = groupEntries.slice(i, i + groupChunkSize)
+          for (const [group, rows] of groupEntries) {
             chunks.push({
-              key: `${tournamentId}-${cardType}-chunk-${partNum}`,
-              title: `GROUP STANDINGS (PART ${partNum})`,
-              groupStandings: Object.fromEntries(chunkEntries)
+              key: `${tournamentId}-${cardType}-group-${group}`,
+              title: `GROUP ${group}`,
+              groupStandings: { [group]: rows }
             })
           }
         } else {
