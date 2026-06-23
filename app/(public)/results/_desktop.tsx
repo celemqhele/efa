@@ -203,11 +203,23 @@ export default function Desktop({ data }: DesktopProps) {
                               <span className="text-xl font-black text-text-primary tabular-nums leading-none">
                                 {myScore}–{oppScore}
                               </span>
-                              {resultBadge && (
-                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border ${resultBadge.cls}`}>
-                                  {resultBadge.label}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1">
+                                {f._aggregate && (
+                                  <span className="text-[9px] text-text-muted font-semibold px-1 py-0.5 rounded bg-bg-elevated">
+                                    AGG {f._aggregate.home}–{f._aggregate.away}
+                                  </span>
+                                )}
+                                {f._penScore && (
+                                  <span className="text-[9px] text-text-muted/70 font-medium px-1 py-0.5 rounded bg-bg-elevated">
+                                    pens {f._penScore.home}–{f._penScore.away}
+                                  </span>
+                                )}
+                                {resultBadge && (
+                                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border ${resultBadge.cls}`}>
+                                    {resultBadge.label}
+                                  </span>
+                                )}
+                              </div>
                             </>
                           ) : (
                             <span className="text-xs text-text-muted italic">No score</span>

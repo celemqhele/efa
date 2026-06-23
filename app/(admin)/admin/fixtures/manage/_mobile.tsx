@@ -33,11 +33,11 @@ const STATUS_COLOURS: Record<string, string> = {
   abandoned: 'text-red-400 bg-red-500/10 border-red-500/20',
 }
 
-const ROUND_LABELS: Record<string, string> = {
-  r16: 'R16',
-  qf: 'QF',
-  sf: 'SF',
-  final: 'Final',
+function roundLabel(roundType: string, leg: number): string {
+  const base: Record<string, string> = { r16: 'R16', qf: 'QF', sf: 'SF', final: 'Final' }
+  const label = base[roundType] ?? roundType.toUpperCase()
+  if (leg && roundType !== 'final') return `${label} Leg ${leg}`
+  return label
 }
 
 function fixtureTime(scheduledDate: string | null): string | null {
@@ -111,7 +111,7 @@ export default function Mobile({ data }: { data: any }) {
                     const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
                     const time = fixtureTime(fx.scheduled_date)
                     const round = fx.round_type && fx.round_type !== 'group'
-                      ? ROUND_LABELS[fx.round_type] ?? fx.round_type.toUpperCase()
+                      ? roundLabel(fx.round_type, fx.leg)
                       : null
                     return (
                       <div key={fx.id} className="bg-bg-surface border border-border rounded-xl p-4 space-y-3">
@@ -133,6 +133,16 @@ export default function Mobile({ data }: { data: any }) {
                             {result ? `${result.home_score}–${result.away_score}` : 'vs'}
                           </span>
                           {cleanTeamName(awayTeam?.name) ?? 'TBC'}
+                          {fx._aggregate && (
+                            <span className="text-[10px] text-text-muted font-semibold ml-2 px-1 py-0.5 rounded bg-bg-elevated">
+                              AGG {fx._aggregate.home}–{fx._aggregate.away}
+                            </span>
+                          )}
+                          {fx._penScore && (
+                            <span className="text-[10px] text-text-muted/70 ml-1 px-1 py-0.5 rounded bg-bg-elevated">
+                              pens {fx._penScore.home}–{fx._penScore.away}
+                            </span>
+                          )}
                         </p>
                         <FixtureActions
                           fixtureId={fx.id}

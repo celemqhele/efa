@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { AlertTriangle, BarChart3, Camera, ArrowLeft, ChevronRight } from 'lucide-react'
 
 export default function Desktop({ data }: { data: any }) {
-  const { result, stats, fixture, home, away, tournament, tournamentColor } = data
+  const { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore } = data
 
   const statDefs = [
     { key: 'possession', label: 'Possession %', h: stats?.home_possession, a: stats?.away_possession, unit: '%' },
@@ -51,6 +51,20 @@ export default function Desktop({ data }: { data: any }) {
               <div className="text-6xl font-black text-text-primary tabular-nums tracking-tight">
                 {result.home_score}<span className="text-text-muted mx-3">–</span>{result.away_score}
               </div>
+              {(aggregateScore || penScore) && (
+                <div className="text-center mt-1 space-y-0.5">
+                  {aggregateScore && (
+                    <p className="text-sm text-text-muted font-semibold">
+                      AGG {aggregateScore.home} – {aggregateScore.away}
+                    </p>
+                  )}
+                  {penScore && (
+                    <p className="text-xs text-text-muted/70 font-medium">
+                      pens {penScore.home} – {penScore.away}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="text-xs text-green-400 mt-1 font-semibold uppercase tracking-wider">Full Time</div>
               {fixture?.scheduled_date && (
                 <div className="text-xs text-text-muted mt-1">

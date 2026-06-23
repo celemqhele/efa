@@ -35,11 +35,11 @@ const STATUS_COLOURS: Record<string, string> = {
   abandoned: 'text-red-400 bg-red-500/10 border-red-500/20',
 }
 
-const ROUND_LABELS: Record<string, string> = {
-  r16: 'R16',
-  qf: 'QF',
-  sf: 'SF',
-  final: 'Final',
+function roundLabel(roundType: string, leg: number): string {
+  const base: Record<string, string> = { r16: 'R16', qf: 'QF', sf: 'SF', final: 'Final' }
+  const label = base[roundType] ?? roundType.toUpperCase()
+  if (leg && roundType !== 'final') return `${label} Leg ${leg}`
+  return label
 }
 
 function fixtureTime(scheduledDate: string | null): string | null {
@@ -126,7 +126,7 @@ export default function Desktop({ data }: { data: any }) {
                         const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
                         const time = fixtureTime(fx.scheduled_date)
                         const round = fx.round_type && fx.round_type !== 'group'
-                          ? ROUND_LABELS[fx.round_type] ?? fx.round_type.toUpperCase()
+                          ? roundLabel(fx.round_type, fx.leg)
                           : null
                         return (
                           <tr key={fx.id} className="border-b border-border hover:bg-bg-base/60 transition-colors">
@@ -151,9 +151,23 @@ export default function Desktop({ data }: { data: any }) {
                             </td>
                             <td className="px-5 py-4 text-center">
                               {result ? (
-                                <span className="text-text-primary font-bold text-base">
-                                  {result.home_score} – {result.away_score}
-                                </span>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-text-primary font-bold text-base">
+                                    {result.home_score} – {result.away_score}
+                                  </span>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    {fx._aggregate && (
+                                      <span className="text-[9px] text-text-muted font-semibold px-1 py-0.5 rounded bg-bg-elevated">
+                                        AGG {fx._aggregate.home}–{fx._aggregate.away}
+                                      </span>
+                                    )}
+                                    {fx._penScore && (
+                                      <span className="text-[9px] text-text-muted/70 px-1 py-0.5 rounded bg-bg-elevated">
+                                        pens {fx._penScore.home}–{fx._penScore.away}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               ) : (
                                 <span className="text-text-muted">vs</span>
                               )}

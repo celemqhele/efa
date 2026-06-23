@@ -325,6 +325,8 @@ export interface Database {
           finalised_by: string | null
           screenshot_url: string | null
           override_reason: string | null
+          pen_home_score: number | null
+          pen_away_score: number | null
           created_at: string
         }
         Insert: {
@@ -337,6 +339,8 @@ export interface Database {
           finalised_by?: string | null
           screenshot_url?: string | null
           override_reason?: string | null
+          pen_home_score?: number | null
+          pen_away_score?: number | null
           created_at?: string
         }
         Update: {
@@ -349,6 +353,8 @@ export interface Database {
           finalised_by?: string | null
           screenshot_url?: string | null
           override_reason?: string | null
+          pen_home_score?: number | null
+          pen_away_score?: number | null
           created_at?: string
         }
         Relationships: []

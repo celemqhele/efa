@@ -203,6 +203,20 @@ export default function Mobile({ data }: { data: any }) {
                 {result.away_score}
               </span>
             </div>
+            {(data.aggregateScore || data.penScore) && (
+              <div className="text-center space-y-0.5 mt-1">
+                {data.aggregateScore && (
+                  <p className="text-xs text-text-muted font-semibold">
+                    AGG {data.aggregateScore.home} – {data.aggregateScore.away}
+                  </p>
+                )}
+                {data.penScore && (
+                  <p className="text-[11px] text-text-muted/70 font-medium">
+                    pens {data.penScore.home} – {data.penScore.away}
+                  </p>
+                )}
+              </div>
+            )}
 
             <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
               <Image

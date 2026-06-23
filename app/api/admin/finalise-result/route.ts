@@ -185,6 +185,8 @@ export async function POST(request: Request) {
   const override_reason = body.override_reason
   const screenshot_url = body.screenshot_url
   const stats = body.stats
+  const pen_home_score = body.pen_home_score
+  const pen_away_score = body.pen_away_score
 
   let home_score: number
   let away_score: number
@@ -258,6 +260,8 @@ export async function POST(request: Request) {
         override_reason: effectiveOverrideReason,
         is_abandoned,
         abandoned_type,
+        ...(pen_home_score != null ? { pen_home_score } : {}),
+        ...(pen_away_score != null ? { pen_away_score } : {}),
       },
       { onConflict: 'fixture_id' }
     )

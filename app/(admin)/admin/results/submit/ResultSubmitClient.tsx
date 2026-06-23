@@ -19,6 +19,9 @@ interface Team {
 interface Fixture {
   id: string
   matchday: number
+  round_type: string
+  leg: number
+  tournament_id: string
   scheduled_date: string | null
   status: 'scheduled' | 'awaiting_confirmation' | string
   tournament: { id: string; name: string; type: string } | null
@@ -168,6 +171,12 @@ export default function ResultSubmitClient({
   const [overrideReason, setOverrideReason] = useState('')
   const [isOverride, setIsOverride] = useState(false)
 
+  // Penalty state (for 2-leg knockout)
+  const [penHomeScore, setPenHomeScore] = useState('')
+  const [penAwayScore, setPenAwayScore] = useState('')
+  const [showPenalties, setShowPenalties] = useState(false)
+  const [leg1Aggregate, setLeg1Aggregate] = useState<{ home: number; away: number } | null>(null)
+
   // Submission state
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -232,6 +241,28 @@ export default function ResultSubmitClient({
       .then(data => setForfeitBalances(data.balances ?? []))
       .catch(() => setForfeitBalances([]))
       .finally(() => setBalanceLoading(false))
+  }, [selectedFixtureId])
+
+  // Fetch leg 1 aggregate for 2-leg knockout leg 2 fixtures
+  useEffect(() => {
+    setLeg1Aggregate(null)
+    setShowPenalties(false)
+    setPenHomeScore('')
+    setPenAwayScore('')
+    if (!selectedFixtureId) return
+    const fixture = pendingFixtures.find(f => f.id === selectedFixtureId)
+    if (!fixture) return
+    if (fixture.leg !== 2 || !['qf', 'sf'].includes(fixture.round_type)) return
+
+    const leg1Md = fixture.matchday - 10
+    fetch(`/api/admin/fixtures/sibling?tournament_id=${fixture.tournament_id}&matchday=${leg1Md}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.result) {
+          setLeg1Aggregate({ home: data.result.home_score, away: data.result.away_score })
+        }
+      })
+      .catch(() => {})
   }, [selectedFixtureId])
 
   function resetOcr() {
@@ -364,7 +395,7 @@ export default function ResultSubmitClient({
     setSubmitting(true)
     setSubmitError('')
 
-    const payload = {
+    const payload: Record<string, any> = {
       fixture_id: selectedFixtureId,
       home_score: parseInt(homeScore),
       away_score: parseInt(awayScore),
@@ -384,6 +415,8 @@ export default function ResultSubmitClient({
       ocr_home_name: ocrResult?.home_team_name ?? null,
       ocr_away_name: ocrResult?.away_team_name ?? null,
     }
+    if (showPenalties && penHomeScore) payload.pen_home_score = parseInt(penHomeScore)
+    if (showPenalties && penAwayScore) payload.pen_away_score = parseInt(penAwayScore)
 
     try {
       const res = await fetch('/api/admin/finalise-result', {
@@ -901,6 +934,67 @@ export default function ResultSubmitClient({
                 </div>
               </div>
 
+              {/* Aggregate preview for 2-leg knockout leg 2 */}
+              {leg1Aggregate && (
+                <div className="mt-4 p-3 bg-bg-surface rounded-lg border border-gold/20">
+                  <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Aggregate</div>
+                  <div className="flex items-center justify-center gap-4">
+                    <span className="text-sm font-bold text-foreground-primary">{leg1Aggregate.home}</span>
+                    <span className="text-xs text-text-muted">–</span>
+                    <span className="text-sm font-bold text-foreground-primary">{leg1Aggregate.away}</span>
+                    <span className="text-[10px] text-text-muted">(after leg 1)</span>
+                  </div>
+                  <div className="text-[10px] text-text-muted text-center mt-1">
+                    + {homeScore || '?'} – {awayScore || '?'} (this leg)
+                  </div>
+                </div>
+              )}
+
+              {/* Penalties toggle for 2-leg knockout */}
+              {selectedFixture?.leg === 2 && ['qf', 'sf'].includes(selectedFixture?.round_type ?? '') && (
+                <div className="mt-4 p-3 bg-bg-surface rounded-lg border border-border">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showPenalties}
+                      onChange={(e) => {
+                        setShowPenalties(e.target.checked)
+                        if (!e.target.checked) { setPenHomeScore(''); setPenAwayScore('') }
+                      }}
+                      className="w-4 h-4 text-gold border-border rounded focus:ring-gold"
+                    />
+                    <span className="text-sm font-medium text-foreground-secondary">Penalties?</span>
+                  </label>
+                  {showPenalties && (
+                    <div className="flex items-center gap-4 mt-3">
+                      <div className="flex-1">
+                        <label className="form-label text-[10px]">{selectedFixture.home_team?.name ?? 'Home'}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={penHomeScore}
+                          onChange={(e) => setPenHomeScore(e.target.value)}
+                          className="input-field text-center text-lg font-bold"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="text-gold text-xl font-black pt-5">–</div>
+                      <div className="flex-1">
+                        <label className="form-label text-[10px]">{selectedFixture.away_team?.name ?? 'Away'}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={penAwayScore}
+                          onChange={(e) => setPenAwayScore(e.target.value)}
+                          className="input-field text-center text-lg font-bold"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {isOverride && !(homeAbsent || awayAbsent) && (
                 <div className="mt-4">
                   <label className="form-label text-yellow-400">Override Reason (required)</label>
@@ -981,6 +1075,16 @@ export default function ResultSubmitClient({
                     <p className="text-foreground-primary font-bold mt-1">{selectedFixture.away_team?.name}</p>
                   </div>
                 </div>
+                {leg1Aggregate && (
+                  <p className="text-text-muted text-xs text-center mt-1">
+                    AGG {leg1Aggregate.home + (parseInt(awayScore) || 0)} – {leg1Aggregate.away + (parseInt(homeScore) || 0)}
+                  </p>
+                )}
+                {showPenalties && penHomeScore && penAwayScore && (
+                  <p className="text-text-muted text-[10px] text-center mt-0.5">
+                    pens {penHomeScore} – {penAwayScore}
+                  </p>
+                )}
                 {isOverride && overrideReason && (
                   <p className="text-yellow-400 text-xs text-center">Override: {overrideReason}</p>
                 )}

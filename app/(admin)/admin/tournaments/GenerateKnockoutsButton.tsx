@@ -27,6 +27,7 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
   const [loading, setLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [shuffle, setShuffle] = useState(false)
+  const [numLegs, setNumLegs] = useState<1 | 2>(1)
   const [showConfirm, setShowConfirm] = useState(false)
   const [qualifiers, setQualifiers] = useState<Qualifier[]>([])
   const router = useRouter()
@@ -63,6 +64,7 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
         body: JSON.stringify({ 
           tournament_id: tournamentId, 
           shuffle,
+          num_legs: numLegs,
           manual_qualifiers: qualifiers.map(q => q.team_id)
         }),
       })
@@ -125,7 +127,7 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
               </div>
             )}
 
-            <div className="flex items-center gap-3 mb-6 p-3 bg-bg-surface rounded-xl border border-border">
+            <div className="flex items-center gap-3 mb-3 p-3 bg-bg-surface rounded-xl border border-border">
               <input
                 type="checkbox"
                 id="shuffle"
@@ -139,6 +141,33 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
                   If checked, pairings will be randomized instead of Group A1 vs B2, etc.
                 </span>
               </label>
+            </div>
+
+            <div className="flex items-center gap-3 mb-6 p-3 bg-bg-surface rounded-xl border border-border">
+              <span className="text-sm font-medium text-foreground-secondary min-w-[60px]">Legs</span>
+              <label className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border text-sm transition-colors ${numLegs === 1 ? 'bg-gold/10 border-gold/40 text-gold font-bold' : 'border-border text-text-muted hover:text-foreground-secondary'}`}>
+                <input
+                  type="radio"
+                  name="numLegs"
+                  value={1}
+                  checked={numLegs === 1}
+                  onChange={() => setNumLegs(1)}
+                  className="sr-only"
+                />
+                1 Leg
+              </label>
+              <label className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border text-sm transition-colors ${numLegs === 2 ? 'bg-gold/10 border-gold/40 text-gold font-bold' : 'border-border text-text-muted hover:text-foreground-secondary'}`}>
+                <input
+                  type="radio"
+                  name="numLegs"
+                  value={2}
+                  checked={numLegs === 2}
+                  onChange={() => setNumLegs(2)}
+                  className="sr-only"
+                />
+                2 Legs
+              </label>
+              <span className="text-[10px] text-text-muted ml-auto">Home &amp; away</span>
             </div>
 
             <div className="flex gap-3">

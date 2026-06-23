@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { calculateProbability } from '@/lib/probability-engine'
 import { getTeamDNAFromDB } from '@/lib/dna-engine'
+import { getSiblingMatchday, computeAggregate } from '@/lib/aggregate'
 import Shell from './_shell'
 
 export const revalidate = 30
@@ -146,6 +147,42 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const homeCoachNote = coachNotes.find((n: any) => n.team_id === fixture.home_team_id) ?? null
   const awayCoachNote = coachNotes.find((n: any) => n.team_id === fixture.away_team_id) ?? null
 
+  // Sibling fixture for 2-leg aggregate display
+  let aggregateScore: { home: number; away: number } | null = null
+  let penScore: { home: number; away: number } | null = null
+  const siblingMd = getSiblingMatchday(fixture.matchday)
+  if (siblingMd && ['qf', 'sf'].includes(fixture.round_type)) {
+    const { data: siblingData } = await supabase
+      .from('fixtures')
+      .select('*, results(*)')
+      .eq('tournament_id', fixture.tournament_id)
+      .eq('matchday', siblingMd)
+      .maybeSingle() as any
+
+    if (siblingData) {
+      const siblingResult = Array.isArray(siblingData.results)
+        ? siblingData.results[0]
+        : siblingData.results
+
+      if (result && siblingResult) {
+        // Determine which is leg 1 and which is leg 2
+        const isLeg2 = [111, 112, 113, 114, 211, 212].includes(fixture.matchday)
+        const leg1Result = isLeg2 ? siblingResult : result
+        const leg2Result = isLeg2 ? result : siblingResult
+        const agg = computeAggregate(leg1Result, leg2Result)
+        if (agg) aggregateScore = agg
+      }
+
+      // Penalty scores from this fixture's result
+      if (result && (result as any).pen_home_score != null) {
+        penScore = {
+          home: (result as any).pen_home_score,
+          away: (result as any).pen_away_score,
+        }
+      }
+    }
+  }
+
   // Derived state
   const homeTeam = (fixture as any).home_team
   const awayTeam = (fixture as any).away_team
@@ -205,6 +242,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     replies,
     homeCoachNote,
     awayCoachNote,
+    aggregateScore,
+    penScore,
   }
 
   return <Shell data={data} />

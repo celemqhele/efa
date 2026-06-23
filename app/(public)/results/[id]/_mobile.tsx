@@ -30,7 +30,7 @@ function StatRow({ label, homeVal, awayVal }: { label: string; homeVal: number; 
 }
 
 export default function Mobile({ data }: { data: any }) {
-  const { result, stats, fixture, home, away, tournament, tournamentColor } = data
+  const { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore } = data
 
   return (
     <div className="px-4 pb-8 space-y-5">
@@ -68,10 +68,24 @@ export default function Mobile({ data }: { data: any }) {
               <span className="text-xs font-bold text-foreground-primary text-center leading-tight truncate max-w-[90px]">{home?.name}</span>
             </div>
 
-            <div className="text-center shrink-0">
+              <div className="text-center shrink-0">
               <div className="text-3xl font-black text-foreground-primary tabular-nums">
                 {result.home_score}<span className="text-text-muted mx-1">–</span>{result.away_score}
               </div>
+              {(aggregateScore || penScore) && (
+                <div className="text-center space-y-0.5 mt-0.5">
+                  {aggregateScore && (
+                    <p className="text-[10px] text-text-muted font-semibold">
+                      AGG {aggregateScore.home} – {aggregateScore.away}
+                    </p>
+                  )}
+                  {penScore && (
+                    <p className="text-[9px] text-text-muted/70 font-medium">
+                      pens {penScore.home} – {penScore.away}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="text-[9px] text-green-400 font-semibold uppercase tracking-wider">FT</div>
             </div>
 

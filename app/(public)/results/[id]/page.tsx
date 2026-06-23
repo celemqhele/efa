@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import { getSiblingMatchday, computeAggregate } from '@/lib/aggregate'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
@@ -42,13 +43,47 @@ export default async function ResultDetailPage({ params }: Props) {
   const away = fixture?.away_team
   const tournament = fixture?.tournament
 
+  // Sibling fixture for 2-leg aggregate display
+  let aggregateScore: { home: number; away: number } | null = null
+  let penScore: { home: number; away: number } | null = null
+  const siblingMd = fixture?.matchday ? getSiblingMatchday(fixture.matchday) : null
+  if (siblingMd && fixture?.round_type && ['qf', 'sf'].includes(fixture.round_type)) {
+    const { data: siblingData } = await supabase
+      .from('fixtures')
+      .select('*, results(*)')
+      .eq('tournament_id', fixture.tournament_id)
+      .eq('matchday', siblingMd)
+      .maybeSingle() as any
+
+    if (siblingData) {
+      const siblingResult = Array.isArray(siblingData.results)
+        ? siblingData.results[0]
+        : siblingData.results
+
+      if (result && siblingResult) {
+        const isLeg2 = [111, 112, 113, 114, 211, 212].includes(fixture.matchday)
+        const leg1Result = isLeg2 ? siblingResult : result
+        const leg2Result = isLeg2 ? result : siblingResult
+        const agg = computeAggregate(leg1Result, leg2Result)
+        if (agg) aggregateScore = agg
+      }
+
+      if (result && (result as any).pen_home_score != null) {
+        penScore = {
+          home: (result as any).pen_home_score,
+          away: (result as any).pen_away_score,
+        }
+      }
+    }
+  }
+
   const tournamentColor =
     tournament?.type === 'league' ? 'text-[#c9a84c]' :
     tournament?.type === 'tournament_club' ? 'text-yellow-400' :
     tournament?.type === 'tournament_international' ? 'text-green-400' :
     'text-text-muted'
 
-  const data = { result, stats, fixture, home, away, tournament, tournamentColor }
+  const data = { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore }
 
   return <Shell data={data} />
 }

@@ -3,12 +3,22 @@ import { addDays, format, parseISO } from 'date-fns'
 type KnockoutRound = 'qf' | 'sf' | 'final'
 
 const BRACKET_PROGRESSION: Record<number, { nextMd: number; slot: 'home_team_id' | 'away_team_id' }> = {
+  // Single-leg QF → SF
   101: { nextMd: 201, slot: 'home_team_id' },
   102: { nextMd: 201, slot: 'away_team_id' },
   103: { nextMd: 202, slot: 'home_team_id' },
   104: { nextMd: 202, slot: 'away_team_id' },
+  // 2-leg QF leg 2 → SF
+  111: { nextMd: 201, slot: 'home_team_id' },
+  112: { nextMd: 201, slot: 'away_team_id' },
+  113: { nextMd: 202, slot: 'home_team_id' },
+  114: { nextMd: 202, slot: 'away_team_id' },
+  // Single-leg SF → Final
   201: { nextMd: 301, slot: 'home_team_id' },
   202: { nextMd: 301, slot: 'away_team_id' },
+  // 2-leg SF leg 2 → Final
+  211: { nextMd: 301, slot: 'home_team_id' },
+  212: { nextMd: 301, slot: 'away_team_id' },
 }
 
 function sortGroup(teams: any[]): any[] {
@@ -103,7 +113,8 @@ export async function generateTBCKnockouts(
   db: any,
   tournamentId: string,
   shuffleTeams = false,
-  manualQualifiers?: string[]
+  manualQualifiers?: string[],
+  numLegs: number = 1
 ): Promise<{ error?: string }> {
   const { count: existingKO } = await db
     .from('fixtures')
@@ -162,31 +173,57 @@ export async function generateTBCKnockouts(
   const finalQualifiers = shuffleTeams ? shuffle(qualifiers) : qualifiers
 
   // Build fixture templates (without dates) to pass to slot assigner
-  interface KOFixture { home_team_id: string | null; away_team_id: string | null; matchday: number; round_type: KnockoutRound }
+  interface KOFixture { home_team_id: string | null; away_team_id: string | null; matchday: number; round_type: KnockoutRound; leg: number }
   let koFixtures: KOFixture[] = []
 
+  const isTwoLeg = numLegs === 2
+
   if (teamCount === 8) {
-    koFixtures = [
-      ...[0, 1, 2, 3].map(i => ({
+    // QF leg 1
+    for (let i = 0; i < 4; i++) {
+      koFixtures.push({
         home_team_id: finalQualifiers[i * 2],
         away_team_id: finalQualifiers[i * 2 + 1],
         matchday: 101 + i,
-        round_type: 'qf' as KnockoutRound,
-      })),
-      { home_team_id: null, away_team_id: null, matchday: 201, round_type: 'sf' as KnockoutRound },
-      { home_team_id: null, away_team_id: null, matchday: 202, round_type: 'sf' as KnockoutRound },
-      { home_team_id: null, away_team_id: null, matchday: 301, round_type: 'final' as KnockoutRound },
-    ]
+        round_type: 'qf',
+        leg: 1,
+      })
+    }
+    // QF leg 2 (if 2-leg)
+    if (isTwoLeg) {
+      for (let i = 0; i < 4; i++) {
+        koFixtures.push({
+          home_team_id: finalQualifiers[i * 2 + 1],
+          away_team_id: finalQualifiers[i * 2],
+          matchday: 111 + i,
+          round_type: 'qf',
+          leg: 2,
+        })
+      }
+    }
+    // SF leg 1
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 201, round_type: 'sf', leg: 1 })
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 202, round_type: 'sf', leg: 1 })
+    // SF leg 2 (if 2-leg)
+    if (isTwoLeg) {
+      koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 211, round_type: 'sf', leg: 2 })
+      koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 212, round_type: 'sf', leg: 2 })
+    }
+    // Final
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 301, round_type: 'final', leg: 1 })
   } else if (teamCount === 4) {
-    koFixtures = [
-      { home_team_id: finalQualifiers[0], away_team_id: finalQualifiers[1], matchday: 201, round_type: 'sf' as KnockoutRound },
-      { home_team_id: finalQualifiers[2], away_team_id: finalQualifiers[3], matchday: 202, round_type: 'sf' as KnockoutRound },
-      { home_team_id: null, away_team_id: null, matchday: 301, round_type: 'final' as KnockoutRound },
-    ]
+    // SF leg 1
+    koFixtures.push({ home_team_id: finalQualifiers[0], away_team_id: finalQualifiers[1], matchday: 201, round_type: 'sf', leg: 1 })
+    koFixtures.push({ home_team_id: finalQualifiers[2], away_team_id: finalQualifiers[3], matchday: 202, round_type: 'sf', leg: 1 })
+    // SF leg 2 (if 2-leg)
+    if (isTwoLeg) {
+      koFixtures.push({ home_team_id: finalQualifiers[1], away_team_id: finalQualifiers[0], matchday: 211, round_type: 'sf', leg: 2 })
+      koFixtures.push({ home_team_id: finalQualifiers[3], away_team_id: finalQualifiers[2], matchday: 212, round_type: 'sf', leg: 2 })
+    }
+    // Final
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 301, round_type: 'final', leg: 1 })
   } else {
-    koFixtures = [
-      { home_team_id: finalQualifiers[0], away_team_id: finalQualifiers[1] ?? null, matchday: 301, round_type: 'final' as KnockoutRound },
-    ]
+    koFixtures.push({ home_team_id: finalQualifiers[0], away_team_id: finalQualifiers[1] ?? null, matchday: 301, round_type: 'final', leg: 1 })
   }
 
   const dates = await assignKnockoutDates(db, koFixtures, tournamentId)
@@ -203,7 +240,7 @@ export async function generateTBCKnockouts(
     scheduled_date: dates[i],
     deadline: `${dates[i]}T12:00:00Z`,
     round_type: kf.round_type,
-    leg: 1,
+    leg: kf.leg,
     status: 'scheduled',
   }))
 
@@ -221,12 +258,9 @@ export async function advanceWinner(
   homeTeamId: string | null,
   awayTeamId: string | null
 ): Promise<void> {
-  const winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
-  if (!winnerId) return
-
   const { data: curFx } = await db
     .from('fixtures')
-    .select('matchday, round_type')
+    .select('matchday, round_type, leg')
     .eq('id', fixtureId)
     .single()
 
@@ -239,6 +273,95 @@ export async function advanceWinner(
     }
     return
   }
+
+  // For 2-leg: leg 1 → don't advance yet, wait for leg 2
+  if (curFx.leg === 1) {
+    const siblingMd = curFx.matchday + 10
+    const { data: leg2Fx } = await db
+      .from('fixtures')
+      .select('id')
+      .eq('tournament_id', tournamentId)
+      .eq('matchday', siblingMd)
+      .maybeSingle()
+    if (leg2Fx) return // 2-leg mode, wait for leg 2
+  }
+
+  let winnerId: string | null = null
+
+  if (curFx.leg === 2) {
+    // 2-leg aggregate: find leg 1 result
+    const leg1Md = curFx.matchday - 10
+    const { data: leg1Fixtures } = await db
+      .from('fixtures')
+      .select('*, results(*)')
+      .eq('tournament_id', tournamentId)
+      .eq('matchday', leg1Md)
+      .maybeSingle()
+
+    if (leg1Fixtures) {
+      const leg1Result = Array.isArray(leg1Fixtures.results)
+        ? leg1Fixtures.results[0]
+        : leg1Fixtures.results
+
+      if (leg1Result) {
+        const leg1HS = leg1Result.home_score ?? 0
+        const leg1AS = leg1Result.away_score ?? 0
+
+        // leg 1: home=TeamA, away=TeamB; leg 2: home=TeamB, away=TeamA
+        const teamAGoals = leg1HS + awayScore
+        const teamBGoals = leg1AS + homeScore
+
+        if (teamAGoals > teamBGoals) {
+          winnerId = leg1Fixtures.home_team_id
+        } else if (teamBGoals > teamAGoals) {
+          winnerId = leg1Fixtures.away_team_id
+        } else {
+          // Aggregate level — check pen scores on leg 2 result
+          const penHome = (leg1Result as any).pen_home_score
+          const penAway = (leg1Result as any).pen_away_score
+
+          // pen scores are stored on leg 2's result, so we need to fetch leg 2's result for pen scores
+          const { data: leg2FixtureWithResult } = await db
+            .from('fixtures')
+            .select('*, results(*)')
+            .eq('tournament_id', tournamentId)
+            .eq('matchday', curFx.matchday)
+            .maybeSingle()
+
+          if (leg2FixtureWithResult) {
+            const leg2Result = Array.isArray(leg2FixtureWithResult.results)
+              ? leg2FixtureWithResult.results[0]
+              : leg2FixtureWithResult.results
+
+            if (leg2Result) {
+              const ph = (leg2Result as any).pen_home_score
+              const pa = (leg2Result as any).pen_away_score
+              if (ph != null && pa != null) {
+                if (ph > pa) winnerId = leg2FixtureWithResult.home_team_id
+                else if (pa > ph) winnerId = leg2FixtureWithResult.away_team_id
+              }
+            }
+          }
+
+          // Fallback: leg 2 result as tiebreaker
+          if (!winnerId) {
+            winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
+          }
+        }
+      } else {
+        // No leg 1 result — fallback to single result
+        winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
+      }
+    } else {
+      // No leg 1 fixture — fallback to single result
+      winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
+    }
+  } else {
+    // Single-leg: use direct result
+    winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
+  }
+
+  if (!winnerId) return
 
   const { data: nextFx } = await db
     .from('fixtures')

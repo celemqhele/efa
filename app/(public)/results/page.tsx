@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { getSiblingMatchday, computeAggregate } from '@/lib/aggregate'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
@@ -38,7 +39,7 @@ export default async function ResultsPage() {
       const { data: fixtures } = await supabase
         .from('fixtures')
         .select(`
-          id, matchday, scheduled_date, status, round_type, leg,
+          id, matchday, scheduled_date, status, round_type, leg, tournament_id,
           tournament:tournaments(id, name, type),
           home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
           away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
@@ -51,11 +52,11 @@ export default async function ResultsPage() {
       const { data: resultsData } = fixtureIds.length > 0
         ? await supabase
             .from('results')
-            .select('fixture_id, home_score, away_score')
+            .select('fixture_id, home_score, away_score, pen_home_score, pen_away_score')
             .in('fixture_id', fixtureIds)
         : { data: [] }
 
-      const resultsByFixture: Record<string, { home_score: number; away_score: number }> = {}
+      const resultsByFixture: Record<string, any> = {}
       for (const r of resultsData ?? []) {
         resultsByFixture[(r as any).fixture_id] = r as any
       }
@@ -64,6 +65,43 @@ export default async function ResultsPage() {
         ...f,
         _result: resultsByFixture[f.id] ?? null,
       }))
+
+      // Fetch sibling results for 2-leg knockout aggregate display
+      const leg2Fixtures = fixturesWithResults.filter(
+        (f: any) => f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f._result
+      )
+      if (leg2Fixtures.length > 0) {
+        const siblingMds = leg2Fixtures.map((f: any) => f.matchday - 10)
+        const { data: siblingFixtures } = await supabase
+          .from('fixtures')
+          .select('id, matchday, tournament_id, results(fixture_id, home_score, away_score)')
+          .in('tournament_id', [...new Set(leg2Fixtures.map((f: any) => f.tournament_id))])
+          .in('matchday', siblingMds)
+
+        const siblingResultsByKey: Record<string, any> = {}
+        for (const sf of siblingFixtures ?? []) {
+          const key = `${sf.tournament_id}_${sf.matchday}`
+          const r = Array.isArray(sf.results) ? sf.results[0] : sf.results
+          siblingResultsByKey[key] = r
+        }
+
+        for (const f of fixturesWithResults) {
+          if (f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f._result) {
+            const leg1Key = `${f.tournament_id}_${f.matchday - 10}`
+            const leg1Result = siblingResultsByKey[leg1Key]
+            if (leg1Result) {
+              const agg = computeAggregate(leg1Result, f._result)
+              if (agg) (f as any)._aggregate = agg
+            }
+            if (f._result.pen_home_score != null) {
+              ;(f as any)._penScore = {
+                home: f._result.pen_home_score,
+                away: f._result.pen_away_score,
+              }
+            }
+          }
+        }
+      }
 
       for (const f of fixtures ?? []) {
         const result = resultsByFixture[(f as any).id]
