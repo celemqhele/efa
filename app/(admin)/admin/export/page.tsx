@@ -370,12 +370,17 @@ export default async function ExportPage({ searchParams }: Props) {
       }
 
       if (cardType === 'managers') {
-        const { data: participants } = await supabase
-          .from('tournament_participants')
-          .select('team_id')
+        const { data: playingFixtures } = await supabase
+          .from('fixtures')
+          .select('home_team_id, away_team_id')
           .eq('tournament_id', tournamentId)
-        
-        const teamIds = (participants ?? []).map(p => p.team_id)
+          .eq('status', 'scheduled')
+          .gte('scheduled_date', dateStart)
+          .lte('scheduled_date', dateEnd)
+
+        const teamIds = [...new Set<string>(
+          (playingFixtures ?? []).flatMap(f => [f.home_team_id, f.away_team_id])
+        )]
         if (teamIds.length > 0) {
           const { data: teamData } = await supabase
             .from('teams')
@@ -627,7 +632,7 @@ export default async function ExportPage({ searchParams }: Props) {
                 {card.tournament.name}
                 <span className="font-normal text-text-muted"> — </span>
                 <span className="capitalize">{card.type}</span>
-                {card.type !== 'standings' && card.type !== 'managers' && (
+                {card.type !== 'standings' && (
                   <span className="font-normal text-text-muted ml-1 text-xs">({formattedDate})</span>
                 )}
               </p>
