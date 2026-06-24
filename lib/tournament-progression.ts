@@ -174,7 +174,7 @@ export async function generateTBCKnockouts(
 
   // Build fixture templates (without dates) to pass to slot assigner
   interface KOFixture { home_team_id: string | null; away_team_id: string | null; matchday: number; round_type: KnockoutRound; leg: number }
-  let koFixtures: KOFixture[] = []
+  const koFixtures: KOFixture[] = []
 
   const isTwoLeg = numLegs === 2
 
