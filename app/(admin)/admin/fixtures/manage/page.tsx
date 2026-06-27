@@ -27,7 +27,7 @@ export default async function FixturesManagePage({
       tournament:tournaments(id, name, type),
       home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
       away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-      result:results(home_score, away_score, pen_home_score, pen_away_score)
+      result:results(home_score, away_score)
     `)
     .eq('scheduled_date', selectedDate)
     .order('scheduled_date', { ascending: true })
@@ -51,6 +51,21 @@ export default async function FixturesManagePage({
       siblingResultsByKey[key] = r
     }
 
+    // Fetch penalty scores separately (column may not exist yet)
+    const penScores: Record<string, { pen_home_score: number; pen_away_score: number }> = {}
+    try {
+      const fixtureIds = leg2Fixtures.map((f: any) => f.id)
+      const { data: penRows } = await supabase
+        .from('results')
+        .select('fixture_id, pen_home_score, pen_away_score')
+        .in('fixture_id', fixtureIds)
+      for (const row of penRows ?? []) {
+        penScores[row.fixture_id] = { pen_home_score: row.pen_home_score, pen_away_score: row.pen_away_score }
+      }
+    } catch {
+      // pen scores not available — skip
+    }
+
     for (const f of fixtures ?? []) {
       if (f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f.result?.[0]) {
         const leg1Key = `${f.tournament_id}_${f.matchday - 10}`
@@ -60,10 +75,11 @@ export default async function FixturesManagePage({
           const agg = computeAggregate(leg1Result, leg2Result)
           if (agg) (f as any)._aggregate = agg
         }
-        if (leg2Result && leg2Result.pen_home_score != null) {
+        const penScore = penScores[f.id]
+        if (penScore && penScore.pen_home_score != null) {
           ;(f as any)._penScore = {
-            home: leg2Result.pen_home_score,
-            away: leg2Result.pen_away_score,
+            home: penScore.pen_home_score,
+            away: penScore.pen_away_score,
           }
         }
       }
