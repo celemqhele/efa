@@ -52,7 +52,7 @@ export default async function ResultsPage() {
       const { data: resultsData } = fixtureIds.length > 0
         ? await supabase
             .from('results')
-            .select('fixture_id, home_score, away_score, pen_home_score, pen_away_score')
+            .select('fixture_id, home_score, away_score')
             .in('fixture_id', fixtureIds)
         : { data: [] }
 
@@ -85,6 +85,21 @@ export default async function ResultsPage() {
           siblingResultsByKey[key] = r
         }
 
+        // Fetch penalty scores separately (column may not exist yet)
+        const penScores: Record<string, { pen_home_score: number; pen_away_score: number }> = {}
+        try {
+          const leg2Ids = leg2Fixtures.map((f: any) => f.id)
+          const { data: penRows } = await supabase
+            .from('results')
+            .select('fixture_id, pen_home_score, pen_away_score')
+            .in('fixture_id', leg2Ids)
+          for (const row of penRows ?? []) {
+            penScores[row.fixture_id] = { pen_home_score: row.pen_home_score, pen_away_score: row.pen_away_score }
+          }
+        } catch {
+          // pen scores not available — skip
+        }
+
         for (const f of fixturesWithResults) {
           if (f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f._result) {
             const leg1Key = `${f.tournament_id}_${f.matchday - 10}`
@@ -93,10 +108,11 @@ export default async function ResultsPage() {
               const agg = computeAggregate(leg1Result, f._result)
               if (agg) (f as any)._aggregate = agg
             }
-            if (f._result.pen_home_score != null) {
+            const penScore = penScores[f.id]
+            if (penScore && penScore.pen_home_score != null) {
               ;(f as any)._penScore = {
-                home: f._result.pen_home_score,
-                away: f._result.pen_away_score,
+                home: penScore.pen_home_score,
+                away: penScore.pen_away_score,
               }
             }
           }
