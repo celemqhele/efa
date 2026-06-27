@@ -246,12 +246,14 @@ export default async function ExportPage({ searchParams }: Props) {
   const sp = await searchParams
   const supabase = await createClient()
 
-  const { data: _tournaments } = await supabase
+  const { data: _tournaments, error: tournamentsError } = await supabase
     .from('tournaments')
     .select('id, name, type, status, settings')
-    .eq('status', 'active')
+    .neq('status', 'draft')
     .order('created_at', { ascending: true })
   const tournaments = (_tournaments ?? []) as any[]
+  const queryErrors: string[] = []
+  if (tournamentsError) queryErrors.push(tournamentsError.message)
 
   const today = new Date().toISOString().split('T')[0]
   const selectedDate = sp.date ?? today
@@ -290,7 +292,7 @@ export default async function ExportPage({ searchParams }: Props) {
       const chunks: any[] = []
 
       if (cardType === 'fixtures') {
-        const { data } = await supabase
+        const { data, error: fxErr } = await supabase
           .from('fixtures')
           .select(
             `id, matchday, scheduled_date, status,
@@ -300,13 +302,14 @@ export default async function ExportPage({ searchParams }: Props) {
           .eq('tournament_id', tournamentId)
           .gte('scheduled_date', dateStart)
           .lte('scheduled_date', dateEnd)
-          .eq('status', 'scheduled')
+          .in('status', ['scheduled', 'awaiting_confirmation'])
           .order('scheduled_date', { ascending: true })
+        if (fxErr) queryErrors.push(fxErr.message)
         fixtures = data ?? []
       }
 
       if (cardType === 'results') {
-        const { data: ftFixtures } = await supabase
+        const { data: ftFixtures, error: fxErr } = await supabase
           .from('fixtures')
           .select(
             `id, matchday, scheduled_date, status,
@@ -318,6 +321,7 @@ export default async function ExportPage({ searchParams }: Props) {
           .gte('scheduled_date', dateStart)
           .lte('scheduled_date', dateEnd)
           .order('scheduled_date', { ascending: true })
+        if (fxErr) queryErrors.push(fxErr.message)
 
         const fixtureIds = (ftFixtures ?? []).map((f: any) => f.id)
         const { data: scoreRows } = fixtureIds.length
@@ -370,13 +374,14 @@ export default async function ExportPage({ searchParams }: Props) {
       }
 
       if (cardType === 'managers') {
-        const { data: playingFixtures } = await supabase
+        const { data: playingFixtures, error: pfxErr } = await supabase
           .from('fixtures')
           .select('home_team_id, away_team_id')
           .eq('tournament_id', tournamentId)
           .eq('status', 'scheduled')
           .gte('scheduled_date', dateStart)
           .lte('scheduled_date', dateEnd)
+        if (pfxErr) queryErrors.push(pfxErr.message)
 
         const teamIds = [...new Set<string>(
           (playingFixtures ?? []).flatMap(f => [f.home_team_id, f.away_team_id])
@@ -445,6 +450,21 @@ export default async function ExportPage({ searchParams }: Props) {
         defaultTournamentIds={selectedTournamentIds}
         defaultTypes={selectedTypes}
       />
+
+      {queryErrors.length > 0 && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm space-y-1">
+          {queryErrors.map((err, i) => (
+            <div key={i}>Error: {err}</div>
+          ))}
+        </div>
+      )}
+
+      {cards.length === 0 && !queryErrors.length && (
+        <div className="bg-bg-surface border border-border rounded-xl p-12 text-center text-text-muted space-y-3">
+          <p className="text-sm">No data to display.</p>
+          <p className="text-xs text-text-muted/70">Select a tournament and content type above, then update to generate export cards.</p>
+        </div>
+      )}
 
       {/* Generated cards */}
       {cards.map((card, i) => {

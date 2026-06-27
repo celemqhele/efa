@@ -20,7 +20,7 @@ export default async function FixturesManagePage({
   const todayKey = await getAppTodayKey(supabase)
   const selectedDate = resolvedParams?.date ?? todayKey
 
-  const { data: fixtures } = await supabase
+  const { data: fixtures, error: fixturesError } = await supabase
     .from('fixtures')
     .select(`
       id, matchday, round_type, scheduled_date, status, is_postponed, leg, tournament_id,
@@ -70,5 +70,5 @@ export default async function FixturesManagePage({
     }
   }
 
-  return <Shell data={{ fixtures: fixtures ?? [], todayKey, selectedDate }} />
+  return <Shell data={{ fixtures: fixtures ?? [], todayKey, selectedDate, error: fixturesError?.message ?? null }} />
 }

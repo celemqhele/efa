@@ -57,6 +57,7 @@ export default function Mobile({ data }: { data: any }) {
   const fixtures = data.fixtures ?? []
   const todayKey = data.todayKey
   const selectedDate = data.selectedDate
+  const queryError = data.error ?? null
 
   const grouped: Record<string, any[]> = {}
   for (const f of fixtures) {
@@ -83,10 +84,17 @@ export default function Mobile({ data }: { data: any }) {
 
       <ScheduleRoundPanel />
 
-      {orderedTypes.length === 0 ? (
+      {queryError && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
+          Error loading fixtures: {queryError}
+        </div>
+      )}
+
+      {orderedTypes.length === 0 && !queryError ? (
         <div className="bg-bg-surface border border-border rounded-xl p-8 text-center text-text-muted space-y-2">
           <CalendarDays className="w-10 h-10 text-text-muted mx-auto" />
           <p className="text-sm">No fixtures scheduled for this day.</p>
+          <p className="text-xs text-text-muted/70">Use the Schedule Round panel above to assign dates.</p>
         </div>
       ) : (
         <div className="space-y-5">
