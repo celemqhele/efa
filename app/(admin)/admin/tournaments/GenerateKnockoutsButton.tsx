@@ -63,7 +63,6 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
         body: JSON.stringify({ 
           tournament_id: tournamentId, 
           num_legs: numLegs,
-          manual_qualifiers: qualifiers.map(q => q.team_id)
         }),
       })
       const data = await res.json()
