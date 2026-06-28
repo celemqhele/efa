@@ -253,7 +253,7 @@ export interface Database {
           home_team_id: string
           away_team_id: string
           matchday: number
-          round_type?: 'league' | 'group' | 'qf' | 'sf' | 'final' | 'super_cup'
+          round_type?: 'league' | 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
           leg?: number
           scheduled_date?: string | null
           status?: string
@@ -272,7 +272,7 @@ export interface Database {
           home_team_id?: string
           away_team_id?: string
           matchday?: number
-          round_type?: 'league' | 'group' | 'qf' | 'sf' | 'final' | 'super_cup'
+          round_type?: 'league' | 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
           leg?: number
           scheduled_date?: string | null
           status?: string
