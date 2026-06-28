@@ -26,7 +26,6 @@ interface Props {
 export default function GenerateKnockoutsButton({ tournamentId, tournamentName, type, className = '' }: Props) {
   const [loading, setLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [shuffle, setShuffle] = useState(false)
   const [numLegs, setNumLegs] = useState<1 | 2>(1)
   const [showConfirm, setShowConfirm] = useState(false)
   const [qualifiers, setQualifiers] = useState<Qualifier[]>([])
@@ -63,7 +62,6 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           tournament_id: tournamentId, 
-          shuffle,
           num_legs: numLegs,
           manual_qualifiers: qualifiers.map(q => q.team_id)
         }),
@@ -126,22 +124,6 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
                 No qualifiers found. Ensure all group matches are confirmed.
               </div>
             )}
-
-            <div className="flex items-center gap-3 mb-3 p-3 bg-bg-surface rounded-xl border border-border">
-              <input
-                type="checkbox"
-                id="shuffle"
-                checked={shuffle}
-                onChange={(e) => setShuffle(e.target.checked)}
-                className="w-4 h-4 text-gold border-border rounded focus:ring-gold"
-              />
-              <label htmlFor="shuffle" className="text-sm font-medium text-foreground-secondary">
-                Shuffle qualifying teams?
-                <span className="block text-[10px] text-text-muted font-normal mt-0.5">
-                  If checked, pairings will be randomized instead of Group A1 vs B2, etc.
-                </span>
-              </label>
-            </div>
 
             <div className="flex items-center gap-3 mb-6 p-3 bg-bg-surface rounded-xl border border-border">
               <span className="text-sm font-medium text-foreground-secondary min-w-[60px]">Legs</span>

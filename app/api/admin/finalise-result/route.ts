@@ -381,13 +381,13 @@ export async function POST(request: Request) {
       if (pendingGroups === 0) {
         await generateTBCKnockouts(adminSupabase, tournamentId)
       }
-    } else if (['qf', 'sf', 'final'].includes(roundType)) {
+    } else if (['r16', 'qf', 'sf', 'final'].includes(roundType)) {
       if (bothAbsent && roundType !== 'final') {
         const { data: allKO } = await adminSupabase
           .from('fixtures')
           .select('home_team_id, away_team_id')
           .eq('tournament_id', tournamentId)
-          .in('round_type', ['qf', 'sf', 'final'])
+          .in('round_type', ['r16', 'qf', 'sf', 'final'])
 
         const koTeamIds = new Set<string>(
           (allKO ?? [])

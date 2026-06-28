@@ -49,13 +49,46 @@ function sortGroup(teams: any[]): any[] {
   })
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]]
+function buildQualifierOrder(sortedGroups: any[][], numGroups: number, qualifiersPerGroup: number): string[] {
+  const w = (i: number) => sortedGroups[i]?.[0]?.team_id
+  const r = (i: number) => sortedGroups[i]?.[1]?.team_id
+
+  if (numGroups === 8 && qualifiersPerGroup === 2) {
+    return [
+      w(0), r(1), w(2), r(3), w(1), r(0), w(3), r(2),
+      w(4), r(5), w(6), r(7), w(5), r(4), w(7), r(6),
+    ]
   }
-  return a
+
+  if (numGroups === 4 && qualifiersPerGroup === 2) {
+    return [w(0), r(1), w(2), r(3), w(1), r(0), w(3), r(2)]
+  }
+
+  if (numGroups === 2 && qualifiersPerGroup === 2) {
+    return [w(0), r(1), w(1), r(0)]
+  }
+
+  if (qualifiersPerGroup === 2) {
+    const result: string[] = []
+    for (let g = 0; g < numGroups; g += 2) {
+      if (g + 1 < numGroups) {
+        result.push(w(g), r(g + 1), w(g + 1), r(g))
+      } else {
+        result.push(w(g), r(g))
+      }
+    }
+    return result
+  }
+
+  const qualifiers: string[] = []
+  for (let i = 0; i < qualifiersPerGroup; i++) {
+    for (let j = 0; j < numGroups; j++) {
+      if (sortedGroups[j] && sortedGroups[j][i]) {
+        qualifiers.push(sortedGroups[j][i].team_id)
+      }
+    }
+  }
+  return qualifiers
 }
 
 async function assignKnockoutDates(
@@ -132,7 +165,6 @@ async function assignKnockoutDates(
 export async function generateTBCKnockouts(
   db: any,
   tournamentId: string,
-  shuffleTeams = false,
   manualQualifiers?: string[],
   numLegs: number = 1
 ): Promise<{ error?: string }> {
@@ -154,10 +186,10 @@ export async function generateTBCKnockouts(
   const qualifiersPerGroup = settings.qualifiers_per_group ?? 2
   const numGroups = settings.num_groups ?? 2
 
-  let qualifiers: string[] = []
+  let finalQualifiers: string[] = []
 
   if (manualQualifiers && manualQualifiers.length >= 2) {
-    qualifiers = manualQualifiers
+    finalQualifiers = manualQualifiers
   } else {
     const { data: gs } = await db
       .from('group_standings')
@@ -173,24 +205,11 @@ export async function generateTBCKnockouts(
     })
 
     const sortedGroups = Object.keys(groups).sort().map(name => sortGroup(groups[name]))
-
-    if (numGroups === 2 && qualifiersPerGroup === 2) {
-      qualifiers.push(sortedGroups[0][0].team_id, sortedGroups[1][1].team_id, sortedGroups[1][0].team_id, sortedGroups[0][1].team_id)
-    } else {
-      for (let i = 0; i < qualifiersPerGroup; i++) {
-        for (let j = 0; j < numGroups; j++) {
-          if (sortedGroups[j] && sortedGroups[j][i]) {
-            qualifiers.push(sortedGroups[j][i].team_id)
-          }
-        }
-      }
-    }
+    finalQualifiers = buildQualifierOrder(sortedGroups, numGroups, qualifiersPerGroup)
   }
 
-  const teamCount = qualifiers.length
+  const teamCount = finalQualifiers.length
   if (teamCount < 2) return { error: 'Not enough teams to start knockouts' }
-
-  const finalQualifiers = shuffleTeams ? shuffle(qualifiers) : qualifiers
 
   // Build fixture templates (without dates) to pass to slot assigner
   interface KOFixture { home_team_id: string | null; away_team_id: string | null; matchday: number; round_type: KnockoutRound; leg: number }
@@ -285,8 +304,10 @@ export async function generateTBCKnockouts(
     }
     // Final
     koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 301, round_type: 'final', leg: 1 })
-  } else {
+  } else if (teamCount === 2) {
     koFixtures.push({ home_team_id: finalQualifiers[0], away_team_id: finalQualifiers[1] ?? null, matchday: 301, round_type: 'final', leg: 1 })
+  } else {
+    return { error: `Unsupported knockout team count: ${teamCount}. Only 2, 4, 8, or 16 teams are supported.` }
   }
 
   const dates = await assignKnockoutDates(db, koFixtures, tournamentId)
