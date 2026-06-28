@@ -1,8 +1,26 @@
 import { addDays, format, parseISO } from 'date-fns'
 
-type KnockoutRound = 'qf' | 'sf' | 'final'
+type KnockoutRound = 'r16' | 'qf' | 'sf' | 'final'
 
 const BRACKET_PROGRESSION: Record<number, { nextMd: number; slot: 'home_team_id' | 'away_team_id' }> = {
+  // Single-leg R16 → QF
+  51: { nextMd: 101, slot: 'home_team_id' },
+  52: { nextMd: 101, slot: 'away_team_id' },
+  53: { nextMd: 102, slot: 'home_team_id' },
+  54: { nextMd: 102, slot: 'away_team_id' },
+  55: { nextMd: 103, slot: 'home_team_id' },
+  56: { nextMd: 103, slot: 'away_team_id' },
+  57: { nextMd: 104, slot: 'home_team_id' },
+  58: { nextMd: 104, slot: 'away_team_id' },
+  // 2-leg R16 leg 2 → QF
+  61: { nextMd: 101, slot: 'home_team_id' },
+  62: { nextMd: 101, slot: 'away_team_id' },
+  63: { nextMd: 102, slot: 'home_team_id' },
+  64: { nextMd: 102, slot: 'away_team_id' },
+  65: { nextMd: 103, slot: 'home_team_id' },
+  66: { nextMd: 103, slot: 'away_team_id' },
+  67: { nextMd: 104, slot: 'home_team_id' },
+  68: { nextMd: 104, slot: 'away_team_id' },
   // Single-leg QF → SF
   101: { nextMd: 201, slot: 'home_team_id' },
   102: { nextMd: 201, slot: 'away_team_id' },
@@ -57,11 +75,13 @@ async function assignKnockoutDates(
     .limit(1)
     .maybeSingle()
 
+  const today = format(new Date(), 'yyyy-MM-dd')
   const afterDate: string = lastGroupRow?.scheduled_date
     ? String(lastGroupRow.scheduled_date).slice(0, 10)
-    : format(new Date(), 'yyyy-MM-dd')
+    : today
 
-  const startDate = format(addDays(parseISO(afterDate), 1), 'yyyy-MM-dd')
+  const candidateDate = format(addDays(parseISO(afterDate), 1), 'yyyy-MM-dd')
+  const startDate = candidateDate > today ? candidateDate : today
 
   // Pre-compute slot state for startDate so we don't double-count
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
@@ -120,7 +140,7 @@ export async function generateTBCKnockouts(
     .from('fixtures')
     .select('*', { count: 'exact', head: true })
     .eq('tournament_id', tournamentId)
-    .in('round_type', ['qf', 'sf', 'final'])
+    .in('round_type', ['r16', 'qf', 'sf', 'final'])
 
   if ((existingKO ?? 0) > 0) return { error: 'Knockout fixtures already exist' }
 
@@ -178,7 +198,50 @@ export async function generateTBCKnockouts(
 
   const isTwoLeg = numLegs === 2
 
-  if (teamCount === 8) {
+  if (teamCount === 16) {
+    // R16 leg 1
+    for (let i = 0; i < 8; i++) {
+      koFixtures.push({
+        home_team_id: finalQualifiers[i * 2],
+        away_team_id: finalQualifiers[i * 2 + 1],
+        matchday: 51 + i,
+        round_type: 'r16',
+        leg: 1,
+      })
+    }
+    // R16 leg 2 (if 2-leg)
+    if (isTwoLeg) {
+      for (let i = 0; i < 8; i++) {
+        koFixtures.push({
+          home_team_id: finalQualifiers[i * 2 + 1],
+          away_team_id: finalQualifiers[i * 2],
+          matchday: 61 + i,
+          round_type: 'r16',
+          leg: 2,
+        })
+      }
+    }
+    // QF leg 1 (TBC)
+    for (let i = 0; i < 4; i++) {
+      koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 101 + i, round_type: 'qf', leg: 1 })
+    }
+    // QF leg 2 (if 2-leg)
+    if (isTwoLeg) {
+      for (let i = 0; i < 4; i++) {
+        koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 111 + i, round_type: 'qf', leg: 2 })
+      }
+    }
+    // SF leg 1
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 201, round_type: 'sf', leg: 1 })
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 202, round_type: 'sf', leg: 1 })
+    // SF leg 2 (if 2-leg)
+    if (isTwoLeg) {
+      koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 211, round_type: 'sf', leg: 2 })
+      koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 212, round_type: 'sf', leg: 2 })
+    }
+    // Final
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 301, round_type: 'final', leg: 1 })
+  } else if (teamCount === 8) {
     // QF leg 1
     for (let i = 0; i < 4; i++) {
       koFixtures.push({
