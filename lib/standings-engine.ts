@@ -253,7 +253,7 @@ export async function recalculateStandings(tournamentId: string) {
 
   const { data: tournament, error: tournamentErr } = await db
     .from('tournaments')
-    .select('type')
+    .select('type, settings')
     .eq('id', tournamentId)
     .single()
 
