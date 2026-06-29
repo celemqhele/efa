@@ -62,8 +62,8 @@ function buildBracketHalf(groupIndices: number[], sortedGroups: any[][]): string
   const w = (i: number) => sortedGroups[i]?.[0]?.team_id
   const r = (i: number) => sortedGroups[i]?.[1]?.team_id
 
-  let winners = shuffle(groupIndices)
-  let runnersUp = shuffle(groupIndices)
+  const winners = shuffle(groupIndices)
+  const runnersUp = shuffle(groupIndices)
 
   for (let i = 0; i < winners.length; i++) {
     if (winners[i] === runnersUp[i]) {
