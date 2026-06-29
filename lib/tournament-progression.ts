@@ -49,35 +49,62 @@ function sortGroup(teams: any[]): any[] {
   })
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+function buildBracketHalf(groupIndices: number[], sortedGroups: any[][]): string[] {
+  const w = (i: number) => sortedGroups[i]?.[0]?.team_id
+  const r = (i: number) => sortedGroups[i]?.[1]?.team_id
+
+  let winners = shuffle(groupIndices)
+  let runnersUp = shuffle(groupIndices)
+
+  for (let i = 0; i < winners.length; i++) {
+    if (winners[i] === runnersUp[i]) {
+      const swapIdx = (i + 1) % runnersUp.length
+      ;[runnersUp[i], runnersUp[swapIdx]] = [runnersUp[swapIdx], runnersUp[i]]
+    }
+  }
+
+  const result: string[] = []
+  for (let i = 0; i < winners.length; i++) {
+    result.push(w(winners[i]), r(runnersUp[i]))
+  }
+  return result
+}
+
 function buildQualifierOrder(sortedGroups: any[][], numGroups: number, qualifiersPerGroup: number): string[] {
   const w = (i: number) => sortedGroups[i]?.[0]?.team_id
   const r = (i: number) => sortedGroups[i]?.[1]?.team_id
 
   if (numGroups === 8 && qualifiersPerGroup === 2) {
-    return [
-      w(0), r(1), w(2), r(3), w(1), r(0), w(3), r(2),
-      w(4), r(5), w(6), r(7), w(5), r(4), w(7), r(6),
-    ]
+    const topHalf = buildBracketHalf([0, 1, 2, 3], sortedGroups)
+    const botHalf = buildBracketHalf([4, 5, 6, 7], sortedGroups)
+    return [...topHalf, ...botHalf]
   }
 
   if (numGroups === 4 && qualifiersPerGroup === 2) {
-    return [w(0), r(1), w(2), r(3), w(1), r(0), w(3), r(2)]
+    return buildBracketHalf([0, 1, 2, 3], sortedGroups)
   }
 
   if (numGroups === 2 && qualifiersPerGroup === 2) {
-    return [w(0), r(1), w(1), r(0)]
+    const pair = [w(0), r(1), w(1), r(0)]
+    return Math.random() < 0.5 ? pair : [pair[2], pair[3], pair[0], pair[1]]
   }
 
   if (qualifiersPerGroup === 2) {
-    const result: string[] = []
-    for (let g = 0; g < numGroups; g += 2) {
-      if (g + 1 < numGroups) {
-        result.push(w(g), r(g + 1), w(g + 1), r(g))
-      } else {
-        result.push(w(g), r(g))
-      }
-    }
-    return result
+    const halfSize = Math.ceil(numGroups / 2)
+    const topIndices = Array.from({ length: halfSize }, (_, i) => i)
+    const botIndices = Array.from({ length: numGroups - halfSize }, (_, i) => i + halfSize)
+    const topHalf = buildBracketHalf(topIndices, sortedGroups)
+    const botHalf = botIndices.length > 0 ? buildBracketHalf(botIndices, sortedGroups) : []
+    return [...topHalf, ...botHalf]
   }
 
   const qualifiers: string[] = []
