@@ -84,8 +84,31 @@ function buildQualifierOrder(sortedGroups: any[][], numGroups: number, qualifier
   const r = (i: number) => sortedGroups[i]?.[1]?.team_id
 
   if (numGroups === 8 && qualifiersPerGroup === 2) {
-    const topHalf = buildBracketHalf([0, 1, 2, 3], sortedGroups)
-    const botHalf = buildBracketHalf([4, 5, 6, 7], sortedGroups)
+    // Rank group winners by performance to balance bracket halves
+    const ranked = sortedGroups.map((group, i) => ({
+      groupIdx: i,
+      winner: group[0],
+    })).sort((a, b) => {
+      if (b.winner.points !== a.winner.points) return b.winner.points - a.winner.points
+      const gdA = (a.winner.goals_for ?? 0) - (a.winner.goals_against ?? 0)
+      const gdB = (b.winner.goals_for ?? 0) - (b.winner.goals_against ?? 0)
+      if (gdB !== gdA) return gdB - gdA
+      return (b.winner.goals_for ?? 0) - (a.winner.goals_for ?? 0)
+    })
+
+    // Snake draft: 1st,4th,5th,8th → one half; 2nd,3rd,6th,7th → other half
+    // This ensures top 2 winners are on opposite sides of the bracket
+    const topHalfIndices = [
+      ranked[0].groupIdx, ranked[3].groupIdx,
+      ranked[4].groupIdx, ranked[7].groupIdx,
+    ]
+    const botHalfIndices = [
+      ranked[1].groupIdx, ranked[2].groupIdx,
+      ranked[5].groupIdx, ranked[6].groupIdx,
+    ]
+
+    const topHalf = buildBracketHalf(topHalfIndices, sortedGroups)
+    const botHalf = buildBracketHalf(botHalfIndices, sortedGroups)
     return [...topHalf, ...botHalf]
   }
 
