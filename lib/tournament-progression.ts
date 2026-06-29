@@ -118,9 +118,13 @@ function buildQualifierOrder(sortedGroups: any[][], numGroups: number, qualifier
   return qualifiers
 }
 
+const ROUND_STAGE_OFFSET: Record<string, number> = {
+  r16: 0, qf: 1, sf: 2, final: 3,
+}
+
 async function assignKnockoutDates(
   db: any,
-  fixtures: Array<{ home_team_id: string | null; away_team_id: string | null }>,
+  fixtures: Array<{ home_team_id: string | null; away_team_id: string | null; round_type: string }>,
   tournamentId: string
 ): Promise<string[]> {
   const { getSlotStateForDate, getDailyCapacity } = await import('./fixture-slots')
@@ -141,17 +145,15 @@ async function assignKnockoutDates(
     : today
 
   const candidateDate = format(addDays(parseISO(afterDate), 1), 'yyyy-MM-dd')
-  const startDate = candidateDate > today ? candidateDate : today
+  const baseStartDate = candidateDate > today ? candidateDate : today
 
-  // Pre-compute slot state for startDate so we don't double-count
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
-  const baseState = await getSlotStateForDate(db, startDate)
-  slotCache[startDate] = { ...baseState }
 
   const dates: string[] = []
 
   for (const fx of fixtures) {
-    let currentDate = parseISO(startDate)
+    const roundDate = format(addDays(parseISO(baseStartDate), ROUND_STAGE_OFFSET[fx.round_type] ?? 0), 'yyyy-MM-dd')
+    let currentDate = parseISO(roundDate)
     let assigned = false
 
     for (let safety = 0; safety < 730; safety++) {
@@ -182,7 +184,7 @@ async function assignKnockoutDates(
     }
 
     if (!assigned) {
-      dates.push(format(addDays(parseISO(startDate), dates.length), 'yyyy-MM-dd'))
+      dates.push(format(addDays(parseISO(baseStartDate), dates.length), 'yyyy-MM-dd'))
     }
   }
 
