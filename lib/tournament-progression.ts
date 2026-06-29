@@ -49,96 +49,106 @@ function sortGroup(teams: any[]): any[] {
   })
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
 
-function buildBracketHalf(groupIndices: number[], sortedGroups: any[][]): string[] {
-  const w = (i: number) => sortedGroups[i]?.[0]?.team_id
-  const r = (i: number) => sortedGroups[i]?.[1]?.team_id
-
-  const winners = shuffle(groupIndices)
-  const runnersUp = shuffle(groupIndices)
-
-  for (let i = 0; i < winners.length; i++) {
-    if (winners[i] === runnersUp[i]) {
-      const swapIdx = (i + 1) % runnersUp.length
-      ;[runnersUp[i], runnersUp[swapIdx]] = [runnersUp[swapIdx], runnersUp[i]]
-    }
-  }
-
-  const result: string[] = []
-  for (let i = 0; i < winners.length; i++) {
-    result.push(w(winners[i]), r(runnersUp[i]))
-  }
-  return result
+interface QualifierEntry {
+  team_id: string
+  group_name: string
+  points: number
+  gd: number
+  gf: number
 }
 
 function buildQualifierOrder(sortedGroups: any[][], numGroups: number, qualifiersPerGroup: number): string[] {
-  const w = (i: number) => sortedGroups[i]?.[0]?.team_id
-  const r = (i: number) => sortedGroups[i]?.[1]?.team_id
-
-  if (numGroups === 8 && qualifiersPerGroup === 2) {
-    // Rank group winners by performance to balance bracket halves
-    const ranked = sortedGroups.map((group, i) => ({
-      groupIdx: i,
-      winner: group[0],
-    })).sort((a, b) => {
-      if (b.winner.points !== a.winner.points) return b.winner.points - a.winner.points
-      const gdA = (a.winner.goals_for ?? 0) - (a.winner.goals_against ?? 0)
-      const gdB = (b.winner.goals_for ?? 0) - (b.winner.goals_against ?? 0)
-      if (gdB !== gdA) return gdB - gdA
-      return (b.winner.goals_for ?? 0) - (a.winner.goals_for ?? 0)
-    })
-
-    // Snake draft: 1st,4th,5th,8th → one half; 2nd,3rd,6th,7th → other half
-    // This ensures top 2 winners are on opposite sides of the bracket
-    const topHalfIndices = [
-      ranked[0].groupIdx, ranked[3].groupIdx,
-      ranked[4].groupIdx, ranked[7].groupIdx,
-    ]
-    const botHalfIndices = [
-      ranked[1].groupIdx, ranked[2].groupIdx,
-      ranked[5].groupIdx, ranked[6].groupIdx,
-    ]
-
-    const topHalf = buildBracketHalf(topHalfIndices, sortedGroups)
-    const botHalf = buildBracketHalf(botHalfIndices, sortedGroups)
-    return [...topHalf, ...botHalf]
-  }
-
-  if (numGroups === 4 && qualifiersPerGroup === 2) {
-    return buildBracketHalf([0, 1, 2, 3], sortedGroups)
-  }
-
-  if (numGroups === 2 && qualifiersPerGroup === 2) {
-    const pair = [w(0), r(1), w(1), r(0)]
-    return Math.random() < 0.5 ? pair : [pair[2], pair[3], pair[0], pair[1]]
-  }
-
-  if (qualifiersPerGroup === 2) {
-    const halfSize = Math.ceil(numGroups / 2)
-    const topIndices = Array.from({ length: halfSize }, (_, i) => i)
-    const botIndices = Array.from({ length: numGroups - halfSize }, (_, i) => i + halfSize)
-    const topHalf = buildBracketHalf(topIndices, sortedGroups)
-    const botHalf = botIndices.length > 0 ? buildBracketHalf(botIndices, sortedGroups) : []
-    return [...topHalf, ...botHalf]
-  }
-
-  const qualifiers: string[] = []
-  for (let i = 0; i < qualifiersPerGroup; i++) {
-    for (let j = 0; j < numGroups; j++) {
-      if (sortedGroups[j] && sortedGroups[j][i]) {
-        qualifiers.push(sortedGroups[j][i].team_id)
-      }
+  // Step 1: Flatten all qualifiers
+  const allQualifiers: QualifierEntry[] = []
+  for (const group of sortedGroups) {
+    const groupName = group[0]?.group_name ?? 'A'
+    for (let i = 0; i < qualifiersPerGroup && i < group.length; i++) {
+      const t = group[i]
+      allQualifiers.push({
+        team_id: t.team_id,
+        group_name: groupName,
+        points: t.points ?? 0,
+        gd: (t.goals_for ?? 0) - (t.goals_against ?? 0),
+        gf: t.goals_for ?? 0,
+      })
     }
   }
-  return qualifiers
+
+  // Step 2: Global ranking by points → GD → GF
+  allQualifiers.sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points
+    if (b.gd !== a.gd) return b.gd - a.gd
+    return b.gf - a.gf
+  })
+
+  const total = allQualifiers.length
+  if (total === 0) return []
+
+  // Step 3: Odd/even split into halves (rank 1,3,5... → half 1; 2,4,6... → half 2)
+  const half1: QualifierEntry[] = []
+  const half2: QualifierEntry[] = []
+  for (let i = 0; i < total; i++) {
+    if (i % 2 === 0) half1.push(allQualifiers[i])
+    else half2.push(allQualifiers[i])
+  }
+
+  // Step 4: Assign to QF lots within each half, separating same-group teams
+  function assignHalf(half: QualifierEntry[]): string[] {
+    const n = half.length
+    if (n === 0) return []
+
+    // Lot size: 4 for 16-team (2 QF lots per half), 2 for 8/4-team
+    const lotSize = total >= 16 ? 4 : 2
+    const numLots = Math.ceil(n / lotSize)
+    const lots: QualifierEntry[][] = Array.from({ length: numLots }, () => [])
+    const usedGroups = new Map<string, Set<number>>()
+
+    for (const q of half) {
+      const group = q.group_name
+      if (!usedGroups.has(group)) usedGroups.set(group, new Set())
+      const busyLots = usedGroups.get(group)!
+
+      // Find a lot not already containing this group, preferring emptier lots
+      let bestLot = -1
+      let bestLen = Infinity
+      for (let li = 0; li < numLots; li++) {
+        if (busyLots.has(li)) continue
+        if (lots[li].length < lotSize && lots[li].length < bestLen) {
+          bestLen = lots[li].length
+          bestLot = li
+        }
+      }
+
+      // Fallback: all lots have this group or are full — pick least full
+      if (bestLot === -1) {
+        for (let li = 0; li < numLots; li++) {
+          if (lots[li].length < lotSize && lots[li].length < bestLen) {
+            bestLen = lots[li].length
+            bestLot = li
+          }
+        }
+      }
+
+      if (bestLot >= 0) {
+        lots[bestLot].push(q)
+        busyLots.add(bestLot)
+      }
+    }
+
+    // Shuffle within each lot and flatten
+    const result: string[] = []
+    for (const lot of lots) {
+      for (let i = lot.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [lot[i], lot[j]] = [lot[j], lot[i]]
+      }
+      for (const q of lot) result.push(q.team_id)
+    }
+    return result
+  }
+
+  return [...assignHalf(half1), ...assignHalf(half2)]
 }
 
 const ROUND_STAGE_OFFSET: Record<string, number> = {
