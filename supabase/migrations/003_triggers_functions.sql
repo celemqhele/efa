@@ -40,8 +40,6 @@ DECLARE
   away_current standings%ROWTYPE;
   v_new_form_home text;
   v_new_form_away text;
-  v_home_gd int;
-  v_prev_home_gd int;
   -- Absent/penalty tracking
   home_absent_inc int := 0;
   away_absent_inc int := 0;
@@ -49,8 +47,8 @@ DECLARE
   away_gdp_inc int := 0;
   v_reason text;
 BEGIN
-  SELECT * INTO v_fixture FROM fixtures WHERE id = NEW.fixture_id;
-  SELECT type INTO v_tournament_type FROM tournaments WHERE id = v_fixture.tournament_id;
+  SELECT * INTO v_fixture FROM fixtures WHERE fixtures.id = NEW.fixture_id;
+  SELECT type INTO v_tournament_type FROM tournaments WHERE tournaments.id = v_fixture.tournament_id;
   v_reason := COALESCE(NEW.override_reason, '');
 
   -- Determine outcome, GF/GA, and absent/penalty flags
@@ -109,7 +107,7 @@ BEGIN
   IF v_fixture.round_type = 'group' THEN
     SELECT group_name INTO v_group_name
     FROM tournament_participants
-    WHERE tournament_id = v_fixture.tournament_id AND team_id = v_fixture.home_team_id;
+    WHERE tournament_participants.tournament_id = v_fixture.tournament_id AND tournament_participants.team_id = v_fixture.home_team_id;
 
     -- Upsert group standings for home team
     INSERT INTO group_standings (
@@ -166,12 +164,12 @@ BEGIN
 
   -- League standings update
   -- Get current home standings
-  SELECT * INTO home_current FROM standings
-  WHERE tournament_id = v_fixture.tournament_id AND team_id = v_fixture.home_team_id;
+  SELECT * INTO home_current FROM standings s
+  WHERE s.tournament_id = v_fixture.tournament_id AND s.team_id = v_fixture.home_team_id;
 
   -- Get current away standings
-  SELECT * INTO away_current FROM standings
-  WHERE tournament_id = v_fixture.tournament_id AND team_id = v_fixture.away_team_id;
+  SELECT * INTO away_current FROM standings s
+  WHERE s.tournament_id = v_fixture.tournament_id AND s.team_id = v_fixture.away_team_id;
 
   -- Calculate new form strings (last 6)
   v_new_form_home := right(COALESCE(home_current.form, '') || CASE WHEN home_outcome IN ('W','D','L') THEN home_outcome ELSE '' END, 6);
