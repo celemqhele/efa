@@ -4,6 +4,7 @@ import {
   advanceWinner,
   awardTrophy,
 } from '@/lib/tournament-progression'
+import { recalculateStandings } from '@/lib/standings-engine'
 import type { Database } from '@/lib/supabase/types'
 
 type MatchStatsInsert = Database['public']['Tables']['match_stats']['Insert']
@@ -380,6 +381,10 @@ export async function POST(request: Request) {
 
       if (pendingGroups === 0) {
         await generateTBCKnockouts(adminSupabase, tournamentId)
+      } else {
+        await recalculateStandings(tournamentId).catch(e =>
+          console.error('[finalise-result] Standings recalc failed:', e)
+        )
       }
     } else if (['r16', 'qf', 'sf', 'final'].includes(roundType)) {
       if (bothAbsent && roundType !== 'final') {

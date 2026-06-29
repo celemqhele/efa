@@ -133,6 +133,7 @@ export default function Mobile({ data }: { data: any }) {
             <MessageManagerButton
               managerId={manager.id}
               managerUsername={manager.username}
+              managerPhone={manager.phone ?? null}
             />
           )}
         </div>

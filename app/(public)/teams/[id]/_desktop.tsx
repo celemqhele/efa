@@ -132,6 +132,7 @@ export default function Desktop({ data }: { data: any }) {
                   <MessageManagerButton
                     managerId={manager.id}
                     managerUsername={manager.username}
+                    managerPhone={manager.phone ?? null}
                   />
                 )}
               </div>

@@ -107,8 +107,37 @@ export default async function TeamProfilePage({ params }: PageProps) {
     .in('team_id', siblingIds)
   const standings = (_standings ?? []) as any[]
 
+  // Also fetch group_standings for group-based tournaments (UCL, World Cup, etc.)
+  const { data: _groupStandings } = await supabase
+    .from('group_standings')
+    .select('*, tournament:tournaments(*)')
+    .in('team_id', siblingIds)
+  const groupStandings = (_groupStandings ?? []) as any[]
+
+  // Merge group_standings into standings: aggregate per tournament per team
+  const mergedByTournament = new Map<string, any>()
+  for (const s of standings) mergedByTournament.set(`${s.tournament_id}:${s.team_id}`, s)
+  for (const gs of groupStandings) {
+    const key = `${gs.tournament_id}:${gs.team_id}`
+    if (mergedByTournament.has(key)) {
+      const existing = mergedByTournament.get(key)!
+      existing.played = (existing.played ?? 0) + (gs.played ?? 0)
+      existing.wins = (existing.wins ?? 0) + (gs.wins ?? 0)
+      existing.draws = (existing.draws ?? 0) + (gs.draws ?? 0)
+      existing.losses = (existing.losses ?? 0) + (gs.losses ?? 0)
+      existing.goals_for = (existing.goals_for ?? 0) + (gs.goals_for ?? 0)
+      existing.goals_against = (existing.goals_against ?? 0) + (gs.goals_against ?? 0)
+      existing.points = (existing.points ?? 0) + (gs.points ?? 0)
+    } else {
+      mergedByTournament.set(key, { ...gs })
+    }
+  }
+  const allStandings = [...standings, ...groupStandings.filter(
+    gs => !mergedByTournament.has(`${gs.tournament_id}:${gs.team_id}`) || !standings.find(s => s.tournament_id === gs.tournament_id && s.team_id === gs.team_id)
+  )].map(s => mergedByTournament.get(`${s.tournament_id}:${s.team_id}`) ?? s)
+
   // Active standings
-  const activeStandings = (standings ?? []).filter(
+  const activeStandings = (allStandings ?? []).filter(
     (s: any) => s.tournament?.status === 'active'
   )
 
@@ -125,7 +154,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
   const biggestWin = currentStanding?.biggest_win_score ? currentStanding : null
 
   const primaryStanding =
-    activeStandings[0] ?? (standings && standings.length > 0 ? standings[0] : null)
+    activeStandings[0] ?? (allStandings && allStandings.length > 0 ? allStandings[0] : null)
   const currentForm = (primaryStanding?.form ?? '').slice(-6)
   const unbeatenRun = primaryStanding?.unbeaten_run ?? 0
 
@@ -389,7 +418,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
     allProfiles,
     managedTeamByUser,
     trophies,
-    standings,
+    standings: allStandings,
     currentStanding,
     totalPlayed,
     totalWins,
