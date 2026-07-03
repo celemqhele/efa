@@ -30,7 +30,7 @@ const SA_HOLIDAYS = new Set([
 
 function getSlotsPerDay(dateStr: string): number {
   const dow = parseISO(dateStr).getDay()
-  return dow === 0 || dow === 6 || SA_HOLIDAYS.has(dateStr) ? 10 : 5
+  return dow === 0 || dow === 6 || SA_HOLIDAYS.has(dateStr) ? 30 : 15
 }
 
 function shuffle<T>(arr: T[]): T[] {

@@ -12,7 +12,7 @@ interface Props {
   type?: string
 }
 
-const DAILY_CAP = 5
+const DAILY_CAP = 15
 
 export default function GenerateFixturesButton({ tournamentId, tournamentName, type }: Props) {
   const [loading, setLoading] = useState(false)
