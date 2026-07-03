@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import DeleteTournamentButton from './DeleteTournamentButton'
+import GenerateFixturesButton from './GenerateFixturesButton'
 import GenerateKnockoutsButton from './GenerateKnockoutsButton'
 import GenerateFriendliesButton from './GenerateFriendliesButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
@@ -218,6 +219,15 @@ function TournamentCard({
         >
           Fixtures
         </Link>
+        {!['friendlies'].includes(tournament.type) && (
+          <div className="flex-1 flex items-center justify-center">
+            <GenerateFixturesButton
+              tournamentId={tournament.id}
+              tournamentName={tournament.name}
+              type={tournament.type}
+            />
+          </div>
+        )}
         {['tournament_club', 'tournament_international'].includes(tournament.type) && (
           <div className="flex-1 flex items-center justify-center">
             <RunTournamentDrawButton

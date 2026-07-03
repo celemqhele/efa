@@ -354,14 +354,6 @@ function StartPhaseDialog({
   const [europaNumGroups, setEuropaNumGroups] = useState(2)
   const [europaQualifiersPerGroup, setEuropaQualifiersPerGroup] = useState(2)
 
-  const endDate = (() => {
-    const counts = computeFixtureCounts()
-    const days = Math.max(7, Math.ceil(counts.total / 15))
-    const d = new Date(startDate)
-    d.setDate(d.getDate() + days)
-    return d.toISOString().split('T')[0]
-  })()
-
   // Selection by slug
   const [leagueTeamSlugs, setLeagueTeamSlugs] = useState<string[]>(allTeams.map((t) => t.logo_team_slug))
 
@@ -418,6 +410,14 @@ function StartPhaseDialog({
     }
     return { league: leagueCount, ucl: uclCount, europa: europaCount, total: leagueCount + uclCount + europaCount }
   }
+
+  const endDate = (() => {
+    const counts = computeFixtureCounts()
+    const days = Math.max(7, Math.ceil(counts.total / 15))
+    const d = new Date(startDate)
+    d.setDate(d.getDate() + days)
+    return d.toISOString().split('T')[0]
+  })()
 
   async function handleStart() {
     setLoading(true)
