@@ -118,7 +118,7 @@ export default function Desktop({ data }: DesktopProps) {
           >
             {tournaments.map((t: any) => (
               <option key={t.id} value={t.id}>
-                {TOURNAMENT_TYPE_LABELS[t.type] ?? t.name}
+                {t.name}
               </option>
             ))}
           </select>

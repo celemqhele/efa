@@ -185,7 +185,7 @@ export default function Mobile({ data }: MobileProps) {
                     : 'bg-bg-surface text-text-secondary border-border hover:border-accent/40 hover:text-accent'
                 }`}
               >
-                {TOURNAMENT_TYPE_LABELS[t.type] ?? t.name}
+                {t.name}
               </Link>
             )
           })}
