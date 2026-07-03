@@ -219,15 +219,13 @@ function TournamentCard({
         >
           Fixtures
         </Link>
-        {!['friendlies'].includes(tournament.type) && (
-          <div className="flex-1 flex items-center justify-center">
-            <GenerateFixturesButton
-              tournamentId={tournament.id}
-              tournamentName={tournament.name}
-              type={tournament.type}
-            />
-          </div>
-        )}
+        <div className="flex-1 flex items-center justify-center">
+          <GenerateFixturesButton
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            type={tournament.type}
+          />
+        </div>
         {['tournament_club', 'tournament_international'].includes(tournament.type) && (
           <div className="flex-1 flex items-center justify-center">
             <RunTournamentDrawButton
