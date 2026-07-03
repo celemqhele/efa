@@ -214,6 +214,27 @@ function genWeaknesses(ctx: TeamContext, stats: StatLine): string[] {
   if (stats.tackles <= 5.5) {
     weakPool.push(`A passive defensive approach averaging only ${fmt1(stats.tackles)} tackles per game allows opponents too much time on the ball. Quick passing teams will find space between the lines.`)
   }
+  if (stats.offsides >= 2.5) {
+    weakPool.push(`They get caught offside ${fmt1(stats.offsides)} times per game, revealing impatience in their attacking runs. A well-drilled offside trap will frustrate their forwards and kill promising attacks.`)
+  }
+  if (stats.offsides <= 0.5 && stats.poss <= 46) {
+    weakPool.push(`Despite sitting deep at ${fmt0(stats.poss)}% possession, they generate only ${fmt1(stats.offsides)} offsides per game, refusing to make runs behind the defence. Teams can push high and compress the pitch without fear of being turned.`)
+  }
+  if (stats.corners >= 3.5) {
+    weakPool.push(`They win ${fmt1(stats.corners)} corners per game from wide pressure, but defending them aerially neutralises this threat. Tall centre-backs who command the six-yard box will clear everything.`)
+  }
+  if (stats.corners <= 1.5 && stats.shots >= 5) {
+    weakPool.push(`Despite ${fmt0(stats.shots)} shots per game, they generate only ${fmt1(stats.corners)} corners, meaning their attacks rarely produce sustained pressure. Defenders can clear their lines without fear of repeated set-piece bombardment.`)
+  }
+  if (stats.fk >= 3) {
+    weakPool.push(`Their physical approach earns them ${fmt1(stats.fk)} free kicks per game, but this also means they concede plenty in return. Opponents should match their physicality and turn the match into a set-piece battle.`)
+  }
+  if (stats.fk <= 1 && stats.fouls >= 2) {
+    weakPool.push(`They commit ${fmt1(stats.fouls)} fouls per game yet only draw ${fmt1(stats.fk)} free kicks, a poor foul-to-free-kick ratio. Aggressive dribblers who carry the ball into contact will earn set-pieces in dangerous areas against them.`)
+  }
+  if (stats.int >= 9) {
+    weakPool.push(`Their ${fmt1(stats.int)} interceptions per game show they read play well, but this aggressiveness can be exploited by clever decoy runs. Teams that use third-man combinations and disguised passes will bypass their anticipatory defending.`)
+  }
   if (ctx.profile === 'Gegenpressing' || ctx.profile === 'Quick Counter') {
     weakPool.push(`${ctx.name} expends significant energy with their high-tempo style and can fade in the final 20 minutes. Opponents should conserve energy early and push the pace late, targeting tired legs.`)
   }
@@ -284,40 +305,95 @@ function genCoachNote(ctx: TeamContext, stats: StatLine): string {
 // ── Fixture: EXPLOITS (what opponent will exploit, 2 entries, 2 sentences each)
 function genFixtureExploits(ctx: TeamContext, stats: StatLine, oppName: string, oppProfile: ProfileName): string[] {
   const s = hash(ctx.name + oppName + 'exp')
+  const pa = stats.passes > 0 ? stats.succPasses / stats.passes * 100 : 75
+  const sa = stats.shots > 0 ? stats.sot / stats.shots : 0.4
   const out: string[] = []
 
-  // Find specific vulnerabilities based on this team's stats
-  if (stats.saves >= 4) {
-    out.push(`${oppName} will target ${ctx.name}'s tendency to concede shots, averaging ${fmt1(stats.saves)} saves faced per game. Constant pressure on goal will eventually force errors from a defence that gives up too many attempts.`)
+  // Stat-driven vulnerabilities, ordered by specificity
+  if (stats.ga >= 3.0 && stats.saves >= 4) {
+    out.push(`${ctx.name} are leaking ${fmt1(stats.ga)} goals per game while facing ${fmt1(stats.saves)} shots on target, exposing serious defensive issues. ${oppName} should attack relentlessly from the opening whistle, targeting the centre of this vulnerable backline with direct runs.`)
+  } else if (stats.ga >= 3.0) {
+    out.push(`${ctx.name} concede ${fmt1(stats.ga)} goals per game on average, a defensive record ${oppName} must exploit. Quick attacking moves before their defensive shape settles will produce early chances and force them to chase the game.`)
+  } else if (stats.ga >= 2.5) {
+    out.push(`${ctx.name} average ${fmt1(stats.ga)} goals conceded, a weakness ${oppName} can target with well-timed attacking runs. Sustained pressure in the first 20 minutes will test whether this defence can hold under early duress.`)
   }
-  if (stats.ga >= 3.0) {
-    out.push(`${ctx.name} concede ${fmt1(stats.ga)} goals per game on average, a clear weakness ${oppName} must exploit. Quick early attacks before the defence settles will produce chances against this vulnerable backline.`)
+
+  if (stats.shots >= 8 && sa <= 0.38) {
+    out.push(`${ctx.name} fire off ${fmt0(stats.shots)} shots per game but only ${pct(sa)} hit the target, wasting attacking positions. ${oppName} can afford to show them wide, block shooting lanes, and trust that most attempts will sail harmlessly off target.`)
   }
+
   if (stats.fouls >= 2.8) {
-    out.push(`${ctx.name} commit ${fmt1(stats.fouls)} fouls per game, gifting opponents dangerous set-piece positions. ${oppName} should draw contact in advanced areas and target dead-ball situations as a primary scoring route.`)
+    out.push(`${ctx.name} give away ${fmt1(stats.fouls)} fouls per match, gifting opponents dangerous set-piece positions. ${oppName} should draw contact in the final third and treat every dead ball as a genuine scoring chance against an undisciplined defence.`)
+  } else if (stats.fouls <= 1.2) {
+    out.push(`${ctx.name} are unusually clean, averaging only ${fmt1(stats.fouls)} fouls per match. ${oppName} can play a physical, confrontational game without fear of conceding dangerous free kicks, disrupting their rhythm through aggressive challenges.`)
   }
-  if (stats.poss <= 44) {
-    out.push(`${ctx.name} average only ${fmt0(stats.poss)}% possession, meaning they defend for long stretches. ${oppName} should control the ball, move it quickly, and wear this team down with sustained pressure.`)
+
+  if (stats.poss <= 42) {
+    out.push(`${ctx.name} average only ${fmt0(stats.poss)}% possession, spending long stretches defending deep. ${oppName} should dominate the ball, probe patiently, and wear this team down; the goals will come as their defensive concentration frays.`)
+  } else if (stats.poss >= 54 && stats.ga >= 2.5) {
+    out.push(`${ctx.name} dominate the ball at ${fmt0(stats.poss)}% but still concede ${fmt1(stats.ga)} per game, a sign their high line is exploitable. ${oppName} should sit deep, absorb their possession, and spring rapid counters into the space behind their advanced full-backs.`)
   }
-  if (stats.fouls <= 1.2) {
-    out.push(`${ctx.name} are unusually clean defensively, averaging only ${fmt1(stats.fouls)} fouls per match. ${oppName} can play physically without fear of dangerous free kicks, disrupting their rhythm through aggressive challenges.`)
-  }
+
   if (stats.crosses >= 4) {
-    out.push(`${ctx.name} rely heavily on crossing with ${fmt1(stats.crosses)} per game. ${oppName} should deploy tall centre-backs and defend the box aerially; cut off the wide supply and this attack has no alternative.`)
+    out.push(`${ctx.name} deliver ${fmt1(stats.crosses)} crosses per game, making their attack predictable. ${oppName} should deploy tall, aerially dominant centre-backs, force them into wide areas, and clear every delivery with authority.`)
+  }
+
+  if (stats.passes >= 120 && pa <= 74) {
+    out.push(`${ctx.name} attempt ${fmt0(stats.passes)} passes per game but complete only ${pct(pa / 100)}, turning the ball over frequently. ${oppName} should press their midfield aggressively, force misplaced passes, and convert those turnovers into instant counter-attacks.`)
+  }
+
+  if (stats.saves >= 4) {
+    out.push(`${ctx.name} give up ${fmt1(stats.saves)} shots on target per game, testing their goalkeeper far too often. ${oppName} should shoot early and often, follow every attempt for rebounds, and wait for the inevitable defensive error under sustained pressure.`)
+  }
+
+  if (stats.tackles <= 5 && stats.ga >= 2.5) {
+    out.push(`${ctx.name} average only ${fmt1(stats.tackles)} tackles per game while conceding ${fmt1(stats.ga)} goals, a passive defence that allows too much time. ${oppName} should run at them directly, dribble into the box, and force desperate challenges or easy finishes.`)
+  }
+
+  if (stats.int <= 5) {
+    out.push(`${ctx.name} make only ${fmt1(stats.int)} interceptions per game, failing to read opponent passing patterns. ${oppName} should pass through the lines freely, confident that their through-balls will find runners behind a disconnected defence.`)
+  }
+
+  if (stats.offsides >= 2.5) {
+    out.push(`${ctx.name} are caught offside ${fmt1(stats.offsides)} times per game, rushing their attacking runs impatiently. ${oppName} should hold a disciplined high line and trust the offside trap to kill their most dangerous forward movements.`)
+  }
+
+  if (stats.corners >= 3.5) {
+    out.push(`${ctx.name} earn ${fmt1(stats.corners)} corners per game, relying on set-piece pressure to create chances. ${oppName} must defend these situations with height and organisation; clear every delivery and the supply line is neutralised.`)
+  }
+
+  if (stats.fk >= 3) {
+    out.push(`${ctx.name} draw ${fmt1(stats.fk)} free kicks per game, dangerous in dead-ball situations. ${oppName} must avoid fouling in the final third, as this team converts set-piece opportunities at a concerning rate.`)
+  }
+
+  if (stats.int >= 9) {
+    out.push(`${ctx.name} intercept ${fmt1(stats.int)} passes per game, reading the game aggressively. ${oppName} should use disguised passes, third-man runs, and quick one-twos to beat their anticipatory defending and find space behind the interception line.`)
   }
 
   // Profile-specific
-  if (ctx.profile === 'Gegenpressing') {
-    out.push(`${ctx.name}'s high-intensity pressing will tire by the 70th minute. ${oppName} should conserve energy, absorb the early pressure, and push hard in the final quarter when gaps appear in their defensive shape.`)
+  const profileExploits: Record<string, string> = {
+    'Gegenpressing': `${ctx.name}'s relentless high press drains stamina, leaving them vulnerable after the 70th minute. ${oppName} should conserve energy early, absorb the initial pressure, and target the final quarter when gaps appear in their defensive structure.`,
+    'Tiki-Taka': `${ctx.name}'s patient build-up from the back is vulnerable to coordinated high pressing. ${oppName} should press their centre-backs and defensive midfielder aggressively, forcing rushed passes that create turnover chances in dangerous areas.`,
+    'Disciplined Pressers': `${ctx.name} press intelligently but can be bypassed by rapid switches of play. ${oppName} should move the ball quickly from flank to flank, stretching their pressing shape until gaps appear centrally for penetrating passes.`,
+    'Quick Counter': `${ctx.name} thrive on transitions but struggle when forced to break down organised defences. ${oppName} should deny them counter-attacking space by defending in a compact block and keeping possession patiently.`,
+    'Long Ball Counter': `${ctx.name} defend deep and play direct, but this system crumbles when they fall behind. ${oppName} must score first; an early goal forces them out of their defensive shell and into unfamiliar attacking territory.`,
+    'Elite Dominators': `${ctx.name} control games through technical quality but leave space behind their full-backs. ${oppName} should play direct balls into the channels, targeting the gaps left by their advanced wide defenders on the counter.`,
+    'Out Wide': `${ctx.name} depend heavily on crosses, and their attack stalls when wide supply is cut. ${oppName} should defend narrowly, win aerial battles, and force them to play through a congested central midfield where they lack creativity.`,
+    'Set-Piece Specialists': `${ctx.name} manufacture chances from dead balls, but this reliance is their weakness. ${oppName} must avoid unnecessary fouls in their defensive third and defend set-pieces with discipline and height.`,
+    'Shoot-on-Sight': `${ctx.name} shoot from everywhere but with poor efficiency. ${oppName} should defend deep, block shooting lanes, and let them waste possession with low-percentage efforts from distance.`,
+    'Pragmatic Stabilizers': `${ctx.name} adapt to opponents but can be caught between tactical shapes. ${oppName} should vary their attacking rhythm constantly, switching between slow build-up and quick transitions to exploit their mid-game adjustments.`,
+    'The Grinders': `${ctx.name} play a physical battle but give away fouls under pressure. ${oppName} should draw contact in advanced positions, target set-pieces, and stay composed when the game gets scrappy; technical quality will prevail.`,
   }
-  if (ctx.profile === 'Tiki-Taka') {
-    out.push(`${ctx.name}'s possession-based build-up is vulnerable to coordinated high pressing. ${oppName} should press their defenders and pivot player aggressively, forcing turnovers in the most dangerous areas.`)
-  }
+  if (profileExploits[ctx.profile]) out.push(profileExploits[ctx.profile])
 
-  // Fill to at least 2
-  while (out.length < 2) {
-    out.push(`${oppName} should study ${ctx.name}'s ${ctx.profile.toLowerCase()} system for structural weaknesses. Capitalising on moments of transition when they lose their defensive shape will create the best scoring opportunities.`)
-  }
+  // Fallback — varied by hash, never repeats
+  const fallbacks = [
+    `${oppName} should study ${ctx.name}'s recent patterns and identify moments of defensive transition vulnerability. Quick switches of play immediately after winning possession will catch their backline out of position.`,
+    `${ctx.name}'s ${ctx.profile.toLowerCase()} system has predictable patterns that ${oppName} can gameplan against. Attacking the spaces they leave between midfield and defence will create the highest-quality chances.`,
+    `${oppName} must target ${ctx.name}'s structural weaknesses in transition moments, when their ${ctx.profile.toLowerCase()} shape is most disorganised. Speed of thought and execution in these windows will decide the match.`,
+    `The key for ${oppName} is disrupting ${ctx.name}'s rhythm early, preventing them from settling into their ${ctx.profile.toLowerCase()} pattern. An aggressive first 15 minutes could set the tone and force mistakes.`,
+  ]
+  while (out.length < 2) out.push(fallbacks[variant(s, fallbacks.length)])
 
   return out.slice(0, 2)
 }
@@ -325,43 +401,92 @@ function genFixtureExploits(ctx: TeamContext, stats: StatLine, oppName: string, 
 // ── Fixture: RECOMMENDATIONS (how to counter opponent, 2 entries, 2 sentences each)
 function genFixtureRecs(ctx: TeamContext, stats: StatLine, oppName: string, oppCtx: TeamContext, oppStats: StatLine): string[] {
   const s = hash(ctx.name + oppName + 'rec')
+  const oppPa = oppStats.passes > 0 ? oppStats.succPasses / oppStats.passes * 100 : 75
+  const oppSa = oppStats.shots > 0 ? oppStats.sot / oppStats.shots : 0.4
   const out: string[] = []
 
-  // Recommendations based on opponent weaknesses
-  if (oppStats.saves >= 4) {
-    out.push(`${ctx.name} should test ${oppName}'s goalkeeper early and often, as they face ${fmt1(oppStats.saves)} shots on target per game. Building pressure through sustained attacking waves will crack this defence.`)
-  }
-  if (oppStats.ga >= 3.0) {
-    out.push(`${oppName} concede ${fmt1(oppStats.ga)} goals per game, so ${ctx.name} must be aggressive from kickoff. An early goal will force the opponent out of their comfort zone and into mistakes.`)
-  }
-  if (oppStats.fouls >= 2.8) {
-    out.push(`${oppName} give away ${fmt1(oppStats.fouls)} fouls per match, often in dangerous areas. ${ctx.name} should draw contact near the box and treat every free kick as a genuine scoring opportunity.`)
-  }
-  if (oppStats.crosses >= 4) {
-    out.push(`${oppName} are overly reliant on crosses, averaging ${fmt1(oppStats.crosses)} per game. ${ctx.name} should defend narrow, win aerial duels, and force them to play through a congested central area.`)
-  }
-  if (oppStats.poss <= 44) {
-    out.push(`${oppName} sit deep with only ${fmt0(oppStats.poss)}% possession, absorbing pressure. ${ctx.name} should be patient in build-up, move the ball quickly to shift their block, and strike when gaps appear.`)
-  }
-  if (oppCtx.profile === 'Gegenpressing') {
-    out.push(`${oppName} press relentlessly but tire late. ${ctx.name} should stay composed under pressure, use quick one-touch passing to bypass the press, and target the final 20 minutes for the decisive push.`)
-  }
-  if (oppCtx.profile === 'Tiki-Taka') {
-    out.push(`${oppName} control games through possession but struggle when pressed. ${ctx.name} should press their build-up aggressively, deny time on the ball, and force hurried passes that create turnover chances.`)
-  }
-  if (oppCtx.profile === 'Pragmatic Stabilizers') {
-    out.push(`${oppName} adapt their approach but lack a dominant identity. ${ctx.name} should impose a clear game plan early, forcing constant adaptation that leads to defensive uncertainty and gaps.`)
-  }
-  if (oppCtx.profile === 'Elite Dominators') {
-    out.push(`${oppName} dominate through quality but leave space behind their high line. ${ctx.name} should sit deep, absorb pressure, and spring quick vertical counters targeting the channels behind their full-backs.`)
-  }
-  if (oppCtx.profile === 'Quick Counter') {
-    out.push(`${oppName} thrive on transitions but struggle when forced to create from possession. ${ctx.name} should deny them counter-attacking space by defending with a compact block and controlling the tempo.`)
+  // Opponent-specific weaknesses to target
+  if (oppStats.ga >= 3.0 && oppStats.saves >= 4) {
+    out.push(`${oppName} concede ${fmt1(oppStats.ga)} per game while facing ${fmt1(oppStats.saves)} shots on target, a defence in crisis. ${ctx.name} must attack from the first whistle, targeting the central channels with pace and directness to overwhelm them early.`)
+  } else if (oppStats.ga >= 3.0) {
+    out.push(`${oppName} are conceding ${fmt1(oppStats.ga)} goals per game and cannot be trusted to keep a clean sheet. ${ctx.name} should be aggressive in attack, test their keeper within the first 10 minutes, and unsettle their backline before they find any rhythm.`)
+  } else if (oppStats.ga >= 2.5) {
+    out.push(`${oppName} leak ${fmt1(oppStats.ga)} goals per game on average, a defensive weakness ${ctx.name} should target. Patient build-up followed by quick penetration through the middle will expose gaps in their organisation.`)
   }
 
-  while (out.length < 2) {
-    out.push(`${ctx.name} should prepare for ${oppName}'s ${oppCtx.profile.toLowerCase()} approach by studying their recent patterns. Disciplined execution of their own tactical identity will create opportunities throughout the match.`)
+  if (oppStats.shots >= 8 && oppSa <= 0.38) {
+    out.push(`${oppName} shoot often but inaccurately, with only ${pct(oppSa)} of attempts on target. ${ctx.name} can afford to defend narrow, block the central lanes, and trust that their wasteful finishing will keep the scoreline manageable.`)
   }
+
+  if (oppStats.fouls >= 2.8) {
+    out.push(`${oppName} commit ${fmt1(oppStats.fouls)} fouls per game, frequently in dangerous positions. ${ctx.name} should carry the ball into the box, draw contact, and make every set-piece count against this undisciplined opponent.`)
+  }
+
+  if (oppStats.poss <= 42) {
+    out.push(`${oppName} sit deep at only ${fmt0(oppStats.poss)}% possession, absorbing pressure for long periods. ${ctx.name} must be patient, circulate the ball rapidly to shift their block, and strike decisively when the gaps finally appear.`)
+  } else if (oppStats.poss >= 54 && oppStats.ga >= 2.5) {
+    out.push(`${oppName} keep the ball but cannot defend, a combination ${ctx.name} should exploit. Sit compact, let them have possession in harmless areas, and spring sharp counters the moment possession turns over in midfield.`)
+  }
+
+  if (oppStats.crosses >= 4) {
+    out.push(`${oppName} depend on crossing with ${fmt1(oppStats.crosses)} per game. ${ctx.name} should pack the box with tall defenders, win every aerial duel, and force them to try something different, which they have shown they cannot do effectively.`)
+  }
+
+  if (oppStats.passes >= 120 && oppPa <= 74) {
+    out.push(`${oppName} pass frequently but sloppily at ${pct(oppPa / 100)} accuracy. ${ctx.name} should press high, intercept misplaced passes, and transition instantly; turnovers in midfield will become your most dangerous attacking weapon.`)
+  }
+
+  if (oppStats.saves >= 4) {
+    out.push(`${oppName} face ${fmt1(oppStats.saves)} shots on target per game, a sign their defence allows too many attempts. ${ctx.name} should shoot from anywhere, follow every rebound, and trust that sustained pressure will produce goals.`)
+  }
+
+  if (oppStats.tackles <= 5 && oppStats.ga >= 2.5) {
+    out.push(`${oppName} average only ${fmt1(oppStats.tackles)} tackles while conceding ${fmt1(oppStats.ga)} goals, a passive defensive unit. ${ctx.name} should dribble at them directly, force one-on-one situations in the box, and create high-percentage chances.`)
+  }
+
+  if (oppStats.int <= 5) {
+    out.push(`${oppName} make just ${fmt1(oppStats.int)} interceptions per game, struggling to read the play. ${ctx.name} should thread through-balls and play quick combinations, knowing the opponent will fail to anticipate the decisive pass.`)
+  }
+
+  if (oppStats.offsides >= 2.5) {
+    out.push(`${oppName} stray offside ${fmt1(oppStats.offsides)} times per game, their forwards jumping the gun on attacking runs. ${ctx.name} should hold a disciplined high defensive line and trust the offside flag to nullify their most dangerous runners.`)
+  }
+
+  if (oppStats.corners >= 3.5) {
+    out.push(`${oppName} win ${fmt1(oppStats.corners)} corners per game, their primary set-piece threat. ${ctx.name} must defend these with height and organisation; clear every delivery decisively and the opponent loses a major scoring avenue.`)
+  }
+
+  if (oppStats.fk >= 3) {
+    out.push(`${oppName} draw ${fmt1(oppStats.fk)} free kicks per game, dangerous from dead-ball situations. ${ctx.name} should avoid giving away fouls in shooting range and defend set-pieces with a disciplined zonal setup.`)
+  }
+
+  if (oppStats.int >= 9) {
+    out.push(`${oppName} intercept ${fmt1(oppStats.int)} passes per game, anticipating play aggressively. ${ctx.name} should use disguised through-balls, overlapping runs, and quick combination play to bypass their reading of the game and create chances behind the interception line.`)
+  }
+
+  // Profile-specific counters
+  const profileCounters: Record<string, string> = {
+    'Gegenpressing': `${oppName} press with intensity but fatigue is their weakness. ${ctx.name} should stay composed under pressure, use quick passing to bypass the press, and target the final 20 minutes when their energy levels drop.`,
+    'Tiki-Taka': `${oppName} control possession but crumble under coordinated pressure. ${ctx.name} should press their build-up aggressively, deny their pivot time on the ball, and force the turnovers that lead to high-quality chances.`,
+    'Disciplined Pressers': `${oppName} press intelligently but struggle against teams that bypass midfield. ${ctx.name} should play direct balls into the channels, switch play rapidly, and avoid being trapped by their organised pressing structure.`,
+    'Quick Counter': `${oppName} are dangerous on the break but toothless when forced to create. ${ctx.name} should control possession, limit turnovers, and deny them the transitional space they need to launch their counter-attacks.`,
+    'Long Ball Counter': `${oppName} defend deep and go direct, but scoring first dismantles their game plan. ${ctx.name} must push for an early goal, after which their defensive shell will crack as they chase the game.`,
+    'Elite Dominators': `${oppName} dominate possession but push their full-backs high, leaving space behind. ${ctx.name} should sit compact and strike quickly down the flanks when possession turns over, exploiting the gaps their ambition creates.`,
+    'Out Wide': `${oppName} attack exclusively through width, and their threat disappears when crosses are cut off. ${ctx.name} should defend narrowly, dominate aerially, and force them into central areas where they lack creative solutions.`,
+    'Set-Piece Specialists': `${oppName} depend on dead balls for goals, which is a fragile scoring strategy. ${ctx.name} must avoid fouls near the box and defend set-pieces with height, organisation, and collective responsibility.`,
+    'Shoot-on-Sight': `${oppName} fire shots from everywhere but with poor conversion. ${ctx.name} should show them wide, defend the central shooting lanes, and let their inefficiency work in your favour over 90 minutes.`,
+    'Pragmatic Stabilizers': `${oppName} adapt to opponents but lack a clear tactical identity. ${ctx.name} should set the tempo early, force them to react constantly, and exploit the uncertainty that comes from playing without a defined plan.`,
+    'The Grinders': `${oppName} try to outmuscle opponents but foul frequently in dangerous areas. ${ctx.name} should stay disciplined, draw contact in the final third, and convert set-piece chances against their aggressive but error-prone defence.`,
+  }
+  if (profileCounters[oppCtx.profile]) out.push(profileCounters[oppCtx.profile])
+
+  const fallbacks = [
+    `${ctx.name} should approach this fixture with a clear tactical plan, focusing on the specific weaknesses in ${oppName}'s ${oppCtx.profile.toLowerCase()} system. Executing the basics well and staying patient will create the opening needed.`,
+    `${ctx.name} must be disciplined and wait for ${oppName} to overcommit before striking. Their ${oppCtx.profile.toLowerCase()} approach has exploitable patterns that a well-prepared side can turn into match-winning moments.`,
+    `${ctx.name} should control the midfield battle against ${oppName}, as whoever wins the central duels will dictate the flow. Quick, decisive passing through the lines will unlock their defensive structure.`,
+    `The key for ${ctx.name} is forcing ${oppName} into uncomfortable situations where their ${oppCtx.profile.toLowerCase()} system breaks down. Apply pressure in the areas they least expect it and the chances will come.`,
+  ]
+  while (out.length < 2) out.push(fallbacks[variant(s, fallbacks.length)])
 
   return out.slice(0, 2)
 }
