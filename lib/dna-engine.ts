@@ -23,11 +23,19 @@ export interface DNAProfile {
   score: number
 }
 
+export interface MatchupCoachNote {
+  approach: string
+  key_threat: string
+  exploit: string
+  setup: string
+}
+
 export interface PersonalizedDescription {
   about: string
   tendencies: string[]
   coachNote: string
   weaknesses: string[]
+  matchupCoachNotes?: Record<string, MatchupCoachNote>
 }
 
 // ── Threshold helpers ────────────────────────────────────────────────────────
@@ -557,6 +565,7 @@ function buildDescription(
     tendencies: row[`${prefix}_tendencies`] ?? [],
     coachNote: row[`${prefix}_coach_note`] ?? '',
     weaknesses: row[`${prefix}_weaknesses`] ?? [],
+    matchupCoachNotes: row.matchup_coach_notes ?? undefined,
   }
 }
 
