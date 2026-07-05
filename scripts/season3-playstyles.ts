@@ -7,8 +7,8 @@
  */
 import { createClient } from '@supabase/supabase-js'
 
-const URL = 'https://nnebtygloqixibbjxsjr.supabase.co'
-const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uZWJ0eWdsb3FpeGliYmp4c2pyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTcwMDA1NSwiZXhwIjoyMDk3Mjc2MDU1fQ.S6HrngRuPXL-Xla_5r6ekq_80Q50p4P_FqbGTXWSUPE'
+const URL = 'https://dtxnqtfqsehofezdmdbd.supabase.co'
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0eG5xdGZxc2Vob2ZlemRtZGJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTA0MzUzNywiZXhwIjoyMDk0NjE5NTM3fQ.OtIVGf-WNvnMrkZ--rSwYb6WVnUV2PWqxvtjzvEPsHc'
 
 const supabase = createClient(URL, KEY)
 
