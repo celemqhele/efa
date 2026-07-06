@@ -239,6 +239,8 @@ type CardData = {
     managers?: any[]
     standings?: any[]
     standingsOffset?: number
+    fixtures?: any[]
+    results?: any[]
   }[]
 }
 
@@ -306,6 +308,21 @@ export default async function ExportPage({ searchParams }: Props) {
           .order('scheduled_date', { ascending: true })
         if (fxErr) queryErrors.push(fxErr.message)
         fixtures = data ?? []
+        if (fixtures.length > 6) {
+          isChunked = true
+          const fixtureChunkSize = 6
+          for (let i = 0; i < fixtures.length; i += fixtureChunkSize) {
+            const partNum = Math.floor(i / fixtureChunkSize) + 1
+            const chunkFixtures = fixtures.slice(i, i + fixtureChunkSize)
+            const mds = Array.from(new Set(chunkFixtures.map((f: any) => f.matchday).filter(Boolean))).sort((a: number, b: number) => a - b)
+            const mdLabel = mds.length === 1 ? `MATCHDAY ${mds[0]}` : mds.length > 1 ? `MATCHDAYS ${mds.join(',')}` : 'FIXTURES'
+            chunks.push({
+              key: `${tournamentId}-${cardType}-chunk-${partNum}`,
+              title: `${mdLabel} (PART ${partNum})`,
+              fixtures: chunkFixtures
+            })
+          }
+        }
       }
 
       if (cardType === 'results') {
@@ -339,6 +356,21 @@ export default async function ExportPage({ searchParams }: Props) {
         results = (ftFixtures ?? [])
           .map((f: any) => ({ ...f, result: scoresByFixture[f.id] ?? null }))
           .filter((f: any) => f.result)
+        if (results.length > 6) {
+          if (!isChunked) isChunked = true
+          const resultChunkSize = 6
+          for (let i = 0; i < results.length; i += resultChunkSize) {
+            const partNum = Math.floor(i / resultChunkSize) + 1
+            const chunkResults = results.slice(i, i + resultChunkSize)
+            const mds = Array.from(new Set(chunkResults.map((f: any) => f.matchday).filter(Boolean))).sort((a: number, b: number) => a - b)
+            const mdLabel = mds.length === 1 ? `MATCHDAY ${mds[0]}` : mds.length > 1 ? `MATCHDAYS ${mds.join(',')}` : 'RESULTS'
+            chunks.push({
+              key: `${tournamentId}-${cardType}-chunk-${partNum}`,
+              title: `${mdLabel} (PART ${partNum})`,
+              results: chunkResults
+            })
+          }
+        }
       }
 
       if (cardType === 'standings') {
@@ -359,16 +391,19 @@ export default async function ExportPage({ searchParams }: Props) {
           groupStandings = gs
           if (leagueStandings.length > 12) {
             isChunked = true
-            const leagueChunkSize = 10
-            for (let i = 0; i < leagueStandings.length; i += leagueChunkSize) {
-              const partNum = Math.floor(i / leagueChunkSize) + 1
-              chunks.push({
-                key: `${tournamentId}-${cardType}-chunk-${partNum}`,
-                title: `LEAGUE TABLE (PART ${partNum})`,
-                standings: leagueStandings.slice(i, i + leagueChunkSize),
-                standingsOffset: i
-              })
-            }
+            const halfCount = Math.ceil(leagueStandings.length / 2)
+            chunks.push({
+              key: `${tournamentId}-${cardType}-chunk-1`,
+              title: 'LEAGUE TABLE (FIRST HALF)',
+              standings: leagueStandings.slice(0, halfCount),
+              standingsOffset: 0
+            })
+            chunks.push({
+              key: `${tournamentId}-${cardType}-chunk-2`,
+              title: 'LEAGUE TABLE (SECOND HALF)',
+              standings: leagueStandings.slice(halfCount),
+              standingsOffset: halfCount
+            })
           }
         }
       }
@@ -583,6 +618,83 @@ export default async function ExportPage({ searchParams }: Props) {
                               <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
                               <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Europa places</span>
                             </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Chunk Content: Fixtures */}
+                      {chunk.fixtures && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {chunk.fixtures.map((f: any, fi: number) => (
+                            <div
+                              key={f.id}
+                              style={{
+                                display: 'flex', alignItems: 'center',
+                                ...(fi % 2 === 0 ? rowEven : rowOdd),
+                                padding: '10px 16px',
+                              }}
+                            >
+                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingRight: '10px' }}>
+                                <span style={{ color: 'var(--export-text)', fontWeight: 600, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {(f.home_team as any)?.name ?? '—'}
+                                </span>
+                                <TeamLogoInline folder={(f.home_team as any)?.logo_league_folder} slug={(f.home_team as any)?.logo_team_slug} />
+                              </div>
+                              <div style={{ color: accent, fontWeight: 900, fontSize: '11px', minWidth: '32px', textAlign: 'center', letterSpacing: '0.05em' }}>
+                                VS
+                              </div>
+                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '10px' }}>
+                                <TeamLogoInline folder={(f.away_team as any)?.logo_league_folder} slug={(f.away_team as any)?.logo_team_slug} />
+                                <span style={{ color: 'var(--export-text)', fontWeight: 600, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {(f.away_team as any)?.name ?? '—'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                          <div style={{ color: 'var(--export-muted)', fontSize: '11px', textAlign: 'center', marginTop: '10px', letterSpacing: '0.04em' }}>
+                            {formattedDate}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Chunk Content: Results */}
+                      {chunk.results && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {chunk.results.map((f: any, fi: number) => {
+                            const r = f.result
+                            const homeWon = r && r.home_score > r.away_score
+                            const awayWon = r && r.away_score > r.home_score
+                            return (
+                              <div
+                                key={f.id}
+                                style={{
+                                  display: 'flex', alignItems: 'center',
+                                  ...(fi % 2 === 0 ? rowEven : rowOdd),
+                                  padding: '10px 16px',
+                                }}
+                              >
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', paddingRight: '10px' }}>
+                                  <span style={{ color: homeWon ? 'var(--export-text)' : 'var(--export-muted)', fontWeight: homeWon ? 700 : 400, fontSize: '13px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {(f.home_team as any)?.name ?? '—'}
+                                  </span>
+                                  <TeamLogoInline folder={(f.home_team as any)?.logo_league_folder} slug={(f.home_team as any)?.logo_team_slug} />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '72px', justifyContent: 'center' }}>
+                                  <span style={{ color: homeWon ? accent : 'var(--export-text)', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.home_score ?? '?'}</span>
+                                  <span style={{ color: 'var(--export-score-divider)', fontWeight: 700, fontSize: '13px' }}>–</span>
+                                  <span style={{ color: awayWon ? accent : 'var(--export-text)', fontWeight: 900, fontSize: '20px', lineHeight: 1 }}>{r?.away_score ?? '?'}</span>
+                                </div>
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '10px' }}>
+                                  <TeamLogoInline folder={(f.away_team as any)?.logo_league_folder} slug={(f.away_team as any)?.logo_team_slug} />
+                                  <span style={{ color: awayWon ? 'var(--export-text)' : 'var(--export-muted)', fontWeight: awayWon ? 700 : 400, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {(f.away_team as any)?.name ?? '—'}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                          <div style={{ color: 'var(--export-muted)', fontSize: '11px', textAlign: 'center', marginTop: '10px', letterSpacing: '0.04em' }}>
+                            {formattedDate}
                           </div>
                         </div>
                       )}
