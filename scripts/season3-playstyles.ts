@@ -1,7 +1,6 @@
 /**
- * Season 3 Hand-Crafted Playstyles & Matchup Coach Notes
+ * Season 3 Hand-Crafted Playstyles
  * Each team gets a unique, individually written playstyle profile
- * Each team gets 25 matchup-specific coach notes (one per opponent)
  *
  * Usage: npx tsx scripts/season3-playstyles.ts [--dry-run]
  */
@@ -45,8 +44,6 @@ const TEAMS: Record<string, string> = {
 const TEAM_NAMES = Object.keys(TEAMS)
 
 type Profile = { about: string; tendencies: string[]; weaknesses: string[]; coachNote: string }
-type MatchupNote = { approach: string; key_threat: string; exploit: string; setup: string }
-type MatchupNotes = Record<string, MatchupNote>
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PLAYSTYLE PROFILES — one per team, hand-crafted
@@ -446,336 +443,6 @@ const PROFILES: Record<string, Profile> = {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MATCHUP COACH NOTES — 26 per team, each referencing the opponent's playstyle
-// Follows the pattern: "since they often do X, do Y"
-// ══════════════════════════════════════════════════════════════════════════════
-
-// Key traits extracted from each team's playstyle profile for coaching reference
-const TRAITS: Record<string, {
-  identity: string
-  statRefs: string[]
-  threat: string
-  vulnerability: string
-  }> = {
-  'Al Ettifaq': {
-    identity: 'a high-volume attacking side',ourStyle: 'a creative Brazilian side built on flair, skill, and attacking expression',ourStyle: 'a lethally clinical team that trades defensive solidity for attacking firepower',ourStyle: 'a possession-minded Spanish side still developing competitive chemistry',ourStyle: 'the most complete team in the league, elite in all phases',ourStyle: 'a combative, direct team with South American intensity in every duel',ourStyle: 'a clinical, physical team that makes every shot and tackle count',ourStyle: 'a deep-sitting defensive team that absorbs pressure and counters',ourStyle: 'the league\'s most aggressive, direct team — tackles first, passes never',ourStyle: 'a talented but untested group finding their tactical identity',ourStyle: 'a squad of elite individuals still developing collective patterns',ourStyle: 'a chaotic, direct team that thrives on turnovers and transition speed',ourStyle: 'a systematic, structured team that executes pre-planned patterns',ourStyle: 'a high-output attacking team generating elite-level shot volume',ourStyle: 'a patient, continental-style team that builds methodically from the back',ourStyle: 'a balanced, all-round team competent in every phase without a standout weapon',ourStyle: 'a direct, physical team that makes every limited chance count',ourStyle: 'a dual-threat team that dominates possession and presses relentlessly',ourStyle: 'a possession-oriented team that controls the ball but lacks attacking penetration',ourStyle: 'a methodical, controlled team that breaks opponents down through structured patterns',ourStyle: 'a fresh project with no competitive history, still building identity',ourStyle: 'a high-intensity pressing team that wins possession in advanced areas',ourStyle: 'a possession-dominant team that controls tempo through passing volume and accuracy',ourStyle: 'a new team still finding its tactical feet, relying on energy over system',ourStyle: 'a complete team that scores at historic rates and recovers possession in dangerous areas',ourStyle: 'an attacking team that overwhelms with shot volume and accuracy',ourStyle: 'an attacking team that overwhelms with shot volume and accuracy',
-    statRefs: [
-      'overwhelm goalkeepers with relentless, highly accurate shot pressure from all ranges',
-      'bleed goals at the back — their defence is easily breached and offers little resistance',
-      'are remarkably clean defensively, denying opponents any set-piece opportunities through fouls',
-    ],
-    threat: 'Relentless shot pressure from all angles — they put nearly every attempt on target and don\'t give away cheap free kicks',
-    vulnerability: 'Their backline concedes heavily and makes few tackles — run at them directly with pace and they cannot stop one-on-one situations',
-  },
-  'Al Hilal': {
-    identity: 'the league\'s most devastating attacking force',
-    statRefs: [
-      'score at a historically prolific rate, converting chances with elite-level clinical finishing',
-      'cycle the ball with precision until defensive gaps inevitably appear',
-      'recover possession in dangerous areas through elite reading of the game',
-    ],
-    threat: 'Every attack carries genuine goal threat — they combine clinical finishing with elite ball recovery to create waves of pressure',
-    vulnerability: 'They overcommit forward in search of goals — counter through wide channels after winning possession and their full-backs will be caught high',
-  },
-  'Al Khaleej': {
-    identity: 'an unknown quantity with no established tactical identity',
-    statRefs: [
-      'are completely unscoutable with no prior match data available',
-      'are still figuring out their best formation and approach',
-      'lack the automatic tactical understanding that comes from playing together',
-    ],
-    threat: 'The element of surprise — their unpredictability means you cannot prepare for a specific system',
-    vulnerability: 'They lack competitive rhythm and tactical familiarity — impose your established style early and they will struggle to adapt',
-  },
-  'Arsenal': {
-    identity: 'a possession-dominant side that dictates tempo',
-    statRefs: [
-      'hog the ball and pass teams to death with elite accuracy, controlling the entire tempo of the match',
-      'combine high shot volume with clinical conversion, turning possession into goals consistently',
-      'rely on positioning and reading the game rather than physical defending',
-    ],
-    threat: 'They will wear you down with sustained possession — under pressure for 90 minutes, your concentration must not lapse',
-    vulnerability: 'They rarely commit tackles and concede frequently — dribble at their defence and they lack the interventions to stop you',
-  },
-  'Barcelona': {
-    identity: 'a high-intensity pressing machine',
-    statRefs: [
-      'swarm opponents relentlessly in packs, winning possession in advanced areas more than anyone',
-      'convert defensive actions into goals with frightening speed and efficiency',
-      'trap opponents by funnelling play into wide areas before springing coordinated pressure',
-    ],
-    threat: 'They hunt in packs and win possession in advanced areas — every second you hold the ball in your own half is a danger',
-    vulnerability: 'Play through their press with quick one-touch passing and direct balls to a target forward — bypass the first line and they must turn and run toward their own goal',
-  },
-  'Bayer Leverkusen': {
-    identity: 'a clean slate with no competitive history',
-    statRefs: [
-      'have no track record whatsoever — your scouting report starts at kickoff',
-      'will likely come out hyper-aggressive to establish their identity',
-      'have not yet developed the automatic coordination of a settled squad',
-    ],
-    threat: 'They have nothing to lose and will play with commitment and energy — expect aggressive football from the first whistle',
-    vulnerability: 'Control the tempo early and force them to play at your pace — their decision-making will deteriorate under unfamiliar competitive pressure',
-  },
-  'Bayern Munchen': {
-    identity: 'a controlled, methodical possession side',
-    statRefs: [
-      'methodically control matches through the ball, never rushing or forcing play',
-      'finish chances with clinical precision — they wait for high-quality openings and rarely miss',
-      'are miserly at the back, conceding very few goals and giving opponents little to work with',
-    ],
-    threat: 'They methodically pick you apart through structured patterns — every attacking sequence is calculated and purposeful',
-    vulnerability: 'Their passing rhythm is their lifeblood — press their midfield aggressively and their accuracy crumbles under sustained pressure',
-  },
-  'Bournemouth': {
-    identity: 'a possession-heavy side that lacks cutting edge',
-    statRefs: [
-      'keep the ball extensively without doing anything threatening with it — all bark, no bite',
-      'pass safely and sideways, rarely producing any penetrating distribution that breaks lines',
-      'offer minimal defensive protection and concede goals freely when opponents go direct',
-    ],
-    threat: 'They will keep the ball and try to lull you to sleep with safe possession — don\'t get complacent',
-    vulnerability: 'Let them have the ball — they cannot hurt you even with extended spells of control. When you win it, be direct and clinical',
-  },
-  'Brighton': {
-    identity: 'the league\'s passing kings with a fierce pressing game',
-    statRefs: [
-      'wear opponents into the ground by making them chase an exhausting volume of passes',
-      'combine efficient chance creation with relentless defensive work rate',
-      'are one of the most active ball-winning sides in the competition, pairing skill with steel',
-    ],
-    threat: 'They make you chase shadows for 90 minutes and press relentlessly when you have the ball — physical and mental exhaustion is their weapon',
-    vulnerability: 'Their full-backs push high to support the passing game — counter into the spaces they vacate with pacey wide forwards',
-  },
-  'Burnley': {
-    identity: 'a direct, physical side with elite shot conversion',
-    statRefs: [
-      'rarely miss the target — every Burnley shot is a genuine scoring threat that demands a save',
-      'want to turn every match into a scrappy, physical war of attrition',
-      'don\'t create many chances, but make the ones they do create count',
-    ],
-    threat: 'Every shot is a genuine scoring threat — limit their shooting opportunities at all costs',
-    vulnerability: 'Their aggression leads to defensive gaps — move the ball quickly before their challenges arrive and they concede goals freely',
-  },
-  'Chelsea': {
-    identity: 'a balanced, competent side with no extreme weaknesses',
-    statRefs: [
-      'do everything at a solid level — possession, passing, chance creation — without excelling at any',
-      'produce goals at a steady, controlled rate rather than overwhelming opponents',
-      'read the game well defensively, stepping into passing lanes to intercept',
-    ],
-    threat: 'They beat you by being slightly better in every phase — there\'s no single area to target because they\'re competent everywhere',
-    vulnerability: 'Impose your strongest tactical identity — they are a jack-of-all-trades that can be beaten by a team that excels at one specific thing',
-  },
-  'Club Brugge': {
-    identity: 'a composed, continental-style possession side',
-    statRefs: [
-      'play patient, structured football from the back, never panicking in possession',
-      'pick their moments carefully and convert chances at a respectable rate',
-      'are organised defensively but not dominant — they can be broken down with quality',
-    ],
-    threat: 'They play organised, methodical football and will not beat themselves — every goal you score must be earned',
-    vulnerability: 'They need controlled conditions to build from the back — press their defenders high and force rushed mistakes under pressure',
-  },
-  'Como 1907': {
-    identity: 'a well-balanced, high-volume attacking side',
-    statRefs: [
-      'create chances at a rate that matches the league elite — they keep defences under constant fire',
-      'are comfortable in multiple game states, equally capable with or without the ball',
-      'use width to stretch opponents and create crossing opportunities',
-    ],
-    threat: 'They create chances consistently and keep defences under constant pressure through high shot volume',
-    vulnerability: 'They lack a defining tactical identity — take an early lead to force them into a game state they struggle with',
-  },
-  'Inter': {
-    identity: 'a systematic, structured side',
-    statRefs: [
-      'execute pre-planned passing patterns with mechanical consistency',
-      'treat every shot as a calculated decision — they don\'t waste possessions on low-percentage attempts',
-      'read the game at an elite level, intercepting attacks before they develop into danger',
-    ],
-    threat: 'They execute pre-planned patterns with consistency — their system reads and anticipates your moves',
-    vulnerability: 'Be unpredictable — vary your tempo, switch play unexpectedly, take shots from unusual positions. Their system thrives on reading patterns, so break the pattern',
-  },
-  'Liverpool': {
-    identity: 'a direct, transition-focused chaos machine',
-    statRefs: [
-      'play the most chaotic football in the league — terrible passing, devastating scoring',
-      'win the ball through sheer physical aggression and convert every turnover into a counter-attack',
-      'don\'t care about keeping possession — they want end-to-end basketball on grass',
-    ],
-    threat: 'They turn defensive actions into attacking opportunities in seconds — one misplaced pass in midfield becomes a Liverpool counter-attack',
-    vulnerability: 'They give the ball away constantly through bad passes — press them on turnovers and you get transition chances of your own',
-  },
-  'Manchester City': {
-    identity: 'a talented squad with an unproven manager',
-    statRefs: [
-      'are an unknown system built around an untested manager with no track record',
-      'have match-winners at every position who can produce magic independently',
-      'will likely try to dominate possession but lack the rehearsed patterns of a settled side',
-    ],
-    threat: 'Individual brilliance from world-class players — even without a settled system, they can produce moments of magic',
-    vulnerability: 'They haven\'t internalised their patterns yet — press their build-up with coordination and you will force miscommunication and turnovers',
-  },
-  'Manchester United': {
-    identity: 'an elite squad finding its identity under new management',
-    statRefs: [
-      'have never played a competitive match as this unit — no chemistry, no history',
-      'boast elite individual quality that can win one-on-one battles all over the pitch',
-      'are a work in progress whose tactical identity will shift week to week',
-    ],
-    threat: 'They can win one-on-one duels all over the pitch — individual quality may overcome tactical unfamiliarity',
-    vulnerability: 'Stay compact and deny them space — force them to construct goals through patterns they haven\'t mastered yet rather than letting individual brilliance decide the game',
-  },
-  'Milan': {
-    identity: 'the league\'s most direct, physical side',
-    ourStyle: 'the league\'s most aggressive, direct team — tackles first, passes never',
-    statRefs: [
-      'play the ugliest football in the league — bypassing midfield, launching long balls, scoring anyway',
-      'win virtually every physical duel through sheer commitment to the tackle',
-      'reject possession entirely — they want chaos, second balls, and physical battles',
-    ],
-    threat: 'They turn every match into a physical war — you will be tackled, challenged, and pressed relentlessly',
-    vulnerability: 'Don\'t match their physicality — beat it. Move the ball quickly with one-twos, make them chase, and draw fouls. Every Milan tackle leaves a gap for runners from deep',
-  },
-  'Nantes': {
-    identity: 'a deep-block defensive side',
-    statRefs: [
-      'willingly surrender territory and possession, sitting deep in a compact defensive shell',
-      'are the leakiest defence in the league — repeated pressure breaks them every time',
-      'create almost nothing going forward — if you prevent counters, they have no attacking plan',
-    ],
-    threat: 'They sit deep and look for counter-attacks — deny them transition moments and they have no Plan B',
-    vulnerability: 'Their defence cracks under sustained pressure regardless of effort. Be patient, move the ball side to side, overload their box, and the goals will come',
-  },
-  'Newcastle United': {
-    identity: 'a direct, physical side with clinical finishing',
-    ourStyle: 'the league\'s most aggressive, direct team — tackles first, passes never',
-    statRefs: [
-      'convert shots at an elite rate — every attempt they get off is a genuine goal threat',
-      'try to drag opponents into an ugly, physical scrap rather than a football match',
-      'depend entirely on converting their limited chances — starve them of supply and they starve',
-    ],
-    threat: 'They make every shot count — you cannot afford to concede shooting opportunities in dangerous areas',
-    vulnerability: 'Cut off supply into the box and they have no alternative way to score. Attack them in transition before their tackles arrive',
-  },
-  'Palmeiras': {
-    identity: 'a direct, combative South American side',
-    statRefs: [
-      'hunt the ball with South American intensity, treating every duel like a personal battle',
-      'play vertically and directly — getting the ball forward trumps keeping the ball',
-      'carry a genuine threat from set pieces and will punish any defensive lapse on dead balls',
-    ],
-    threat: 'They fight for every inch and bring physical intensity that can overwhelm teams not prepared for the battle',
-    vulnerability: 'Their passing is sloppy — frustrate them, keep the ball away, and they will give it back to you repeatedly. Their aggression turns into self-destructive fouls',
-  },
-  'Paris Saint Germain': {
-    identity: 'the league\'s most complete side',
-    statRefs: [
-      'score freely and from everywhere — the most potent attack in the competition',
-      'are borderline impenetrable at the back, giving opponents virtually nothing',
-      'control matches with a calm authority that makes comebacks against them almost impossible',
-    ],
-    threat: 'They are elite in every phase — scoring, defending, possession, transitions. There is no statistical weakness to target',
-    vulnerability: 'Their system depends on every component working together. Disrupt one phase relentlessly — build-up OR press — and the entire machine stutters',
-  },
-  'Real Betis': {
-    identity: 'an unproven side with Spanish football DNA',
-    statRefs: [
-      'have no competitive data — your preparation starts from scratch',
-      'will likely try to play possession football but without the training-ground automation',
-      'are still learning each other\'s movements and tendencies',
-    ],
-    threat: 'They will play with energy and commitment, eager to establish credibility',
-    vulnerability: 'Start fast, press high, and score early — a team finding its feet cannot chase games effectively. Their cohesion unravels under scoreboard pressure',
-  },
-  'Real Madrid': {
-    identity: 'a clinical attacking side with a leaky defence',
-    statRefs: [
-      'are lethally efficient in front of goal — they barely need chances to score',
-      'are the worst defensive team in the league — everyone scores against them',
-      'combine clinical finishing with intelligent build-up, making them dangerous despite their flaws',
-    ],
-    threat: 'They don\'t miss — every Madrid shot is a potential goal. You cannot keep a clean sheet against them',
-    vulnerability: 'They concede a league-worst amount of goals. Be brave, attack them directly and often — you will score if you commit numbers forward',
-  },
-  'Santos': {
-    identity: 'a Brazilian flair side with zero competitive data',
-    statRefs: [
-      'play with Brazilian creativity — expect unpredictable dribbling, skill, and improvisation',
-      'are completely unscoutable with no prior results to study',
-      'commit numbers forward for attacking entertainment at the expense of defensive structure',
-    ],
-    threat: 'Individual brilliance and creative improvisation in the final third — their flair players can produce moments from nowhere',
-    vulnerability: 'Be boring. Stay compact, control possession, frustrate them. Brazilian sides feed on rhythm and emotion — take both away by controlling tempo and they lose their spark',
-  },
-  'Sporting Cp': {
-    identity: 'a well-rounded, efficient side',
-    statRefs: [
-      'create shooting opportunities at an elite rate, matching the best attacking sides',
-      'complete their passes reliably and build attacks with methodical discipline',
-      'contribute defensively and make opponents work for every chance they get',
-    ],
-    threat: 'They create shooting opportunities consistently and are competent across all phases — solid everywhere, exceptional nowhere',
-    vulnerability: 'Pick your strongest tactical identity and impose it — if you press, press relentlessly. If you counter, counter at pace. They can be beaten by a team that does one thing at an elite level',
-  },
-}
-
-function buildMatchupNotes(): Record<string, MatchupNotes> {
-  const notes: Record<string, MatchupNotes> = {}
-
-  for (const teamName of TEAM_NAMES) {
-    const matchupNotes: MatchupNotes = {}
-    const v = TRAITS[teamName]  // viewer team's traits
-
-    for (const oppName of TEAM_NAMES) {
-      if (oppName === teamName) continue
-      const oppId = TEAMS[oppName]
-      const t = TRAITS[oppName]  // opponent's traits
-
-      const sigStat = t.statRefs[0]
-      const secStat = t.statRefs.length > 1 ? t.statRefs[1] : t.statRefs[0]
-
-      // ── Approach: how YOUR style matches up against THEIR identity ──
-      const approach = `Your team is ${v.identity}. ${oppName} are ${t.identity}. Since they ${sigStat}, decide how your strengths interact with theirs — don't let them dictate the terms. Impose your game.`
-
-      // ── Key Threat: what THEY will do to YOUR specific weaknesses ──
-      const keyThreat = `${oppName}'s threat to you: ${t.threat}. This is the specific danger your team faces because as ${v.identity}, you are exactly the type of side they look to expose.`
-
-      // ── Exploit: where THEIR vulnerabilities align with YOUR strengths ──
-      const exploit = `Your edge against ${oppName}: ${t.vulnerability}. As ${v.identity}, you are well-positioned to exploit this — it plays directly to your natural approach.`
-
-      // ── Set Up: specific tactical instruction for YOUR team vs THIS opponent ──
-      let setup = ''
-      // Match viewer style to opponent vulnerability for specific advice
-      if (teamName.includes('Milan') || teamName.includes('Liverpool')) {
-        setup = `You play ${v.identity}. Against ${oppName}, who ${sigStat}, use your physicality and directness to overwhelm them in duels and second balls — that is where your style gives you the edge.`
-      } else if (teamName.includes('Arsenal') || teamName.includes('Brighton') || teamName.includes('Bournemouth')) {
-        setup = `You play ${v.identity}. Against ${oppName}, who ${sigStat}, starve them of the ball and make them chase — your passing game is designed to exhaust teams built like theirs.`
-      } else if (teamName.includes('Barcelona') || teamName.includes('PSG') || teamName.includes('Paris')) {
-        setup = `You play ${v.identity}. Against ${oppName}, who ${sigStat}, press them relentlessly in their own half — your intensity is the weapon their system fears most.`
-      } else if (teamName.includes('Bayern') || teamName.includes('Inter') || teamName.includes('Chelsea') || teamName.includes('Brugge') || teamName.includes('Sporting') || teamName.includes('Como')) {
-        setup = `You play ${v.identity}. Against ${oppName}, who ${sigStat}, control the tempo and pick your moments — your disciplined structure can methodically unpick their weaknesses over 90 minutes.`
-      } else if (teamName.includes('Al Hilal') || teamName.includes('Al Ettifaq')) {
-        setup = `You play ${v.identity}. Against ${oppName}, who ${sigStat}, keep doing what you do best — your attacking firepower overwhelms most defences, and theirs is no different.`
-      } else if (teamName.includes('Burnley') || teamName.includes('Newcastle') || teamName.includes('Palmeiras') || teamName.includes('Nantes')) {
-        setup = `You play ${v.identity}. Against ${oppName}, who ${sigStat}, stay compact, hit them on the break, and make every chance count — your directness is your advantage.`
-      } else if (teamName.includes('Real Madrid')) {
-        setup = `You play ${v.identity}. Against ${oppName}, who ${sigStat}, be brave and attack — you concede goals anyway, so focus on outscoring them with your clinical edge.`
-      } else {
-        setup = `You play ${v.identity}. Against ${oppName}, who ${sigStat}, keep it simple — play to your strengths, deny them theirs, and let your system develop through the contest.`
-      }
-
-      matchupNotes[oppId] = { approach, key_threat: keyThreat, exploit, setup }
-    }
-    notes[teamName] = matchupNotes
-  }
-  return notes
-}
-
-const MATCHUP_NOTES = buildMatchupNotes()
-
-// ══════════════════════════════════════════════════════════════════════════════
 // UPSERT
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -826,11 +493,9 @@ async function main() {
     idx++
     const teamId = TEAMS[teamName]
     const profile = PROFILES[teamName]
-    const matchupNotes = MATCHUP_NOTES[teamName]
-    const [primaryProfile, primaryLevel] = LEVELS[teamName] || ['Tactical Adaptive', '-']
+        const [primaryProfile, primaryLevel] = LEVELS[teamName] || ['Tactical Adaptive', '-']
 
-    const matchupCount = Object.keys(matchupNotes).length
-    const payload = {
+        const payload = {
       team_id: teamId,
       primary_profile: primaryProfile,
       primary_level: primaryLevel,
@@ -839,21 +504,18 @@ async function main() {
       primary_tendencies: profile.tendencies,
       primary_weaknesses: profile.weaknesses,
       primary_coach_note: profile.coachNote,
-      matchup_coach_notes: matchupNotes,
     }
 
     const action = dryRun ? 'Would upsert' : 'Upserted'
     if (dryRun) {
-      console.log(`[${idx}/${total}] ${action}: ${teamName} [${primaryProfile} ${primaryLevel}] | ${matchupCount} matchup notes`)
+      console.log(`[${idx}/${total}] ${action}: ${teamName} [${primaryProfile} ${primaryLevel}] | `)
       console.log(`  About: ${profile.about.substring(0, 80)}...`)
       console.log(`  Weakness: ${profile.weaknesses[0].substring(0, 80)}...`)
-      const firstOpp = Object.entries(matchupNotes)[0]
-      console.log(`  Coach Note vs ${Object.keys(TEAMS).find(k => TEAMS[k] === firstOpp[0])}: ${(firstOpp[1] as MatchupNote).approach.substring(0, 80)}...`)
     } else {
       const { error } = await supabase
         .from('team_dna')
         .upsert(payload, { onConflict: 'team_id' })
-      const status = error ? `FAIL: ${error.message}` : `OK (${matchupCount} matchup notes)`
+      const status = error ? `FAIL: ${error.message}` : 'OK'
       console.log(`[${idx}/${total}] ${teamName.padEnd(22)} ${status}`)
     }
   }

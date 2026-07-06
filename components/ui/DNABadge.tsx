@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { LEVEL_LABELS, type PersonalizedDescription, type MatchupCoachNote } from '@/lib/dna-engine'
+import { LEVEL_LABELS, type PersonalizedDescription } from '@/lib/dna-engine'
 import {
   Crown, Drama, Zap, Brain, Swords, Shield, Dumbbell,
-  ArrowLeftRight, Triangle, Crosshair, Scale, Eye, AlertTriangle, Target, Settings,
+  ArrowLeftRight, Triangle, Crosshair, Scale,
 } from 'lucide-react'
 import { Button } from './Button'
 
@@ -51,7 +51,6 @@ interface Props {
   level: string
   isOwnTeam: boolean
   personalized?: PersonalizedDescription | null
-  viewerTeamId?: string
 }
 
 function perspectivize(text: string, isOwnTeam: boolean): string {
@@ -69,7 +68,7 @@ function perspectivize(text: string, isOwnTeam: boolean): string {
     .replace(/\byou\b/g, 'they')
 }
 
-export default function DNABadge({ label, iconName, color, level, isOwnTeam, personalized, viewerTeamId }: Props) {
+export default function DNABadge({ label, iconName, color, level, isOwnTeam, personalized }: Props) {
   const [open, setOpen] = useState(false)
   const levelInfo = LEVEL_LABELS[level] ?? { short: 'Match', detail: '' }
 
@@ -188,45 +187,6 @@ export default function DNABadge({ label, iconName, color, level, isOwnTeam, per
                           ))}
                         </ul>
                       </div>
-
-                      {viewerTeamId && personalized.matchupCoachNotes?.[viewerTeamId] && (() => {
-                        const note: MatchupCoachNote = personalized.matchupCoachNotes![viewerTeamId]
-                        return (
-                          <div className="bg-accent/10 border border-accent/30 rounded-xl p-4">
-                            <h3 className="text-accent font-semibold text-xs uppercase tracking-wider mb-3">Matchup Coach Notes</h3>
-                            <div className="space-y-3">
-                              <div className="flex items-start gap-2">
-                                <Target className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                                <div>
-                                  <p className="text-xs font-semibold text-text-primary uppercase tracking-wide">Approach</p>
-                                  <p className="text-sm text-text-secondary leading-relaxed">{note.approach}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-start gap-2">
-                                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                                <div>
-                                  <p className="text-xs font-semibold text-text-primary uppercase tracking-wide">Key Threat</p>
-                                  <p className="text-sm text-text-secondary leading-relaxed">{note.key_threat}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-start gap-2">
-                                <Eye className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                                <div>
-                                  <p className="text-xs font-semibold text-text-primary uppercase tracking-wide">Exploit</p>
-                                  <p className="text-sm text-text-secondary leading-relaxed">{note.exploit}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-start gap-2">
-                                <Settings className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                                <div>
-                                  <p className="text-xs font-semibold text-text-primary uppercase tracking-wide">Set Up</p>
-                                  <p className="text-sm text-text-secondary leading-relaxed">{note.setup}</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })()}
                     </>
                   )}
                 </>
