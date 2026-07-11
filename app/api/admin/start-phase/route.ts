@@ -257,7 +257,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const groupFixtures = await generateGroupFixtures(adminSupabase, allGroupTeams, numRounds, start_date)
+    const groupFixtures = await generateGroupFixtures(adminSupabase, allGroupTeams, numRounds, start_date, tId, 30)
 
     if (groupFixtures.length > 0) {
       await db('fixtures').insert(

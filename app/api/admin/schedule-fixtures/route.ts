@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { addDays, format, subDays } from 'date-fns'
 
+const CUP_WEEKLY_SLOT_BUDGET = 30
+
 export async function POST(request: Request) {
   const supabase = await createAdminClient()
   const { tournamentId, matchday, weeklyTarget } = await request.json()
@@ -10,8 +12,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'tournamentId is required' }, { status: 400 })
   }
 
-  const [slotModule, { data: fixtures }] = await Promise.all([
-    import('@/lib/fixture-slots'),
+  const slotModule = await import('@/lib/fixture-slots')
+
+  const [{ data: tournament }, { data: fixtures }] = await Promise.all([
+    supabase.from('tournaments').select('type').eq('id', tournamentId).single(),
     (() => {
       let q = supabase
         .from('fixtures')
@@ -33,6 +37,8 @@ export async function POST(request: Request) {
     })
   }
 
+  const isClub = tournament?.type === 'tournament_club' || tournament?.type === 'tournament_international'
+  const weeklySlotBudget = isClub ? CUP_WEEKLY_SLOT_BUDGET : undefined
   const startDate = format(new Date(), 'yyyy-MM-dd')
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
   const assignments: Array<{ home_team_id: string; away_team_id: string; scheduled_date: string }> = []
@@ -48,7 +54,7 @@ export async function POST(request: Request) {
       const dateStr = format(currentDate, 'yyyy-MM-dd')
 
       if (!slotCache[dateStr]) {
-        const s = await slotModule.getSlotStateForDate(supabase, dateStr)
+        const s = await slotModule.getSlotStateForDate(supabase, dateStr, tournamentId)
         slotCache[dateStr] = { ...s }
       }
 
@@ -75,6 +81,16 @@ export async function POST(request: Request) {
       if (homeWeekly >= targetPerWeek || awayWeekly >= targetPerWeek) {
         currentDate = addDays(currentDate, 1)
         continue
+      }
+
+      if (weeklySlotBudget !== undefined && weeklySlotBudget > 0) {
+        const slotsUsed = assignments.filter(a =>
+          a.scheduled_date >= windowStart && a.scheduled_date <= dateStr
+        ).length * 2
+        if (slotsUsed + 2 > weeklySlotBudget) {
+          currentDate = addDays(currentDate, 1)
+          continue
+        }
       }
 
       const deadline = `${dateStr}T12:00:00Z`

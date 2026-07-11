@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   if (teamIds.length < 2) return Response.json({ error: 'Need at least 2 teams' }, { status: 400 })
 
   // 2. Generate fixtures
-  const fixtures = await generateExhibitionFixtures(adminSupabase, teamIds, matches_per_team, format(new Date(), 'yyyy-MM-dd'))
+  const fixtures = await generateExhibitionFixtures(adminSupabase, teamIds, matches_per_team, format(new Date(), 'yyyy-MM-dd'), tournament_id)
 
   // 3. Insert fixtures
   const { error: fErr } = await adminSupabase.from('fixtures').insert(

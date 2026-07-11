@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     const { error: gsErr } = await (adminSupabase.from('group_standings') as any).insert(groupStandingRows)
     if (gsErr) console.error('Failed to init group standings:', gsErr.message)
 
-    generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date)
+    generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date, tournament_id, 30)
   } else {
     generated = await generateLeagueFixtures(adminSupabase, teamIds, tournament_id, numRounds, start_date)
   }

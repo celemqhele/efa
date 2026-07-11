@@ -51,10 +51,15 @@ export async function generateLeagueFixtures(
   startFrom?: string
 ): Promise<GeneratedFixture[]> {
   const { assignFixtureSlots } = await import('./fixture-slots')
-  const allPairs = shuffle(generateRoundRobin(teamIds, numRounds))
-  const pairs = allPairs.map(([home, away]) => ({ home_team_id: home, away_team_id: away }))
+  const matchupsPerRound = (teamIds.length * (teamIds.length - 1)) / 2
+  const allPairs = generateRoundRobin(teamIds, numRounds)
+  const pairs = allPairs.map(([home, away], i) => ({
+    home_team_id: home,
+    away_team_id: away,
+    leg: Math.floor(i / matchupsPerRound) + 1,
+  }))
 
-  const assignments = await assignFixtureSlots(db, pairs, startFrom)
+  const assignments = await assignFixtureSlots(db, pairs, startFrom, 1, 0, tournamentId)
 
   return assignments.map((a, i) => ({
     home_team_id: a.home_team_id,
@@ -63,7 +68,7 @@ export async function generateLeagueFixtures(
     scheduled_date: a.scheduled_date,
     deadline: `${a.scheduled_date}T12:00:00Z`,
     round_type: 'league' as const,
-    leg: 1,
+    leg: a.leg ?? 1,
   }))
 }
 
@@ -71,19 +76,22 @@ export async function generateGroupFixtures(
   db: any,
   groups: Record<string, string[]>,
   numRounds: number = 2,
-  startFrom?: string
+  startFrom?: string,
+  tournamentId?: string,
+  weeklySlotBudget?: number
 ): Promise<GeneratedFixture[]> {
   const { assignFixtureSlots: assignSlots } = await import('./fixture-slots')
 
-  const allPairs: Array<[string, string]> = []
+  const allPairs: Array<{ home_team_id: string; away_team_id: string; leg: number }> = []
   for (const teamIds of Object.values(groups)) {
-    allPairs.push(...generateRoundRobin(teamIds, numRounds))
+    const matchupsPerRound = (teamIds.length * (teamIds.length - 1)) / 2
+    const groupPairs = generateRoundRobin(teamIds, numRounds)
+    groupPairs.forEach(([home, away], i) => {
+      allPairs.push({ home_team_id: home, away_team_id: away, leg: Math.floor(i / matchupsPerRound) + 1 })
+    })
   }
 
-  const shuffled = shuffle(allPairs)
-  const pairs = shuffled.map(([home, away]) => ({ home_team_id: home, away_team_id: away }))
-
-  const assignments = await assignSlots(db, pairs, startFrom)
+  const assignments = await assignSlots(db, allPairs, startFrom, 1, 0, tournamentId, weeklySlotBudget)
   let matchdayCounter = 0
 
   return assignments.map((a) => {
@@ -95,7 +103,7 @@ export async function generateGroupFixtures(
       scheduled_date: a.scheduled_date,
       deadline: `${a.scheduled_date}T12:00:00Z`,
       round_type: 'group' as const,
-      leg: 1,
+      leg: a.leg ?? 1,
     }
   })
 }
@@ -104,7 +112,8 @@ export async function generateExhibitionFixtures(
   db: any,
   teamIds: string[],
   matchesPerTeam: number,
-  startFrom?: string
+  startFrom?: string,
+  tournamentId?: string
 ): Promise<GeneratedFixture[]> {
   const { assignFixtureSlots } = await import('./fixture-slots')
   
@@ -121,7 +130,7 @@ export async function generateExhibitionFixtures(
     }
   }
 
-  const assignments = await assignFixtureSlots(db, pairs, startFrom)
+  const assignments = await assignFixtureSlots(db, pairs.map(p => ({ ...p, leg: 1 })), startFrom, 1, 0, tournamentId)
 
   return assignments.map((a, i) => ({
     home_team_id: a.home_team_id,
@@ -130,6 +139,6 @@ export async function generateExhibitionFixtures(
     scheduled_date: a.scheduled_date,
     deadline: `${a.scheduled_date}T12:00:00Z`,
     round_type: 'friendlies' as any,
-    leg: 1,
+    leg: a.leg ?? 1,
   }))
 }

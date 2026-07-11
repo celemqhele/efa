@@ -22,11 +22,21 @@ export function getDailyCapacity(dateStr: string): { globalCap: number; teamCap:
   return { globalCap: 30, teamCap: 3 }
 }
 
-export async function getSlotStateForDate(db: any, dateStr: string): Promise<{ globalUsed: number; teamUsed: Record<string, number> }> {
-  const { data: fixtures } = await db
+export async function getSlotStateForDate(
+  db: any,
+  dateStr: string,
+  tournamentId?: string
+): Promise<{ globalUsed: number; teamUsed: Record<string, number> }> {
+  let q = db
     .from('fixtures')
     .select('home_team_id, away_team_id')
     .eq('scheduled_date', dateStr)
+
+  if (tournamentId) {
+    q = q.eq('tournament_id', tournamentId)
+  }
+
+  const { data: fixtures } = await q
 
   const teamUsed: Record<string, number> = {}
   let globalUsed = 0
@@ -60,12 +70,25 @@ export function countTeamGamesInWindow(
   ).length
 }
 
+function countSlotsInWindow(
+  windowStart: string,
+  dateStr: string,
+  assignments: SlotAssignment[]
+): number {
+  return assignments.filter(a =>
+    a.scheduled_date >= windowStart &&
+    a.scheduled_date <= dateStr
+  ).length * 2
+}
+
 export async function assignFixtureSlots(
   db: any,
   fixtures: Array<{ home_team_id: string; away_team_id: string; leg?: number }>,
   startFrom?: string,
   weeklyTarget: number = 1,
-  reservedSlots: number = 0
+  reservedSlots: number = 0,
+  tournamentId?: string,
+  weeklySlotBudget?: number
 ): Promise<SlotAssignment[]> {
   const startDate = startFrom ?? format(new Date(), 'yyyy-MM-dd')
   const assignments: SlotAssignment[] = []
@@ -80,7 +103,7 @@ export async function assignFixtureSlots(
       const dateStr = format(currentDate, 'yyyy-MM-dd')
 
       if (!slotCache[dateStr]) {
-        slotCache[dateStr] = await getSlotStateForDate(db, dateStr)
+        slotCache[dateStr] = await getSlotStateForDate(db, dateStr, tournamentId)
       }
 
       const state = slotCache[dateStr]
@@ -108,6 +131,14 @@ export async function assignFixtureSlots(
         if (homeWeekly >= weeklyTarget || awayWeekly >= weeklyTarget) {
           currentDate = addDays(currentDate, 1)
           continue
+        }
+
+        if (weeklySlotBudget !== undefined && weeklySlotBudget > 0) {
+          const slotsUsed = countSlotsInWindow(windowStart, dateStr, assignments)
+          if (slotsUsed + 2 > weeklySlotBudget) {
+            currentDate = addDays(currentDate, 1)
+            continue
+          }
         }
       }
 
