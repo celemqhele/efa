@@ -6,7 +6,7 @@ const CUP_WEEKLY_SLOT_BUDGET = 30
 
 export async function POST(request: Request) {
   const supabase = await createAdminClient()
-  const { tournamentId, matchday, weeklyTarget } = await request.json()
+  const { tournamentId, matchday } = await request.json()
 
   if (!tournamentId) {
     return NextResponse.json({ error: 'tournamentId is required' }, { status: 400 })
@@ -42,7 +42,6 @@ export async function POST(request: Request) {
   const startDate = format(new Date(), 'yyyy-MM-dd')
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
   const assignments: Array<{ home_team_id: string; away_team_id: string; scheduled_date: string }> = []
-  const targetPerWeek = weeklyTarget ?? 1
   let successCount = 0
   const results: any[] = []
 
@@ -74,16 +73,8 @@ export async function POST(request: Request) {
         continue
       }
 
-      const windowStart = format(subDays(currentDate, 6), 'yyyy-MM-dd')
-      const homeWeekly = slotModule.countTeamGamesInWindow(fx.home_team_id, windowStart, dateStr, assignments)
-      const awayWeekly = slotModule.countTeamGamesInWindow(fx.away_team_id, windowStart, dateStr, assignments)
-
-      if (homeWeekly >= targetPerWeek || awayWeekly >= targetPerWeek) {
-        currentDate = addDays(currentDate, 1)
-        continue
-      }
-
       if (weeklySlotBudget !== undefined && weeklySlotBudget > 0) {
+        const windowStart = format(subDays(currentDate, 6), 'yyyy-MM-dd')
         const slotsUsed = assignments.filter(a =>
           a.scheduled_date >= windowStart && a.scheduled_date <= dateStr
         ).length * 2
@@ -112,7 +103,7 @@ export async function POST(request: Request) {
     }
 
     if (!assigned) {
-      console.warn(`Could not schedule fixture ${fx.id} — no available slot in window`)
+      console.warn(`Could not schedule fixture ${fx.id} — no available slot`)
     }
   }
 

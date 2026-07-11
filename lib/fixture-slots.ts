@@ -57,19 +57,6 @@ export interface SlotAssignment {
   leg?: number
 }
 
-export function countTeamGamesInWindow(
-  teamId: string,
-  windowStart: string,
-  dateStr: string,
-  assignments: SlotAssignment[]
-): number {
-  return assignments.filter(a =>
-    a.scheduled_date >= windowStart &&
-    a.scheduled_date <= dateStr &&
-    (a.home_team_id === teamId || a.away_team_id === teamId)
-  ).length
-}
-
 function countSlotsInWindow(
   windowStart: string,
   dateStr: string,
@@ -85,7 +72,6 @@ export async function assignFixtureSlots(
   db: any,
   fixtures: Array<{ home_team_id: string; away_team_id: string; leg?: number }>,
   startFrom?: string,
-  weeklyTarget: number = 1,
   reservedSlots: number = 0,
   tournamentId?: string,
   weeklySlotBudget?: number
@@ -123,22 +109,12 @@ export async function assignFixtureSlots(
         continue
       }
 
-      if (weeklyTarget > 0) {
+      if (weeklySlotBudget !== undefined && weeklySlotBudget > 0) {
         const windowStart = format(subDays(currentDate, 6), 'yyyy-MM-dd')
-        const homeWeekly = countTeamGamesInWindow(home_team_id, windowStart, dateStr, assignments)
-        const awayWeekly = countTeamGamesInWindow(away_team_id, windowStart, dateStr, assignments)
-
-        if (homeWeekly >= weeklyTarget || awayWeekly >= weeklyTarget) {
+        const slotsUsed = countSlotsInWindow(windowStart, dateStr, assignments)
+        if (slotsUsed + 2 > weeklySlotBudget) {
           currentDate = addDays(currentDate, 1)
           continue
-        }
-
-        if (weeklySlotBudget !== undefined && weeklySlotBudget > 0) {
-          const slotsUsed = countSlotsInWindow(windowStart, dateStr, assignments)
-          if (slotsUsed + 2 > weeklySlotBudget) {
-            currentDate = addDays(currentDate, 1)
-            continue
-          }
         }
       }
 

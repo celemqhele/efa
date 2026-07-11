@@ -59,7 +59,7 @@ export async function generateLeagueFixtures(
     leg: Math.floor(i / matchupsPerRound) + 1,
   }))
 
-  const assignments = await assignFixtureSlots(db, pairs, startFrom, 1, 0, tournamentId)
+  const assignments = await assignFixtureSlots(db, pairs, startFrom, 0, tournamentId)
 
   return assignments.map((a, i) => ({
     home_team_id: a.home_team_id,
@@ -91,7 +91,7 @@ export async function generateGroupFixtures(
     })
   }
 
-  const assignments = await assignSlots(db, allPairs, startFrom, 1, 0, tournamentId, weeklySlotBudget)
+  const assignments = await assignSlots(db, allPairs, startFrom, 0, tournamentId, weeklySlotBudget)
   let matchdayCounter = 0
 
   return assignments.map((a) => {
@@ -130,7 +130,7 @@ export async function generateExhibitionFixtures(
     }
   }
 
-  const assignments = await assignFixtureSlots(db, pairs.map(p => ({ ...p, leg: 1 })), startFrom, 1, 0, tournamentId)
+  const assignments = await assignFixtureSlots(db, pairs.map(p => ({ ...p, leg: 1 })), startFrom, 0, tournamentId)
 
   return assignments.map((a, i) => ({
     home_team_id: a.home_team_id,
