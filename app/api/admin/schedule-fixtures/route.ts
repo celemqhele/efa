@@ -35,7 +35,6 @@ export async function POST(request: Request) {
 
   const startDate = format(new Date(), 'yyyy-MM-dd')
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
-  const assignments: Array<{ home_team_id: string; away_team_id: string; scheduled_date: string }> = []
   let successCount = 0
   const results: any[] = []
 
@@ -58,7 +57,6 @@ export async function POST(request: Request) {
       const awayUsed = state.teamUsed[fx.away_team_id] ?? 0
 
       if (state.globalUsed + 2 <= globalCap && homeUsed < teamCap && awayUsed < teamCap) {
-        if (slotModule.isWindowBalanced(fx.home_team_id, fx.away_team_id, dateStr, assignments)) {
           const deadline = `${dateStr}T12:00:00Z`
           const { error } = await supabase
             .from('fixtures')
@@ -69,14 +67,12 @@ export async function POST(request: Request) {
             state.globalUsed += 2
             state.teamUsed[fx.home_team_id] = homeUsed + 1
             state.teamUsed[fx.away_team_id] = awayUsed + 1
-            assignments.push({ home_team_id: fx.home_team_id, away_team_id: fx.away_team_id, scheduled_date: dateStr })
             successCount++
             results.push({ id: fx.id, matchday: fx.matchday, date: dateStr })
           }
           assigned = true
           break
         }
-      }
 
       currentDate = addDays(currentDate, 1)
     }
