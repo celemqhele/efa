@@ -1,10 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { addDays, format } from 'date-fns'
+import { addDays, format, subDays } from 'date-fns'
 
 export async function POST(request: Request) {
   const supabase = await createAdminClient()
-  const { tournamentId, matchday } = await request.json()
+  const { tournamentId, matchday, weeklyTarget } = await request.json()
 
   if (!tournamentId) {
     return NextResponse.json({ error: 'tournamentId is required' }, { status: 400 })
@@ -35,6 +35,8 @@ export async function POST(request: Request) {
 
   const startDate = format(new Date(), 'yyyy-MM-dd')
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
+  const assignments: Array<{ home_team_id: string; away_team_id: string; scheduled_date: string }> = []
+  const targetPerWeek = weeklyTarget ?? 1
   let successCount = 0
   const results: any[] = []
 
@@ -53,32 +55,48 @@ export async function POST(request: Request) {
       const state = slotCache[dateStr]
       const { globalCap, teamCap } = slotModule.getDailyCapacity(dateStr)
 
-      const homeUsed = state.teamUsed[fx.home_team_id] ?? 0
-      const awayUsed = state.teamUsed[fx.away_team_id] ?? 0
+      const homeUsedToday = state.teamUsed[fx.home_team_id] ?? 0
+      const awayUsedToday = state.teamUsed[fx.away_team_id] ?? 0
 
-      if (state.globalUsed + 2 <= globalCap && homeUsed < teamCap && awayUsed < teamCap) {
-          const deadline = `${dateStr}T12:00:00Z`
-          const { error } = await supabase
-            .from('fixtures')
-            .update({ scheduled_date: dateStr, deadline })
-            .eq('id', fx.id)
+      if (homeUsedToday >= teamCap || awayUsedToday >= teamCap) {
+        currentDate = addDays(currentDate, 1)
+        continue
+      }
 
-          if (!error) {
-            state.globalUsed += 2
-            state.teamUsed[fx.home_team_id] = homeUsed + 1
-            state.teamUsed[fx.away_team_id] = awayUsed + 1
-            successCount++
-            results.push({ id: fx.id, matchday: fx.matchday, date: dateStr })
-          }
-          assigned = true
-          break
-        }
+      if (state.globalUsed + 2 > globalCap) {
+        currentDate = addDays(currentDate, 1)
+        continue
+      }
 
-      currentDate = addDays(currentDate, 1)
+      const windowStart = format(subDays(currentDate, 6), 'yyyy-MM-dd')
+      const homeWeekly = slotModule.countTeamGamesInWindow(fx.home_team_id, windowStart, dateStr, assignments)
+      const awayWeekly = slotModule.countTeamGamesInWindow(fx.away_team_id, windowStart, dateStr, assignments)
+
+      if (homeWeekly >= targetPerWeek || awayWeekly >= targetPerWeek) {
+        currentDate = addDays(currentDate, 1)
+        continue
+      }
+
+      const deadline = `${dateStr}T12:00:00Z`
+      const { error } = await supabase
+        .from('fixtures')
+        .update({ scheduled_date: dateStr, deadline })
+        .eq('id', fx.id)
+
+      if (!error) {
+        state.globalUsed += 2
+        state.teamUsed[fx.home_team_id] = homeUsedToday + 1
+        state.teamUsed[fx.away_team_id] = awayUsedToday + 1
+        assignments.push({ home_team_id: fx.home_team_id, away_team_id: fx.away_team_id, scheduled_date: dateStr })
+        successCount++
+        results.push({ id: fx.id, matchday: fx.matchday, date: dateStr })
+      }
+      assigned = true
+      break
     }
 
     if (!assigned) {
-      console.warn(`Could not schedule fixture ${fx.id} — no slots or unbalanced window`)
+      console.warn(`Could not schedule fixture ${fx.id} — no available slot in window`)
     }
   }
 

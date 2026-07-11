@@ -18,8 +18,8 @@ function isPublicHoliday(dateStr: string): boolean {
 export function getDailyCapacity(dateStr: string): { globalCap: number; teamCap: number } {
   const d = parseISO(dateStr)
   const weekend = d.getDay() === 0 || d.getDay() === 6
-  if (weekend || isPublicHoliday(dateStr)) return { globalCap: 60, teamCap: 2 }
-  return { globalCap: 30, teamCap: 2 }
+  if (weekend || isPublicHoliday(dateStr)) return { globalCap: 60, teamCap: 3 }
+  return { globalCap: 30, teamCap: 3 }
 }
 
 export async function getSlotStateForDate(db: any, dateStr: string): Promise<{ globalUsed: number; teamUsed: Record<string, number> }> {
@@ -47,37 +47,25 @@ export interface SlotAssignment {
   leg?: number
 }
 
-export function isWindowBalanced(
-  homeId: string,
-  awayId: string,
+export function countTeamGamesInWindow(
+  teamId: string,
+  windowStart: string,
   dateStr: string,
   assignments: SlotAssignment[]
-): boolean {
-  const windowStart = format(subDays(parseISO(dateStr), 6), 'yyyy-MM-dd')
-
-  const teamCounts: Record<string, number> = {}
-
-  for (const a of assignments) {
-    if (a.scheduled_date >= windowStart && a.scheduled_date <= dateStr) {
-      teamCounts[a.home_team_id] = (teamCounts[a.home_team_id] ?? 0) + 1
-      teamCounts[a.away_team_id] = (teamCounts[a.away_team_id] ?? 0) + 1
-    }
-  }
-
-  teamCounts[homeId] = (teamCounts[homeId] ?? 0) + 1
-  teamCounts[awayId] = (teamCounts[awayId] ?? 0) + 1
-
-  const counts = Object.values(teamCounts)
-  if (counts.length <= 1) return true
-  const max = Math.max(...counts)
-  const min = Math.min(...counts)
-  return max - min <= 1
+): number {
+  return assignments.filter(a =>
+    a.scheduled_date >= windowStart &&
+    a.scheduled_date <= dateStr &&
+    (a.home_team_id === teamId || a.away_team_id === teamId)
+  ).length
 }
 
 export async function assignFixtureSlots(
   db: any,
   fixtures: Array<{ home_team_id: string; away_team_id: string; leg?: number }>,
-  startFrom?: string
+  startFrom?: string,
+  weeklyTarget: number = 1,
+  reservedSlots: number = 0
 ): Promise<SlotAssignment[]> {
   const startDate = startFrom ?? format(new Date(), 'yyyy-MM-dd')
   const assignments: SlotAssignment[] = []
@@ -97,22 +85,38 @@ export async function assignFixtureSlots(
 
       const state = slotCache[dateStr]
       const { globalCap, teamCap } = getDailyCapacity(dateStr)
+      const cap = globalCap - reservedSlots * 2
 
-      const homeUsed = state.teamUsed[home_team_id] ?? 0
-      const awayUsed = state.teamUsed[away_team_id] ?? 0
+      const homeUsedToday = state.teamUsed[home_team_id] ?? 0
+      const awayUsedToday = state.teamUsed[away_team_id] ?? 0
 
-      if (state.globalUsed + 2 <= globalCap && homeUsed < teamCap && awayUsed < teamCap) {
-        if (isWindowBalanced(home_team_id, away_team_id, dateStr, assignments)) {
-          assignments.push({ home_team_id, away_team_id, scheduled_date: dateStr, leg: fx.leg })
-          state.globalUsed += 2
-          state.teamUsed[home_team_id] = homeUsed + 1
-          state.teamUsed[away_team_id] = awayUsed + 1
-          assigned = true
-          break
+      if (homeUsedToday >= teamCap || awayUsedToday >= teamCap) {
+        currentDate = addDays(currentDate, 1)
+        continue
+      }
+
+      if (state.globalUsed + 2 > cap) {
+        currentDate = addDays(currentDate, 1)
+        continue
+      }
+
+      if (weeklyTarget > 0) {
+        const windowStart = format(subDays(currentDate, 6), 'yyyy-MM-dd')
+        const homeWeekly = countTeamGamesInWindow(home_team_id, windowStart, dateStr, assignments)
+        const awayWeekly = countTeamGamesInWindow(away_team_id, windowStart, dateStr, assignments)
+
+        if (homeWeekly >= weeklyTarget || awayWeekly >= weeklyTarget) {
+          currentDate = addDays(currentDate, 1)
+          continue
         }
       }
 
-      currentDate = addDays(currentDate, 1)
+      assignments.push({ home_team_id, away_team_id, scheduled_date: dateStr, leg: fx.leg })
+      state.globalUsed += 2
+      state.teamUsed[home_team_id] = homeUsedToday + 1
+      state.teamUsed[away_team_id] = awayUsedToday + 1
+      assigned = true
+      break
     }
 
     if (!assigned) {
