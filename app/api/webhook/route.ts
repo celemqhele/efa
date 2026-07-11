@@ -63,6 +63,7 @@ type SessionData = {
   match_stats: Record<string, { home: number; away: number }> | null
   matched_fixture_id: string | null
   screenshot_media_id: string | null
+  displayed_fixtures: string[] | null
 }
 
 async function getSession(phoneNumber: string): Promise<SessionData | null> {
@@ -107,33 +108,47 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   if (session && session.home_score !== null && session.away_score !== null && !session.matched_fixture_id) {
     const num = parseInt(text.trim(), 10)
     if (!isNaN(num) && num > 0) {
-      const today = new Date().toISOString().split('T')[0]
-      const { data: todayFixtures } = await supabase
-        .from('fixtures')
-        .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
-        .eq('scheduled_date', today).eq('status', 'scheduled')
-        .order('matchday', { ascending: true })
+      // Use cached displayed fixtures if available, otherwise query fresh
+      let fixtureIds: string[] | null = session.displayed_fixtures || null
+      if (!fixtureIds || fixtureIds.length === 0) {
+        const today = new Date().toISOString().split('T')[0]
+        const { data: todayFixtures } = await supabase
+          .from('fixtures')
+          .select('id')
+          .eq('scheduled_date', today).eq('status', 'scheduled')
+          .order('matchday', { ascending: true })
+        fixtureIds = (todayFixtures as any[])?.map((f) => f.id) || null
+      }
 
-      const fixtures = (todayFixtures as any[]) || []
-      if (num <= fixtures.length) {
-        const chosen = fixtures[num - 1]
-        const hName = (Array.isArray(chosen.home_team) ? chosen.home_team[0]?.name : chosen.home_team?.name) || '?'
-        const aName = (Array.isArray(chosen.away_team) ? chosen.away_team[0]?.name : chosen.away_team?.name) || '?'
-        console.log('[webhook] direct number select:', num, '→ fixture:', chosen.id, hName, 'vs', aName)
+      if (fixtureIds && num <= fixtureIds.length) {
+        const chosenId = fixtureIds[num - 1]
+        // Fetch full fixture details
+        const { data: chosenFixture } = await supabase
+          .from('fixtures')
+          .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+          .eq('id', chosenId)
+          .single()
 
-        await upsertSession({
-          phone_number: from,
-          matched_fixture_id: chosen.id,
-          home_team: session.home_team,
-          away_team: session.away_team,
-          home_score: session.home_score,
-          away_score: session.away_score,
-          match_stats: session.match_stats,
-        })
+        if (chosenFixture) {
+          const cf = chosenFixture as any
+          const hName = (Array.isArray(cf.home_team) ? cf.home_team[0]?.name : cf.home_team?.name) || '?'
+          const aName = (Array.isArray(cf.away_team) ? cf.away_team[0]?.name : cf.away_team?.name) || '?'
+          console.log('[webhook] direct number select:', num, '→ fixture:', chosenId, hName, 'vs', aName)
 
-        const statsBlock = formatStatsBlock(session.match_stats)
-        await sendTextMessage(from, `Confirm result: ${hName} vs ${aName}, ${session.home_score}-${session.away_score}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit or let me know what's wrong.`, phoneNumberId)
-        return
+          await upsertSession({
+            phone_number: from,
+            matched_fixture_id: chosenId,
+            home_team: session.home_team,
+            away_team: session.away_team,
+            home_score: session.home_score,
+            away_score: session.away_score,
+            match_stats: session.match_stats,
+          })
+
+          const statsBlock = formatStatsBlock(session.match_stats)
+          await sendTextMessage(from, `Confirm result: ${hName} vs ${aName}, ${session.home_score}-${session.away_score}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit or let me know what's wrong.`, phoneNumberId)
+          return
+        }
       }
     }
   }
@@ -334,32 +349,11 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
 
   const supabase = await createAdminClient()
 
-  // Resolve team names → IDs via team_name_mappings, then search today's fixtures
-  let homeTeamId: string | null = null, awayTeamId: string | null = null
-  if (homeTeam || awayTeam) {
-    const { data: mappings } = await supabase.from('team_name_mappings').select('ocr_name, team_id')
-    if (mappings) {
-      for (const m of mappings as any[]) {
-        const ocr = (m.ocr_name || '').toLowerCase()
-        if (homeTeam && ocr && (homeTeam.toLowerCase().includes(ocr) || ocr.includes(homeTeam.toLowerCase()))) { homeTeamId = m.team_id; break }
-      }
-      for (const m of mappings as any[]) {
-        const ocr = (m.ocr_name || '').toLowerCase()
-        if (awayTeam && ocr && (awayTeam.toLowerCase().includes(ocr) || ocr.includes(awayTeam.toLowerCase()))) { awayTeamId = m.team_id; break }
-      }
-    }
-  }
-
-  if (homeTeamId || awayTeamId) {
-    const { data: teams } = await supabase.from('teams').select('id, name')
-      .or(`${homeTeamId ? `id.eq.${homeTeamId}` : ''}${homeTeamId && awayTeamId ? ',' : ''}${awayTeamId ? `id.eq.${awayTeamId}` : ''}`)
-    if (teams) {
-      for (const t of teams as any[]) {
-        if (homeTeamId && t.id === homeTeamId) homeTeam = t.name
-        if (awayTeamId && t.id === awayTeamId) awayTeam = t.name
-      }
-    }
-  }
+  // Keyword-based fixture matching (same logic as admin ResultSubmitClient search)
+  const searchWords = [homeTeam, awayTeam]
+    .filter(Boolean)
+    .flatMap((name) => name!.toLowerCase().split(/\s+/))
+    .filter((w) => w.length >= 2)
 
   // Search today's fixtures for a match
   const today = new Date().toISOString().split('T')[0]
@@ -368,25 +362,39 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     .select('id, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
     .eq('scheduled_date', today).eq('status', 'scheduled').order('matchday')
 
-  let matchedFixture: any = null
   const fixtures = (todayFixtures as any[]) || []
 
-  if (homeTeamId && awayTeamId) {
-    matchedFixture = fixtures.find((f) => f.home_team_id === homeTeamId && f.away_team_id === awayTeamId) || null
+  function fixtureMatchesAllWords(f: any): boolean {
+    const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+    const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+    const combined = `${hName} vs ${aName}`
+    return searchWords.length > 0 && searchWords.every((w) => combined.includes(w))
   }
 
-  if (!matchedFixture && (homeTeamId || awayTeamId)) {
-    const partial = fixtures.filter((f) =>
-      (homeTeamId && (f.home_team_id === homeTeamId || f.away_team_id === homeTeamId)) ||
-      (awayTeamId && (f.home_team_id === awayTeamId || f.away_team_id === awayTeamId))
-    )
-    if (partial.length === 1) matchedFixture = partial[0]
-    else if (partial.length > 1) {
-      // Try to narrow by both IDs
-      matchedFixture = partial.find((f) =>
-        (homeTeamId && awayTeamId && f.home_team_id === homeTeamId && f.away_team_id === awayTeamId) ||
-        (homeTeamId && awayTeamId && f.home_team_id === awayTeamId && f.away_team_id === homeTeamId)
-      ) || null
+  function fixtureMatchesAnyWord(f: any): boolean {
+    const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+    const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+    const combined = `${hName} vs ${aName}`
+    return searchWords.some((w) => combined.includes(w))
+  }
+
+  // Try keyword match — all OCR words must appear in fixture name
+  let matchedFixture: any = null
+  if (searchWords.length > 0) {
+    const keywordMatches = fixtures.filter(fixtureMatchesAllWords)
+    if (keywordMatches.length === 1) {
+      matchedFixture = keywordMatches[0]
+    } else if (keywordMatches.length > 1) {
+      // Multiple keyword matches — prefer exact team pair if possible
+      const homeWords = (homeTeam || '').toLowerCase().split(/\s+/).filter((w: string) => w.length >= 2)
+      const awayWords = (awayTeam || '').toLowerCase().split(/\s+/).filter((w: string) => w.length >= 2)
+      matchedFixture = keywordMatches.find((f: any) => {
+        const hName = ((Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name) || '').toLowerCase()
+        const aName = ((Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name) || '').toLowerCase()
+        const homeSideMatch = homeWords.length > 0 && homeWords.every((w: string) => hName.includes(w))
+        const awaySideMatch = awayWords.length > 0 && awayWords.every((w: string) => aName.includes(w))
+        return (homeSideMatch && awaySideMatch) || (homeWords.every((w: string) => aName.includes(w)) && awayWords.every((w: string) => hName.includes(w)))
+      }) || null
     }
   }
 
@@ -401,25 +409,35 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     })
 
     const statsBlock = formatStatsBlock(matchStats)
-    console.log('[webhook] confirmation stats count:', matchStats ? Object.keys(matchStats).length : 0)
+    console.log('[webhook] keyword matched fixture:', hName, 'vs', aName, 'words:', searchWords)
     await sendTextMessage(from, `Confirm result: ${hName} vs ${aName}, ${homeScore}-${awayScore}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit or let me know what's wrong.`, phoneNumberId)
     return
   }
 
-  // No match found — save and tell user
+  // No match found — narrow list to fixtures matching ANY word, or show all
+  let displayFixtures = fixtures
+  if (searchWords.length > 0) {
+    const partialMatches = fixtures.filter(fixtureMatchesAnyWord)
+    if (partialMatches.length > 0) displayFixtures = partialMatches
+  }
+
   await upsertSession({
     phone_number: from,
     home_team: homeTeam, away_team: awayTeam, home_score: homeScore, away_score: awayScore,
     match_stats: matchStats, matched_fixture_id: null, screenshot_media_id: imageId,
+    displayed_fixtures: displayFixtures.map((f: any) => f.id),
   })
 
-  if (fixtures.length > 0) {
-    const lines = fixtures.map((f: any, i: number) => {
+  if (displayFixtures.length > 0) {
+    const lines = displayFixtures.map((f: any, i: number) => {
       const hN = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name) || '?'
       const aN = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name) || '?'
       return `${i + 1}. ${hN} vs ${aN}`
     })
-    await sendTextMessage(from, `Couldn't auto-match. Today's fixtures:\n\n${lines.join('\n')}\n\nReply with the number of your match.`, phoneNumberId)
+    const intro = searchWords.length > 0
+      ? `Couldn't auto-match exactly, but here are fixtures involving ${homeTeam || '?'} or ${awayTeam || '?'}:`
+      : "Couldn't auto-match. Today's fixtures:"
+    await sendTextMessage(from, `${intro}\n\n${lines.join('\n')}\n\nReply with the number of your match.`, phoneNumberId)
   } else {
     await sendTextMessage(from, `No scheduled fixtures found for today. Your result has been saved — contact an admin to match it.`, phoneNumberId)
     await clearSession(from)
