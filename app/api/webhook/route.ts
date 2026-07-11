@@ -103,6 +103,41 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
   }
 
+  // Direct number selection: if user sends a number and has pending scores, match fixture in code
+  if (session?.home_score !== null && session?.away_score !== null && !session?.matched_fixture_id) {
+    const num = parseInt(text.trim(), 10)
+    if (!isNaN(num) && num > 0) {
+      const today = new Date().toISOString().split('T')[0]
+      const { data: todayFixtures } = await supabase
+        .from('fixtures')
+        .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+        .eq('scheduled_date', today).eq('status', 'scheduled')
+        .order('matchday', { ascending: true })
+
+      const fixtures = (todayFixtures as any[]) || []
+      if (num <= fixtures.length) {
+        const chosen = fixtures[num - 1]
+        const hName = (Array.isArray(chosen.home_team) ? chosen.home_team[0]?.name : chosen.home_team?.name) || '?'
+        const aName = (Array.isArray(chosen.away_team) ? chosen.away_team[0]?.name : chosen.away_team?.name) || '?'
+        console.log('[webhook] direct number select:', num, '→ fixture:', chosen.id, hName, 'vs', aName)
+
+        await upsertSession({
+          phone_number: from,
+          matched_fixture_id: chosen.id,
+          home_team: session.home_team,
+          away_team: session.away_team,
+          home_score: session.home_score,
+          away_score: session.away_score,
+          match_stats: session.match_stats,
+        })
+
+        const statsBlock = formatStatsBlock(session.match_stats)
+        await sendTextMessage(from, `Confirm result: ${hName} vs ${aName}, ${session.home_score}-${session.away_score}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit or let me know what's wrong.`, phoneNumberId)
+        return
+      }
+    }
+  }
+
   // Build context for LLM
   let availableFixtures: any[] | null = null
   if (session?.home_team || session?.away_team) {
@@ -130,6 +165,24 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   switch (intent.intent) {
     case 'confirm': {
       if (!session) { await sendTextMessage(from, intent.reply, phoneNumberId); return }
+
+      // If LLM selected a fixture by number, update session with matched fixture
+      if (!session.matched_fixture_id && intent.fixtureChoice != null && availableFixtures?.length) {
+        const idx = intent.fixtureChoice - 1
+        const chosen = availableFixtures[idx]
+        if (chosen) {
+          console.log('[webhook] LLM selected fixture:', chosen.id, 'via choice:', intent.fixtureChoice)
+          await upsertSession({
+            phone_number: from,
+            matched_fixture_id: chosen.id,
+            home_team: session.home_team || chosen.home_team,
+            away_team: session.away_team || chosen.away_team,
+          })
+          session.matched_fixture_id = chosen.id
+        }
+      }
+
+      // If we have matched fixture + scores, write to DB immediately
       if (session.matched_fixture_id && session.home_score !== null && session.away_score !== null) {
         await writeResultToDb(from, session, supabase, phoneNumberId); return
       }
