@@ -11,7 +11,11 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.githubusercontent.com' },
     ],
   },
-  serverExternalPackages: ['sharp', 'tesseract.js'],
+  serverExternalPackages: ['sharp', 'tesseract.js', 'tesseract.js-core'],
+  outputFileTracingIncludes: {
+    '/api/webhook': ['./node_modules/tesseract.js-core/*.wasm'],
+    '/api/admin/parse-screenshot': ['./node_modules/tesseract.js-core/*.wasm'],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',

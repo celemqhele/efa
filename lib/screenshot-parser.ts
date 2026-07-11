@@ -8,6 +8,7 @@ export interface ParsedResult {
   homeScore: number
   awayScore: number
   stats: Record<string, { home: number; away: number }>
+  rawText: string
 }
 
 // Ordered list of stats to match, from longest/most specific to shortest.
@@ -114,30 +115,53 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
 
   const stats: Record<string, { home: number; away: number }> = {}
 
-  // More flexible pattern to capture numbers around a label, potentially with noise
-  const statRegex = /^(\d+%?)\s+([^0-9]+)\s+(\d+%?)$/
+  // Multiple patterns to handle different eFootball stat layouts
+  const statPatterns: RegExp[] = [
+    /^(\d+%?)\s+([^0-9]+)\s+(\d+%?)$/,           // "53% Possession 47%"
+    /^(\d+%?)\s+([^0-9]+?)\s+(\d+%?)$/,           // tighter spacing
+    /^(\d+)\s{2,}([^0-9]+?)\s{2,}(\d+)$/,         // "53  Possession  47" (tab/multi-space)
+    /^([^0-9]+?)\s+(\d+%?)\s+(\d+%?)$/,           // "Possession 53% 47%" (label first)
+    /^([^0-9]+?)\s+(\d+)\s+(\d+)$/,               // "Possession 53 47" (label first, no %)
+    /^(\d+%?)\s+[|\-–]\s+([^0-9]+?)\s+[|\-–]\s+(\d+%?)$/,  // "53% - Possession - 47%"
+  ]
 
   for (const line of lines) {
-    const m = line.match(statRegex)
-    if (!m) continue
+    if (stats && Object.keys(stats).length >= 12) break // all stats found
 
-    const homeValStr = m[1]
-    const label = m[2].toLowerCase().trim()
-    const awayValStr = m[3]
+    for (const statRegex of statPatterns) {
+      const m = line.match(statRegex)
+      if (!m) continue
 
-    for (const matcher of STAT_MATCHERS) {
-      if (label.includes(matcher.label)) {
-        const homeVal = matcher.key === 'possession' ? parsePossession(homeValStr) : parseNumber(homeValStr)
-        const awayVal = matcher.key === 'possession' ? parsePossession(awayValStr) : parseNumber(awayValStr)
-        
-        // Only set if not already set (respect priority of STAT_MATCHERS order)
-        if (!stats[matcher.key]) {
-          stats[matcher.key] = { home: homeVal, away: awayVal }
-        }
-        break
+      let homeValStr: string
+      let label: string
+      let awayValStr: string
+
+      // Detect which pattern matched (label-first vs number-first)
+      const firstIsNumber = /^\d/.test(m[1])
+      if (firstIsNumber) {
+        homeValStr = m[1]
+        label = m[2].toLowerCase().trim()
+        awayValStr = m[3]
+      } else {
+        label = m[1].toLowerCase().trim()
+        homeValStr = m[2]
+        awayValStr = m[3]
       }
+
+      for (const matcher of STAT_MATCHERS) {
+        if (label.includes(matcher.label)) {
+          const homeVal = matcher.key === 'possession' ? parsePossession(homeValStr) : parseNumber(homeValStr)
+          const awayVal = matcher.key === 'possession' ? parsePossession(awayValStr) : parseNumber(awayValStr)
+
+          if (!stats[matcher.key] && homeVal > 0 && awayVal > 0) {
+            stats[matcher.key] = { home: homeVal, away: awayVal }
+          }
+          break
+        }
+      }
+      break // only match one pattern per line
     }
   }
 
-  return { homeTeamOcr, awayTeamOcr, homeScore, awayScore, stats }
+  return { homeTeamOcr, awayTeamOcr, homeScore, awayScore, stats, rawText: text }
 }
