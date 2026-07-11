@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { addDays, format, subDays } from 'date-fns'
+import { addDays, format } from 'date-fns'
 
 export async function POST(request: Request) {
   const supabase = await createAdminClient()
@@ -58,14 +58,7 @@ export async function POST(request: Request) {
       const awayUsed = state.teamUsed[fx.away_team_id] ?? 0
 
       if (state.globalUsed + 2 <= globalCap && homeUsed < teamCap && awayUsed < teamCap) {
-        for (let w = 0; w < 7; w++) {
-          const wds = format(addDays(subDays(currentDate, 6), w), 'yyyy-MM-dd')
-          if (!slotCache[wds]) {
-            const ws = await slotModule.getSlotStateForDate(supabase, wds)
-            slotCache[wds] = { ...ws }
-          }
-        }
-        if (slotModule.isWindowBalanced(fx.home_team_id, fx.away_team_id, dateStr, slotCache, assignments)) {
+        if (slotModule.isWindowBalanced(fx.home_team_id, fx.away_team_id, dateStr, assignments)) {
           const deadline = `${dateStr}T12:00:00Z`
           const { error } = await supabase
             .from('fixtures')

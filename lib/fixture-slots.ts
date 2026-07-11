@@ -51,23 +51,11 @@ export function isWindowBalanced(
   homeId: string,
   awayId: string,
   dateStr: string,
-  slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }>,
   assignments: SlotAssignment[]
 ): boolean {
-  const windowStartDate = subDays(parseISO(dateStr), 6)
-  const windowStart = format(windowStartDate, 'yyyy-MM-dd')
+  const windowStart = format(subDays(parseISO(dateStr), 6), 'yyyy-MM-dd')
 
   const teamCounts: Record<string, number> = {}
-
-  for (let d = 0; d < 7; d++) {
-    const wd = format(addDays(windowStartDate, d), 'yyyy-MM-dd')
-    const state = slotCache[wd]
-    if (state) {
-      for (const [teamId, count] of Object.entries(state.teamUsed)) {
-        teamCounts[teamId] = (teamCounts[teamId] ?? 0) + count
-      }
-    }
-  }
 
   for (const a of assignments) {
     if (a.scheduled_date >= windowStart && a.scheduled_date <= dateStr) {
@@ -114,13 +102,7 @@ export async function assignFixtureSlots(
       const awayUsed = state.teamUsed[away_team_id] ?? 0
 
       if (state.globalUsed + 2 <= globalCap && homeUsed < teamCap && awayUsed < teamCap) {
-        for (let w = 0; w < 7; w++) {
-          const wds = format(addDays(subDays(currentDate, 6), w), 'yyyy-MM-dd')
-          if (!slotCache[wds]) {
-            slotCache[wds] = await getSlotStateForDate(db, wds)
-          }
-        }
-        if (isWindowBalanced(home_team_id, away_team_id, dateStr, slotCache, assignments)) {
+        if (isWindowBalanced(home_team_id, away_team_id, dateStr, assignments)) {
           assignments.push({ home_team_id, away_team_id, scheduled_date: dateStr, leg: fx.leg })
           state.globalUsed += 2
           state.teamUsed[home_team_id] = homeUsed + 1
