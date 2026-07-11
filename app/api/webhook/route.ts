@@ -153,6 +153,73 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
   }
 
+  // Text-based fixture matching: if user types a team name instead of a number
+  if (session && session.home_score !== null && session.away_score !== null && !session.matched_fixture_id) {
+    const lowerText = text.toLowerCase()
+    // Don't match single affirmative words or very short inputs
+    if (lowerText.length > 3 && !/^(yes|yeah|yep|y|ok|okay|no|cancel|help)$/i.test(lowerText)) {
+      const words = lowerText.split(/\s+/).filter((w: string) => w.length >= 2)
+      if (words.length > 0) {
+        // Use cached displayed fixtures if available, otherwise query
+        let fixtureIds: string[] | null = session.displayed_fixtures || null
+        if (!fixtureIds || fixtureIds.length === 0) {
+          const today = new Date().toISOString().split('T')[0]
+          const { data: todayFixtures } = await supabase
+            .from('fixtures')
+            .select('id')
+            .eq('scheduled_date', today).eq('status', 'scheduled')
+            .order('matchday', { ascending: true })
+          fixtureIds = (todayFixtures as any[])?.map((f: any) => f.id) || null
+        }
+
+        if (fixtureIds && fixtureIds.length > 0) {
+          // Fetch fixtures matching the cached IDs
+          const { data: candidateFixtures } = await supabase
+            .from('fixtures')
+            .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+            .in('id', fixtureIds)
+
+          const matches = ((candidateFixtures as any[]) || []).filter((f: any) => {
+            const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+            const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+            const combined = `${hName} vs ${aName}`
+            return words.every((w: string) => combined.includes(w))
+          })
+
+          if (matches.length === 1) {
+            const chosen = matches[0]
+            const hName = (Array.isArray(chosen.home_team) ? chosen.home_team[0]?.name : chosen.home_team?.name) || '?'
+            const aName = (Array.isArray(chosen.away_team) ? chosen.away_team[0]?.name : chosen.away_team?.name) || '?'
+            console.log('[webhook] text matched fixture:', hName, 'vs', aName, 'words:', words)
+
+            await upsertSession({
+              phone_number: from,
+              matched_fixture_id: chosen.id,
+              home_team: session.home_team,
+              away_team: session.away_team,
+              home_score: session.home_score,
+              away_score: session.away_score,
+              match_stats: session.match_stats,
+            })
+
+            const statsBlock = formatStatsBlock(session.match_stats)
+            await sendTextMessage(from, `Confirm result: ${hName} vs ${aName}, ${session.home_score}-${session.away_score}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit or let me know what's wrong.`, phoneNumberId)
+            return
+          } else if (matches.length > 1) {
+            // Multiple matches — ask user to be more specific
+            const lines = matches.map((f: any, i: number) => {
+              const hN = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name) || '?'
+              const aN = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name) || '?'
+              return `${i + 1}. ${hN} vs ${aN}`
+            })
+            await sendTextMessage(from, `Found ${matches.length} matches, be more specific:\n\n${lines.join('\n')}\n\nReply with the number or type both team names.`, phoneNumberId)
+            return
+          }
+        }
+      }
+    }
+  }
+
   // Build context for LLM
   let availableFixtures: any[] | null = null
   if (session?.home_team || session?.away_team) {
