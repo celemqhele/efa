@@ -104,7 +104,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   }
 
   // Direct number selection: if user sends a number and has pending scores, match fixture in code
-  if (session?.home_score !== null && session?.away_score !== null && !session?.matched_fixture_id) {
+  if (session && session.home_score !== null && session.away_score !== null && !session.matched_fixture_id) {
     const num = parseInt(text.trim(), 10)
     if (!isNaN(num) && num > 0) {
       const today = new Date().toISOString().split('T')[0]
