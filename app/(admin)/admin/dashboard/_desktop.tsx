@@ -10,6 +10,8 @@ import DeleteTournamentButton from '@/app/(admin)/admin/tournaments/DeleteTourna
 import RunTournamentDrawButton from '@/app/(admin)/admin/tournaments/RunTournamentDrawButton'
 import GenerateKnockoutsButton from '@/app/(admin)/admin/tournaments/GenerateKnockoutsButton'
 import GenerateFriendliesButton from '@/app/(admin)/admin/tournaments/GenerateFriendliesButton'
+import GenerateFixturesButton from '@/app/(admin)/admin/tournaments/GenerateFixturesButton'
+import RescheduleFixturesButton from '@/app/(admin)/admin/tournaments/RescheduleFixturesButton'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import { Trophy, CheckCircle2, CalendarDays, ClipboardList, AlertTriangle } from 'lucide-react'
 import { cleanTeamName } from '@/lib/clean-team-name'
@@ -129,29 +131,39 @@ function TournamentCard({
         </div>
       )}
 
-      <div className="flex divide-x divide-border border border-border rounded-xl overflow-hidden">
+      <div className="flex flex-wrap gap-1.5 pt-3 border-t border-border">
         <Link
           href={`/admin/fixtures/manage?tournament=${tournament.id}`}
-          className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"
+          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:border-accent hover:text-accent transition-colors"
         >
           Fixtures
         </Link>
-        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
-          <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors" />
-        )}
-        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
-          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors" />
-        )}
-        {tournament.type === 'friendlies' && (
-          <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors" />
-        )}
+        <GenerateFixturesButton
+          tournamentId={tournament.id}
+          tournamentName={tournament.name}
+          type={tournament.type}
+        />
+        <RescheduleFixturesButton
+          tournamentId={tournament.id}
+          tournamentName={tournament.name}
+          fixtureCount={fixtureCount}
+        />
         <Link
           href={`/standings?t=${tournament.id}`}
-          className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"
+          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:border-accent hover:text-accent transition-colors"
         >
-          View
+          Standings
         </Link>
-        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors hover:text-feedback-error" />
+        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
+          <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+        )}
+        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
+          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+        )}
+        {tournament.type === 'friendlies' && (
+          <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+        )}
+        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
       </div>
     </div>
   )

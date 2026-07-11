@@ -7,6 +7,7 @@ import GenerateFixturesButton from './GenerateFixturesButton'
 import GenerateKnockoutsButton from './GenerateKnockoutsButton'
 import GenerateFriendliesButton from './GenerateFriendliesButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
+import RescheduleFixturesButton from './RescheduleFixturesButton'
 
 export const revalidate = 0
 
@@ -212,56 +213,51 @@ function TournamentCard({
         </div>
       )}
 
-      <div className="flex divide-x divide-border border border-border rounded-xl overflow-hidden">
+      <div className="flex flex-wrap gap-1.5 pt-3 border-t border-border">
         <Link
           href={`/admin/fixtures/manage?tournament=${tournament.id}`}
-          className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"
+          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:border-accent hover:text-accent transition-colors"
         >
           Fixtures
         </Link>
-        <div className="flex-1 flex items-center justify-center">
-          <GenerateFixturesButton
+        <GenerateFixturesButton
+          tournamentId={tournament.id}
+          tournamentName={tournament.name}
+          type={tournament.type}
+        />
+        <RescheduleFixturesButton
+          tournamentId={tournament.id}
+          tournamentName={tournament.name}
+          fixtureCount={fixtureCount}
+        />
+        <Link
+          href={`/standings?t=${tournament.id}`}
+          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:border-accent hover:text-accent transition-colors"
+        >
+          Standings
+        </Link>
+        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
+          <RunTournamentDrawButton
             tournamentId={tournament.id}
             tournamentName={tournament.name}
             type={tournament.type}
           />
-        </div>
-        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
-          <div className="flex-1 flex items-center justify-center">
-            <RunTournamentDrawButton
-              tournamentId={tournament.id}
-              tournamentName={tournament.name}
-              type={tournament.type}
-            />
-          </div>
         )}
         {['tournament_club', 'tournament_international'].includes(tournament.type) && (
-          <div className="flex-1 flex items-center justify-center">
-            <GenerateKnockoutsButton
-              tournamentId={tournament.id}
-              tournamentName={tournament.name}
-              type={tournament.type}
-            />
-          </div>
+          <GenerateKnockoutsButton
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            type={tournament.type}
+          />
         )}
         {tournament.type === 'friendlies' && (
-          <div className="flex-1 flex items-center justify-center">
-            <GenerateFriendliesButton
-              tournamentId={tournament.id}
-              tournamentName={tournament.name}
-              type={tournament.type}
-            />
-          </div>
+          <GenerateFriendliesButton
+            tournamentId={tournament.id}
+            tournamentName={tournament.name}
+            type={tournament.type}
+          />
         )}
-        <Link
-          href={`/standings?t=${tournament.id}`}
-          className="flex-1 text-center text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"
-        >
-          View
-        </Link>
-        <div className="flex-1 flex items-center justify-center">
-          <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
-        </div>
+        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
       </div>
     </div>
   )

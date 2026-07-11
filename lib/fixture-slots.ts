@@ -1,4 +1,4 @@
-import { addDays, format, parseISO } from 'date-fns'
+import { addDays, format, parseISO, subDays } from 'date-fns'
 
 const SA_PUBLIC_HOLIDAYS_2025 = new Set([
   '2025-01-01', '2025-03-21', '2025-04-18', '2025-04-21',
@@ -44,11 +44,50 @@ export interface SlotAssignment {
   home_team_id: string
   away_team_id: string
   scheduled_date: string
+  leg?: number
+}
+
+export function isWindowBalanced(
+  homeId: string,
+  awayId: string,
+  dateStr: string,
+  slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }>,
+  assignments: SlotAssignment[]
+): boolean {
+  const windowStartDate = subDays(parseISO(dateStr), 6)
+  const windowStart = format(windowStartDate, 'yyyy-MM-dd')
+
+  const teamCounts: Record<string, number> = {}
+
+  for (let d = 0; d < 7; d++) {
+    const wd = format(addDays(windowStartDate, d), 'yyyy-MM-dd')
+    const state = slotCache[wd]
+    if (state) {
+      for (const [teamId, count] of Object.entries(state.teamUsed)) {
+        teamCounts[teamId] = (teamCounts[teamId] ?? 0) + count
+      }
+    }
+  }
+
+  for (const a of assignments) {
+    if (a.scheduled_date >= windowStart && a.scheduled_date <= dateStr) {
+      teamCounts[a.home_team_id] = (teamCounts[a.home_team_id] ?? 0) + 1
+      teamCounts[a.away_team_id] = (teamCounts[a.away_team_id] ?? 0) + 1
+    }
+  }
+
+  teamCounts[homeId] = (teamCounts[homeId] ?? 0) + 1
+  teamCounts[awayId] = (teamCounts[awayId] ?? 0) + 1
+
+  const counts = Object.values(teamCounts)
+  if (counts.length <= 1) return true
+  const expected = counts[0]
+  return counts.every(c => c === expected)
 }
 
 export async function assignFixtureSlots(
   db: any,
-  fixtures: Array<{ home_team_id: string; away_team_id: string }>,
+  fixtures: Array<{ home_team_id: string; away_team_id: string; leg?: number }>,
   startFrom?: string
 ): Promise<SlotAssignment[]> {
   const startDate = startFrom ?? format(new Date(), 'yyyy-MM-dd')
@@ -74,19 +113,27 @@ export async function assignFixtureSlots(
       const awayUsed = state.teamUsed[away_team_id] ?? 0
 
       if (state.globalUsed + 2 <= globalCap && homeUsed < teamCap && awayUsed < teamCap) {
-        assignments.push({ home_team_id, away_team_id, scheduled_date: dateStr })
-        state.globalUsed += 2
-        state.teamUsed[home_team_id] = homeUsed + 1
-        state.teamUsed[away_team_id] = awayUsed + 1
-        assigned = true
-        break
+        for (let w = 0; w < 7; w++) {
+          const wds = format(addDays(subDays(currentDate, 6), w), 'yyyy-MM-dd')
+          if (!slotCache[wds]) {
+            slotCache[wds] = await getSlotStateForDate(db, wds)
+          }
+        }
+        if (isWindowBalanced(home_team_id, away_team_id, dateStr, slotCache, assignments)) {
+          assignments.push({ home_team_id, away_team_id, scheduled_date: dateStr, leg: fx.leg })
+          state.globalUsed += 2
+          state.teamUsed[home_team_id] = homeUsed + 1
+          state.teamUsed[away_team_id] = awayUsed + 1
+          assigned = true
+          break
+        }
       }
 
       currentDate = addDays(currentDate, 1)
     }
 
     if (!assigned) {
-      assignments.push({ home_team_id, away_team_id, scheduled_date: format(currentDate ?? parseISO(startDate), 'yyyy-MM-dd') })
+      assignments.push({ home_team_id, away_team_id, scheduled_date: format(currentDate ?? parseISO(startDate), 'yyyy-MM-dd'), leg: fx.leg })
     }
   }
 
