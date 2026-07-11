@@ -81,8 +81,9 @@ export function isWindowBalanced(
 
   const counts = Object.values(teamCounts)
   if (counts.length <= 1) return true
-  const expected = counts[0]
-  return counts.every(c => c === expected)
+  const max = Math.max(...counts)
+  const min = Math.min(...counts)
+  return max - min <= 1
 }
 
 export async function assignFixtureSlots(
