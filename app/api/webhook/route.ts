@@ -124,7 +124,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         match_stats: newStats,
       })
       const statsBlock = formatStatsBlock(newStats)
-      await sendTextMessage(from, `Sides swapped!\n\nConfirm result: ${newHome} ${newHomeScore}-${newAwayScore} ${newAway}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are still on the wrong side.`, phoneNumberId)
+      await sendTextMessage(from, `Sides swapped!\n\nConfirm result: ${newHome} ${newHomeScore}-${newAwayScore} ${newAway}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are still on the wrong side. Type CANCEL to start again.`, phoneNumberId)
       return
     }
   }
@@ -171,7 +171,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           })
 
           const statsBlock = formatStatsBlock(session.match_stats)
-          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side.`, phoneNumberId)
+          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side. Type CANCEL to start again.`, phoneNumberId)
           return
         }
       }
@@ -228,7 +228,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             })
 
             const statsBlock = formatStatsBlock(session.match_stats)
-            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side.`, phoneNumberId)
+            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side. Type CANCEL to start again.`, phoneNumberId)
             return
           } else if (matches.length > 1) {
             // Multiple matches — ask user to be more specific
@@ -524,7 +524,7 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
 
     const statsBlock = formatStatsBlock(matchStats)
     console.log('[webhook] keyword matched fixture:', hName, 'vs', aName, 'words:', searchWords)
-    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side.`, phoneNumberId)
+    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side. Type CANCEL to start again.`, phoneNumberId)
     return
   }
 
