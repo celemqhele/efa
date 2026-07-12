@@ -102,6 +102,31 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await writeResultToDb(from, session, supabase, phoneNumberId)
       return
     }
+    // SWAP — switch home/away sides
+    if (/^swap$/i.test(lower)) {
+      console.log('[webhook] user SWAP:', session.home_team, 'vs', session.away_team)
+      const newHome = session.away_team
+      const newAway = session.home_team
+      const newHomeScore = session.away_score
+      const newAwayScore = session.home_score
+      let newStats = session.match_stats
+      if (newStats) {
+        const swapped: Record<string, { home: number; away: number }> = {}
+        for (const [key, val] of Object.entries(newStats)) {
+          swapped[key] = { home: val.away, away: val.home }
+        }
+        newStats = swapped
+      }
+      await upsertSession({
+        phone_number: from,
+        home_team: newHome, away_team: newAway,
+        home_score: newHomeScore, away_score: newAwayScore,
+        match_stats: newStats,
+      })
+      const statsBlock = formatStatsBlock(newStats)
+      await sendTextMessage(from, `Sides swapped!\n\nConfirm result: ${newHome} ${newHomeScore}-${newAwayScore} ${newAway}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are still on the wrong side.`, phoneNumberId)
+      return
+    }
   }
 
   // Direct number selection: if user sends a number and has pending scores, match fixture in code
@@ -146,7 +171,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           })
 
           const statsBlock = formatStatsBlock(session.match_stats)
-          await sendTextMessage(from, `Confirm result: ${hName} vs ${aName}, ${session.home_score}-${session.away_score}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit or let me know what's wrong.`, phoneNumberId)
+          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side.`, phoneNumberId)
           return
         }
       }
@@ -203,7 +228,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             })
 
             const statsBlock = formatStatsBlock(session.match_stats)
-            await sendTextMessage(from, `Confirm result: ${hName} vs ${aName}, ${session.home_score}-${session.away_score}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit or let me know what's wrong.`, phoneNumberId)
+            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side.`, phoneNumberId)
             return
           } else if (matches.length > 1) {
             // Multiple matches — ask user to be more specific
@@ -469,6 +494,28 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     const hName = (Array.isArray(matchedFixture.home_team) ? matchedFixture.home_team[0]?.name : matchedFixture.home_team?.name) || homeTeam || '?'
     const aName = (Array.isArray(matchedFixture.away_team) ? matchedFixture.away_team[0]?.name : matchedFixture.away_team?.name) || awayTeam || '?'
 
+    // Auto-swap: if OCR team order is flipped vs fixture, swap scores + stats
+    const fixtureHomeLower = hName.toLowerCase()
+    const fixtureAwayLower = aName.toLowerCase()
+    const ocrHomeLower = (homeTeam || '').toLowerCase()
+    const ocrAwayLower = (awayTeam || '').toLowerCase()
+
+    const ocrHomeMatchesFixtureAway = ocrHomeLower && fixtureAwayLower && (fixtureAwayLower.includes(ocrHomeLower) || ocrHomeLower.includes(fixtureAwayLower))
+    const ocrAwayMatchesFixtureHome = ocrAwayLower && fixtureHomeLower && (fixtureHomeLower.includes(ocrAwayLower) || ocrAwayLower.includes(fixtureHomeLower))
+
+    if (ocrHomeMatchesFixtureAway && ocrAwayMatchesFixtureHome) {
+      console.log(`[webhook] AUTO-SWAP: (${homeTeam}/${homeScore} - ${awayTeam}/${awayScore}) flipped vs (${hName} vs ${aName})`)
+      const tmpScore = homeScore; homeScore = awayScore; awayScore = tmpScore
+      const tmpTeam = homeTeam; homeTeam = awayTeam; awayTeam = tmpTeam
+      if (matchStats) {
+        const swapped: Record<string, { home: number; away: number }> = {}
+        for (const [key, val] of Object.entries(matchStats)) {
+          swapped[key] = { home: val.away, away: val.home }
+        }
+        matchStats = swapped
+      }
+    }
+
     await upsertSession({
       phone_number: from,
       home_team: homeTeam, away_team: awayTeam, home_score: homeScore, away_score: awayScore,
@@ -477,7 +524,7 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
 
     const statsBlock = formatStatsBlock(matchStats)
     console.log('[webhook] keyword matched fixture:', hName, 'vs', aName, 'words:', searchWords)
-    await sendTextMessage(from, `Confirm result: ${hName} vs ${aName}, ${homeScore}-${awayScore}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit or let me know what's wrong.`, phoneNumberId)
+    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side.`, phoneNumberId)
     return
   }
 
