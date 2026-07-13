@@ -666,5 +666,5 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
 
   console.log('[webhook] result written:', { fixture_id: session.matched_fixture_id, home_score: session.home_score, away_score: session.away_score, submitted_by: adminUserId })
   await clearSession(from)
-  await sendTextMessage(from, 'Shot! Result submitted. \u{1F3AE}', phoneNumberId)
+  await sendTextMessage(from, 'Result submitted!\n\nCheck your standings here: https://efa-fxyk.vercel.app/standings', phoneNumberId)
 }
