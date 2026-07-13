@@ -108,9 +108,6 @@ export default function Desktop({ data }: DesktopProps) {
         <div className="bg-bg-surface border border-border rounded-2xl p-12 text-center space-y-4">
           <Crosshair className="w-10 h-10 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">You don&apos;t have a team yet.</p>
-          <Link href="/select-team" className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)]">
-            Pick a team
-          </Link>
         </div>
       </div>
     )

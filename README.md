@@ -10,7 +10,7 @@ Supabase project: (managed via Supabase dashboard)
 
 ## What This Is
 
-A full-stack web app that manages an eFootball league. Players register, pick a real football team to represent, and the platform handles:
+A full-stack web app that manages an eFootball league. Players register and the platform handles:
 - Fixtures & scheduling
 - Result submission and confirmation
 - League standings / tables
@@ -75,12 +75,11 @@ Passwords were set via the SQL block in the Supabase setup section below.
 |---|---|
 | `/login` | Username + password login |
 | `/register` | New account registration |
-| `/select-team` | After register — pick your club |
 
 ### Protected (login required)
 | Route | Description |
 |---|---|
-| `/profile` | Manager profile, team info, change team |
+| `/profile` | Manager profile, team info |
 | `/notifications` | Inbox for match requests, admin alerts |
 
 ### Admin (`/admin/*`, admin role required)
@@ -124,7 +123,7 @@ Migrations are in `/supabase/migrations/`.
 - Supabase handles sessions/cookies via `@supabase/ssr`
 - Middleware (`middleware.ts`) protects `/profile`, `/notifications`, and all `/admin/*` routes
 - Admin check: middleware queries `profiles.role` to verify `admin` before allowing `/admin` access
-- On register → auto-redirected to `/select-team` to pick a club
+- On register → profile is created automatically, redirected to `/profile`
 
 ---
 
@@ -136,7 +135,7 @@ The `lib/logo-resolver.ts` utility resolves paths for different use cases:
 - `standings_row` — small logo for table rows
 - `profile_avatar` — avatar for user profiles
 
-The `TEAM_REGISTRY` in `/app/(auth)/select-team/page.tsx` lists all available teams per league. Currently seeded with 5 leagues: Premier League, La Liga, Bundesliga, Serie A, Ligue 1.
+The `lib/registry.ts` provides team metadata and slug-to-name mappings for the logo system.
 
 ---
 
@@ -225,7 +224,7 @@ ON CONFLICT (id) DO UPDATE SET role = 'admin';
 **Fix:** Extracted `LoginForm` component, wrapped in `<Suspense>` in the page export.
 
 ### Vercel build failing — env vars at prerender time
-**Problem:** Auth pages (`/register`, `/select-team`) were being statically prerendered at build time, but Supabase env vars aren't available then.  
+**Problem:** Auth pages (`/register`) were being statically prerendered at build time, but Supabase env vars aren't available then.  
 **Fix:** Added `export const dynamic = 'force-dynamic'` to those pages (and later all server-rendered admin/protected pages).
 
 ### Supabase "database error creating new user"
@@ -285,7 +284,7 @@ Open http://localhost:3000
 ## What's Next / Still To Do
 
 - [ ] Logos: copy team logo files into `/public/logos/{league}/{team}/`
-- [ ] Test full registration → select-team → login flow on live URL
+- [ ] Test full registration → login flow on live URL
 - [ ] Test admin login and dashboard
 - [ ] Schedule Supabase Edge Function crons (abandonment + notification)
 - [ ] Set up web push VAPID (notifications to mobile)

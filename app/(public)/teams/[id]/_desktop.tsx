@@ -6,10 +6,9 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import TeamStateBadges from '@/components/ui/TeamStateBadge'
 import TeamManagerAdmin from './TeamManagerAdmin'
-import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { Card } from '@/components/ui/Card'
-import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, UserPlus, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History, ChevronRight } from 'lucide-react'
+import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History, ChevronRight } from 'lucide-react'
 
 const TROPHY_ICON: Record<string, string> = {
   league: 'trophy',
@@ -69,7 +68,6 @@ export default function Desktop({ data }: { data: any }) {
     currentUser,
     isAdmin,
     isCurrentManager,
-    hasPendingApplication,
     allProfiles,
     managedTeamByUser,
     trophies,
@@ -256,25 +254,6 @@ export default function Desktop({ data }: { data: any }) {
           allProfiles={allProfiles}
           managedTeamByUser={managedTeamByUser}
         />
-      )}
-
-      {currentUser && !isAdmin && !isCurrentManager && (
-        <Card className="p-5 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <UserPlus className="w-4 h-4 text-accent" />
-            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Management Application</h2>
-          </div>
-          <p className="text-sm text-text-secondary">
-            {(team as any).manager_id
-              ? 'This club currently has a manager. You can still apply — if approved, the current manager will be replaced.'
-              : 'This club has no manager. Apply to take charge.'}
-          </p>
-          <ApplyManagerButton
-            teamId={team.id}
-            teamName={team.name}
-            hasPending={hasPendingApplication}
-          />
-        </Card>
       )}
 
       <Card className="p-5">

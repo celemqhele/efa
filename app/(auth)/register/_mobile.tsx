@@ -48,7 +48,7 @@ export default function Mobile({ data }: { data: any }) {
       return
     }
 
-    const { error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password: form.password,
       options: {
@@ -62,7 +62,11 @@ export default function Mobile({ data }: { data: any }) {
       return
     }
 
-    window.location.href = '/select-team'
+    if (authData.user) {
+      await supabase.from('profiles').insert({ id: authData.user.id, username })
+    }
+
+    window.location.href = '/profile'
   }
 
   return (

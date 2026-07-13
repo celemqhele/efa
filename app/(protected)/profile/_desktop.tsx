@@ -4,12 +4,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import { format, parseISO, differenceInDays } from 'date-fns'
-import TeamChangeModal from './TeamChangeModal'
 import ProfileActions from './ProfileActions'
 import { Card } from '@/components/ui/Card'
 import AvatarUpload from '@/components/ui/AvatarUpload'
 import ThemeSettings from '@/components/ui/ThemeSettings'
-import { Star, Shirt, Shield, RefreshCw, Calendar, Phone } from 'lucide-react'
+import { Star, Shirt, Shield, Calendar, Phone } from 'lucide-react'
 import { useState } from 'react'
 
 function daysUntil(dateStr: string | null): number | null {
@@ -24,8 +23,6 @@ export default function Desktop({ data }: { data: any }) {
     profile,
     team,
     teamIds,
-    changeRequests,
-    pendingRequest,
     tenures,
     stats,
     winRate,
@@ -91,13 +88,7 @@ export default function Desktop({ data }: { data: any }) {
               <span className="text-text-muted text-xs">→</span>
             </Link>
           ) : (
-            <Link
-              href="/select-team"
-              className="inline-flex items-center gap-space-1.5 text-sm text-text-muted hover:text-accent transition-colors"
-            >
-              <span className="text-accent">+</span>
-              No team selected — select one
-            </Link>
+            <p className="text-sm text-text-muted">No team selected</p>
           )}
 
           <p className="text-xs text-text-muted">{user.email}</p>
@@ -178,45 +169,6 @@ export default function Desktop({ data }: { data: any }) {
                     <p className="text-xs font-black text-text-primary">{played} <span className="text-[9px] text-text-muted font-bold">P</span></p>
                     <p className="text-xs font-black text-accent">{tWinRate}% <span className="text-[9px] text-text-muted font-bold">WR</span></p>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </Card>
-
-      {/* -- Team Change Request --------------------------------------------- */}
-      <Card className="p-space-5 space-y-space-3">
-        <h2 className="section-header">
-          <RefreshCw className="w-5 h-5 text-gold" /> Team Management
-        </h2>
-        <TeamChangeModal
-          currentTeamId={team?.id ?? null}
-          hasPendingRequest={!!pendingRequest}
-          pendingRequestedTeamName={(pendingRequest as any)?.requested_team?.name ?? null}
-        />
-
-        {/* Past requests */}
-        {changeRequests && changeRequests.length > 0 && (
-          <div className="mt-space-3 space-y-space-1.5">
-            {changeRequests.slice(0, 3).map((req: any) => {
-              const statusStyle =
-                req.status === 'approved'
-                  ? 'text-feedback-success bg-feedback-success/10 border-feedback-success/20'
-                  : req.status === 'denied'
-                  ? 'text-feedback-error bg-feedback-error/10 border-feedback-error/20'
-                  : 'text-feedback-warning bg-feedback-warning/10 border-feedback-warning/20'
-              return (
-                <div
-                  key={req.id}
-                  className="flex items-center justify-between text-xs px-space-3 py-space-2 rounded-lg border border-border bg-bg-base"
-                >
-                  <span className="text-text-secondary">
-                    {req.requested_team?.name ?? 'Unknown team'}
-                  </span>
-                  <span className={`px-space-2 py-0.5 rounded border font-semibold capitalize ${statusStyle}`}>
-                    {req.status}
-                  </span>
                 </div>
               )
             })}

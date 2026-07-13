@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { buildRegistry } from '@/app/(auth)/select-team/registry'
+import { buildRegistry } from '@/lib/registry'
 import Shell from './_shell'
 
 export default async function PollPage({ params }: { params: Promise<{ share_code: string }> }) {

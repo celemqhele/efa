@@ -9,10 +9,9 @@ import type { TeamState } from '@/lib/team-states'
 import TeamStateBadges from '@/components/ui/TeamStateBadge'
 import type { ManagerNote } from '@/lib/manager-notes'
 import TeamManagerAdmin from './TeamManagerAdmin'
-import ApplyManagerButton from '@/components/ui/ApplyManagerButton'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { Card } from '@/components/ui/Card'
-import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, UserPlus, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History } from 'lucide-react'
+import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History } from 'lucide-react'
 
 const TROPHY_ICON: Record<string, string> = {
   league: 'trophy',
@@ -72,7 +71,6 @@ export default function Mobile({ data }: { data: any }) {
     currentUser,
     isAdmin,
     isCurrentManager,
-    hasPendingApplication,
     allProfiles,
     managedTeamByUser,
     trophies,
@@ -263,25 +261,6 @@ export default function Mobile({ data }: { data: any }) {
           allProfiles={allProfiles}
           managedTeamByUser={managedTeamByUser}
         />
-      )}
-
-      {/* ── Apply to Manage ── */}
-      {currentUser && !isAdmin && !isCurrentManager && (
-        <Card className="p-4 space-y-2">
-          <h2 className="section-header mb-1">
-            <UserPlus className="w-4 h-4 text-accent" /> Management Application
-          </h2>
-          <p className="text-sm text-text-secondary">
-            {(team as any).manager_id
-              ? 'This club currently has a manager. You can still apply — if approved, the current manager will be replaced.'
-              : 'This club has no manager. Apply to take charge.'}
-          </p>
-          <ApplyManagerButton
-            teamId={team.id}
-            teamName={team.name}
-            hasPending={hasPendingApplication}
-          />
-        </Card>
       )}
 
       {/* ── Upcoming Fixtures ── */}

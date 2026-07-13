@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { LEAGUE_META } from '@/app/(auth)/select-team/registry'
+import { LEAGUE_META } from '@/lib/registry'
 
 export async function POST(request: Request, { params }: { params: Promise<{ share_code: string }> }) {
   const { share_code } = await params

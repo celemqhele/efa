@@ -261,6 +261,21 @@ CREATE TABLE manager_applications (
 
 ---
 
+## Phase 12 — Remove Team Selection from Registration
+
+**Decision:** Users no longer pick a team during registration. They create an account and go straight to their profile page. Team assignment is handled separately by admins.
+
+**What was done:**
+- Modified register forms (`_mobile.tsx`, `_desktop.tsx`) to create a `profiles` row immediately after `signUp()` using the existing RLS policy, then redirect to `/profile`
+- Relocated `registry.ts` from `app/(auth)/select-team/` to `lib/registry.ts` (still used by polls)
+- Deleted: `app/(auth)/select-team/` (6 files), `app/api/team/claim/route.ts`, `app/api/teams/change-request/route.ts`, `app/api/teams/apply-manager/route.ts`, `components/ui/ApplyManagerButton.tsx`, `app/(protected)/profile/TeamChangeModal.tsx`
+- Cleaned up profile page: removed TeamChangeModal, "select one" link, and team change request data fetching
+- Removed "Pick a team" links from results/fixtures pages
+- Removed "Apply to Manage" card from team detail pages
+- Updated README.md to reflect new registration flow
+
+---
+
 ## Summary Stats
 
 | Category | Count |

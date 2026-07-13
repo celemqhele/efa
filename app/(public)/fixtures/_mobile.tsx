@@ -153,10 +153,7 @@ export default function Mobile({ data }: MobileProps) {
         <h1 className="text-base font-bold text-text-primary">My Fixtures</h1>
         <div className="bg-bg-surface border border-border rounded-xl p-10 text-center space-y-4">
           <Crosshair className="w-10 h-10 text-text-muted mx-auto" />
-          <div>
-            <p className="text-text-muted text-sm font-medium">You don&apos;t have a team yet.</p>
-          </div>
-          <Link href="/select-team" className="btn-gold inline-block text-sm">Pick a team</Link>
+          <p className="text-text-muted text-sm font-medium">You don&apos;t have a team yet.</p>
         </div>
       </div>
     )

@@ -157,7 +157,6 @@ export default function Mobile({ data }: MobileProps) {
         <div className="bg-bg-surface border border-border rounded-xl p-10 text-center space-y-3">
           <Crosshair className="w-8 h-8 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">You don&apos;t have a team yet.</p>
-          <Link href="/select-team" className="btn-gold inline-block text-sm">Pick a team</Link>
         </div>
       </div>
     )

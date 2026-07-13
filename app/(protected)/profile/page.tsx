@@ -34,20 +34,6 @@ export default async function ProfilePage() {
     ? teamIds.flatMap(id => [`home_team_id.eq.${id}`, `away_team_id.eq.${id}`]).join(',')
     : null
 
-  // Team change requests for this user (most recent pending or last reviewed)
-  const { data: changeRequestsRaw } = await supabase
-    .from('team_change_requests')
-    .select(`
-      id, status, created_at,
-      requested_team:teams!team_change_requests_requested_team_id_fkey(id, name)
-    `)
-    .eq('requesting_user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(5)
-  const changeRequests = (changeRequestsRaw ?? []) as any[]
-
-  const pendingRequest = changeRequests.find((r: any) => r.status === 'pending') ?? null
-
   // Fetch Tenures (Career History)
   const { data: tenures } = await supabase
     .from('manager_tenures' as any)
@@ -94,8 +80,6 @@ export default async function ProfilePage() {
     profile,
     team,
     teamIds,
-    changeRequests,
-    pendingRequest,
     tenures,
     stats,
     winRate,
