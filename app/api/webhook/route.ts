@@ -92,8 +92,8 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
   const session = await getSession(from)
 
-  // If there's no active session, user isn't in a result submission flow
-  if (!session || !session.matched_fixture_id) {
+  // Only reject users who have no active session at all (never sent a screenshot)
+  if (!session || (session.home_score === null && session.away_score === null)) {
     await sendTextMessage(from, "I only help with submitting match results. Send a screenshot of your result screen and I'll take it from there.", phoneNumberId)
     return
   }
