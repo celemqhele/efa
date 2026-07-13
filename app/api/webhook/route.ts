@@ -84,21 +84,28 @@ async function clearSession(phoneNumber: string) {
   await supabase.from('whatsapp_sessions').delete().eq('phone_number', phoneNumber)
 }
 
-// ─── Text handler (LLM-driven) ───────────────────────────────────────────────────
+// ─── Text handler ⸺ only handles confirm/correct responses to ongoing result flow ──
 
 async function handleText(from: string, msg: { text: { body: string } }, phoneNumberId: string) {
   const text = (msg.text.body || '').trim()
   console.log(`[webhook] text: "${text}"`)
 
   const session = await getSession(from)
+
+  // If there's no active session, user isn't in a result submission flow
+  if (!session || !session.matched_fixture_id) {
+    await sendTextMessage(from, "I only help with submitting match results. Send a screenshot of your result screen and I'll take it from there.", phoneNumberId)
+    return
+  }
+
   const supabase = await createAdminClient()
 
   // Direct bypass: if session has matched_fixture_id and user says anything affirmative, write to DB
-  if (session?.matched_fixture_id && session.home_score !== null && session.away_score !== null) {
+  if (session.matched_fixture_id && session.home_score !== null && session.away_score !== null) {
     const lower = text.toLowerCase()
     const affirmative = /^(yes|yeah|yep|y|ok|okay|sure|confirm|correct|right|go ahead|submit|looks good|good|fine|ja)$/i
     if (affirmative.test(lower) || lower.includes('yes') || lower.includes('confirm') || lower.includes('submit')) {
-      console.log('[webhook] direct bypass: matched_fixture_id set, user affirmed, writing to DB')
+      console.log('[webhook] direct bypass: user affirmed, writing to DB')
       await writeResultToDb(from, session, supabase, phoneNumberId)
       return
     }
@@ -129,11 +136,10 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
   }
 
-  // Direct number selection: if user sends a number and has pending scores, match fixture in code
+  // Direct number selection: if user sends a number and has pending scores, match fixture
   if (session && session.home_score !== null && session.away_score !== null && !session.matched_fixture_id) {
     const num = parseInt(text.trim(), 10)
     if (!isNaN(num) && num > 0) {
-      // Use cached displayed fixtures if available, otherwise query fresh
       let fixtureIds: string[] | null = session.displayed_fixtures || null
       if (!fixtureIds || fixtureIds.length === 0) {
         const today = new Date().toISOString().split('T')[0]
@@ -147,7 +153,6 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
       if (fixtureIds && num <= fixtureIds.length) {
         const chosenId = fixtureIds[num - 1]
-        // Fetch full fixture details
         const { data: chosenFixture } = await supabase
           .from('fixtures')
           .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
@@ -171,7 +176,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           })
 
           const statsBlock = formatStatsBlock(session.match_stats)
-          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side. Type CANCEL to start again.`, phoneNumberId)
+          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side.`, phoneNumberId)
           return
         }
       }
@@ -181,11 +186,9 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   // Text-based fixture matching: if user types a team name instead of a number
   if (session && session.home_score !== null && session.away_score !== null && !session.matched_fixture_id) {
     const lowerText = text.toLowerCase()
-    // Don't match single affirmative words or very short inputs
     if (lowerText.length > 3 && !/^(yes|yeah|yep|y|ok|okay|no|cancel|help)$/i.test(lowerText)) {
       const words = lowerText.split(/\s+/).filter((w: string) => w.length >= 2)
       if (words.length > 0) {
-        // Use cached displayed fixtures if available, otherwise query
         let fixtureIds: string[] | null = session.displayed_fixtures || null
         if (!fixtureIds || fixtureIds.length === 0) {
           const today = new Date().toISOString().split('T')[0]
@@ -198,7 +201,6 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         }
 
         if (fixtureIds && fixtureIds.length > 0) {
-          // Fetch fixtures matching the cached IDs
           const { data: candidateFixtures } = await supabase
             .from('fixtures')
             .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
@@ -228,10 +230,9 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             })
 
             const statsBlock = formatStatsBlock(session.match_stats)
-            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side. Type CANCEL to start again.`, phoneNumberId)
+            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side.`, phoneNumberId)
             return
           } else if (matches.length > 1) {
-            // Multiple matches — ask user to be more specific
             const lines = matches.map((f: any, i: number) => {
               const hN = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name) || '?'
               const aN = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name) || '?'
@@ -245,51 +246,19 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
   }
 
-  // Build context for LLM
-  let availableFixtures: any[] | null = null
-  if (session?.home_team || session?.away_team) {
-    const today = new Date().toISOString().split('T')[0]
-    const { data: fixtures } = await supabase
-      .from('fixtures')
-      .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
-      .eq('scheduled_date', today).eq('status', 'scheduled')
-      .order('matchday', { ascending: true })
-    availableFixtures = (fixtures as any[]) || []
-  }
-
+  // LLM-based correction or confirmation (only for active result sessions)
   const context = buildConversationContext({
     userMessage: text,
     session,
-    availableFixtures,
-    standingsData: null,
-    resultsData: null,
+    availableFixtures: null,
     isManager: true,
   })
 
   const intent = await conversationalReply(CAT_SYSTEM_PROMPT, context)
-  console.log('[webhook] LLM intent:', intent.intent, 'matchedFixtureId:', session?.matched_fixture_id, 'scores:', session?.home_score, session?.away_score)
 
   switch (intent.intent) {
     case 'confirm': {
       if (!session) { await sendTextMessage(from, intent.reply, phoneNumberId); return }
-
-      // If LLM selected a fixture by number, update session with matched fixture
-      if (!session.matched_fixture_id && intent.fixtureChoice != null && availableFixtures?.length) {
-        const idx = intent.fixtureChoice - 1
-        const chosen = availableFixtures[idx]
-        if (chosen) {
-          console.log('[webhook] LLM selected fixture:', chosen.id, 'via choice:', intent.fixtureChoice)
-          await upsertSession({
-            phone_number: from,
-            matched_fixture_id: chosen.id,
-            home_team: session.home_team || chosen.home_team,
-            away_team: session.away_team || chosen.away_team,
-          })
-          session.matched_fixture_id = chosen.id
-        }
-      }
-
-      // If we have matched fixture + scores, write to DB immediately
       if (session.matched_fixture_id && session.home_score !== null && session.away_score !== null) {
         await writeResultToDb(from, session, supabase, phoneNumberId); return
       }
@@ -309,48 +278,6 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await sendTextMessage(from, intent.reply, phoneNumberId)
       return
     }
-    case 'query_fixtures': {
-      const today = new Date().toISOString().split('T')[0]
-      const { data: fixtures } = await supabase
-        .from('fixtures')
-        .select('id, matchday, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
-        .eq('scheduled_date', today).eq('status', 'scheduled').order('matchday')
-      if (!fixtures?.length) { await sendTextMessage(from, "No games scheduled for today.", phoneNumberId); return }
-      const lines = (fixtures as any[]).map((f) => {
-        const hN = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name) || '?'
-        const aN = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name) || '?'
-        return `${hN} vs ${aN}`
-      })
-      await sendTextMessage(from, `Today's fixtures:\n\n${lines.join('\n')}`, phoneNumberId)
-      return
-    }
-    case 'query_standings': {
-      const { data: standings } = await supabase
-        .from('standings').select('team:teams(name), played, wins, draws, losses, goals_for, goals_against, points')
-        .order('points', { ascending: false }).order('goal_difference', { ascending: false }).limit(5)
-      if (!standings?.length) { await sendTextMessage(from, "No standings yet.", phoneNumberId); return }
-      const lines = (standings as any[]).map((s, i) => {
-        const team = Array.isArray(s.team) ? s.team[0]?.name : s.team?.name
-        return `${i + 1}. ${team} — ${s.played}P ${s.wins}W ${s.draws}D ${s.losses}L · GF:${s.goals_for} GA:${s.goals_against} · ${s.points}pts`
-      })
-      await sendTextMessage(from, `Top of the table:\n\n${lines.join('\n')}`, phoneNumberId)
-      return
-    }
-    case 'query_results': {
-      const { data: results } = await supabase
-        .from('results').select('home_score, away_score, fixture:fixtures(home_team:teams(name), away_team:teams(name)), created_at')
-        .order('created_at', { ascending: false }).limit(5)
-      if (!results?.length) { await sendTextMessage(from, "No results yet.", phoneNumberId); return }
-      const lines = (results as any[]).map((r) => {
-        const f = Array.isArray(r.fixture) ? r.fixture[0] : r.fixture
-        const hN = Array.isArray(f?.home_team) ? f.home_team[0]?.name : f?.home_team?.name
-        const aN = Array.isArray(f?.away_team) ? f.away_team[0]?.name : f?.away_team?.name
-        return `${hN} ${r.home_score}-${r.away_score} ${aN}`
-      })
-      await sendTextMessage(from, `Latest results:\n\n${lines.join('\n')}`, phoneNumberId)
-      return
-    }
-    case 'cancel': { await clearSession(from); await sendTextMessage(from, intent.reply, phoneNumberId); return }
     default: { await sendTextMessage(from, intent.reply, phoneNumberId); return }
   }
 }
@@ -402,13 +329,11 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     if (homeScore !== null) textScoreSource = 'ocr-parsed'
   }
 
-  // Always use OCR parsed stats as fallback (even if AI got scores but not stats)
   if (!matchStats && ocrResult?.stats && Object.keys(ocrResult.stats).length > 0) {
     console.log('[webhook] using OCR parsed stats as fallback, count:', Object.keys(ocrResult.stats).length)
     matchStats = ocrResult.stats
   }
 
-  // Cross-validate: always try vision to verify scores from text extraction
   let visionScoreSource: string | null = null
   try {
     console.log('[webhook] trying Gemini vision for cross-validation')
@@ -419,7 +344,6 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
         if (!invalidReason) invalidReason = geminiResult.reason || null
       } else {
         visionScoreSource = 'gemini-vision'
-        // If vision got scores and they differ from text extraction, prefer vision
         if (geminiResult.homeScore != null && geminiResult.awayScore != null) {
           if (homeScore !== null && awayScore !== null &&
               (homeScore !== geminiResult.homeScore || awayScore !== geminiResult.awayScore)) {
@@ -428,7 +352,6 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
           homeScore = geminiResult.homeScore; awayScore = geminiResult.awayScore
         }
         homeTeam = geminiResult.homeTeam || homeTeam; awayTeam = geminiResult.awayTeam || awayTeam
-        // Prefer vision stats if text extraction had none
         if (!matchStats && geminiResult.matchStats) matchStats = geminiResult.matchStats
       }
     }
@@ -437,17 +360,15 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
   console.log('[webhook] final - team:', homeTeam, awayTeam, 'score:', homeScore, awayScore, 'source:', visionScoreSource || textScoreSource || 'none', 'statsKeys:', matchStats ? Object.keys(matchStats).join(',') : 'none')
 
   if (invalidReason) { await sendTextMessage(from, `Yoh, this doesn't look like a match result — ${invalidReason}.`, phoneNumberId); return }
-  if (homeScore === null || awayScore === null) { await sendTextMessage(from, "Sorry, I couldn't read the scores.", phoneNumberId); return }
+  if (homeScore === null || awayScore === null) { await sendTextMessage(from, "Sorry, I couldn't read the scores. Send a screenshot of the Full Time result screen.", phoneNumberId); return }
 
   const supabase = await createAdminClient()
 
-  // Keyword-based fixture matching (same logic as admin ResultSubmitClient search)
   const searchWords = [homeTeam, awayTeam]
     .filter(Boolean)
     .flatMap((name) => name!.toLowerCase().split(/\s+/))
     .filter((w) => w.length >= 2)
 
-  // Search today's fixtures for a match
   const today = new Date().toISOString().split('T')[0]
   const { data: todayFixtures } = await supabase
     .from('fixtures')
@@ -470,14 +391,12 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     return searchWords.some((w) => combined.includes(w))
   }
 
-  // Try keyword match — all OCR words must appear in fixture name
   let matchedFixture: any = null
   if (searchWords.length > 0) {
     const keywordMatches = fixtures.filter(fixtureMatchesAllWords)
     if (keywordMatches.length === 1) {
       matchedFixture = keywordMatches[0]
     } else if (keywordMatches.length > 1) {
-      // Multiple keyword matches — prefer exact team pair if possible
       const homeWords = (homeTeam || '').toLowerCase().split(/\s+/).filter((w: string) => w.length >= 2)
       const awayWords = (awayTeam || '').toLowerCase().split(/\s+/).filter((w: string) => w.length >= 2)
       matchedFixture = keywordMatches.find((f: any) => {
@@ -494,7 +413,6 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     const hName = (Array.isArray(matchedFixture.home_team) ? matchedFixture.home_team[0]?.name : matchedFixture.home_team?.name) || homeTeam || '?'
     const aName = (Array.isArray(matchedFixture.away_team) ? matchedFixture.away_team[0]?.name : matchedFixture.away_team?.name) || awayTeam || '?'
 
-    // Auto-swap: if OCR team order is flipped vs fixture, swap scores + stats
     const fixtureHomeLower = hName.toLowerCase()
     const fixtureAwayLower = aName.toLowerCase()
     const ocrHomeLower = (homeTeam || '').toLowerCase()
@@ -524,11 +442,10 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
 
     const statsBlock = formatStatsBlock(matchStats)
     console.log('[webhook] keyword matched fixture:', hName, 'vs', aName, 'words:', searchWords)
-    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are on the wrong side. Type CANCEL to start again.`, phoneNumberId)
+    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side.`, phoneNumberId)
     return
   }
 
-  // No match found — narrow list to fixtures matching ANY word, or show all
   let displayFixtures = fixtures
   if (searchWords.length > 0) {
     const partialMatches = fixtures.filter(fixtureMatchesAnyWord)
@@ -610,7 +527,6 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   const adminUserId = await getAdminUserId(supabase)
   console.log('[webhook] admin user celemqhele id:', adminUserId || 'NOT FOUND')
 
-  // Write to result_confirmations (audit trail, submitted by admin)
   const { error: rcErr } = await supabase
     .from('result_confirmations')
     .insert({
@@ -621,7 +537,6 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     })
   if (rcErr) console.error('[webhook] confirmations insert failed:', rcErr.message)
 
-  // Upsert into results table (triggers standings update via DB trigger)
   const { data: resultRow, error: resultErr } = await supabase
     .from('results')
     .upsert({
@@ -634,7 +549,6 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     .maybeSingle()
   if (resultErr) console.error('[webhook] results upsert failed:', resultErr.message)
 
-  // Write match_stats if we have them and got a result ID
   const dbStats = matchStatsToDbColumns(session.match_stats)
   if (resultRow?.id && dbStats) {
     const { error: statsErr } = await supabase
@@ -644,7 +558,6 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     else console.log('[webhook] match_stats written for result:', resultRow.id)
   }
 
-  // Update fixture status
   const { error: fixtureErr } = await supabase
     .from('fixtures')
     .update({ status: 'confirmed' })

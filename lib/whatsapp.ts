@@ -28,7 +28,6 @@ export async function verifyPin(
   if (data.locked_until) {
     const lock = new Date(data.locked_until)
     if (lock > new Date()) return 'locked'
-    // Lock expired — reset
     await supabase
       .from('manager_pins')
       .update({ failed_attempts: 0, locked_until: null, updated_at: new Date().toISOString() })
@@ -384,10 +383,9 @@ Rules:
 
 export interface ConversationIntent {
   reply: string
-  intent: 'confirm' | 'correct' | 'select_fixture' | 'query_fixtures' | 'query_standings' | 'query_results' | 'cancel' | 'help' | 'unknown'
+  intent: 'confirm' | 'correct' | 'unknown'
   corrections?: { homeScore: number | null; awayScore: number | null; homeTeam: string | null; awayTeam: string | null } | null
   fixtureChoice?: number | null
-  queryRequest?: 'fixtures' | 'standings' | 'results' | null
 }
 
 export async function conversationalReply(
@@ -452,7 +450,7 @@ export async function conversationalReply(
 
   return {
     reply: "Sorry bru, I'm having a brain freeze right now. Can you try again?",
-    intent: 'unknown' as const,
+    intent: 'unknown',
   }
 }
 
@@ -460,17 +458,16 @@ function parseIntent(text: string): ConversationIntent {
   try {
     const parsed = JSON.parse(text)
     return {
-      reply: parsed.reply || "Ja, what's up?",
+      reply: parsed.reply || "I only help with submitting match results. Send a screenshot of your result screen.",
       intent: parsed.intent || 'unknown',
       corrections: parsed.corrections || null,
       fixtureChoice: typeof parsed.fixtureChoice === 'number' ? parsed.fixtureChoice : null,
-      queryRequest: parsed.queryRequest || null,
     }
   } catch {
     console.error('[conversationalReply] failed to parse LLM output:', text)
     return {
-      reply: text.slice(0, 500) || "Sorry, I didn't understand that. Can you try again?",
-      intent: 'unknown' as const,
+      reply: "I only help with submitting match results. Send a screenshot of your result screen.",
+      intent: 'unknown',
     }
   }
 }
