@@ -13,6 +13,7 @@ import {
 import { parseScreenshot } from '@/lib/screenshot-parser'
 import { createAdminClient } from '@/lib/supabase/server'
 import { CAT_SYSTEM_PROMPT, buildConversationContext, formatStatsBlock } from '@/lib/system-prompt'
+import { sendPushToUsers } from '@/lib/push'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
@@ -667,4 +668,27 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   console.log('[webhook] result written:', { fixture_id: session.matched_fixture_id, home_score: session.home_score, away_score: session.away_score, submitted_by: adminUserId })
   await clearSession(from)
   await sendTextMessage(from, 'Result submitted!\n\nCheck your standings here: https://efa-fxyk.vercel.app/standings', phoneNumberId)
+
+  // Send push notification to admin
+  if (adminUserId) {
+    try {
+      const { data: fixture } = await supabase
+        .from('fixtures')
+        .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+        .eq('id', session.matched_fixture_id)
+        .single()
+      if (fixture) {
+        const hName = ((Array.isArray(fixture.home_team) ? fixture.home_team[0]?.name : fixture.home_team?.name) || 'Home')
+        const aName = ((Array.isArray(fixture.away_team) ? fixture.away_team[0]?.name : fixture.away_team?.name) || 'Away')
+        await sendPushToUsers(supabase, [adminUserId], {
+          title: 'Result Confirmed',
+          body: `${hName} ${session.home_score}–${session.away_score} ${aName}`,
+          url: `/fixtures/${session.matched_fixture_id}`,
+          tag: `result-${session.matched_fixture_id}`,
+        })
+      }
+    } catch (e) {
+      console.error('[webhook] admin push notification failed:', e)
+    }
+  }
 }
