@@ -151,6 +151,19 @@ export async function fetchImageBytes(mediaUrl: string): Promise<{ buffer: Buffe
   return { buffer, mimeType }
 }
 
+export async function normalizeToLandscape(buffer: Buffer): Promise<Buffer> {
+  const sharp = (await import('sharp')).default
+  const meta = await sharp(buffer).metadata()
+  const w = meta.width ?? 0
+  const h = meta.height ?? 0
+
+  if (h > w) {
+    return sharp(buffer).rotate(90).toBuffer()
+  }
+
+  return sharp(buffer).rotate().toBuffer()
+}
+
 export async function sendTextMessage(to: string, body: string, phoneNumberId: string): Promise<void> {
   const res = await fetch(`${GRAPH_API}/${phoneNumberId}/messages`, {
     method: 'POST',

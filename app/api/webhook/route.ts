@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   getMediaUrl,
   fetchImageBytes,
+  normalizeToLandscape,
   sendTextMessage,
   analyzeScreenshot,
   cleanOcrText,
@@ -86,6 +87,25 @@ async function clearSession(phoneNumber: string) {
 
 // ─── Text handler ⸺ only handles confirm/correct responses to ongoing result flow ──
 
+function fixtureTeamName(f: any, side: 'home' | 'away'): string {
+  const raw = side === 'home' ? f.home_team : f.away_team
+  return (Array.isArray(raw) ? raw[0]?.name : raw?.name) || '?'
+}
+
+function formatFixtureLine(f: any, index: number): string {
+  const hN = fixtureTeamName(f, 'home')
+  const aN = fixtureTeamName(f, 'away')
+  const result = Array.isArray(f.results) ? f.results[0] : f.results
+  if (result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation')) {
+    return `${index + 1}. ${hN} ${result.home_score} - ${result.away_score} ${aN} (FULL TIME)`
+  }
+  return `${index + 1}. ${hN} vs ${aN}`
+}
+
+function isFixtureConfirmed(f: any): boolean {
+  return f.status === 'confirmed' || f.status === 'awaiting_confirmation'
+}
+
 async function handleText(from: string, msg: { text: { body: string } }, phoneNumberId: string) {
   const text = (msg.text.body || '').trim()
   console.log(`[webhook] text: "${text}"`)
@@ -99,6 +119,14 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   }
 
   const supabase = await createAdminClient()
+
+  // CANCEL — always works regardless of flow state
+  if (/^cancel$/i.test(text.trim())) {
+    console.log('[webhook] user CANCEL')
+    await clearSession(from)
+    await sendTextMessage(from, "No stress. Send a new screenshot when you're ready.", phoneNumberId)
+    return
+  }
 
   // Direct bypass: if session has matched_fixture_id and user says anything affirmative, write to DB
   if (session.matched_fixture_id && session.home_score !== null && session.away_score !== null) {
@@ -136,6 +164,14 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
   }
 
+  // CANCEL from any state in the flow
+  if (/^cancel$/i.test(text.trim())) {
+    console.log('[webhook] user CANCEL')
+    await clearSession(from)
+    await sendTextMessage(from, "No stress. Send a new screenshot when you're ready.", phoneNumberId)
+    return
+  }
+
   // Direct number selection: if user sends a number and has pending scores, match fixture
   if (session && session.home_score !== null && session.away_score !== null && !session.matched_fixture_id) {
     const num = parseInt(text.trim(), 10)
@@ -145,8 +181,9 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         const today = new Date().toISOString().split('T')[0]
         const { data: todayFixtures } = await supabase
           .from('fixtures')
-          .select('id')
-          .eq('scheduled_date', today).eq('status', 'scheduled')
+          .select('id, status')
+          .eq('scheduled_date', today)
+          .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
           .order('matchday', { ascending: true })
         fixtureIds = (todayFixtures as any[])?.map((f) => f.id) || null
       }
@@ -155,7 +192,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         const chosenId = fixtureIds[num - 1]
         const { data: chosenFixture } = await supabase
           .from('fixtures')
-          .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+          .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
           .eq('id', chosenId)
           .single()
 
@@ -164,6 +201,17 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           const hName = (Array.isArray(cf.home_team) ? cf.home_team[0]?.name : cf.home_team?.name) || '?'
           const aName = (Array.isArray(cf.away_team) ? cf.away_team[0]?.name : cf.away_team?.name) || '?'
           console.log('[webhook] direct number select:', num, '→ fixture:', chosenId, hName, 'vs', aName)
+
+          if (isFixtureConfirmed(cf)) {
+            const result = Array.isArray(cf.results) ? cf.results[0] : cf.results
+            if (result) {
+              await sendTextMessage(from, `${hName} ${result.home_score} - ${result.away_score} ${aName} (FULL TIME)\n\nThis result is already confirmed.`, phoneNumberId)
+            } else {
+              await sendTextMessage(from, `${hName} vs ${aName}\n\nThis fixture is already confirmed but has no score recorded. Contact an admin.`, phoneNumberId)
+            }
+            await clearSession(from)
+            return
+          }
 
           await upsertSession({
             phone_number: from,
@@ -176,7 +224,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           })
 
           const statsBlock = formatStatsBlock(session.match_stats)
-          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side.`, phoneNumberId)
+          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.`, phoneNumberId)
           return
         }
       }
@@ -194,8 +242,9 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           const today = new Date().toISOString().split('T')[0]
           const { data: todayFixtures } = await supabase
             .from('fixtures')
-            .select('id')
-            .eq('scheduled_date', today).eq('status', 'scheduled')
+            .select('id, status')
+            .eq('scheduled_date', today)
+            .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
             .order('matchday', { ascending: true })
           fixtureIds = (todayFixtures as any[])?.map((f: any) => f.id) || null
         }
@@ -203,7 +252,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         if (fixtureIds && fixtureIds.length > 0) {
           const { data: candidateFixtures } = await supabase
             .from('fixtures')
-            .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+            .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
             .in('id', fixtureIds)
 
           const matches = ((candidateFixtures as any[]) || []).filter((f: any) => {
@@ -213,11 +262,36 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             return words.every((w: string) => combined.includes(w))
           })
 
-          if (matches.length === 1) {
-            const chosen = matches[0]
-            const hName = (Array.isArray(chosen.home_team) ? chosen.home_team[0]?.name : chosen.home_team?.name) || '?'
-            const aName = (Array.isArray(chosen.away_team) ? chosen.away_team[0]?.name : chosen.away_team?.name) || '?'
+          let finalMatches = matches
+          if (finalMatches.length !== 1) {
+            const oneTeamMatches = ((candidateFixtures as any[]) || []).filter((f: any) => {
+              const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+              const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+              const input = lowerText.trim()
+              return input.length >= 3 && (
+                hName.includes(input) || input.includes(hName) ||
+                aName.includes(input) || input.includes(aName)
+              )
+            })
+            if (oneTeamMatches.length >= 1) finalMatches = oneTeamMatches
+          }
+
+          if (finalMatches.length === 1) {
+            const chosen = finalMatches[0]
+            const hName = fixtureTeamName(chosen, 'home')
+            const aName = fixtureTeamName(chosen, 'away')
             console.log('[webhook] text matched fixture:', hName, 'vs', aName, 'words:', words)
+
+            if (isFixtureConfirmed(chosen)) {
+              const result = Array.isArray(chosen.results) ? chosen.results[0] : chosen.results
+              if (result) {
+                await sendTextMessage(from, `${hName} ${result.home_score} - ${result.away_score} ${aName} (FULL TIME)\n\nThis result is already confirmed.`, phoneNumberId)
+              } else {
+                await sendTextMessage(from, `${hName} vs ${aName}\n\nThis fixture is already confirmed but has no score recorded. Contact an admin.`, phoneNumberId)
+              }
+              await clearSession(from)
+              return
+            }
 
             await upsertSession({
               phone_number: from,
@@ -230,15 +304,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             })
 
             const statsBlock = formatStatsBlock(session.match_stats)
-            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side.`, phoneNumberId)
+            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.`, phoneNumberId)
             return
-          } else if (matches.length > 1) {
-            const lines = matches.map((f: any, i: number) => {
-              const hN = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name) || '?'
-              const aN = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name) || '?'
-              return `${i + 1}. ${hN} vs ${aN}`
-            })
-            await sendTextMessage(from, `Found ${matches.length} matches, be more specific:\n\n${lines.join('\n')}\n\nReply with the number or type both team names.`, phoneNumberId)
+          } else if (finalMatches.length > 1) {
+            const lines = finalMatches.map((f: any, i: number) => formatFixtureLine(f, i))
+            await sendTextMessage(from, `Found ${finalMatches.length} matches, be more specific:\n\n${lines.join('\n')}\n\nReply with the number or type both team names.`, phoneNumberId)
             return
           }
         }
@@ -289,8 +359,9 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
 
   const imageId = msg.image.id
   const mediaUrl = await getMediaUrl(imageId)
-  const { buffer, mimeType } = await fetchImageBytes(mediaUrl)
-  console.log(`[webhook] downloaded ${buffer.length} bytes`)
+  const { buffer: rawBuffer, mimeType } = await fetchImageBytes(mediaUrl)
+  const buffer = await normalizeToLandscape(rawBuffer)
+  console.log(`[webhook] downloaded ${rawBuffer.length} bytes, normalized to ${buffer.length} bytes`)
 
   let ocrResult: Awaited<ReturnType<typeof parseScreenshot>> | null = null
   try { ocrResult = await parseScreenshot(buffer) } catch {}
@@ -372,8 +443,9 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
   const today = new Date().toISOString().split('T')[0]
   const { data: todayFixtures } = await supabase
     .from('fixtures')
-    .select('id, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
-    .eq('scheduled_date', today).eq('status', 'scheduled').order('matchday')
+    .select('id, home_team_id, away_team_id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
+    .eq('scheduled_date', today).order('matchday')
 
   const fixtures = (todayFixtures as any[]) || []
 
@@ -389,6 +461,15 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
     const combined = `${hName} vs ${aName}`
     return searchWords.some((w) => combined.includes(w))
+  }
+
+  function fixtureMatchesOneTeamName(f: any): boolean {
+    const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+    const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+    const homeInput = (homeTeam || '').toLowerCase().trim()
+    const awayInput = (awayTeam || '').toLowerCase().trim()
+    return (homeInput.length >= 3 && (hName.includes(homeInput) || homeInput.includes(hName) || aName.includes(homeInput) || homeInput.includes(aName))) ||
+           (awayInput.length >= 3 && (hName.includes(awayInput) || awayInput.includes(hName) || aName.includes(awayInput) || awayInput.includes(aName)))
   }
 
   let matchedFixture: any = null
@@ -407,11 +488,29 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
         return (homeSideMatch && awaySideMatch) || (homeWords.every((w: string) => aName.includes(w)) && awayWords.every((w: string) => hName.includes(w)))
       }) || null
     }
+
+    if (!matchedFixture) {
+      const oneTeamMatches = fixtures.filter(fixtureMatchesOneTeamName)
+      if (oneTeamMatches.length === 1) {
+        matchedFixture = oneTeamMatches[0]
+      }
+    }
   }
 
   if (matchedFixture) {
-    const hName = (Array.isArray(matchedFixture.home_team) ? matchedFixture.home_team[0]?.name : matchedFixture.home_team?.name) || homeTeam || '?'
-    const aName = (Array.isArray(matchedFixture.away_team) ? matchedFixture.away_team[0]?.name : matchedFixture.away_team?.name) || awayTeam || '?'
+    const hName = fixtureTeamName(matchedFixture, 'home')
+    const aName = fixtureTeamName(matchedFixture, 'away')
+
+    if (isFixtureConfirmed(matchedFixture)) {
+      const result = Array.isArray(matchedFixture.results) ? matchedFixture.results[0] : matchedFixture.results
+      if (result) {
+        await sendTextMessage(from, `${hName} ${result.home_score} - ${result.away_score} ${aName} (FULL TIME)\n\nThis result is already confirmed.`, phoneNumberId)
+      } else {
+        await sendTextMessage(from, `${hName} vs ${aName}\n\nThis fixture is already confirmed but has no score recorded. Contact an admin.`, phoneNumberId)
+      }
+      await clearSession(from)
+      return
+    }
 
     const fixtureHomeLower = hName.toLowerCase()
     const fixtureAwayLower = aName.toLowerCase()
@@ -442,14 +541,19 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
 
     const statsBlock = formatStatsBlock(matchStats)
     console.log('[webhook] keyword matched fixture:', hName, 'vs', aName, 'words:', searchWords)
-    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side.`, phoneNumberId)
+    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.`, phoneNumberId)
     return
   }
 
   let displayFixtures = fixtures
   if (searchWords.length > 0) {
-    const partialMatches = fixtures.filter(fixtureMatchesAnyWord)
-    if (partialMatches.length > 0) displayFixtures = partialMatches
+    const partialMatches = fixtures.filter(fixtureMatchesOneTeamName)
+    if (partialMatches.length > 0) {
+      displayFixtures = partialMatches
+    } else {
+      const anyWordMatches = fixtures.filter(fixtureMatchesAnyWord)
+      if (anyWordMatches.length > 0) displayFixtures = anyWordMatches
+    }
   }
 
   await upsertSession({
@@ -460,17 +564,13 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
   })
 
   if (displayFixtures.length > 0) {
-    const lines = displayFixtures.map((f: any, i: number) => {
-      const hN = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name) || '?'
-      const aN = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name) || '?'
-      return `${i + 1}. ${hN} vs ${aN}`
-    })
+    const lines = displayFixtures.map((f: any, i: number) => formatFixtureLine(f, i))
     const intro = searchWords.length > 0
       ? `Couldn't auto-match exactly, but here are fixtures involving ${homeTeam || '?'} or ${awayTeam || '?'}:`
       : "Couldn't auto-match. Today's fixtures:"
-    await sendTextMessage(from, `${intro}\n\n${lines.join('\n')}\n\nReply with the number of your match.`, phoneNumberId)
+    await sendTextMessage(from, `${intro}\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
   } else {
-    await sendTextMessage(from, `No scheduled fixtures found for today. Your result has been saved — contact an admin to match it.`, phoneNumberId)
+    await sendTextMessage(from, `No fixtures found for today. Your result has been saved — contact an admin to match it.`, phoneNumberId)
     await clearSession(from)
   }
 }
