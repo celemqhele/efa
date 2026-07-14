@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'userIds and payload required' }, { status: 400 })
   }
 
-  const supabase = createAdminClient()
+  const supabase = await createAdminClient()
   const payload: PushPayload = body.payload
   const results = await sendPushToUsers(supabase, body.userIds, payload)
 
