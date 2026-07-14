@@ -285,14 +285,27 @@ export async function POST(request: Request) {
   }
 
   // Mark fixture confirmed
-  const { error: fixtureStatusErr } = await adminSupabase
+  // NOTE: The on_result_insert trigger (migration 003) already sets
+  // fixtures.status = 'confirmed' when the result is upserted above.
+  // We verify it was set rather than doing a redundant update that
+  // re-fires the on_fixture_confirmed trigger and hits PostgREST errors.
+  const { data: verifyFixture, error: verifyErr } = await adminSupabase
     .from('fixtures')
-    .update({ status: 'confirmed' })
+    .select('status')
     .eq('id', fixture_id)
+    .single()
 
-  if (fixtureStatusErr) {
-    console.error('[finalise-result] fixture status update failed:', fixtureStatusErr.message)
-    return Response.json({ error: `Result saved but failed to confirm fixture: ${fixtureStatusErr.message}` }, { status: 500 })
+  if (verifyErr || verifyFixture?.status !== 'confirmed') {
+    console.error('[finalise-result] fixture not confirmed after result upsert, status:', verifyFixture?.status, 'error:', verifyErr?.message)
+    // Attempt direct update as fallback
+    const { error: fallbackErr } = await adminSupabase
+      .from('fixtures')
+      .update({ status: 'confirmed' })
+      .eq('id', fixture_id)
+    if (fallbackErr) {
+      console.error('[finalise-result] fallback fixture status update failed:', fallbackErr.message)
+      return Response.json({ error: `Result saved but failed to confirm fixture: ${fallbackErr.message}` }, { status: 500 })
+    }
   }
 
   // ── Forfeit balance tracking ─────────────────────────────────────────────

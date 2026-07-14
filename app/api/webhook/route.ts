@@ -664,15 +664,25 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     else console.log('[webhook] match_stats written for result:', resultRow.id)
   }
 
-  const { error: fixtureErr } = await supabase
+  // Verify fixture was confirmed by the on_result_insert trigger (migration 003)
+  const { data: verifyFixture } = await supabase
     .from('fixtures')
-    .update({ status: 'confirmed' })
+    .select('status')
     .eq('id', session.matched_fixture_id)
-  if (fixtureErr) {
-    console.error('[webhook] fixture status update failed:', fixtureErr.message)
-    await clearSession(from)
-    await sendTextMessage(from, 'Result was saved but failed to confirm the fixture. Please ask the admin to re-submit.', phoneNumberId)
-    return
+    .single()
+
+  if (verifyFixture?.status !== 'confirmed') {
+    // Fallback: try explicit update
+    const { error: fixtureErr } = await supabase
+      .from('fixtures')
+      .update({ status: 'confirmed' })
+      .eq('id', session.matched_fixture_id)
+    if (fixtureErr) {
+      console.error('[webhook] fixture status update failed:', fixtureErr.message)
+      await clearSession(from)
+      await sendTextMessage(from, 'Result was saved but failed to confirm the fixture. Please ask the admin to re-submit.', phoneNumberId)
+      return
+    }
   }
 
   console.log('[webhook] result written:', { fixture_id: session.matched_fixture_id, home_score: session.home_score, away_score: session.away_score, submitted_by: adminUserId })
