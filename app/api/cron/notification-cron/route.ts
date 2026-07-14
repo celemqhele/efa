@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const supabase = createAdminClient()
+  const supabase = await createAdminClient()
   const result = await runNotificationCron(supabase, type as typeof VALID_TYPES[number])
   return NextResponse.json(result)
 }
