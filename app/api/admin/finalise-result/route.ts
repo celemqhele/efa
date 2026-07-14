@@ -285,10 +285,15 @@ export async function POST(request: Request) {
   }
 
   // Mark fixture confirmed
-  await adminSupabase
+  const { error: fixtureStatusErr } = await adminSupabase
     .from('fixtures')
     .update({ status: 'confirmed' })
     .eq('id', fixture_id)
+
+  if (fixtureStatusErr) {
+    console.error('[finalise-result] fixture status update failed:', fixtureStatusErr.message)
+    return Response.json({ error: `Result saved but failed to confirm fixture: ${fixtureStatusErr.message}` }, { status: 500 })
+  }
 
   // ── Forfeit balance tracking ─────────────────────────────────────────────
   if (home_forfeit || away_forfeit) {

@@ -648,7 +648,12 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     }, { onConflict: 'fixture_id' })
     .select('id')
     .maybeSingle()
-  if (resultErr) console.error('[webhook] results upsert failed:', resultErr.message)
+  if (resultErr || !resultRow) {
+    console.error('[webhook] results upsert failed:', resultErr?.message ?? 'no row returned')
+    await clearSession(from)
+    await sendTextMessage(from, 'Failed to save the result. Please try again or ask the admin to submit via the dashboard.', phoneNumberId)
+    return
+  }
 
   const dbStats = matchStatsToDbColumns(session.match_stats)
   if (resultRow?.id && dbStats) {
@@ -663,7 +668,12 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     .from('fixtures')
     .update({ status: 'confirmed' })
     .eq('id', session.matched_fixture_id)
-  if (fixtureErr) console.error('[webhook] fixture status update failed:', fixtureErr.message)
+  if (fixtureErr) {
+    console.error('[webhook] fixture status update failed:', fixtureErr.message)
+    await clearSession(from)
+    await sendTextMessage(from, 'Result was saved but failed to confirm the fixture. Please ask the admin to re-submit.', phoneNumberId)
+    return
+  }
 
   console.log('[webhook] result written:', { fixture_id: session.matched_fixture_id, home_score: session.home_score, away_score: session.away_score, submitted_by: adminUserId })
   await clearSession(from)

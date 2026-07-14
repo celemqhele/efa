@@ -1,6 +1,7 @@
 -- Admin result notification trigger
 -- Fires when a fixture's status changes to 'confirmed'
 -- Inserts in-app notifications for all admin users
+-- Wrapped in EXCEPTION block so notification failures never roll back the UPDATE
 
 CREATE OR REPLACE FUNCTION notify_admin_on_fixture_confirmed()
 RETURNS TRIGGER AS $$
@@ -27,22 +28,27 @@ BEGIN
   END IF;
 
   -- Insert notification for each admin
-  FOR v_admin_id IN
-    SELECT id FROM profiles WHERE role = 'admin'
-  LOOP
-    INSERT INTO notifications (user_id, type, title, body, data)
-    VALUES (
-      v_admin_id,
-      'result_confirmed',
-      'Result Confirmed',
-      v_result.home_name || ' ' || v_result.home_score || '–' || v_result.away_score || ' ' || v_result.away_name,
-      jsonb_build_object(
-        'fixture_id', NEW.id,
-        'home_score', v_result.home_score,
-        'away_score', v_result.away_score
-      )
-    );
-  END LOOP;
+  -- Wrapped in EXCEPTION so a notifications failure never blocks the fixture update
+  BEGIN
+    FOR v_admin_id IN
+      SELECT id FROM profiles WHERE role = 'admin'
+    LOOP
+      INSERT INTO notifications (user_id, type, title, body, data)
+      VALUES (
+        v_admin_id,
+        'result_confirmed',
+        'Result Confirmed',
+        v_result.home_name || ' ' || v_result.home_score || '–' || v_result.away_score || ' ' || v_result.away_name,
+        jsonb_build_object(
+          'fixture_id', NEW.id,
+          'home_score', v_result.home_score,
+          'away_score', v_result.away_score
+        )
+      );
+    END LOOP;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Failed to insert admin notification for fixture %: %', NEW.id, SQLERRM;
+  END;
 
   RETURN NEW;
 END;
