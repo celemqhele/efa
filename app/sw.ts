@@ -8,7 +8,7 @@ declare global {
   }
 }
 
-declare const self: WorkerGlobalScope
+declare const self: any
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
@@ -20,7 +20,7 @@ const serwist = new Serwist({
 
 serwist.addEventListeners()
 
-self.addEventListener('push', (event) => {
+self.addEventListener('push', (event: any) => {
   if (!event.data) return
   const data = event.data.json()
   event.waitUntil(
@@ -33,11 +33,11 @@ self.addEventListener('push', (event) => {
   )
 })
 
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener('notificationclick', (event: any) => {
   event.notification.close()
   const url = event.notification.data?.url || '/'
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients: any[]) => {
       for (const client of clients) {
         if ('focus' in client && client.url.includes(self.location.origin)) {
           client.postMessage({ type: 'navigate', url })
