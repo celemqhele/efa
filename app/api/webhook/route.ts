@@ -14,6 +14,8 @@ import { parseScreenshot } from '@/lib/screenshot-parser'
 import { createAdminClient } from '@/lib/supabase/server'
 import { CAT_SYSTEM_PROMPT, buildConversationContext, formatStatsBlock } from '@/lib/system-prompt'
 import { sendPushToUsers } from '@/lib/push'
+import { parseUserDate } from '@/lib/date-parser'
+import { recalculateStandings } from '@/lib/standings-engine'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
@@ -66,6 +68,7 @@ type SessionData = {
   matched_fixture_id: string | null
   screenshot_media_id: string | null
   displayed_fixtures: string[] | null
+  pending_date: string | null
 }
 
 async function getSession(phoneNumber: string): Promise<SessionData | null> {
@@ -98,7 +101,7 @@ function formatFixtureLine(f: any, index: number): string {
   const aN = fixtureTeamName(f, 'away')
   const result = Array.isArray(f.results) ? f.results[0] : f.results
   if (result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation')) {
-    return `${index + 1}. ${hN} ${result.home_score} - ${result.away_score} ${aN} (FULL TIME)`
+    return `${index + 1}. ${hN} ${result.home_score} - ${result.away_score} ${aN} SUBMITTED.`
   }
   return `${index + 1}. ${hN} vs ${aN}`
 }
@@ -134,6 +137,12 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     const lower = text.toLowerCase()
     const affirmative = /^(yes|yeah|yep|y|ok|okay|sure|confirm|correct|right|go ahead|submit|looks good|good|fine|ja)$/i
     if (affirmative.test(lower) || lower.includes('yes') || lower.includes('confirm') || lower.includes('submit')) {
+      // Override flow: if fixture is already submitted, do reset + re-submit
+      if (session.state === 'awaiting_override_confirm') {
+        console.log('[webhook] override confirmed by user, resetting and re-submitting')
+        await resetAndResubmit(from, session, supabase, phoneNumberId)
+        return
+      }
       console.log('[webhook] direct bypass: user affirmed, writing to DB')
       await writeResultToDb(from, session, supabase, phoneNumberId)
       return
@@ -165,11 +174,86 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
   }
 
-  // CANCEL from any state in the flow
-  if (/^cancel$/i.test(text.trim())) {
-    console.log('[webhook] user CANCEL')
-    await clearSession(from)
-    await sendTextMessage(from, "No stress. Send a new screenshot when you're ready.", phoneNumberId)
+  // "check other date" — restart fixture matching with a different date
+  if (/^check other date$/i.test(text.trim())) {
+    if (!session || session.home_score === null) {
+      await sendTextMessage(from, "Send a screenshot first, then I can help you check a different date.", phoneNumberId)
+      return
+    }
+    await upsertSession({ phone_number: from, state: 'awaiting_date', matched_fixture_id: null, displayed_fixtures: null })
+    await sendTextMessage(from, "What date? Type it like \"12 Jul\", \"July 12\", or \"2026-07-12\".", phoneNumberId)
+    return
+  }
+
+  // Date input: user types a date while in awaiting_date state
+  if (session.state === 'awaiting_date') {
+    const parsed = parseUserDate(text)
+    if (!parsed) {
+      await sendTextMessage(from, "Sorry, I didn't catch that. Try something like \"12 Jul\", \"July 12\", or \"2026-07-12\".", phoneNumberId)
+      return
+    }
+    const { dateKey } = parsed
+    const { data: dateFixtures } = await supabase
+      .from('fixtures')
+      .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+      .eq('scheduled_date', dateKey)
+      .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
+      .order('matchday', { ascending: true })
+
+    const fixtures = (dateFixtures as any[]) || []
+    if (fixtures.length === 0) {
+      await sendTextMessage(from, `No fixtures found for ${dateKey}. Try a different date.`, phoneNumberId)
+      return
+    }
+
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_fixture_from_past',
+      pending_date: dateKey,
+      displayed_fixtures: fixtures.map((f: any) => f.id),
+    })
+
+    const lines = fixtures.map((f: any, i: number) => formatFixtureLine(f, i))
+    const dateLabel = parsed.date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+    await sendTextMessage(from, `Fixtures for ${dateLabel}:\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
+    return
+  }
+
+  // Past-date fixture selection: user picks a number from a past date's fixtures
+  if (session.state === 'awaiting_fixture_from_past') {
+    const num = parseInt(text.trim(), 10)
+    if (!isNaN(num) && num > 0 && session.displayed_fixtures && num <= session.displayed_fixtures.length) {
+      const chosenId = session.displayed_fixtures[num - 1]
+      const { data: chosenFixture } = await supabase
+        .from('fixtures')
+        .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+        .eq('id', chosenId)
+        .single()
+
+      if (chosenFixture) {
+        const cf = chosenFixture as any
+        const hName = fixtureTeamName(cf, 'home')
+        const aName = fixtureTeamName(cf, 'away')
+        const isAlreadyConfirmed = isFixtureConfirmed(cf)
+        const statsBlock = formatStatsBlock(session.match_stats)
+        const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
+
+        await upsertSession({
+          phone_number: from,
+          matched_fixture_id: chosenId,
+          home_team: session.home_team,
+          away_team: session.away_team,
+          home_score: session.home_score,
+          away_score: session.away_score,
+          match_stats: session.match_stats,
+          state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
+        })
+
+        await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
+        return
+      }
+    }
+    await sendTextMessage(from, "Please reply with a valid number from the list.", phoneNumberId)
     return
   }
 
@@ -203,16 +287,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           const aName = (Array.isArray(cf.away_team) ? cf.away_team[0]?.name : cf.away_team?.name) || '?'
           console.log('[webhook] direct number select:', num, '→ fixture:', chosenId, hName, 'vs', aName)
 
-          if (isFixtureConfirmed(cf)) {
-            const result = Array.isArray(cf.results) ? cf.results[0] : cf.results
-            if (result) {
-              await sendTextMessage(from, `${hName} ${result.home_score} - ${result.away_score} ${aName} (FULL TIME)\n\nThis result is already confirmed.`, phoneNumberId)
-            } else {
-              await sendTextMessage(from, `${hName} vs ${aName}\n\nThis fixture is already confirmed but has no score recorded. Contact an admin.`, phoneNumberId)
-            }
-            await clearSession(from)
-            return
-          }
+          const isAlreadyConfirmed = isFixtureConfirmed(cf)
 
           await upsertSession({
             phone_number: from,
@@ -222,10 +297,13 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             home_score: session.home_score,
             away_score: session.away_score,
             match_stats: session.match_stats,
+            state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
           })
 
           const statsBlock = formatStatsBlock(session.match_stats)
-          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.`, phoneNumberId)
+          const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
+          const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
+          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.${hint}`, phoneNumberId)
           return
         }
       }
@@ -283,16 +361,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             const aName = fixtureTeamName(chosen, 'away')
             console.log('[webhook] text matched fixture:', hName, 'vs', aName, 'words:', words)
 
-            if (isFixtureConfirmed(chosen)) {
-              const result = Array.isArray(chosen.results) ? chosen.results[0] : chosen.results
-              if (result) {
-                await sendTextMessage(from, `${hName} ${result.home_score} - ${result.away_score} ${aName} (FULL TIME)\n\nThis result is already confirmed.`, phoneNumberId)
-              } else {
-                await sendTextMessage(from, `${hName} vs ${aName}\n\nThis fixture is already confirmed but has no score recorded. Contact an admin.`, phoneNumberId)
-              }
-              await clearSession(from)
-              return
-            }
+            const isAlreadyConfirmed = isFixtureConfirmed(chosen)
 
             await upsertSession({
               phone_number: from,
@@ -302,10 +371,13 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
               home_score: session.home_score,
               away_score: session.away_score,
               match_stats: session.match_stats,
+              state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
             })
 
             const statsBlock = formatStatsBlock(session.match_stats)
-            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.`, phoneNumberId)
+            const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
+            const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
+            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.${hint}`, phoneNumberId)
             return
           } else if (finalMatches.length > 1) {
             const lines = finalMatches.map((f: any, i: number) => formatFixtureLine(f, i))
@@ -331,6 +403,9 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     case 'confirm': {
       if (!session) { await sendTextMessage(from, intent.reply, phoneNumberId); return }
       if (session.matched_fixture_id && session.home_score !== null && session.away_score !== null) {
+        if (session.state === 'awaiting_override_confirm') {
+          await resetAndResubmit(from, session, supabase, phoneNumberId); return
+        }
         await writeResultToDb(from, session, supabase, phoneNumberId); return
       }
       await sendTextMessage(from, intent.reply, phoneNumberId)
@@ -502,17 +577,6 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     const hName = fixtureTeamName(matchedFixture, 'home')
     const aName = fixtureTeamName(matchedFixture, 'away')
 
-    if (isFixtureConfirmed(matchedFixture)) {
-      const result = Array.isArray(matchedFixture.results) ? matchedFixture.results[0] : matchedFixture.results
-      if (result) {
-        await sendTextMessage(from, `${hName} ${result.home_score} - ${result.away_score} ${aName} (FULL TIME)\n\nThis result is already confirmed.`, phoneNumberId)
-      } else {
-        await sendTextMessage(from, `${hName} vs ${aName}\n\nThis fixture is already confirmed but has no score recorded. Contact an admin.`, phoneNumberId)
-      }
-      await clearSession(from)
-      return
-    }
-
     const fixtureHomeLower = hName.toLowerCase()
     const fixtureAwayLower = aName.toLowerCase()
     const ocrHomeLower = (homeTeam || '').toLowerCase()
@@ -534,15 +598,20 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
       }
     }
 
+    const isAlreadyConfirmed = isFixtureConfirmed(matchedFixture)
+
     await upsertSession({
       phone_number: from,
       home_team: homeTeam, away_team: awayTeam, home_score: homeScore, away_score: awayScore,
       match_stats: matchStats, matched_fixture_id: matchedFixture.id, screenshot_media_id: imageId,
+      state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
     })
 
     const statsBlock = formatStatsBlock(matchStats)
+    const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
+    const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
     console.log('[webhook] keyword matched fixture:', hName, 'vs', aName, 'words:', searchWords)
-    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.`, phoneNumberId)
+    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.${hint}`, phoneNumberId)
     return
   }
 
@@ -569,7 +638,7 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     const intro = searchWords.length > 0
       ? `Couldn't auto-match exactly, but here are fixtures involving ${homeTeam || '?'} or ${awayTeam || '?'}:`
       : "Couldn't auto-match. Today's fixtures:"
-    await sendTextMessage(from, `${intro}\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+    await sendTextMessage(from, `${intro}\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
   } else {
     await sendTextMessage(from, `No fixtures found for today. Your result has been saved — contact an admin to match it.`, phoneNumberId)
     await clearSession(from)
@@ -711,4 +780,69 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
       console.error('[webhook] admin push notification failed:', e)
     }
   }
+}
+
+// ─── Reset & re-submit (override flow) ──────────────────────────────────────
+
+const MAX_WHATSAPP_RESETS = 2
+
+async function resetAndResubmit(from: string, session: SessionData, supabase: any, phoneNumberId: string) {
+  if (!session.matched_fixture_id || session.home_score === null || session.away_score === null) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Something went wrong.', phoneNumberId)
+    return
+  }
+
+  // Check reset limit
+  const { data: fixtureRow } = await supabase
+    .from('fixtures')
+    .select('tournament_id, whatsapp_reset_count')
+    .eq('id', session.matched_fixture_id)
+    .single()
+
+  if (!fixtureRow) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Fixture not found. Please try again.', phoneNumberId)
+    return
+  }
+
+  if ((fixtureRow.whatsapp_reset_count || 0) >= MAX_WHATSAPP_RESETS) {
+    console.log('[webhook] reset limit reached for fixture:', session.matched_fixture_id)
+    await clearSession(from)
+    await sendTextMessage(from, 'This match has already been reset twice. Contact admin at 0732509506 for further assistance.', phoneNumberId)
+    return
+  }
+
+  console.log('[webhook] resetting fixture:', session.matched_fixture_id, 'reset count:', (fixtureRow.whatsapp_reset_count || 0) + 1)
+
+  // 1. Delete match_stats for the existing result
+  const { data: existingResult } = await supabase
+    .from('results')
+    .select('id')
+    .eq('fixture_id', session.matched_fixture_id)
+    .maybeSingle()
+
+  if (existingResult) {
+    await supabase.from('match_stats').delete().eq('result_id', existingResult.id)
+    await supabase.from('results').delete().eq('id', existingResult.id)
+  }
+
+  // 2. Delete confirmations
+  await supabase.from('result_confirmations').delete().eq('fixture_id', session.matched_fixture_id)
+
+  // 3. Reset fixture status + increment reset count
+  await supabase
+    .from('fixtures')
+    .update({ status: 'scheduled', whatsapp_reset_count: (fixtureRow.whatsapp_reset_count || 0) + 1 })
+    .eq('id', session.matched_fixture_id)
+
+  // 4. Recalculate standings
+  try {
+    await recalculateStandings(fixtureRow.tournament_id)
+  } catch (e) {
+    console.error('[webhook] standings recalc failed during reset:', e)
+  }
+
+  // 5. Re-submit with the new result
+  await writeResultToDb(from, session, supabase, phoneNumberId)
 }
