@@ -344,8 +344,62 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const allFixtures = (fixtures as any[]) || []
 
-    function teamNameContains(teamName: string, search: string): boolean {
-      return teamName.toLowerCase().includes(search)
+    const TEAM_ALIASES: Record<string, string> = {
+      'utd': 'united', 'man utd': 'manchester united', 'man u': 'manchester united',
+      'barca': 'barcelona',
+      'inter': 'internazionale milan', 'inter milan': 'internazionale milan',
+      'acm': 'ac milan', 'ac m': 'ac milan',
+      'rma': 'real madrid', 'bvb': 'borussia dortmund',
+      'psg': 'paris saint germain', 'bayern': 'bayern munchen',
+      'lfc': 'liverpool', 'mcfc': 'manchester city', 'mufc': 'manchester united',
+      'afc': 'arsenal', 'cfc': 'chelsea',
+    }
+
+    function expandAlias(token: string): string {
+      return TEAM_ALIASES[token] || token
+    }
+
+    function levenshtein(a: string, b: string): number {
+      const m = a.length, n = b.length
+      const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[])
+      for (let i = 0; i <= m; i++) dp[i][0] = i
+      for (let j = 0; j <= n; j++) dp[0][j] = j
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          dp[i][j] = a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+        }
+      }
+      return dp[m][n]
+    }
+
+    function tokenScore(searchToken: string, teamToken: string): number {
+      const s = expandAlias(searchToken)
+      const t = expandAlias(teamToken)
+      if (s === t) return 1.0
+      if (t.includes(s) || s.includes(t)) return 0.9
+      if (t.startsWith(s) || s.startsWith(t)) return 0.85
+      const dist = levenshtein(s, t)
+      const maxLen = Math.max(s.length, t.length)
+      if (maxLen <= 2) return dist === 0 ? 1.0 : 0
+      if (dist <= 2) return 0.7
+      return 0
+    }
+
+    function teamNameScore(search: string, teamName: string): number {
+      const searchTokens = search.split(/\s+/).filter((w: string) => w.length >= 2)
+      const teamTokens = teamName.split(/\s+/).filter((w: string) => w.length >= 2)
+      if (searchTokens.length === 0 || teamTokens.length === 0) return 0
+      let totalScore = 0
+      for (const st of searchTokens) {
+        let best = 0
+        for (const tt of teamTokens) {
+          best = Math.max(best, tokenScore(st, tt))
+        }
+        totalScore += best
+      }
+      return totalScore / searchTokens.length
     }
 
     function fixtureMatches(f: any): boolean {
@@ -353,10 +407,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
       if (teamSearches.length === 2) {
         const s1 = teamSearches[0], s2 = teamSearches[1]
-        return (teamNameContains(hName, s1) && teamNameContains(aName, s2)) ||
-               (teamNameContains(hName, s2) && teamNameContains(aName, s1))
+        const score1 = Math.max(teamNameScore(s1, hName) + teamNameScore(s2, aName),
+                                teamNameScore(s1, aName) + teamNameScore(s2, hName)) / 2
+        return score1 >= 0.7
       }
-      return teamNameContains(hName, teamSearches[0]) || teamNameContains(aName, teamSearches[0])
+      return teamNameScore(teamSearches[0], hName) >= 0.7 || teamNameScore(teamSearches[0], aName) >= 0.7
     }
 
     const matchedFixtures = allFixtures.filter(fixtureMatches)
