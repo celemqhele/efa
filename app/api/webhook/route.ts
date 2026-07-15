@@ -821,12 +821,12 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
   console.log(`[webhook] downloaded ${rawBuffer.length} bytes, normalized to ${buffer.length} bytes`)
 
   const analysis = await analyzeImageBuffer(buffer, mimeType)
-  let homeTeam = analysis.homeTeam
-  let awayTeam = analysis.awayTeam
-  let matchStats = analysis.matchStats
+  const homeTeam = analysis.homeTeam
+  const awayTeam = analysis.awayTeam
+  const matchStats = analysis.matchStats
   const invalidReason = analysis.invalidReason
-  let homeScore = analysis.homeScore
-  let awayScore = analysis.awayScore
+  const homeScore = analysis.homeScore
+  const awayScore = analysis.awayScore
 
   console.log('[webhook] final - team:', homeTeam, awayTeam, 'score:', homeScore, awayScore, 'statsKeys:', matchStats ? Object.keys(matchStats).join(',') : 'none')
 
