@@ -120,7 +120,7 @@ const CLUB_NAMES: Record<string, string> = {
   'schalke-04': 'FC Schalke 04',
   'eintracht-braunschweig': 'Eintracht Braunschweig',
   // Italy
-  'inter': 'Inter Milan',
+  'inter': 'Internazionale',
   'milan': 'AC Milan',
   'como-1907': 'Como 1907',
   'verona': 'Hellas Verona',

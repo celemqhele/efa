@@ -26,11 +26,11 @@ const TEAMS: Record<string, string> = {
   'Chelsea':             'f150b294-acae-4247-b3f0-7be7769e2933',
   'Club Brugge':         'cd5931af-fe19-4aef-8863-fb6cc939c65a',
   'Como 1907':           '0c3fae4f-81ad-4f4a-8114-d57cf3f322fc',
-  'Inter':               '82809e10-d12c-4317-bd34-6263a9e161cc',
+  'Internazionale':       '82809e10-d12c-4317-bd34-6263a9e161cc',
   'Liverpool':           'cdce1c5b-1ddd-47fa-9b94-110b362ded96',
   'Manchester City':     '3ad8517d-fcfb-46ce-a1a3-d50873b61a47',
   'Manchester United':   'd8deab1e-2ad0-4643-8dc2-b98c29e25070',
-  'Milan':               'd706907c-834f-47e6-acf8-2f32aab184b2',
+  'AC Milan':             'd706907c-834f-47e6-acf8-2f32aab184b2',
   'Nantes':              'e9f6ed68-060d-4bb5-ad64-c93eb0685069',
   'Newcastle United':    '6b72a4ea-f2e3-4228-8e6b-afffd3e9d1cc',
   'Palmeiras':           '48c69c22-a49f-41a3-ae23-29d209b5da6c',
@@ -246,19 +246,19 @@ const PROFILES: Record<string, Profile> = {
     coachNote: "Como 1907 under wandile (36W-8D-11L at Spurs) are a well-coached, balanced side that generates 3.2 goals from 8.6 shots. They have no obvious statistical weakness but also no defining statistical strength. Your approach: take the initiative early. Force them into chasing the game. Como are structured and efficient when the game is level or they lead, but they lack the high-end quality to turn a deficit around against motivated opposition.",
   },
 
-  // ── Inter ───────────────────────────────────────────────────────────────────
-  'Inter': {
-    about: "Inter under ayathaba control 51.5% possession with 75.7% passing accuracy on 141.4 passes per game, producing 2.3 goals from 6.8 shots at 75% efficiency. Their defensive contribution of 6.8 tackles and 28.7 interceptions per game creates a solid, organised foundation. They concede 2.8 goals per game — competitive but not watertight. Inter are a system team: everything is structured, everyone knows their role, and they execute consistently. They won't dazzle you with individual brilliance, but they will methodically work through their patterns until the opening appears.",
+  // ── Internazionale ─────────────────────────────────────────────────────────
+  'Internazionale': {
+    about: "Internazionale under ayathaba control 51.5% possession with 75.7% passing accuracy on 141.4 passes per game, producing 2.3 goals from 6.8 shots at 75% efficiency. Their defensive contribution of 6.8 tackles and 28.7 interceptions per game creates a solid, organised foundation. They concede 2.8 goals per game — competitive but not watertight. Internazionale are a system team: everything is structured, everyone knows their role, and they execute consistently. They won't dazzle you with individual brilliance, but they will methodically work through their patterns until the opening appears.",
     tendencies: [
       "Systematic build-up through 141.4 passes at 75.7% accuracy — they value structure over flair, progressing through pre-planned patterns",
       "Patient chance creation that prioritises quality — 6.8 shots at 75% accuracy means every attempt is a calculated decision",
       "Organised defensive shape with 28.7 interceptions — they protect their goal by reading the game and positioning intelligently",
     ],
     weaknesses: [
-      "Inter tends to struggle against teams that disrupt their structured patterns with unpredictable, high-tempo attacking, so attempt to vary your attacking approach and avoid falling into predictable rhythms, because their defensive system thrives on reading and anticipating.",
-      "Inter tends to lack the individual brilliance to conjure a goal from nothing, so attempt to stay disciplined and not concede cheap set-pieces or transitions, because if you make them earn every goal through open-play construction, they will find it difficult.",
+      "Internazionale tends to struggle against teams that disrupt their structured patterns with unpredictable, high-tempo attacking, so attempt to vary your attacking approach and avoid falling into predictable rhythms, because their defensive system thrives on reading and anticipating.",
+      "Internazionale tends to lack the individual brilliance to conjure a goal from nothing, so attempt to stay disciplined and not concede cheap set-pieces or transitions, because if you make them earn every goal through open-play construction, they will find it difficult.",
     ],
-    coachNote: "Inter under ayathaba (12W-3D-4L) are a system team — 75.7% passing accuracy, 28.7 interceptions, everything by the book. The book is also their weakness. When the game becomes chaotic and unpredictable, their system frays. Your approach: be unpredictable. Vary your tempo, switch play unexpectedly, take shots from unusual positions. Don't let Inter settle into their comfortable, structured rhythm — force them out of it and watch their passing accuracy drop.",
+    coachNote: "Internazionale under ayathaba (12W-3D-4L) are a system team — 75.7% passing accuracy, 28.7 interceptions, everything by the book. The book is also their weakness. When the game becomes chaotic and unpredictable, their system frays. Your approach: be unpredictable. Vary your tempo, switch play unexpectedly, take shots from unusual positions. Don't let Internazionale settle into their comfortable, structured rhythm — force them out of it and watch their passing accuracy drop.",
   },
 
   // ── Liverpool ───────────────────────────────────────────────────────────────
@@ -306,19 +306,19 @@ const PROFILES: Record<string, Profile> = {
     coachNote: "Manchester United under parmalat_ are a project — elite players, new ideas, zero competitive history together. Take the game to them early. Score first and they will have to chase, which exposes their untested defensive transitions. United's danger comes from individual moments — you can limit those by staying compact and forcing them to construct goals through patterns they haven't mastered yet. Don't give them the space their stars crave.",
   },
 
-  // ── Milan ───────────────────────────────────────────────────────────────────
-  'Milan': {
-    about: "Milan are the league's most direct, defensive-minded side — they complete just 52.9% of their passes, by far the lowest in the competition, yet still generate 3.2 goals per game from 7.2 shots. Under calvin, this is football reduced to its simplest form: win the ball (11.1 tackles per game, league-leading), get it forward quickly, and trust your forwards to finish. They hold 46.8% possession and concede 3.3 goals per game. Milan don't care about aesthetics — they care about results, and their approach turns every match into a physical battle where technical quality takes a back seat.",
+  // ── AC Milan ───────────────────────────────────────────────────────────────
+  'AC Milan': {
+    about: "AC Milan are the league's most direct, defensive-minded side — they complete just 52.9% of their passes, by far the lowest in the competition, yet still generate 3.2 goals per game from 7.2 shots. Under calvin, this is football reduced to its simplest form: win the ball (11.1 tackles per game, league-leading), get it forward quickly, and trust your forwards to finish. They hold 46.8% possession and concede 3.3 goals per game. AC Milan don't care about aesthetics — they care about results, and their approach turns every match into a physical battle where technical quality takes a back seat.",
     tendencies: [
       "Extreme directness with 52.9% passing accuracy — they bypass midfield entirely, playing long balls and fighting for second balls in the final third",
       "League-leading 11.1 tackles per game — they are the most aggressive ball-winners in the competition, making every 50-50 a contested battle",
       "Low-possession, high-impact attacking — 3.2 goals from just 7.2 shots and 46.8% possession, a ruthlessly efficient conversion rate",
     ],
     weaknesses: [
-      "Milan tends to complete only 52.9% of passes, so attempt to let them have the ball in their own half and press only when they cross midfield, because they will give you possession back constantly through misplaced long balls.",
-      "Milan tends to commit 11.1 tackles per game but concede 3.3 goals, so attempt to draw their aggressive defenders out of position with off-the-ball movement, because their commitment to the tackle leaves gaps that runners from deep can exploit.",
+      "AC Milan tends to complete only 52.9% of passes, so attempt to let them have the ball in their own half and press only when they cross midfield, because they will give you possession back constantly through misplaced long balls.",
+      "AC Milan tends to commit 11.1 tackles per game but concede 3.3 goals, so attempt to draw their aggressive defenders out of position with off-the-ball movement, because their commitment to the tackle leaves gaps that runners from deep can exploit.",
     ],
-    coachNote: "Milan under calvin (22W-3D-20L) play the ugliest, most effective football in the league. They complete just 52.9% of passes — but they score 3.2 goals per game. They will tackle you 11.1 times per game. This is pure physical football. Your approach: don't match their physicality, beat it. Move the ball quickly, make them chase, draw fouls in dangerous areas. Every time Milan commit a tackle, there's a gap behind them. Find it with quick one-twos and off-the-ball runs.",
+    coachNote: "AC Milan under calvin (22W-3D-20L) play the ugliest, most effective football in the league. They complete just 52.9% of passes — but they score 3.2 goals per game. They will tackle you 11.1 times per game. This is pure physical football. Your approach: don't match their physicality, beat it. Move the ball quickly, make them chase, draw fouls in dangerous areas. Every time AC Milan commit a tackle, there's a gap behind them. Find it with quick one-twos and off-the-ball runs.",
   },
 
   // ── Nantes ──────────────────────────────────────────────────────────────────
@@ -461,12 +461,12 @@ const LEVELS: Record<string, [string, string]> = {
   'Bayern Munchen':      ['Technical Dominance', '+++'],
   'Como 1907':           ['Quick Counter', '+++'],
   'Arsenal':             ['Possession with Purpose', '+++'],
-  'Inter':               ['Disciplined Pressers', '+++'],
+  'Internazionale':       ['Disciplined Pressers', '+++'],
   'Sporting Cp':         ['Quick Counter', '++'],
   'Chelsea':             ['Possession with Purpose', '++'],
   'Al Ettifaq':          ['Forward\'s Delight', '++'],
   'Liverpool':           ['Gegenpressing', '++'],
-  'Milan':               ['The Grinders', '+'],
+  'AC Milan':             ['The Grinders', '+'],
   'Real Madrid':         ['Shoot-on-Sight', '+'],
   'Palmeiras':           ['Long Ball Counter', '+'],
   'Club Brugge':         ['Possession with Purpose', '+'],

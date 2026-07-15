@@ -316,12 +316,16 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     const supabase = await createAdminClient()
     const searchInput = text.trim()
 
-    const searchWords = searchInput
-      .toLowerCase()
-      .split(/\s+vs\s+|\s+-\s+|\s+/)
-      .filter((w: string) => w.length >= 2)
+    const vsParts = searchInput.split(/\s+vs\.?\s+|\s+-\s+/i)
+    let teamSearches: string[]
+    if (vsParts.length >= 2) {
+      teamSearches = [vsParts[0].trim().toLowerCase(), vsParts.slice(1).join(' - ').trim().toLowerCase()]
+    } else {
+      teamSearches = [searchInput.toLowerCase().trim()]
+    }
+    teamSearches = teamSearches.filter((s: string) => s.length >= 2)
 
-    if (searchWords.length === 0) {
+    if (teamSearches.length === 0) {
       await sendTextMessage(from, "Please type at least one team name. Type CANCEL to start over.", phoneNumberId)
       return
     }
@@ -340,24 +344,22 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const allFixtures = (fixtures as any[]) || []
 
-    function fixtureMatchesAllWords(f: any): boolean {
-      const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
-      const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-      const combined = `${hName} vs ${aName}`
-      return searchWords.every((w: string) => combined.includes(w))
+    function teamNameContains(teamName: string, search: string): boolean {
+      return teamName.toLowerCase().includes(search)
     }
 
-    function fixtureMatchesAnyWord(f: any): boolean {
+    function fixtureMatches(f: any): boolean {
       const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
       const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-      const combined = `${hName} vs ${aName}`
-      return searchWords.some((w: string) => combined.includes(w))
+      if (teamSearches.length === 2) {
+        const s1 = teamSearches[0], s2 = teamSearches[1]
+        return (teamNameContains(hName, s1) && teamNameContains(aName, s2)) ||
+               (teamNameContains(hName, s2) && teamNameContains(aName, s1))
+      }
+      return teamNameContains(hName, teamSearches[0]) || teamNameContains(aName, teamSearches[0])
     }
 
-    let matchedFixtures = allFixtures.filter(fixtureMatchesAllWords)
-    if (matchedFixtures.length === 0) {
-      matchedFixtures = allFixtures.filter(fixtureMatchesAnyWord)
-    }
+    const matchedFixtures = allFixtures.filter(fixtureMatches)
 
     if (matchedFixtures.length === 0) {
       await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
