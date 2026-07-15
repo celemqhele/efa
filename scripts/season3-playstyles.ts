@@ -26,7 +26,7 @@ const TEAMS: Record<string, string> = {
   'Chelsea':             'f150b294-acae-4247-b3f0-7be7769e2933',
   'Club Brugge':         'cd5931af-fe19-4aef-8863-fb6cc939c65a',
   'Como 1907':           '0c3fae4f-81ad-4f4a-8114-d57cf3f322fc',
-  'Internazionale':       '82809e10-d12c-4317-bd34-6263a9e161cc',
+  'Internazionale Milan':       '82809e10-d12c-4317-bd34-6263a9e161cc',
   'Liverpool':           'cdce1c5b-1ddd-47fa-9b94-110b362ded96',
   'Manchester City':     '3ad8517d-fcfb-46ce-a1a3-d50873b61a47',
   'Manchester United':   'd8deab1e-2ad0-4643-8dc2-b98c29e25070',
@@ -246,19 +246,19 @@ const PROFILES: Record<string, Profile> = {
     coachNote: "Como 1907 under wandile (36W-8D-11L at Spurs) are a well-coached, balanced side that generates 3.2 goals from 8.6 shots. They have no obvious statistical weakness but also no defining statistical strength. Your approach: take the initiative early. Force them into chasing the game. Como are structured and efficient when the game is level or they lead, but they lack the high-end quality to turn a deficit around against motivated opposition.",
   },
 
-  // ── Internazionale ─────────────────────────────────────────────────────────
-  'Internazionale': {
-    about: "Internazionale under ayathaba control 51.5% possession with 75.7% passing accuracy on 141.4 passes per game, producing 2.3 goals from 6.8 shots at 75% efficiency. Their defensive contribution of 6.8 tackles and 28.7 interceptions per game creates a solid, organised foundation. They concede 2.8 goals per game — competitive but not watertight. Internazionale are a system team: everything is structured, everyone knows their role, and they execute consistently. They won't dazzle you with individual brilliance, but they will methodically work through their patterns until the opening appears.",
+  // ── Internazionale Milan ─────────────────────────────────────────────────────────
+  'Internazionale Milan': {
+    about: "Internazionale Milan under ayathaba control 51.5% possession with 75.7% passing accuracy on 141.4 passes per game, producing 2.3 goals from 6.8 shots at 75% efficiency. Their defensive contribution of 6.8 tackles and 28.7 interceptions per game creates a solid, organised foundation. They concede 2.8 goals per game — competitive but not watertight. Internazionale Milan are a system team: everything is structured, everyone knows their role, and they execute consistently. They won't dazzle you with individual brilliance, but they will methodically work through their patterns until the opening appears.",
     tendencies: [
       "Systematic build-up through 141.4 passes at 75.7% accuracy — they value structure over flair, progressing through pre-planned patterns",
       "Patient chance creation that prioritises quality — 6.8 shots at 75% accuracy means every attempt is a calculated decision",
       "Organised defensive shape with 28.7 interceptions — they protect their goal by reading the game and positioning intelligently",
     ],
     weaknesses: [
-      "Internazionale tends to struggle against teams that disrupt their structured patterns with unpredictable, high-tempo attacking, so attempt to vary your attacking approach and avoid falling into predictable rhythms, because their defensive system thrives on reading and anticipating.",
-      "Internazionale tends to lack the individual brilliance to conjure a goal from nothing, so attempt to stay disciplined and not concede cheap set-pieces or transitions, because if you make them earn every goal through open-play construction, they will find it difficult.",
+      "Internazionale Milan tends to struggle against teams that disrupt their structured patterns with unpredictable, high-tempo attacking, so attempt to vary your attacking approach and avoid falling into predictable rhythms, because their defensive system thrives on reading and anticipating.",
+      "Internazionale Milan tends to lack the individual brilliance to conjure a goal from nothing, so attempt to stay disciplined and not concede cheap set-pieces or transitions, because if you make them earn every goal through open-play construction, they will find it difficult.",
     ],
-    coachNote: "Internazionale under ayathaba (12W-3D-4L) are a system team — 75.7% passing accuracy, 28.7 interceptions, everything by the book. The book is also their weakness. When the game becomes chaotic and unpredictable, their system frays. Your approach: be unpredictable. Vary your tempo, switch play unexpectedly, take shots from unusual positions. Don't let Internazionale settle into their comfortable, structured rhythm — force them out of it and watch their passing accuracy drop.",
+    coachNote: "Internazionale Milan under ayathaba (12W-3D-4L) are a system team — 75.7% passing accuracy, 28.7 interceptions, everything by the book. The book is also their weakness. When the game becomes chaotic and unpredictable, their system frays. Your approach: be unpredictable. Vary your tempo, switch play unexpectedly, take shots from unusual positions. Don't let Internazionale Milan settle into their comfortable, structured rhythm — force them out of it and watch their passing accuracy drop.",
   },
 
   // ── Liverpool ───────────────────────────────────────────────────────────────
@@ -461,7 +461,7 @@ const LEVELS: Record<string, [string, string]> = {
   'Bayern Munchen':      ['Technical Dominance', '+++'],
   'Como 1907':           ['Quick Counter', '+++'],
   'Arsenal':             ['Possession with Purpose', '+++'],
-  'Internazionale':       ['Disciplined Pressers', '+++'],
+  'Internazionale Milan':       ['Disciplined Pressers', '+++'],
   'Sporting Cp':         ['Quick Counter', '++'],
   'Chelsea':             ['Possession with Purpose', '++'],
   'Al Ettifaq':          ['Forward\'s Delight', '++'],
