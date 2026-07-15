@@ -419,7 +419,16 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     if (/^(no|nah|nope|n)$/i.test(lower)) {
       await upsertSession({ phone_number: from, state: 'idle' })
       console.log('[webhook] user declined forfeit, writing to DB')
-      await writeResultToDb(from, session, supabase, phoneNumberId)
+      const { data: fixCheck } = await supabase
+        .from('fixtures')
+        .select('status')
+        .eq('id', session.matched_fixture_id)
+        .single()
+      if (fixCheck && (fixCheck.status === 'confirmed' || fixCheck.status === 'awaiting_confirmation')) {
+        await resetAndResubmit(from, session, supabase, phoneNumberId)
+      } else {
+        await writeResultToDb(from, session, supabase, phoneNumberId)
+      }
       return
     }
     await sendTextMessage(from, "Reply yes or no.", phoneNumberId)
@@ -439,17 +448,26 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     const lower = text.toLowerCase()
     const affirmative = /^(yes|yeah|yep|y|ok|okay|sure|confirm|correct|right|go ahead|submit|looks good|good|fine|ja)$/i
     if (affirmative.test(lower) || lower.includes('yes') || lower.includes('confirm') || lower.includes('submit')) {
-      // Override flow: if fixture is already submitted, do reset + re-submit
+      // Override flow: ask about forfeit first, then reset + re-submit
       if (session.state === 'awaiting_override_confirm') {
-        console.log('[webhook] override confirmed by user, resetting and re-submitting')
-        await resetAndResubmit(from, session, supabase, phoneNumberId)
+        await upsertSession({ phone_number: from, state: 'awaiting_forfeit' })
+        await sendTextMessage(from, "Did the losing team forfeit before the game finished? Reply yes or no.", phoneNumberId)
         return
       }
       // Forfeit confirm: user confirmed the forfeit-adjusted score
       if (session.state === 'awaiting_forfeit_confirm') {
         console.log('[webhook] forfeit confirmed by user, writing to DB')
         await upsertSession({ phone_number: from, state: 'idle' })
-        await writeResultToDb(from, session, supabase, phoneNumberId)
+        const { data: fixCheck2 } = await supabase
+          .from('fixtures')
+          .select('status')
+          .eq('id', session.matched_fixture_id)
+          .single()
+        if (fixCheck2 && (fixCheck2.status === 'confirmed' || fixCheck2.status === 'awaiting_confirmation')) {
+          await resetAndResubmit(from, session, supabase, phoneNumberId)
+        } else {
+          await writeResultToDb(from, session, supabase, phoneNumberId)
+        }
         return
       }
       // First confirmation: ask about forfeit before writing to DB
