@@ -40,9 +40,32 @@ export async function POST(request: NextRequest) {
     const msg = messages[0]
     const from = msg.from as string
     const phoneNumberId = metadata?.phone_number_id as string
-    console.log(`[webhook] from=${from} type=${msg.type}`)
+    console.log(`[webhook] from=${from} type=${msg.type} count=${messages.length}`)
 
-    if (msg.type === 'image') {
+    // Handle multiple images: find the first one with a valid score
+    const imageMessages = messages.filter((m: any) => m.type === 'image')
+    if (imageMessages.length > 1) {
+      console.log(`[webhook] ${imageMessages.length} images received, scanning for valid score...`)
+      let winner: any = null
+      for (const imgMsg of imageMessages) {
+        try {
+          const mediaUrl = await getMediaUrl(imgMsg.image.id)
+          const { buffer: rawBuf, mimeType } = await fetchImageBytes(mediaUrl)
+          const buffer = await normalizeToLandscape(rawBuf)
+          const analysis = await analyzeImageBuffer(buffer, mimeType)
+          if (!analysis.invalidReason && analysis.homeScore !== null && analysis.awayScore !== null) {
+            winner = imgMsg
+            console.log(`[webhook] found valid score in image ${imgMsg.image.id}: ${analysis.homeScore}-${analysis.awayScore}`)
+            break
+          }
+        } catch {}
+      }
+      if (winner) {
+        await handleImage(from, winner, phoneNumberId)
+      } else {
+        await sendTextMessage(from, "I couldn't analyse the image. Send to the group.", phoneNumberId)
+      }
+    } else if (msg.type === 'image') {
       await handleImage(from, msg, phoneNumberId)
     } else if (msg.type === 'text') {
       await handleText(from, msg, phoneNumberId)
@@ -89,6 +112,155 @@ async function clearSession(phoneNumber: string) {
   await supabase.from('whatsapp_sessions').delete().eq('phone_number', phoneNumber)
 }
 
+// ─── Backdoor admin flow ──────────────────────────────────────────────────────
+
+async function handleBackdoorDate(from: string, text: string, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, "Cancelled.", phoneNumberId)
+    return
+  }
+  const parsed = parseUserDate(text)
+  if (!parsed) {
+    await sendTextMessage(from, "Couldn't parse that date. Try \"12 Jul\", \"July 12\", or \"2026-07-12\".", phoneNumberId)
+    return
+  }
+  const supabase = await createAdminClient()
+  const { data } = await supabase
+    .from('fixtures')
+    .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .eq('scheduled_date', parsed.dateKey)
+    .eq('status', 'scheduled')
+    .order('matchday', { ascending: true })
+
+  const fixtures = (data as any[]) || []
+  if (fixtures.length === 0) {
+    await sendTextMessage(from, `No unconfirmed fixtures for ${parsed.dateKey}.`, phoneNumberId)
+    await clearSession(from)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_backdoor_fixture',
+    pending_date: parsed.dateKey,
+    displayed_fixtures: fixtures.map((f: any) => f.id),
+  })
+
+  const lines = fixtures.map((f: any, i: number) => `${i + 1}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}`)
+  await sendTextMessage(from, `Fixtures for ${parsed.dateKey}:\n\n${lines.join('\n')}\n\nReply with the number. Type CANCEL to abort.`, phoneNumberId)
+}
+
+async function handleBackdoorFixture(from: string, text: string, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, "Cancelled.", phoneNumberId)
+    return
+  }
+  const session = await getSession(from)
+  if (!session?.displayed_fixtures) {
+    await clearSession(from)
+    await sendTextMessage(from, "Something went wrong. Start over.", phoneNumberId)
+    return
+  }
+  const num = parseInt(text.trim(), 10)
+  if (isNaN(num) || num < 1 || num > session.displayed_fixtures.length) {
+    await sendTextMessage(from, `Pick a number between 1 and ${session.displayed_fixtures.length}.`, phoneNumberId)
+    return
+  }
+  const fixtureId = session.displayed_fixtures[num - 1]
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_backdoor_side',
+    matched_fixture_id: fixtureId,
+  })
+
+  const supabase = await createAdminClient()
+  const { data } = await supabase
+    .from('fixtures')
+    .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .eq('id', fixtureId)
+    .single()
+  const h = fixtureTeamName(data, 'home')
+  const a = fixtureTeamName(data, 'away')
+  await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Reply "home" or "away". Type CANCEL to abort.`, phoneNumberId)
+}
+
+async function handleBackdoorSide(from: string, text: string, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, "Cancelled.", phoneNumberId)
+    return
+  }
+  const session = await getSession(from)
+  if (!session?.matched_fixture_id) {
+    await clearSession(from)
+    await sendTextMessage(from, "Something went wrong. Start over.", phoneNumberId)
+    return
+  }
+  const lower = text.trim().toLowerCase()
+  let homeScore: number, awayScore: number
+  if (/^home$/i.test(lower)) { homeScore = 3; awayScore = 0 }
+  else if (/^away$/i.test(lower)) { homeScore = 0; awayScore = 3 }
+  else { await sendTextMessage(from, "Reply \"home\" or \"away\".", phoneNumberId); return }
+
+  const supabase = await createAdminClient()
+  const adminUserId = await getAdminUserId(supabase)
+
+  await supabase.from('result_confirmations').insert({
+    fixture_id: session.matched_fixture_id,
+    home_score: homeScore,
+    away_score: awayScore,
+    submitted_by: adminUserId,
+  })
+
+  await supabase.from('results').upsert({
+    fixture_id: session.matched_fixture_id,
+    home_score: homeScore,
+    away_score: awayScore,
+    ...(adminUserId ? { finalised_by: adminUserId } : {}),
+  }, { onConflict: 'fixture_id' })
+
+  await supabase.from('fixtures').update({ status: 'confirmed' }).eq('id', session.matched_fixture_id)
+
+  await clearSession(from)
+  await sendTextMessage(from, "Backdoor win submitted.", phoneNumberId)
+}
+
+// ─── Forfeit flow ───────────────────────────────────────────────────────────
+
+async function handleForfeitYes(from: string, session: SessionData, supabase: any, phoneNumberId: string) {
+  const { data: fixture } = await supabase
+    .from('fixtures')
+    .select('home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .eq('id', session.matched_fixture_id)
+    .single()
+  if (!fixture) {
+    await sendTextMessage(from, "Couldn't find fixture. Reply yes or no.", phoneNumberId)
+    return
+  }
+
+  const hName = fixtureTeamName(fixture, 'home')
+  const aName = fixtureTeamName(fixture, 'away')
+  const hScore = session.home_score!
+  const aScore = session.away_score!
+
+  let newHomeScore = hScore
+  let newAwayScore = aScore
+  if (hScore > aScore) newHomeScore = hScore + 3
+  else newAwayScore = aScore + 3
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_forfeit_confirm',
+    home_score: newHomeScore,
+    away_score: newAwayScore,
+    pending_date: `${hScore}:${aScore}`,
+  })
+
+  await sendTextMessage(from, `Forfeit applied. Confirm result: ${hName} ${newHomeScore}-${newAwayScore} ${aName} (forfeited)?\n\nReply YES to submit. Type CANCEL to abort.`, phoneNumberId)
+}
+
 // ─── Text handler ⸺ only handles confirm/correct responses to ongoing result flow ──
 
 function fixtureTeamName(f: any, side: 'home' | 'away'): string {
@@ -116,6 +288,117 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
   const session = await getSession(from)
 
+  // ─── Backdoor admin flow ──────────────────────────────────────────────────
+  if (session?.state === 'awaiting_backdoor_date') {
+    await handleBackdoorDate(from, text, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_backdoor_fixture') {
+    await handleBackdoorFixture(from, text, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_backdoor_side') {
+    await handleBackdoorSide(from, text, phoneNumberId)
+    return
+  }
+  if (/^backdoor$/i.test(text.trim())) {
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor_date' })
+    await sendTextMessage(from, "Enter the fixture date.", phoneNumberId)
+    return
+  }
+  // ─── Match name search (after screenshot) ────────────────────────────────
+  if (session?.state === 'awaiting_match_name') {
+    if (/^cancel$/i.test(text.trim())) {
+      await clearSession(from)
+      await sendTextMessage(from, "No stress. Send a new screenshot when you're ready.", phoneNumberId)
+      return
+    }
+    const supabase = await createAdminClient()
+    const searchInput = text.trim()
+
+    const searchWords = searchInput
+      .toLowerCase()
+      .split(/\s+vs\s+|\s+-\s+|\s+/)
+      .filter((w: string) => w.length >= 2)
+
+    if (searchWords.length === 0) {
+      await sendTextMessage(from, "Please type at least one team name. Type CANCEL to start over.", phoneNumberId)
+      return
+    }
+
+    const today = new Date().toISOString().split('T')[0]
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    const { data: fixtures } = await supabase
+      .from('fixtures')
+      .select('id, home_team_id, away_team_id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+      .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
+      .gte('scheduled_date', sevenDaysAgo)
+      .lte('scheduled_date', today)
+      .order('scheduled_date', { ascending: false })
+      .order('matchday')
+
+    const allFixtures = (fixtures as any[]) || []
+
+    function fixtureMatchesAllWords(f: any): boolean {
+      const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+      const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+      const combined = `${hName} vs ${aName}`
+      return searchWords.every((w: string) => combined.includes(w))
+    }
+
+    function fixtureMatchesAnyWord(f: any): boolean {
+      const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+      const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+      const combined = `${hName} vs ${aName}`
+      return searchWords.some((w: string) => combined.includes(w))
+    }
+
+    let matchedFixtures = allFixtures.filter(fixtureMatchesAllWords)
+    if (matchedFixtures.length === 0) {
+      matchedFixtures = allFixtures.filter(fixtureMatchesAnyWord)
+    }
+
+    if (matchedFixtures.length === 0) {
+      await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
+      return
+    }
+
+    if (matchedFixtures.length === 1) {
+      const f = matchedFixtures[0]
+      const hName = fixtureTeamName(f, 'home')
+      const aName = fixtureTeamName(f, 'away')
+      const result = Array.isArray(f.results) ? f.results[0] : f.results
+      const isAlreadyConfirmed = isFixtureConfirmed(f)
+
+      await upsertSession({
+        phone_number: from,
+        matched_fixture_id: f.id,
+        state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
+        displayed_fixtures: null,
+      })
+
+      const resultLine = result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation')
+        ? ` (already submitted: ${result.home_score}-${result.away_score})`
+        : ''
+      const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
+      const statsBlock = formatStatsBlock(session.match_stats)
+      await sendTextMessage(from, `Found: ${hName} vs ${aName}${resultLine}\n\nConfirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.`, phoneNumberId)
+      return
+    }
+
+    // Multiple matches — show numbered list
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_fixture_from_past',
+      displayed_fixtures: matchedFixtures.map((f: any) => f.id),
+    })
+
+    const lines = matchedFixtures.map((f: any, i: number) => formatFixtureLine(f, i))
+    await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+    return
+  }
+
   // Only reject users who have no active session at all (never sent a screenshot)
   if (!session || (session.home_score === null && session.away_score === null)) {
     await sendTextMessage(from, "I only help with submitting match results. Send a screenshot of your result screen and I'll take it from there.", phoneNumberId)
@@ -123,6 +406,23 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   }
 
   const supabase = await createAdminClient()
+
+  // Forfeit question: did the losing team forfeit?
+  if (session?.state === 'awaiting_forfeit') {
+    const lower = text.trim().toLowerCase()
+    if (/^(yes|yeah|yep|y|ja)$/i.test(lower)) {
+      await handleForfeitYes(from, session, supabase, phoneNumberId)
+      return
+    }
+    if (/^(no|nah|nope|n)$/i.test(lower)) {
+      await upsertSession({ phone_number: from, state: 'idle' })
+      console.log('[webhook] user declined forfeit, writing to DB')
+      await writeResultToDb(from, session, supabase, phoneNumberId)
+      return
+    }
+    await sendTextMessage(from, "Reply yes or no.", phoneNumberId)
+    return
+  }
 
   // CANCEL — always works regardless of flow state
   if (/^cancel$/i.test(text.trim())) {
@@ -141,6 +441,19 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       if (session.state === 'awaiting_override_confirm') {
         console.log('[webhook] override confirmed by user, resetting and re-submitting')
         await resetAndResubmit(from, session, supabase, phoneNumberId)
+        return
+      }
+      // Forfeit confirm: user confirmed the forfeit-adjusted score
+      if (session.state === 'awaiting_forfeit_confirm') {
+        console.log('[webhook] forfeit confirmed by user, writing to DB')
+        await upsertSession({ phone_number: from, state: 'idle' })
+        await writeResultToDb(from, session, supabase, phoneNumberId)
+        return
+      }
+      // First confirmation: ask about forfeit before writing to DB
+      if (!session.displayed_fixtures || session.displayed_fixtures.length === 0) {
+        await upsertSession({ phone_number: from, state: 'awaiting_forfeit' })
+        await sendTextMessage(from, "Did the losing team forfeit before the game finished? Reply yes or no.", phoneNumberId)
         return
       }
       console.log('[webhook] direct bypass: user affirmed, writing to DB')
@@ -246,6 +559,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           home_score: session.home_score,
           away_score: session.away_score,
           match_stats: session.match_stats,
+          displayed_fixtures: null,
           state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
         })
 
@@ -297,6 +611,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             home_score: session.home_score,
             away_score: session.away_score,
             match_stats: session.match_stats,
+            displayed_fixtures: null,
             state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
           })
 
@@ -371,6 +686,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
               home_score: session.home_score,
               away_score: session.away_score,
               match_stats: session.match_stats,
+              displayed_fixtures: null,
               state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
             })
 
@@ -428,6 +744,71 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   }
 }
 
+// ─── Image analysis helper (no side effects) ───────────────────────────────
+
+type ImageAnalysis = {
+  homeTeam: string | null
+  awayTeam: string | null
+  homeScore: number | null
+  awayScore: number | null
+  matchStats: Record<string, { home: number; away: number }> | null
+  invalidReason: string | null
+}
+
+async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<ImageAnalysis> {
+  let ocrResult: Awaited<ReturnType<typeof parseScreenshot>> | null = null
+  try { ocrResult = await parseScreenshot(buffer) } catch {}
+
+  let homeTeam: string | null = null, awayTeam: string | null = null
+  let homeScore: number | null = null, awayScore: number | null = null
+  let matchStats: Record<string, { home: number; away: number }> | null = null
+  let invalidReason: string | null = null
+
+  if (ocrResult?.rawText) {
+    try {
+      const cleaned = await cleanOcrText(ocrResult.rawText)
+      if (cleaned) {
+        if (cleaned.valid === false) invalidReason = cleaned.reason || null
+        else { homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats }
+      }
+    } catch {
+      try {
+        const cleaned = await cleanOcrWithGroq(ocrResult.rawText)
+        if (cleaned) {
+          if (cleaned.valid === false) invalidReason = cleaned.reason || null
+          else { homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats }
+        }
+      } catch {}
+    }
+  }
+
+  if (homeScore === null && ocrResult) {
+    homeScore = ocrResult.homeScore || null; awayScore = ocrResult.awayScore || null
+    homeTeam = homeTeam || ocrResult.homeTeamOcr || null; awayTeam = awayTeam || ocrResult.awayTeamOcr || null
+  }
+
+  if (!matchStats && ocrResult?.stats && Object.keys(ocrResult.stats).length > 0) {
+    matchStats = ocrResult.stats
+  }
+
+  try {
+    const geminiResult = await analyzeScreenshot(buffer, mimeType)
+    if (geminiResult) {
+      if (geminiResult.valid === false) {
+        if (!invalidReason) invalidReason = geminiResult.reason || null
+      } else {
+        if (geminiResult.homeScore != null && geminiResult.awayScore != null) {
+          homeScore = geminiResult.homeScore; awayScore = geminiResult.awayScore
+        }
+        homeTeam = geminiResult.homeTeam || homeTeam; awayTeam = geminiResult.awayTeam || awayTeam
+        if (!matchStats && geminiResult.matchStats) matchStats = geminiResult.matchStats
+      }
+    }
+  } catch {}
+
+  return { homeTeam, awayTeam, homeScore, awayScore, matchStats, invalidReason }
+}
+
 // ─── Image handler ───────────────────────────────────────────────────────────────
 
 async function handleImage(from: string, msg: { image: { id: string; mime_type: string } }, phoneNumberId: string) {
@@ -439,210 +820,27 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
   const buffer = await normalizeToLandscape(rawBuffer)
   console.log(`[webhook] downloaded ${rawBuffer.length} bytes, normalized to ${buffer.length} bytes`)
 
-  let ocrResult: Awaited<ReturnType<typeof parseScreenshot>> | null = null
-  try { ocrResult = await parseScreenshot(buffer) } catch {}
-  console.log('[webhook] OCR rawText length:', ocrResult?.rawText?.length || 0, 'stats:', ocrResult?.stats ? Object.keys(ocrResult.stats).length : 0)
+  const analysis = await analyzeImageBuffer(buffer, mimeType)
+  let homeTeam = analysis.homeTeam
+  let awayTeam = analysis.awayTeam
+  let matchStats = analysis.matchStats
+  const invalidReason = analysis.invalidReason
+  let homeScore = analysis.homeScore
+  let awayScore = analysis.awayScore
 
-  let homeTeam: string | null = null, awayTeam: string | null = null
-  let homeScore: number | null = null, awayScore: number | null = null
-  let matchStats: Record<string, { home: number; away: number }> | null = null
-  let invalidReason: string | null = null
-  let textScoreSource: string | null = null
+  console.log('[webhook] final - team:', homeTeam, awayTeam, 'score:', homeScore, awayScore, 'statsKeys:', matchStats ? Object.keys(matchStats).join(',') : 'none')
 
-  if (ocrResult?.rawText) {
-    try {
-      const cleaned = await cleanOcrText(ocrResult.rawText)
-      if (cleaned) {
-        console.log('[webhook] Gemini cleaned - score:', cleaned.homeScore, cleaned.awayScore, 'stats:', cleaned.matchStats ? Object.keys(cleaned.matchStats).length : 0)
-        if (cleaned.valid === false) invalidReason = cleaned.reason || null
-        else { homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats; textScoreSource = 'gemini-text' }
-      }
-    } catch {
-      try {
-        const cleaned = await cleanOcrWithGroq(ocrResult.rawText)
-        if (cleaned) {
-          console.log('[webhook] Groq cleaned - score:', cleaned.homeScore, cleaned.awayScore, 'stats:', cleaned.matchStats ? Object.keys(cleaned.matchStats).length : 0)
-          if (cleaned.valid === false) invalidReason = cleaned.reason || null
-          else { homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats; textScoreSource = 'groq-text' }
-        }
-      } catch {}
-    }
-  }
-
-  if (homeScore === null && ocrResult) {
-    console.log('[webhook] OCR parsed fallback - score:', ocrResult.homeScore, ocrResult.awayScore, 'stats:', Object.keys(ocrResult.stats).length)
-    homeScore = ocrResult.homeScore || null; awayScore = ocrResult.awayScore || null
-    homeTeam = homeTeam || ocrResult.homeTeamOcr || null; awayTeam = awayTeam || ocrResult.awayTeamOcr || null
-    if (homeScore !== null) textScoreSource = 'ocr-parsed'
-  }
-
-  if (!matchStats && ocrResult?.stats && Object.keys(ocrResult.stats).length > 0) {
-    console.log('[webhook] using OCR parsed stats as fallback, count:', Object.keys(ocrResult.stats).length)
-    matchStats = ocrResult.stats
-  }
-
-  let visionScoreSource: string | null = null
-  try {
-    console.log('[webhook] trying Gemini vision for cross-validation')
-    const geminiResult = await analyzeScreenshot(buffer, mimeType)
-    if (geminiResult) {
-      console.log('[webhook] Gemini vision - score:', geminiResult.homeScore, geminiResult.awayScore, 'stats:', geminiResult.matchStats ? Object.keys(geminiResult.matchStats).length : 0)
-      if (geminiResult.valid === false) {
-        if (!invalidReason) invalidReason = geminiResult.reason || null
-      } else {
-        visionScoreSource = 'gemini-vision'
-        if (geminiResult.homeScore != null && geminiResult.awayScore != null) {
-          if (homeScore !== null && awayScore !== null &&
-              (homeScore !== geminiResult.homeScore || awayScore !== geminiResult.awayScore)) {
-            console.log(`[webhook] SCORE MISMATCH: text=${textScoreSource}(${homeScore}-${awayScore}) vs vision(${geminiResult.homeScore}-${geminiResult.awayScore}) — preferring vision`)
-          }
-          homeScore = geminiResult.homeScore; awayScore = geminiResult.awayScore
-        }
-        homeTeam = geminiResult.homeTeam || homeTeam; awayTeam = geminiResult.awayTeam || awayTeam
-        if (!matchStats && geminiResult.matchStats) matchStats = geminiResult.matchStats
-      }
-    }
-  } catch {}
-
-  console.log('[webhook] final - team:', homeTeam, awayTeam, 'score:', homeScore, awayScore, 'source:', visionScoreSource || textScoreSource || 'none', 'statsKeys:', matchStats ? Object.keys(matchStats).join(',') : 'none')
-
-  if (invalidReason) { await sendTextMessage(from, `Yoh, this doesn't look like a match result — ${invalidReason}.`, phoneNumberId); return }
-  if (homeScore === null || awayScore === null) { await sendTextMessage(from, "Sorry, I couldn't read the scores. Send a screenshot of the Full Time result screen.", phoneNumberId); return }
-
-  const supabase = await createAdminClient()
-
-  const searchWords = [homeTeam, awayTeam]
-    .filter(Boolean)
-    .flatMap((name) => name!.toLowerCase().split(/\s+/))
-    .filter((w) => w.length >= 2)
-
-  const today = new Date().toISOString().split('T')[0]
-  const { data: todayFixtures } = await supabase
-    .from('fixtures')
-    .select('id, home_team_id, away_team_id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
-    .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
-    .eq('scheduled_date', today).order('matchday')
-
-  const fixtures = (todayFixtures as any[]) || []
-
-  function fixtureMatchesAllWords(f: any): boolean {
-    const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
-    const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-    const combined = `${hName} vs ${aName}`
-    return searchWords.length > 0 && searchWords.every((w) => combined.includes(w))
-  }
-
-  function fixtureMatchesAnyWord(f: any): boolean {
-    const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
-    const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-    const combined = `${hName} vs ${aName}`
-    return searchWords.some((w) => combined.includes(w))
-  }
-
-  function fixtureMatchesOneTeamName(f: any): boolean {
-    const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
-    const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-    const homeInput = (homeTeam || '').toLowerCase().trim()
-    const awayInput = (awayTeam || '').toLowerCase().trim()
-    return (homeInput.length >= 3 && (hName.includes(homeInput) || homeInput.includes(hName) || aName.includes(homeInput) || homeInput.includes(aName))) ||
-           (awayInput.length >= 3 && (hName.includes(awayInput) || awayInput.includes(hName) || aName.includes(awayInput) || awayInput.includes(aName)))
-  }
-
-  let matchedFixture: any = null
-  if (searchWords.length > 0) {
-    const keywordMatches = fixtures.filter(fixtureMatchesAllWords)
-    if (keywordMatches.length === 1) {
-      matchedFixture = keywordMatches[0]
-    } else if (keywordMatches.length > 1) {
-      const homeWords = (homeTeam || '').toLowerCase().split(/\s+/).filter((w: string) => w.length >= 2)
-      const awayWords = (awayTeam || '').toLowerCase().split(/\s+/).filter((w: string) => w.length >= 2)
-      matchedFixture = keywordMatches.find((f: any) => {
-        const hName = ((Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name) || '').toLowerCase()
-        const aName = ((Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name) || '').toLowerCase()
-        const homeSideMatch = homeWords.length > 0 && homeWords.every((w: string) => hName.includes(w))
-        const awaySideMatch = awayWords.length > 0 && awayWords.every((w: string) => aName.includes(w))
-        return (homeSideMatch && awaySideMatch) || (homeWords.every((w: string) => aName.includes(w)) && awayWords.every((w: string) => hName.includes(w)))
-      }) || null
-    }
-
-    if (!matchedFixture) {
-      const oneTeamMatches = fixtures.filter(fixtureMatchesOneTeamName)
-      if (oneTeamMatches.length === 1) {
-        matchedFixture = oneTeamMatches[0]
-      }
-    }
-  }
-
-  if (matchedFixture) {
-    const hName = fixtureTeamName(matchedFixture, 'home')
-    const aName = fixtureTeamName(matchedFixture, 'away')
-
-    const fixtureHomeLower = hName.toLowerCase()
-    const fixtureAwayLower = aName.toLowerCase()
-    const ocrHomeLower = (homeTeam || '').toLowerCase()
-    const ocrAwayLower = (awayTeam || '').toLowerCase()
-
-    const ocrHomeMatchesFixtureAway = ocrHomeLower && fixtureAwayLower && (fixtureAwayLower.includes(ocrHomeLower) || ocrHomeLower.includes(fixtureAwayLower))
-    const ocrAwayMatchesFixtureHome = ocrAwayLower && fixtureHomeLower && (fixtureHomeLower.includes(ocrAwayLower) || ocrAwayLower.includes(fixtureHomeLower))
-
-    if (ocrHomeMatchesFixtureAway && ocrAwayMatchesFixtureHome) {
-      console.log(`[webhook] AUTO-SWAP: (${homeTeam}/${homeScore} - ${awayTeam}/${awayScore}) flipped vs (${hName} vs ${aName})`)
-      const tmpScore = homeScore; homeScore = awayScore; awayScore = tmpScore
-      const tmpTeam = homeTeam; homeTeam = awayTeam; awayTeam = tmpTeam
-      if (matchStats) {
-        const swapped: Record<string, { home: number; away: number }> = {}
-        for (const [key, val] of Object.entries(matchStats)) {
-          swapped[key] = { home: val.away, away: val.home }
-        }
-        matchStats = swapped
-      }
-    }
-
-    const isAlreadyConfirmed = isFixtureConfirmed(matchedFixture)
-
-    await upsertSession({
-      phone_number: from,
-      home_team: homeTeam, away_team: awayTeam, home_score: homeScore, away_score: awayScore,
-      match_stats: matchStats, matched_fixture_id: matchedFixture.id, screenshot_media_id: imageId,
-      state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
-    })
-
-    const statsBlock = formatStatsBlock(matchStats)
-    const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
-    const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
-    console.log('[webhook] keyword matched fixture:', hName, 'vs', aName, 'words:', searchWords)
-    await sendTextMessage(from, `Confirm result: ${hName} ${homeScore}-${awayScore} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.${hint}`, phoneNumberId)
-    return
-  }
-
-  let displayFixtures = fixtures
-  if (searchWords.length > 0) {
-    const partialMatches = fixtures.filter(fixtureMatchesOneTeamName)
-    if (partialMatches.length > 0) {
-      displayFixtures = partialMatches
-    } else {
-      const anyWordMatches = fixtures.filter(fixtureMatchesAnyWord)
-      if (anyWordMatches.length > 0) displayFixtures = anyWordMatches
-    }
-  }
+  if (invalidReason) { await sendTextMessage(from, "I couldn't analyse the image. Send to the group.", phoneNumberId); return }
+  if (homeScore === null || awayScore === null) { await sendTextMessage(from, "I couldn't analyse the image. Send to the group.", phoneNumberId); return }
 
   await upsertSession({
     phone_number: from,
     home_team: homeTeam, away_team: awayTeam, home_score: homeScore, away_score: awayScore,
     match_stats: matchStats, matched_fixture_id: null, screenshot_media_id: imageId,
-    displayed_fixtures: displayFixtures.map((f: any) => f.id),
+    state: 'awaiting_match_name',
   })
 
-  if (displayFixtures.length > 0) {
-    const lines = displayFixtures.map((f: any, i: number) => formatFixtureLine(f, i))
-    const intro = searchWords.length > 0
-      ? `Couldn't auto-match exactly, but here are fixtures involving ${homeTeam || '?'} or ${awayTeam || '?'}:`
-      : "Couldn't auto-match. Today's fixtures:"
-    await sendTextMessage(from, `${intro}\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
-  } else {
-    await sendTextMessage(from, `No fixtures found for today. Your result has been saved — contact an admin to match it.`, phoneNumberId)
-    await clearSession(from)
-  }
+  await sendTextMessage(from, `Score extracted: ${homeTeam || '?'} ${homeScore}-${awayScore} ${awayTeam || '?'}\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
 }
 
 // ─── DB write ────────────────────────────────────────────────────────────────────
@@ -694,25 +892,64 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     await clearSession(from); await sendTextMessage(from, 'Something went wrong.', phoneNumberId); return
   }
 
+  const isForfeitConfirm = session.state === 'awaiting_forfeit_confirm'
   const adminUserId = await getAdminUserId(supabase)
   console.log('[webhook] admin user celemqhele id:', adminUserId || 'NOT FOUND')
 
+  // Look up fixture for team IDs
+  const { data: fixture } = await supabase
+    .from('fixtures')
+    .select('home_team_id, away_team_id')
+    .eq('id', session.matched_fixture_id)
+    .single()
+
+  let homeScore = session.home_score
+  let awayScore = session.away_score
+  let forfeitBalanceNote = ''
+
+  // Forfeit balance aggregate: check if either team has active forfeit balances
+  if (fixture?.home_team_id && fixture?.away_team_id && homeScore !== awayScore) {
+    const losingTeamId = homeScore < awayScore ? fixture.home_team_id : fixture.away_team_id
+    const { data: balances } = await supabase
+      .from('forfeit_balances')
+      .select('id, opponent_score, forfeiting_team:teams!forfeit_balances_forfeiting_team_id_fkey(name), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
+      .eq('forfeiting_team_id', losingTeamId)
+      .gt('remaining', 0)
+
+    if (balances && balances.length > 0) {
+      let totalForfeitGoals = 0
+      for (const bal of balances) {
+        totalForfeitGoals += bal.opponent_score
+        await supabase.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
+      }
+      if (homeScore < awayScore) homeScore += totalForfeitGoals
+      else awayScore += totalForfeitGoals
+
+      const teamName = (Array.isArray(balances[0]?.forfeiting_team) ? balances[0].forfeiting_team[0]?.name : balances[0]?.forfeiting_team?.name) || 'Team'
+      const oppName = (Array.isArray(balances[0]?.opponent_team) ? balances[0].opponent_team[0]?.name : balances[0]?.opponent_team?.name) || 'Opponent'
+      forfeitBalanceNote = `\n\nForfeit balance applied: ${teamName} had ${balances.length} active forfeit balance(s) from ${oppName} (${balances[0].opponent_score} goals). Adjusted to ${homeScore}-${awayScore}.`
+      console.log('[webhook] forfeit balance applied:', teamName, '+', totalForfeitGoals, 'goals')
+    }
+  }
+
+  // Insert result_confirmations
   const { error: rcErr } = await supabase
     .from('result_confirmations')
     .insert({
       fixture_id: session.matched_fixture_id,
-      home_score: session.home_score,
-      away_score: session.away_score,
+      home_score: homeScore,
+      away_score: awayScore,
       submitted_by: adminUserId,
     })
   if (rcErr) console.error('[webhook] confirmations insert failed:', rcErr.message)
 
+  // Upsert result
   const { data: resultRow, error: resultErr } = await supabase
     .from('results')
     .upsert({
       fixture_id: session.matched_fixture_id,
-      home_score: session.home_score,
-      away_score: session.away_score,
+      home_score: homeScore,
+      away_score: awayScore,
       ...(adminUserId ? { finalised_by: adminUserId } : {}),
     }, { onConflict: 'fixture_id' })
     .select('id')
@@ -724,6 +961,40 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     return
   }
 
+  // If this was a forfeit confirmation, mark result as abandoned and create forfeit_balances entry
+  if (isForfeitConfirm && fixture) {
+    const [origHomeScore, origAwayScore] = (session.pending_date || '').split(':').map(Number)
+    const homeForfeit = (origHomeScore || 0) < (origAwayScore || 0)
+    const awayForfeit = (origAwayScore || 0) < (origHomeScore || 0)
+    const abandonedType = homeForfeit ? 'home' : awayForfeit ? 'away' : null
+
+    if (abandonedType) {
+      await supabase
+        .from('results')
+        .update({ is_abandoned: true, abandoned_type: abandonedType })
+        .eq('id', resultRow.id)
+
+      const forfTeamId = homeForfeit ? fixture.home_team_id : fixture.away_team_id
+      const oppTeamId = homeForfeit ? fixture.away_team_id : fixture.home_team_id
+      await supabase.from('forfeit_balances').insert({
+        fixture_id: session.matched_fixture_id,
+        forfeiting_team_id: forfTeamId,
+        opponent_team_id: oppTeamId,
+        opponent_score: homeForfeit ? origAwayScore : origHomeScore,
+        forfeiting_score: homeForfeit ? origHomeScore : origAwayScore,
+        half_time_note: `Forfeit: ${homeScore}-${awayScore} (adjusted from ${origHomeScore}-${origAwayScore})`,
+      })
+
+      // Recalculate standings since trigger double-counts on UPDATE
+      const { data: fixData } = await supabase.from('fixtures').select('tournament_id').eq('id', session.matched_fixture_id).single()
+      if (fixData?.tournament_id) {
+        try { await recalculateStandings(fixData.tournament_id) } catch (e) { console.error('[webhook] standings recalc after forfeit failed:', e) }
+      }
+      console.log('[webhook] forfeit recorded:', abandonedType, 'for fixture:', session.matched_fixture_id)
+    }
+  }
+
+  // Match stats
   const dbStats = matchStatsToDbColumns(session.match_stats)
   if (resultRow?.id && dbStats) {
     const { error: statsErr } = await supabase
@@ -741,7 +1012,6 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     .single()
 
   if (verifyFixture?.status !== 'confirmed') {
-    // Fallback: try explicit update
     const { error: fixtureErr } = await supabase
       .from('fixtures')
       .update({ status: 'confirmed' })
@@ -754,24 +1024,24 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     }
   }
 
-  console.log('[webhook] result written:', { fixture_id: session.matched_fixture_id, home_score: session.home_score, away_score: session.away_score, submitted_by: adminUserId })
+  console.log('[webhook] result written:', { fixture_id: session.matched_fixture_id, home_score: homeScore, away_score: awayScore, submitted_by: adminUserId })
   await clearSession(from)
-  await sendTextMessage(from, 'Result submitted!\n\nCheck your standings here: https://efa-fxyk.vercel.app/standings', phoneNumberId)
+  await sendTextMessage(from, `Result submitted!${forfeitBalanceNote}\n\nCheck your standings here: https://efa-fxyk.vercel.app/standings`, phoneNumberId)
 
   // Send push notification to admin
   if (adminUserId) {
     try {
-      const { data: fixture } = await supabase
+      const { data: fixturePush } = await supabase
         .from('fixtures')
         .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
         .eq('id', session.matched_fixture_id)
         .single()
-      if (fixture) {
-        const hName = ((Array.isArray(fixture.home_team) ? fixture.home_team[0]?.name : fixture.home_team?.name) || 'Home')
-        const aName = ((Array.isArray(fixture.away_team) ? fixture.away_team[0]?.name : fixture.away_team?.name) || 'Away')
+      if (fixturePush) {
+        const hName = ((Array.isArray(fixturePush.home_team) ? fixturePush.home_team[0]?.name : fixturePush.home_team?.name) || 'Home')
+        const aName = ((Array.isArray(fixturePush.away_team) ? fixturePush.away_team[0]?.name : fixturePush.away_team?.name) || 'Away')
         await sendPushToUsers(supabase, [adminUserId], {
           title: 'Result Confirmed',
-          body: `${hName} ${session.home_score}–${session.away_score} ${aName}`,
+          body: `${hName} ${homeScore}–${awayScore} ${aName}`,
           url: `/fixtures/${session.matched_fixture_id}`,
           tag: `result-${session.matched_fixture_id}`,
         })
