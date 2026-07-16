@@ -320,20 +320,6 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     // "inter milan 3-2 liverpool" and we only match on team names
     const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
 
-    const vsParts = stripped.split(/\s+vs\.?\s+/i)
-    let teamSearches: string[]
-    if (vsParts.length >= 2) {
-      teamSearches = [vsParts[0].trim().toLowerCase(), vsParts.slice(1).join(' ').trim().toLowerCase()]
-    } else {
-      teamSearches = [stripped.toLowerCase().trim()]
-    }
-    teamSearches = teamSearches.filter((s: string) => s.length >= 2)
-
-    if (teamSearches.length === 0) {
-      await sendTextMessage(from, "Please type at least one team name. Type CANCEL to start over.", phoneNumberId)
-      return
-    }
-
     const today = new Date().toISOString().split('T')[0]
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
@@ -347,6 +333,41 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       .order('matchday')
 
     const allFixtures = (fixtures as any[]) || []
+
+    const vsParts = stripped.split(/\s+vs\.?\s+/i)
+    let teamSearches: string[]
+    if (vsParts.length >= 2) {
+      teamSearches = [vsParts[0].trim().toLowerCase(), vsParts.slice(1).join(' ').trim().toLowerCase()]
+    } else {
+      // No "vs" — try every possible split point and pick the one that best matches fixtures
+      const words = stripped.toLowerCase().split(/\s+/).filter((w: string) => w.length >= 1)
+      teamSearches = [stripped.toLowerCase().trim()] // fallback: whole string as one search
+      if (words.length >= 2 && allFixtures.length > 0) {
+        let bestSplit: string[] | null = null
+        let bestScore = 0
+        for (let i = 1; i < words.length; i++) {
+          const left = words.slice(0, i).join(' ')
+          const right = words.slice(i).join(' ')
+          if (left.length < 2 || right.length < 2) continue
+          for (const f of allFixtures) {
+            const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+            const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+            const s = Math.max(teamNameScore(left, hName) + teamNameScore(right, aName),
+                               teamNameScore(left, aName) + teamNameScore(right, hName)) / 2
+            if (s > bestScore) { bestScore = s; bestSplit = [left, right] }
+          }
+        }
+        if (bestSplit && bestScore >= 0.6) {
+          teamSearches = bestSplit
+        }
+      }
+    }
+    teamSearches = teamSearches.filter((s: string) => s.length >= 2)
+
+    if (teamSearches.length === 0) {
+      await sendTextMessage(from, "Please type at least one team name. Type CANCEL to start over.", phoneNumberId)
+      return
+    }
 
     const TEAM_ALIASES: Record<string, string> = {
       'utd': 'united', 'man utd': 'manchester united', 'man u': 'manchester united',
