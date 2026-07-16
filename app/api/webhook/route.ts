@@ -440,7 +440,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         : ''
       const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
       const statsBlock = formatStatsBlock(session.match_stats)
-      await sendTextMessage(from, `Found: ${hName} vs ${aName}${resultLine}\n\nConfirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.`, phoneNumberId)
+      await sendTextMessage(from, `Found: ${hName} vs ${aName}${resultLine}\n\nConfirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.`, phoneNumberId)
       return
     }
 
@@ -557,9 +557,45 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         match_stats: newStats,
       })
       const statsBlock = formatStatsBlock(newStats)
-      await sendTextMessage(from, `Sides swapped!\n\nConfirm result: ${newHome} ${newHomeScore}-${newAwayScore} ${newAway}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are still on the wrong side. Type CANCEL to start again.`, phoneNumberId)
+      await sendTextMessage(from, `Sides swapped!\n\nConfirm result: ${newHome} ${newHomeScore}-${newAwayScore} ${newAway}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are still on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start again.`, phoneNumberId)
       return
     }
+    // EDIT SCORE — override the score for aggregate/replay situations
+    if (/^(edit\s*score|score)$/i.test(lower)) {
+      await upsertSession({ phone_number: from, state: 'awaiting_edit_score' })
+      await sendTextMessage(from, "What is the correct aggregate score? Type it as: 3-2", phoneNumberId)
+      return
+    }
+  }
+
+  // ─── Edit score: user types new score ──────────────────────────────────────
+  if (session?.state === 'awaiting_edit_score') {
+    const match = text.trim().match(/^(\d+)\s*[-:]\s*(\d+)$/)
+    if (!match) {
+      await sendTextMessage(from, "Please type the score as: 3-2", phoneNumberId)
+      return
+    }
+    const newHomeScore = parseInt(match[1], 10)
+    const newAwayScore = parseInt(match[2], 10)
+
+    const { data: fixCheck } = await supabase
+      .from('fixtures')
+      .select('status')
+      .eq('id', session.matched_fixture_id)
+      .single()
+    const wasOverride = fixCheck && (fixCheck.status === 'confirmed' || fixCheck.status === 'awaiting_confirmation')
+
+    await upsertSession({
+      phone_number: from,
+      home_score: newHomeScore,
+      away_score: newAwayScore,
+      state: wasOverride ? 'awaiting_override_confirm' : 'idle',
+    })
+
+    const statsBlock = formatStatsBlock(session.match_stats)
+    const overrideWarning = wasOverride ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
+    await sendTextMessage(from, `Score updated!\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.`, phoneNumberId)
+    return
   }
 
   // "check other date" — restart fixture matching with a different date
@@ -638,7 +674,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
         })
 
-        await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
+        await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
         return
       }
     }
@@ -693,7 +729,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           const statsBlock = formatStatsBlock(session.match_stats)
           const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
           const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
-          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.${hint}`, phoneNumberId)
+          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.${hint}`, phoneNumberId)
           return
         }
       }
@@ -768,7 +804,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             const statsBlock = formatStatsBlock(session.match_stats)
             const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
             const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
-            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type CANCEL to start over.${hint}`, phoneNumberId)
+            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.${hint}`, phoneNumberId)
             return
           } else if (finalMatches.length > 1) {
             const lines = finalMatches.map((f: any, i: number) => formatFixtureLine(f, i))
