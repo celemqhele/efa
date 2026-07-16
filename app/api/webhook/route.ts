@@ -1033,8 +1033,8 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
         totalForfeitGoals += bal.opponent_score
         await supabase.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
       }
-      if (homeScore < awayScore) homeScore += totalForfeitGoals
-      else awayScore += totalForfeitGoals
+      if (homeScore < awayScore) awayScore += totalForfeitGoals
+      else homeScore += totalForfeitGoals
 
       const teamName = (Array.isArray(balances[0]?.forfeiting_team) ? balances[0].forfeiting_team[0]?.name : balances[0]?.forfeiting_team?.name) || 'Team'
       const oppName = (Array.isArray(balances[0]?.opponent_team) ? balances[0].opponent_team[0]?.name : balances[0]?.opponent_team?.name) || 'Opponent'
