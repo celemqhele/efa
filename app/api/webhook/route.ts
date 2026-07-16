@@ -316,12 +316,16 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     const supabase = await createAdminClient()
     const searchInput = text.trim()
 
-    const vsParts = searchInput.split(/\s+vs\.?\s+|\s+-\s+/i)
+    // Strip any score patterns (e.g. "3-2", "3:2", "3 2") so users can type
+    // "inter milan 3-2 liverpool" and we only match on team names
+    const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
+
+    const vsParts = stripped.split(/\s+vs\.?\s+/i)
     let teamSearches: string[]
     if (vsParts.length >= 2) {
-      teamSearches = [vsParts[0].trim().toLowerCase(), vsParts.slice(1).join(' - ').trim().toLowerCase()]
+      teamSearches = [vsParts[0].trim().toLowerCase(), vsParts.slice(1).join(' ').trim().toLowerCase()]
     } else {
-      teamSearches = [searchInput.toLowerCase().trim()]
+      teamSearches = [stripped.toLowerCase().trim()]
     }
     teamSearches = teamSearches.filter((s: string) => s.length >= 2)
 
@@ -1030,7 +1034,7 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     if (balances && balances.length > 0) {
       let totalForfeitGoals = 0
       for (const bal of balances) {
-        totalForfeitGoals += bal.opponent_score
+        totalForfeitGoals += 3
         await supabase.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
       }
       if (homeScore < awayScore) awayScore += totalForfeitGoals
@@ -1038,7 +1042,7 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
 
       const teamName = (Array.isArray(balances[0]?.forfeiting_team) ? balances[0].forfeiting_team[0]?.name : balances[0]?.forfeiting_team?.name) || 'Team'
       const oppName = (Array.isArray(balances[0]?.opponent_team) ? balances[0].opponent_team[0]?.name : balances[0]?.opponent_team?.name) || 'Opponent'
-      forfeitBalanceNote = `\n\nForfeit balance applied: ${teamName} had ${balances.length} active forfeit balance(s) from ${oppName} (${balances[0].opponent_score} goals). Adjusted to ${homeScore}-${awayScore}.`
+      forfeitBalanceNote = `\n\nForfeit balance applied: ${teamName} had ${balances.length} active forfeit balance(s) from ${oppName} (3 goals each). Adjusted to ${homeScore}-${awayScore}.`
       console.log('[webhook] forfeit balance applied:', teamName, '+', totalForfeitGoals, 'goals')
     }
   }
