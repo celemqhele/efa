@@ -187,16 +187,14 @@ export async function sendTextMessage(to: string, body: string, phoneNumberId: s
 export async function cleanOcrText(ocrText: string): Promise<OcrCleanedResult | null> {
   const prompt = `You are reading OCR output from a screenshot of the mobile game eFootball. The OCR text may contain garbled characters, split lines, or misread text.
 
-Determine if this is a FINISHED match result or something else (live match, menu, etc).
+Determine if this screenshot contains a match score.
 
-A screenshot is a valid finished result ONLY if it shows one of:
-- A "Full Time" banner with a scoreline
-- A "You Won" or "You Lost" popup saying the opponent conceded/forfeited
+A screenshot is valid if it shows ANY score between two teams or players — it does NOT need to say "Full Time", "You Won", or "You Lost". Any visible score (e.g. 3-1, 0-2, 5-0) is enough.
 
-If it's a live match (has a running clock like "28:35"), a menu, or anything else that is NOT a finished result, respond with:
+If it's a live match (has a running clock like "28:35"), a menu, training screen, or anything else with NO score visible, respond with:
 { "valid": false, "reason": "short description of what this screenshot actually shows" }
 
-If it IS a valid finished result, extract:
+If a score is visible, extract:
 {
   "valid": true,
   "homeTeam": "string, team name if visible, otherwise the player gamertag",
@@ -254,16 +252,14 @@ ${ocrText}
 export async function cleanOcrWithGroq(ocrText: string): Promise<OcrCleanedResult | null> {
   const prompt = `You are reading OCR output from a screenshot of the mobile game eFootball. The OCR text may contain garbled characters, split lines, or misread text.
 
-Determine if this is a FINISHED match result or something else (live match, menu, etc).
+Determine if this screenshot contains a match score.
 
-A screenshot is a valid finished result ONLY if it shows one of:
-- A "Full Time" banner with a scoreline
-- A "You Won" or "You Lost" popup saying the opponent conceded/forfeited
+A screenshot is valid if it shows ANY score between two teams or players — it does NOT need to say "Full Time", "You Won", or "You Lost". Any visible score (e.g. 3-1, 0-2, 5-0) is enough.
 
-If it's a live match (has a running clock like "28:35"), a menu, or anything else that is NOT a finished result, respond with:
+If it's a live match (has a running clock like "28:35"), a menu, training screen, or anything else with NO score visible, respond with:
 { "valid": false, "reason": "short description of what this screenshot actually shows" }
 
-If it IS a valid finished result, extract:
+If a score is visible, extract:
 {
   "valid": true,
   "homeTeam": "string, team name if visible, otherwise the player gamertag",
@@ -327,16 +323,14 @@ ${ocrText}
 export async function analyzeScreenshot(imageBuffer: Buffer, mimeType: string): Promise<OcrCleanedResult | null> {
   const base64 = imageBuffer.toString('base64')
 
-  const prompt = `You are reading a screenshot from the mobile game eFootball. Determine if this is a FINISHED match result or something else (live match, menu, etc).
+  const prompt = `You are reading a screenshot from the mobile game eFootball. Determine if this screenshot contains a match score.
 
-A screenshot is a valid finished result ONLY if it shows one of:
-- A "Full Time" banner with a scoreline
-- A "You Won" or "You Lost" popup saying the opponent conceded/forfeited
+A screenshot is valid if it shows ANY score between two teams or players — it does NOT need to say "Full Time", "You Won", or "You Lost". Any visible score (e.g. 3-1, 0-2, 5-0) is enough.
 
-If it's a live match (has a running clock like "28:35"), a menu, or anything else that is NOT a finished result, respond with:
+If it's a live match (has a running clock like "28:35"), a menu, training screen, or anything else with NO score visible, respond with:
 { "valid": false, "reason": "short description of what this screenshot actually shows" }
 
-If it IS a valid finished result, extract:
+If a score is visible, extract:
 {
   "valid": true,
   "homeTeam": "string, team name if visible on a crest/label, otherwise the player gamertag",
