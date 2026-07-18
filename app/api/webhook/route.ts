@@ -904,15 +904,21 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
     try {
       const cleaned = await cleanOcrText(ocrResult.rawText)
       if (cleaned) {
-        if (cleaned.valid === false) invalidReason = cleaned.reason || null
-        else { homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats }
+        if (cleaned.valid === false) {
+          // Don't set invalidReason yet — vision may still find a score
+        } else {
+          homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats
+        }
       }
     } catch {
       try {
         const cleaned = await cleanOcrWithGroq(ocrResult.rawText)
         if (cleaned) {
-          if (cleaned.valid === false) invalidReason = cleaned.reason || null
-          else { homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats }
+          if (cleaned.valid === false) {
+            // Don't set invalidReason yet — vision may still find a score
+          } else {
+            homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats
+          }
         }
       } catch {}
     }
@@ -931,8 +937,12 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
     const geminiResult = await analyzeScreenshot(buffer, mimeType)
     if (geminiResult) {
       if (geminiResult.valid === false) {
-        if (!invalidReason) invalidReason = geminiResult.reason || null
+        // vision says invalid — only keep text-based reason if vision also confirms it
+        if (homeScore !== null) invalidReason = null  // text found scores, trust that
+        else if (!invalidReason) invalidReason = geminiResult.reason || null
       } else {
+        // vision found valid data — override any text-based invalidReason
+        invalidReason = null
         if (geminiResult.homeScore != null && geminiResult.awayScore != null) {
           homeScore = geminiResult.homeScore; awayScore = geminiResult.awayScore
         }
@@ -941,6 +951,9 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
       }
     }
   } catch {}
+
+  // If vision failed but text/OCR found scores, that's still valid
+  if (homeScore !== null && awayScore !== null) invalidReason = null
 
   return { homeTeam, awayTeam, homeScore, awayScore, matchStats, invalidReason }
 }
