@@ -456,6 +456,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await upsertSession({
         phone_number: from,
         matched_fixture_id: f.id,
+        home_team: hName, away_team: aName,
         state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
         displayed_fixtures: null,
       })
@@ -690,8 +691,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         await upsertSession({
           phone_number: from,
           matched_fixture_id: chosenId,
-          home_team: session.home_team,
-          away_team: session.away_team,
+          home_team: hName, away_team: aName,
           home_score: session.home_score,
           away_score: session.away_score,
           match_stats: session.match_stats,
@@ -742,8 +742,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           await upsertSession({
             phone_number: from,
             matched_fixture_id: chosenId,
-            home_team: session.home_team,
-            away_team: session.away_team,
+            home_team: hName, away_team: aName,
             home_score: session.home_score,
             away_score: session.away_score,
             match_stats: session.match_stats,
@@ -817,8 +816,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             await upsertSession({
               phone_number: from,
               matched_fixture_id: chosen.id,
-              home_team: session.home_team,
-              away_team: session.away_team,
+              home_team: hName, away_team: aName,
               home_score: session.home_score,
               away_score: session.away_score,
               match_stats: session.match_stats,
