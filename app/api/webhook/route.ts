@@ -561,11 +561,9 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await writeResultToDb(from, session, supabase, phoneNumberId)
       return
     }
-    // SWAP — switch home/away sides
+    // SWAP — flip scores and stats to match DB orientation (team names stay from DB)
     if (/^swap$/i.test(lower)) {
-      console.log('[webhook] user SWAP:', session.home_team, 'vs', session.away_team)
-      const newHome = session.away_team
-      const newAway = session.home_team
+      console.log('[webhook] user SWAP scores+stats:', session.home_team, 'vs', session.away_team)
       const newHomeScore = session.away_score
       const newAwayScore = session.home_score
       let newStats = session.match_stats
@@ -578,12 +576,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       }
       await upsertSession({
         phone_number: from,
-        home_team: newHome, away_team: newAway,
         home_score: newHomeScore, away_score: newAwayScore,
         match_stats: newStats,
       })
       const statsBlock = formatStatsBlock(newStats)
-      await sendTextMessage(from, `Sides swapped!\n\nConfirm result: ${newHome} ${newHomeScore}-${newAwayScore} ${newAway}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if stats are still on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start again.`, phoneNumberId)
+      await sendTextMessage(from, `Scores swapped!\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if still wrong. Type EDIT SCORE to override. Type CANCEL to start again.`, phoneNumberId)
       return
     }
     // EDIT SCORE — override the score for aggregate/replay situations
