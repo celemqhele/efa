@@ -1057,7 +1057,8 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   let forfeitBalanceNote = ''
 
   // Forfeit balance aggregate: check if either team has active forfeit balances
-  if (fixture?.home_team_id && fixture?.away_team_id && homeScore !== awayScore) {
+  // Skip when this is a forfeit confirm — handleForfeitYes already applied the +3
+  if (!isForfeitConfirm && fixture?.home_team_id && fixture?.away_team_id && homeScore !== awayScore) {
     const losingTeamId = homeScore < awayScore ? fixture.home_team_id : fixture.away_team_id
     const { data: balances } = await supabase
       .from('forfeit_balances')
