@@ -33,6 +33,21 @@ function formatDate(dateStr: string): string {
   return `${days[obj.getDay()]} ${d} ${months[m - 1]} ${y}`
 }
 
+function formatDateShort(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const obj = new Date(y, m - 1, d)
+  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+  return `${days[obj.getDay()]} ${d} ${months[m - 1]}`
+}
+
+function formatDateRange(dates: string[]): string {
+  const unique = Array.from(new Set(dates)).sort()
+  if (unique.length === 0) return 'FIXTURES'
+  if (unique.length === 1) return formatDate(unique[0])
+  return `${formatDateShort(unique[0])} – ${formatDateShort(unique[unique.length - 1])}`
+}
+
 function TeamLogoInline({
   folder,
   slug,
@@ -314,11 +329,11 @@ export default async function ExportPage({ searchParams }: Props) {
           for (let i = 0; i < fixtures.length; i += fixtureChunkSize) {
             const partNum = Math.floor(i / fixtureChunkSize) + 1
             const chunkFixtures = fixtures.slice(i, i + fixtureChunkSize)
-            const mds = Array.from(new Set(chunkFixtures.map((f: any) => f.matchday).filter(Boolean))).sort((a: number, b: number) => a - b)
-            const mdLabel = mds.length === 1 ? `MATCHDAY ${mds[0]}` : mds.length > 1 ? `MATCHDAYS ${mds.join(',')}` : 'FIXTURES'
+            const dates = chunkFixtures.map((f: any) => f.scheduled_date?.split('T')[0]).filter(Boolean)
+            const dateLabel = formatDateRange(dates)
             chunks.push({
               key: `${tournamentId}-${cardType}-chunk-${partNum}`,
-              title: `${mdLabel} (PART ${partNum})`,
+              title: `${dateLabel} (PART ${partNum})`,
               fixtures: chunkFixtures
             })
           }
@@ -362,11 +377,11 @@ export default async function ExportPage({ searchParams }: Props) {
           for (let i = 0; i < results.length; i += resultChunkSize) {
             const partNum = Math.floor(i / resultChunkSize) + 1
             const chunkResults = results.slice(i, i + resultChunkSize)
-            const mds = Array.from(new Set(chunkResults.map((f: any) => f.matchday).filter(Boolean))).sort((a: number, b: number) => a - b)
-            const mdLabel = mds.length === 1 ? `MATCHDAY ${mds[0]}` : mds.length > 1 ? `MATCHDAYS ${mds.join(',')}` : 'RESULTS'
+            const dates = chunkResults.map((f: any) => f.scheduled_date?.split('T')[0]).filter(Boolean)
+            const dateLabel = formatDateRange(dates)
             chunks.push({
               key: `${tournamentId}-${cardType}-chunk-${partNum}`,
-              title: `${mdLabel} (PART ${partNum})`,
+              title: `${dateLabel} (PART ${partNum})`,
               results: chunkResults
             })
           }
@@ -508,14 +523,14 @@ export default async function ExportPage({ searchParams }: Props) {
         const rowOdd: React.CSSProperties = { background: 'transparent' }
 
         const allData = card.type === 'fixtures' ? card.fixtures : card.results
-        const matchdays = Array.from(new Set(allData.map((f: any) => f.matchday).filter(Boolean))).sort((a, b) => a - b)
-        const mdPrefix = matchdays.length === 1 ? `MATCHDAY ${matchdays[0]} ` : ''
+        const dates = allData.map((f: any) => f.scheduled_date?.split('T')[0]).filter(Boolean)
+        const datePrefix = dates.length > 0 ? `${formatDateRange(dates)} ` : ''
 
         const typeLabel =
           card.type === 'fixtures'
-            ? `${mdPrefix}FIXTURES`
+            ? `${datePrefix}FIXTURES`
             : card.type === 'results'
-            ? `${mdPrefix}RESULTS`
+            ? `${datePrefix}RESULTS`
             : card.tournament.type === 'league'
             ? 'LEAGUE TABLE'
             : 'GROUP STANDINGS'
@@ -624,7 +639,7 @@ export default async function ExportPage({ searchParams }: Props) {
 
                       {/* Chunk Content: Fixtures */}
                       {chunk.fixtures && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '216px' }}>
                           {chunk.fixtures.map((f: any, fi: number) => (
                             <div
                               key={f.id}
@@ -659,7 +674,7 @@ export default async function ExportPage({ searchParams }: Props) {
 
                       {/* Chunk Content: Results */}
                       {chunk.results && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '216px' }}>
                           {chunk.results.map((f: any, fi: number) => {
                             const r = f.result
                             const homeWon = r && r.home_score > r.away_score
@@ -815,7 +830,7 @@ export default async function ExportPage({ searchParams }: Props) {
 
                 {/* FIXTURES */}
                 {card.type === 'fixtures' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '216px' }}>
                     {card.fixtures.length === 0 ? (
                       <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
                         No fixtures found for {formattedDate}
@@ -856,7 +871,7 @@ export default async function ExportPage({ searchParams }: Props) {
 
                 {/* RESULTS */}
                 {card.type === 'results' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '216px' }}>
                     {card.results.length === 0 ? (
                       <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
                         No results found for {formattedDate}

@@ -1,11 +1,12 @@
 'use client'
 
 import { toPng } from 'html-to-image'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Camera } from 'lucide-react'
 
 const APP_TIME_ZONE = 'Africa/Johannesburg'
+const CHUNK_SIZE = 6
 
 interface FixtureRow {
   id: string
@@ -48,20 +49,126 @@ function timeLabel(iso: string | null): string {
   })
 }
 
+function FixtureRow({ f, i }: { f: FixtureRow; i: number }) {
+  const time = timeLabel(f.scheduled_date)
+  const status = STATUS_COLOURS[f.status] ?? STATUS_COLOURS.scheduled
+  const statusText = STATUS_LABELS[f.status] ?? f.status.replace(/_/g, ' ')
+  const accent = 'var(--color-accent)'
+
+  return (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center',
+        background: i % 2 === 0 ? 'var(--color-bg-base)' : 'transparent',
+        borderRadius: 'var(--radius-md)',
+        padding: 'var(--space-2) var(--space-3)',
+        gap: 'var(--space-2)',
+      }}
+    >
+      {/* Time / MD */}
+      <div style={{ width: '60px', textAlign: 'center', flexShrink: 0 }}>
+        {time ? (
+          <>
+            <div style={{ fontWeight: 800, fontSize: 'var(--text-sm)', fontFamily: 'monospace' }}>{time}</div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', letterSpacing: 'var(--tracking-wide)', marginTop: '1px' }}>
+              MD{f.matchday ?? '?'}
+            </div>
+          </>
+        ) : (
+          <div style={{ fontWeight: 700, fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>MD{f.matchday ?? '?'}</div>
+        )}
+      </div>
+
+      {/* Home */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-2)', paddingRight: 'var(--space-1)' }}>
+        <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {f.home_team_name ?? 'TBC'}
+        </span>
+        {f.home_team_folder && f.home_team_slug && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/logos/${f.home_team_folder}/128x128/${f.home_team_slug}.png`}
+            alt=""
+            width={28} height={28}
+            style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }}
+          />
+        )}
+      </div>
+
+      {/* vs */}
+      <div style={{ color: accent, fontWeight: 900, fontSize: 'var(--text-xs)', minWidth: '24px', textAlign: 'center', letterSpacing: 'var(--tracking-wide)' }}>
+        VS
+      </div>
+
+      {/* Away */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-2)', paddingLeft: 'var(--space-1)' }}>
+        {f.away_team_folder && f.away_team_slug && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/logos/${f.away_team_folder}/128x128/${f.away_team_slug}.png`}
+            alt=""
+            width={28} height={28}
+            style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }}
+          />
+        )}
+        <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {f.away_team_name ?? 'TBC'}
+        </span>
+      </div>
+
+      {/* Status */}
+      <div
+        style={{
+          flexShrink: 0,
+          fontSize: 'var(--text-xs)',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: 'var(--tracking-wide)',
+          padding: '2px 6px',
+          borderRadius: 'var(--radius-sm)',
+          color: status.fg,
+          background: status.bg,
+          border: `1px solid ${status.border}`,
+        }}
+      >
+        {statusText}
+      </div>
+    </div>
+  )
+}
+
 export default function DueFixturesExportButton({ fixtures }: Props) {
   const [loading, setLoading] = useState(false)
-  const cardId = 'fixtures-due-export-card'
+  const today = jhbDateLong(new Date())
+  const accent = 'var(--color-accent)'
+
+  const chunks = useMemo(() => {
+    if (fixtures.length === 0) return []
+    const result: FixtureRow[][] = []
+    for (let i = 0; i < fixtures.length; i += CHUNK_SIZE) {
+      result.push(fixtures.slice(i, i + CHUNK_SIZE))
+    }
+    return result
+  }, [fixtures])
 
   async function handleDownload() {
-    const card = document.getElementById(cardId)
-    if (!card) return
+    if (chunks.length === 0) return
     setLoading(true)
     try {
-      const dataUrl = await toPng(card, { pixelRatio: 2, cacheBust: true })
-      const link = document.createElement('a')
-      link.download = `efa-fixtures-due-${new Date().toISOString().slice(0, 10)}.png`
-      link.href = dataUrl
-      link.click()
+      for (let ci = 0; ci < chunks.length; ci++) {
+        const card = document.getElementById(`fixtures-due-card-${ci}`)
+        if (!card) continue
+        const dataUrl = await toPng(card, { pixelRatio: 2, cacheBust: true })
+        const link = document.createElement('a')
+        link.download = chunks.length === 1
+          ? `efa-fixtures-due-${new Date().toISOString().slice(0, 10)}.png`
+          : `efa-fixtures-due-${new Date().toISOString().slice(0, 10)}-part${ci + 1}.png`
+        link.href = dataUrl
+        link.click()
+        if (ci < chunks.length - 1) {
+          await new Promise(r => setTimeout(r, 500))
+        }
+      }
     } catch (err) {
       console.error('Export failed', err)
     } finally {
@@ -69,8 +176,9 @@ export default function DueFixturesExportButton({ fixtures }: Props) {
     }
   }
 
-  const today = jhbDateLong(new Date())
-  const accent = 'var(--color-accent)'
+  const buttonLabel = chunks.length <= 1
+    ? 'Export'
+    : `Export (${chunks.length} images)`
 
   return (
     <>
@@ -83,167 +191,81 @@ export default function DueFixturesExportButton({ fixtures }: Props) {
         aria-label="Export fixtures due as PNG"
         isLoading={loading}
       >
-        <Camera className="w-4 h-4" /> Export
+        <Camera className="w-4 h-4" /> {buttonLabel}
       </Button>
 
-      {/* Off-screen printable card (still in DOM so html-to-image can capture it) */}
+      {/* Off-screen printable cards */}
       <div style={{ position: 'fixed', left: '-10000px', top: 0, pointerEvents: 'none' }} aria-hidden>
-        <div
-          id={cardId}
-          style={{
-            fontFamily: "'Segoe UI', system-ui, sans-serif",
-            width: '600px',
-            background: 'var(--color-bg-surface)',
-            padding: 'var(--space-8)',
-            borderRadius: 'var(--radius-lg)',
-            color: 'var(--color-text-primary)',
-          }}
-        >
-          {/* Header */}
+        {chunks.map((chunk, ci) => (
           <div
+            key={ci}
+            id={`fixtures-due-card-${ci}`}
             style={{
-              borderBottom: `3px solid ${accent}`,
-              paddingBottom: 'var(--space-4)',
-              marginBottom: 'var(--space-5)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-3)',
+              fontFamily: "'Segoe UI', system-ui, sans-serif",
+              width: '600px',
+              background: 'var(--color-bg-surface)',
+              padding: 'var(--space-8)',
+              borderRadius: 'var(--radius-lg)',
+              color: 'var(--color-text-primary)',
             }}
           >
+            {/* Header */}
             <div
               style={{
-                width: '44px', height: '44px', borderRadius: '50%',
-                background: accent, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontWeight: 900, fontSize: '13px',
-                color: 'var(--color-bg-surface)', letterSpacing: 'var(--tracking-tight)', flexShrink: 0,
+                borderBottom: `3px solid ${accent}`,
+                paddingBottom: 'var(--space-4)',
+                marginBottom: 'var(--space-5)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-3)',
               }}
             >
-              EFA
+              <div
+                style={{
+                  width: '44px', height: '44px', borderRadius: '50%',
+                  background: accent, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontWeight: 900, fontSize: '13px',
+                  color: 'var(--color-bg-surface)', letterSpacing: 'var(--tracking-tight)', flexShrink: 0,
+                }}
+              >
+                EFA
+              </div>
+              <div>
+                <div style={{ color: accent, fontWeight: 700, fontSize: 'var(--text-xs)', letterSpacing: 'var(--tracking-wide)', textTransform: 'uppercase', marginBottom: '3px' }}>
+                  {today}
+                </div>
+                <div style={{ fontWeight: 900, fontSize: 'var(--text-xl)', lineHeight: 1, letterSpacing: 'var(--tracking-tight)' }}>
+                  FIXTURES DUE {chunks.length > 1 ? `(PART ${ci + 1})` : `(${fixtures.length})`}
+                </div>
+              </div>
             </div>
-            <div>
-              <div style={{ color: accent, fontWeight: 700, fontSize: 'var(--text-xs)', letterSpacing: 'var(--tracking-wide)', textTransform: 'uppercase', marginBottom: '3px' }}>
-                {today}
-              </div>
-              <div style={{ fontWeight: 900, fontSize: 'var(--text-xl)', lineHeight: 1, letterSpacing: 'var(--tracking-tight)' }}>
-                FIXTURES DUE ({fixtures.length})
-              </div>
+
+            {/* Rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', minHeight: '216px' }}>
+              {chunk.map((f, i) => (
+                <FixtureRow key={f.id} f={f} i={i} />
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                borderTop: '1px solid var(--color-border-subtle)',
+                marginTop: 'var(--space-5)',
+                paddingTop: 'var(--space-3)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                color: 'var(--color-text-muted)',
+                fontSize: 'var(--text-xs)',
+                letterSpacing: 'var(--tracking-wide)',
+              }}
+            >
+              <span>EFA — EFOOTBALL FEDERAL ASSOCIATION</span>
+              <span>efa-fxyk.vercel.app</span>
             </div>
           </div>
-
-          {/* Rows */}
-          {fixtures.length === 0 ? (
-            <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: 'var(--space-8)', fontSize: 'var(--text-sm)' }}>
-              No fixtures due.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-              {fixtures.map((f, i) => {
-                const time = timeLabel(f.scheduled_date)
-                const status = STATUS_COLOURS[f.status] ?? STATUS_COLOURS.scheduled
-                const statusText = STATUS_LABELS[f.status] ?? f.status.replace(/_/g, ' ')
-                return (
-                  <div
-                    key={f.id}
-                    style={{
-                      display: 'flex', alignItems: 'center',
-                      background: i % 2 === 0 ? 'var(--color-bg-base)' : 'transparent',
-                      borderRadius: 'var(--radius-md)',
-                      padding: 'var(--space-2) var(--space-3)',
-                      gap: 'var(--space-2)',
-                    }}
-                  >
-                    {/* Time / MD */}
-                    <div style={{ width: '60px', textAlign: 'center', flexShrink: 0 }}>
-                      {time ? (
-                        <>
-                          <div style={{ fontWeight: 800, fontSize: 'var(--text-sm)', fontFamily: 'monospace' }}>{time}</div>
-                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', letterSpacing: 'var(--tracking-wide)', marginTop: '1px' }}>
-                            MD{f.matchday ?? '?'}
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{ fontWeight: 700, fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>MD{f.matchday ?? '?'}</div>
-                      )}
-                    </div>
-
-                    {/* Home */}
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--space-2)', paddingRight: 'var(--space-1)' }}>
-                      <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {f.home_team_name ?? 'TBC'}
-                      </span>
-                      {f.home_team_folder && f.home_team_slug && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={`/logos/${f.home_team_folder}/128x128/${f.home_team_slug}.png`}
-                          alt=""
-                          width={28} height={28}
-                          style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }}
-                        />
-                      )}
-                    </div>
-
-                    {/* vs */}
-                    <div style={{ color: accent, fontWeight: 900, fontSize: 'var(--text-xs)', minWidth: '24px', textAlign: 'center', letterSpacing: 'var(--tracking-wide)' }}>
-                      VS
-                    </div>
-
-                    {/* Away */}
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-2)', paddingLeft: 'var(--space-1)' }}>
-                      {f.away_team_folder && f.away_team_slug && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={`/logos/${f.away_team_folder}/128x128/${f.away_team_slug}.png`}
-                          alt=""
-                          width={28} height={28}
-                          style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }}
-                        />
-                      )}
-                      <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {f.away_team_name ?? 'TBC'}
-                      </span>
-                    </div>
-
-                    {/* Status */}
-                    <div
-                      style={{
-                        flexShrink: 0,
-                        fontSize: 'var(--text-xs)',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: 'var(--tracking-wide)',
-                        padding: '2px 6px',
-                        borderRadius: 'var(--radius-sm)',
-                        color: status.fg,
-                        background: status.bg,
-                        border: `1px solid ${status.border}`,
-                      }}
-                    >
-                      {statusText}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Footer */}
-          <div
-            style={{
-              borderTop: '1px solid var(--color-border-subtle)',
-              marginTop: 'var(--space-5)',
-              paddingTop: 'var(--space-3)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              color: 'var(--color-text-muted)',
-              fontSize: 'var(--text-xs)',
-              letterSpacing: 'var(--tracking-wide)',
-            }}
-          >
-            <span>EFA — EFOOTBALL FEDERAL ASSOCIATION</span>
-            <span>efa-fxyk.vercel.app</span>
-          </div>
-        </div>
+        ))}
       </div>
     </>
   )
