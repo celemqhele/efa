@@ -482,6 +482,7 @@ export default async function ExportPage({ searchParams }: Props) {
   const cardStyle: React.CSSProperties = {
     fontFamily: "'Segoe UI', system-ui, sans-serif",
     width: '600px',
+    minHeight: '540px',
     background: 'var(--export-card-bg)',
     padding: '32px',
     borderRadius: '12px',
@@ -639,7 +640,7 @@ export default async function ExportPage({ searchParams }: Props) {
 
                       {/* Chunk Content: Fixtures */}
                       {chunk.fixtures && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '216px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {chunk.fixtures.map((f: any, fi: number) => (
                             <div
                               key={f.id}
@@ -674,7 +675,7 @@ export default async function ExportPage({ searchParams }: Props) {
 
                       {/* Chunk Content: Results */}
                       {chunk.results && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '216px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {chunk.results.map((f: any, fi: number) => {
                             const r = f.result
                             const homeWon = r && r.home_score > r.away_score
@@ -830,7 +831,7 @@ export default async function ExportPage({ searchParams }: Props) {
 
                 {/* FIXTURES */}
                 {card.type === 'fixtures' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '216px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {card.fixtures.length === 0 ? (
                       <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
                         No fixtures found for {formattedDate}
@@ -871,7 +872,7 @@ export default async function ExportPage({ searchParams }: Props) {
 
                 {/* RESULTS */}
                 {card.type === 'results' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '216px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {card.results.length === 0 ? (
                       <div style={{ color: 'var(--export-muted)', textAlign: 'center', padding: '32px', fontSize: '13px' }}>
                         No results found for {formattedDate}

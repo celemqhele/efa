@@ -203,6 +203,7 @@ export default function DueFixturesExportButton({ fixtures }: Props) {
             style={{
               fontFamily: "'Segoe UI', system-ui, sans-serif",
               width: '600px',
+              minHeight: '540px',
               background: 'var(--color-bg-surface)',
               padding: 'var(--space-8)',
               borderRadius: 'var(--radius-lg)',
@@ -241,7 +242,7 @@ export default function DueFixturesExportButton({ fixtures }: Props) {
             </div>
 
             {/* Rows */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', minHeight: '216px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
               {chunk.map((f, i) => (
                 <FixtureRow key={f.id} f={f} i={i} />
               ))}
