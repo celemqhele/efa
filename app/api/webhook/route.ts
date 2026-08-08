@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       } else {
         await sendTextMessage(from, "I couldn't analyse the image. Send to the group.", phoneNumberId)
       }
-    } else if (msg.type === 'image') {
+} else if (msg.type === 'image') {
       // Check if user is in backdoor screenshot step
       const session = await getSession(from)
       const caption = msg.image.caption?.trim() || ''
@@ -114,8 +114,23 @@ export async function POST(request: NextRequest) {
         await sendTextMessage(from, 'Which fixture? Type team names (e.g., "Arsenal vs Chelsea").', phoneNumberId)
         return
       }
-      // For regular result submission, if caption has team names, could auto-search
-      // But for now just proceed to handleImage which will OCR
+      
+      // For regular result submission: if caption has team names, search fixture FIRST
+      if (caption) {
+        // Check if caption looks like team names (contains "vs" or similar)
+        const hasTeamNames = /\bvs\.?\b|versus|playing|against/i.test(caption) || caption.toLowerCase().split(/\s+/).length >= 2
+        if (hasTeamNames) {
+          await upsertSession({
+            phone_number: from,
+            state: 'awaiting_match_name',
+            screenshot_media_id: msg.image.id
+          })
+          await handleFixtureSearchFromCaption(from, caption, msg.image.id, phoneNumberId)
+          return
+        }
+      }
+      
+      // No useful caption, proceed to OCR
       await handleImage(from, msg, phoneNumberId)
     } else if (msg.type === 'text') {
       await handleText(from, msg, phoneNumberId)
@@ -395,7 +410,7 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
     const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
     const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
     const score = fixtureMatchScore(teamSearches, hName, aName)
-    return score >= 0.5 // Lower threshold since combined score is more permissive
+    return score >= 0.4 // 40% minimum match threshold
   }
 
   const matchedFixtures = allFixtures
@@ -437,8 +452,84 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
     backdoor_fixture_ids: matchedFixtures.map((f: any) => f.id),
   })
 
-  const lines = matchedFixtures.map((f: any, i: number) => `${i + 1}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}`)
-  await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+  await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+}
+
+function formatFixtureListWithHeadings(fixtures: any[]): string {
+  if (fixtures.length === 0) return 'No matches found.'
+  
+  // Group fixtures by date
+  const byDate = new Map<string, any[]>()
+  for (const f of fixtures) {
+    const date = f.scheduled_date || 'Unknown date'
+    if (!byDate.has(date)) byDate.set(date, [])
+    byDate.get(date)!.push(f)
+  }
+  
+  const sortedDates = Array.from(byDate.keys()).sort()
+  
+  const lines: string[] = []
+  let globalIndex = 1
+  
+  for (const date of sortedDates) {
+    const dayFixtures = byDate.get(date)!
+    
+    // Separate by status
+    const today = new Date().toISOString().split('T')[0]
+    const isToday = date === today
+    const dateLabel = isToday ? `📅 **${date} (TODAY)**` : `📅 **${date}**`
+    
+    const pending = dayFixtures.filter(f => f.status === 'scheduled')
+    const awaiting = dayFixtures.filter(f => f.status === 'awaiting_confirmation')
+    const confirmed = dayFixtures.filter(f => f.status === 'confirmed')
+    
+    lines.push(dateLabel)
+    
+    if (pending.length > 0) {
+      lines.push('  ⏳ **Pending:**')
+      for (const f of pending) {
+        lines.push(`    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Pending)`)
+        globalIndex++
+      }
+    }
+    if (awaiting.length > 0) {
+      lines.push('  ⚠️ **Awaiting Confirmation:**')
+      for (const f of awaiting) {
+        lines.push(`    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Awaiting)`)
+        globalIndex++
+      }
+    }
+    if (confirmed.length > 0) {
+      lines.push('  ✅ **Submitted:**')
+      for (const f of confirmed) {
+        const result = Array.isArray(f.results) ? f.results[0] : f.results
+        const score = result ? ` ${result.home_score}-${result.away_score}` : ''
+        lines.push(`    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}${score} (Submitted)`)
+        globalIndex++
+      }
+    }
+    lines.push('') // empty line between dates
+  }
+  
+  return lines.join('\n')
+}
+
+async function handleFixtureSearchFromCaption(from: string, caption: string, mediaId: string, phoneNumberId: string) {
+  const session = await getSession(from)
+  if (!session) {
+    await sendTextMessage(from, 'Session expired. Send screenshot again.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_match_name',
+    screenshot_media_id: mediaId,
+    displayed_fixtures: null
+  })
+
+  // Reuse the existing fixture search logic but with the caption as search input
+  await handleBackdoorFixtureSearch(from, caption, session, phoneNumberId)
 }
 
 async function handleBackdoorFixtureSelect(from: string, text: string, session: SessionData, phoneNumberId: string) {
@@ -1106,7 +1197,7 @@ teamSearches = teamSearches.filter((s: string) => s.length >= 2)
     })
 
     const lines = matchedFixtures.map((f: any, i: number) => formatFixtureLine(f, i))
-    await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+    await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
     return
   }
 
