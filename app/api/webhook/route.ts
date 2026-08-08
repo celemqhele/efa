@@ -17,6 +17,28 @@ import { sendPushToUsers } from '@/lib/push'
 import { parseUserDate } from '@/lib/date-parser'
 import { recalculateStandings } from '@/lib/standings-engine'
 
+// ─── Date range helper: Last Sunday to Next Sunday (inclusive) ─────────────────────
+function getSundayRange(): { start: string; end: string } {
+  const today = new Date()
+  const dayOfWeek = today.getDay() // 0 = Sunday
+  const daysSinceSunday = dayOfWeek === 0 ? 0 : dayOfWeek
+  const lastSunday = new Date(today)
+  lastSunday.setDate(today.getDate() - daysSinceSunday)
+  const nextSunday = new Date(lastSunday)
+  nextSunday.setDate(lastSunday.getDate() + 7)
+  return {
+    start: lastSunday.toISOString().split('T')[0],
+    end: nextSunday.toISOString().split('T')[0]
+  }
+}
+
+// ─── Admin phone numbers ──────────────────────────────────────────────────────────
+const ADMIN_PHONES = ['+27678721810', '+27732509506', '+27734776081']
+function isAdminPhone(phone: string): boolean {
+  const norm = phone.replace(/\D/g, '')
+  return ADMIN_PHONES.some(p => p.replace(/\D/g, '') === norm)
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const mode = searchParams.get('hub.mode')
@@ -66,6 +88,19 @@ export async function POST(request: NextRequest) {
         await sendTextMessage(from, "I couldn't analyse the image. Send to the group.", phoneNumberId)
       }
     } else if (msg.type === 'image') {
+      // Check if user is in backdoor screenshot step
+      const session = await getSession(from)
+      if (session?.state === 'awaiting_backdoor' && session.backdoor_menu_step === 'screenshot') {
+        const mediaId = msg.image.id
+        await upsertSession({
+          phone_number: from,
+          state: 'awaiting_backdoor',
+          backdoor_menu_step: 'fixture_search',
+          backdoor_screenshot_media_id: mediaId
+        })
+        await sendTextMessage(from, 'Which fixture? Type team names (e.g., "Arsenal vs Chelsea").', phoneNumberId)
+        return
+      }
       await handleImage(from, msg, phoneNumberId)
     } else if (msg.type === 'text') {
       await handleText(from, msg, phoneNumberId)
@@ -92,6 +127,12 @@ type SessionData = {
   screenshot_media_id: string | null
   displayed_fixtures: string[] | null
   pending_date: string | null
+  // Backdoor fields
+  backdoor_fixture_ids: string[] | null
+  backdoor_submission_id: string | null
+  backdoor_side: 'home' | 'away' | null
+  backdoor_menu_step: 'menu' | 'screenshot' | 'fixture_search' | 'fixture_select' | 'side' | 'check' | null
+  backdoor_screenshot_media_id: string | null
 }
 
 async function getSession(phoneNumber: string): Promise<SessionData | null> {
@@ -227,6 +268,490 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
   await sendTextMessage(from, "Backdoor win submitted.", phoneNumberId)
 }
 
+// ─── Backdoor User Flow ──────────────────────────────────────────────────────────
+
+async function handleBackdoorFlow(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  const step = session.backdoor_menu_step
+  const lower = text.trim().toLowerCase()
+
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+
+  if (step === 'menu') {
+    if (lower === '1') {
+      await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot' })
+      await sendTextMessage(from, 'Send a screenshot showing the opponent not responding.', phoneNumberId)
+      return
+    }
+    if (lower === '2') {
+      await showUserBackdoorApplications(from, phoneNumberId)
+      await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
+      return
+    }
+    await sendTextMessage(from, 'Reply 1 or 2.', phoneNumberId)
+    return
+  }
+
+  if (step === 'screenshot') {
+    await sendTextMessage(from, 'Please send a screenshot first.', phoneNumberId)
+    return
+  }
+
+  if (step === 'fixture_search') {
+    await handleBackdoorFixtureSearch(from, text, session, phoneNumberId)
+    return
+  }
+
+  if (step === 'fixture_select') {
+    await handleBackdoorFixtureSelect(from, text, session, phoneNumberId)
+    return
+  }
+
+  if (step === 'side') {
+    await handleBackdoorSideSelect(from, text, session, phoneNumberId)
+    return
+  }
+
+  if (step === 'check') {
+    await showUserBackdoorApplications(from, phoneNumberId)
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
+    return
+  }
+}
+
+async function handleBackdoorFixtureSearch(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  const supabase = await createAdminClient()
+  const searchInput = text.trim()
+
+  // Strip score patterns
+  const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
+
+  const { start, end } = getSundayRange()
+
+  const { data: fixtures } = await supabase
+    .from('fixtures')
+    .select('id, home_team_id, away_team_id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
+    .eq('status', 'scheduled')
+    .gte('scheduled_date', start)
+    .lte('scheduled_date', end)
+    .order('scheduled_date', { ascending: false })
+    .order('matchday')
+
+  const allFixtures = (fixtures as any[]) || []
+
+  const vsParts = stripped.split(/\s+vs\.?\s+/i)
+  let teamSearches: string[]
+  if (vsParts.length >= 2) {
+    teamSearches = [vsParts[0].trim().toLowerCase(), vsParts.slice(1).join(' ').trim().toLowerCase()]
+  } else {
+    const words = stripped.toLowerCase().split(/\s+/).filter((w: string) => w.length >= 1)
+    teamSearches = [stripped.toLowerCase().trim()]
+    if (words.length >= 2 && allFixtures.length > 0) {
+      let bestSplit: string[] | null = null
+      let bestScore = 0
+      for (let i = 1; i < words.length; i++) {
+        const left = words.slice(0, i).join(' ')
+        const right = words.slice(i).join(' ')
+        if (left.length < 2 || right.length < 2) continue
+        for (const f of allFixtures) {
+          const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+          const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+          const s = Math.max(teamNameScore(left, hName) + teamNameScore(right, aName),
+                             teamNameScore(left, aName) + teamNameScore(right, hName)) / 2
+          if (s > bestScore) { bestScore = s; bestSplit = [left, right] }
+        }
+      }
+      if (bestSplit && bestScore >= 0.6) {
+        teamSearches = bestSplit
+      }
+    }
+  }
+  teamSearches = teamSearches.filter((s: string) => s.length >= 2)
+
+  if (teamSearches.length === 0) {
+    await sendTextMessage(from, 'Please type at least one team name. Type CANCEL to start over.', phoneNumberId)
+    return
+  }
+
+  function fixtureMatches(f: any): boolean {
+    const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+    const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+    if (teamSearches.length === 2) {
+      const s1 = teamSearches[0], s2 = teamSearches[1]
+      const score1 = Math.max(teamNameScore(s1, hName) + teamNameScore(s2, aName),
+                              teamNameScore(s1, aName) + teamNameScore(s2, hName)) / 2
+      return score1 >= 0.7
+    }
+    return teamNameScore(teamSearches[0], hName) >= 0.7 || teamNameScore(teamSearches[0], aName) >= 0.7
+  }
+
+  const matchedFixtures = allFixtures.filter(fixtureMatches)
+
+  if (matchedFixtures.length === 0) {
+    await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
+    return
+  }
+
+  if (matchedFixtures.length === 1) {
+    const f = matchedFixtures[0]
+    const hName = fixtureTeamName(f, 'home')
+    const aName = fixtureTeamName(f, 'away')
+
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_backdoor',
+      backdoor_menu_step: 'side',
+      matched_fixture_id: f.id,
+      backdoor_side: null,
+    })
+
+    await sendTextMessage(from, `${hName} vs ${aName}\n\nWho is not responding? Reply "home" or "away". Type CANCEL to abort.`, phoneNumberId)
+    return
+  }
+
+  // Multiple matches
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_backdoor',
+    backdoor_menu_step: 'fixture_select',
+    backdoor_fixture_ids: matchedFixtures.map((f: any) => f.id),
+  })
+
+  const lines = matchedFixtures.map((f: any, i: number) => `${i + 1}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}`)
+  await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+}
+
+async function handleBackdoorFixtureSelect(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+  const num = parseInt(text.trim(), 10)
+  if (isNaN(num) || num < 1 || num > (session.backdoor_fixture_ids?.length || 0)) {
+    await sendTextMessage(from, `Pick a number between 1 and ${session.backdoor_fixture_ids?.length || 0}.`, phoneNumberId)
+    return
+  }
+  const fixtureId = session.backdoor_fixture_ids![num - 1]
+  const supabase = await createAdminClient()
+  const { data } = await supabase
+    .from('fixtures')
+    .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .eq('id', fixtureId)
+    .single()
+  const h = fixtureTeamName(data, 'home')
+  const a = fixtureTeamName(data, 'away')
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_backdoor',
+    backdoor_menu_step: 'side',
+    matched_fixture_id: fixtureId,
+  })
+
+  await sendTextMessage(from, `${h} vs ${a}\n\nWho is not responding? Reply "home" or "away". Type CANCEL to abort.`, phoneNumberId)
+}
+
+async function handleBackdoorSideSelect(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  const lower = text.trim().toLowerCase()
+  if (!/^(home|away)$/i.test(lower)) {
+    await sendTextMessage(from, 'Reply "home" or "away".', phoneNumberId)
+    return
+  }
+  const side = lower as 'home' | 'away'
+  const supabase = await createAdminClient()
+
+  // Check duplicate
+  const { data: existing } = await supabase
+    .from('backdoor_submissions')
+    .select('id, status')
+    .eq('submitter_phone', from)
+    .eq('fixture_id', session.matched_fixture_id)
+    .in('status', ['pending', 'approved', 'declined'])
+    .maybeSingle()
+
+  if (existing) {
+    await sendTextMessage(from, 'You have already submitted a backdoor for this match.', phoneNumberId)
+    await clearSession(from)
+    return
+  }
+
+  // Check fixture still scheduled
+  const { data: fixture } = await supabase
+    .from('fixtures')
+    .select('status')
+    .eq('id', session.matched_fixture_id)
+    .single()
+
+  if (!fixture || fixture.status !== 'scheduled') {
+    await sendTextMessage(from, 'This fixture is no longer available for backdoor.', phoneNumberId)
+    await clearSession(from)
+    return
+  }
+
+  // Calculate expires_at (next Tuesday 23:59:59)
+  const expiresAt = new Date()
+  const daysUntilTuesday = (2 - expiresAt.getDay() + 7) % 7 || 7
+  expiresAt.setDate(expiresAt.getDate() + daysUntilTuesday)
+  expiresAt.setHours(23, 59, 59, 999)
+
+  // Upload screenshot to Supabase Storage
+  let screenshotUrl: string
+  try {
+    screenshotUrl = await uploadScreenshotToStorage(session.backdoor_screenshot_media_id!)
+  } catch (e) {
+    console.error('[backdoor] screenshot upload failed:', e)
+    await sendTextMessage(from, 'Error occurred, please send image again.', phoneNumberId)
+    return
+  }
+
+  // Insert submission
+  const { data: submission, error } = await supabase
+    .from('backdoor_submissions')
+    .insert({
+      fixture_id: session.matched_fixture_id,
+      submitter_phone: from,
+      side_claimed: side,
+      screenshot_media_id: session.backdoor_screenshot_media_id,
+      screenshot_url: screenshotUrl,
+      expires_at: expiresAt.toISOString()
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('[backdoor] insert failed:', error)
+    await sendTextMessage(from, 'Failed to submit. Try again.', phoneNumberId)
+    return
+  }
+
+  await clearSession(from)
+  await sendTextMessage(from, 'Thanks. Admin will review and get back to you.', phoneNumberId)
+}
+
+async function showUserBackdoorApplications(from: string, phoneNumberId: string) {
+  const supabase = await createAdminClient()
+  const { data: submissions } = await supabase
+    .from('backdoor_submissions')
+    .select('id, fixture_id, side_claimed, status, created_at, fixtures!inner(home_team:name, away_team:name, scheduled_date)')
+    .eq('submitter_phone', from)
+    .order('created_at', { ascending: false })
+
+  if (!submissions?.length) {
+    await sendTextMessage(from, 'No backdoor applications found.', phoneNumberId)
+    return
+  }
+
+  const lines = submissions.map((s, i) => {
+    const f = s.fixtures as any
+    const homeName = Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name || 'Unknown'
+    const awayName = Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name || 'Unknown'
+    const teams = `${homeName} vs ${awayName}`
+    const status = s.status as 'pending' | 'approved' | 'declined' | 'void_game_played' | 'expired'
+    const statusLabel = {
+      pending: '⏳ Pending',
+      approved: '✅ Approved - 3-0 awarded',
+      declined: '❌ Declined',
+      void_game_played: '🕳️ Void - game already played',
+      expired: '⏰ Expired'
+    }[status] || s.status
+    return `${i + 1}. ${teams} (${f.scheduled_date}) - ${statusLabel}`
+  })
+
+  await sendTextMessage(from, `Your Backdoor Applications:\n\n${lines.join('\n')}`, phoneNumberId)
+}
+
+// ─── Screenshot Upload Helper ────────────────────────────────────────────────────
+
+async function uploadScreenshotToStorage(mediaId: string): Promise<string> {
+  const supabase = await createAdminClient()
+  const mediaUrl = await getMediaUrl(mediaId)
+  const { buffer } = await fetchImageBytes(mediaUrl)
+  const fileName = `backdoor-${Date.now()}-${mediaId}.jpg`
+  const { data, error } = await supabase.storage
+    .from('backdoor-screenshots')
+    .upload(fileName, buffer, { contentType: 'image/jpeg' })
+  if (error) throw error
+  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+    .from('backdoor-screenshots')
+    .createSignedUrl(fileName, 60 * 60 * 24 * 365) // 1 year
+  if (signedUrlError || !signedUrlData?.signedUrl) throw signedUrlError || new Error('Failed to create signed URL')
+  return signedUrlData.signedUrl
+}
+
+// ─── Admin Backdoor Review Flow ──────────────────────────────────────────────────
+
+async function showBackdoorSubmissionsForReview(from: string, phoneNumberId: string) {
+  const supabase = await createAdminClient()
+  const { data: pending } = await supabase
+    .from('backdoor_submissions')
+    .select('id, fixture_id, submitter_phone, side_claimed, screenshot_url, created_at, fixtures!inner(home_team:name, away_team:name, scheduled_date)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+
+  if (!pending?.length) {
+    await sendTextMessage(from, 'No pending backdoor submissions.', phoneNumberId)
+    return
+  }
+
+  // Group by fixture
+  const byFixture = new Map<string, any[]>()
+  for (const s of pending) {
+    const key = s.fixture_id
+    if (!byFixture.has(key)) byFixture.set(key, [])
+    byFixture.get(key)!.push(s)
+  }
+
+  let idx = 1
+  const lines: string[] = []
+  const fixtureIds: string[] = []
+  for (const [fixtureId, subs] of byFixture) {
+    const f = subs[0].fixtures
+    const teams = `${f.home_team} vs ${f.away_team}`
+    if (subs.length === 2) {
+      lines.push(`${idx}. ${teams} (${f.scheduled_date}) - backdoor submitted by both teams`)
+    } else {
+      const side = subs[0].side_claimed === 'home' ? f.home_team : f.away_team
+      lines.push(`${idx}. ${teams} (${f.scheduled_date}) - backdoor submitted by ${side}`)
+    }
+    fixtureIds.push(fixtureId)
+    idx++
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_backdoor_admin_review',
+    displayed_fixtures: fixtureIds
+  })
+
+  await sendTextMessage(from,
+    `Pending Backdoor Reviews:\n\n${lines.join('\n')}\n\nReply with number to review. Type CANCEL.`,
+    phoneNumberId
+  )
+}
+
+async function handleBackdoorAdminReview(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+  const num = parseInt(text.trim(), 10)
+  if (isNaN(num) || num < 1 || num > (session.displayed_fixtures?.length || 0)) {
+    await sendTextMessage(from, `Pick a number between 1 and ${session.displayed_fixtures?.length || 0}.`, phoneNumberId)
+    return
+  }
+  const fixtureId = session.displayed_fixtures![num - 1]
+  const supabase = await createAdminClient()
+
+  const { data: submissions } = await supabase
+    .from('backdoor_submissions')
+    .select('id, submitter_phone, side_claimed, screenshot_url')
+    .eq('fixture_id', fixtureId)
+    .eq('status', 'pending')
+
+  if (!submissions?.length) {
+    await sendTextMessage(from, 'No pending submissions for this fixture.', phoneNumberId)
+    return
+  }
+
+  // Store submission IDs for decision step
+  const submissionIds = submissions.map(s => s.id)
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_backdoor_admin_decision',
+    backdoor_fixture_ids: submissionIds,
+    matched_fixture_id: fixtureId
+  })
+
+  // Send screenshot URLs to admin
+  for (const s of submissions) {
+    const side = s.side_claimed === 'home' ? 'Home' : 'Away'
+    await sendTextMessage(from, `Submission by ${s.submitter_phone} (${side} team):\nScreenshot: ${s.screenshot_url}`, phoneNumberId)
+  }
+
+  await sendTextMessage(from, 'Approve or decline? Reply "approve" or "decline".', phoneNumberId)
+}
+
+async function handleBackdoorAdminDecision(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  const lower = text.trim().toLowerCase()
+  if (!/^(approve|decline)$/i.test(lower)) {
+    await sendTextMessage(from, 'Reply "approve" or "decline".', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const submissionIds = session.backdoor_fixture_ids || []
+  const fixtureId = session.matched_fixture_id
+
+  if (lower === 'approve') {
+    // Determine outcome based on number of submissions
+    const { data: submissions } = await supabase
+      .from('backdoor_submissions')
+      .select('id, side_claimed')
+      .in('id', submissionIds)
+
+    let homeScore = 0, awayScore = 0
+    if (submissions?.length === 2) {
+      // Both submitted -> 0-0 draw
+      homeScore = 0; awayScore = 0
+    } else if (submissions?.length === 1) {
+      // One submitted -> 3-0 to that side
+      if (submissions[0].side_claimed === 'home') {
+        homeScore = 3; awayScore = 0
+      } else {
+        homeScore = 0; awayScore = 3
+      }
+    }
+
+    // Call finalise-result logic
+    const adminUserId = await getAdminUserId(supabase)
+
+    await supabase.from('result_confirmations').insert({
+      fixture_id: fixtureId,
+      home_score: homeScore,
+      away_score: awayScore,
+      submitted_by: adminUserId,
+    })
+
+    await supabase.from('results').upsert({
+      fixture_id: fixtureId,
+      home_score: homeScore,
+      away_score: awayScore,
+      finalised_by: adminUserId,
+    }, { onConflict: 'fixture_id' })
+
+    await supabase.from('fixtures').update({ status: 'confirmed' }).eq('id', fixtureId)
+
+    // Update backdoor submissions to approved
+    await supabase
+      .from('backdoor_submissions')
+      .update({ status: 'approved', reviewed_by: adminUserId, reviewed_at: new Date().toISOString() })
+      .in('id', submissionIds)
+
+    // Recalculate standings
+    const { data: fixData } = await supabase.from('fixtures').select('tournament_id').eq('id', fixtureId).single()
+    if (fixData?.tournament_id) {
+      try { await recalculateStandings(fixData.tournament_id) } catch (e) {}
+    }
+
+    await sendTextMessage(from, `Approved. Result: ${homeScore}-${awayScore}. Fixture confirmed.`, phoneNumberId)
+  } else {
+    // Decline
+    await supabase
+      .from('backdoor_submissions')
+      .update({ status: 'declined', reviewed_by: (await supabase.auth.getUser()).data.user?.id, reviewed_at: new Date().toISOString() })
+      .in('id', submissionIds)
+
+    await sendTextMessage(from, 'Declined. Fixture remains scheduled.', phoneNumberId)
+  }
+
+  await clearSession(from)
+}
+
 // ─── Forfeit flow ───────────────────────────────────────────────────────────
 
 async function handleForfeitYes(from: string, session: SessionData, supabase: any, phoneNumberId: string) {
@@ -282,6 +807,66 @@ function isFixtureConfirmed(f: any): boolean {
   return f.status === 'confirmed' || f.status === 'awaiting_confirmation'
 }
 
+// ─── Team name matching helpers (shared) ────────────────────────────────────────
+
+const TEAM_ALIASES: Record<string, string> = {
+  'utd': 'united', 'man utd': 'manchester united', 'man u': 'manchester united',
+  'barca': 'barcelona',
+  'inter': 'internazionale milan', 'inter milan': 'internazionale milan',
+  'acm': 'ac milan', 'ac m': 'ac milan',
+  'rma': 'real madrid', 'bvb': 'borussia dortmund',
+  'psg': 'paris saint germain', 'bayern': 'bayern munchen',
+  'lfc': 'liverpool', 'mcfc': 'manchester city', 'mufc': 'manchester united',
+  'afc': 'arsenal', 'cfc': 'chelsea',
+}
+
+function expandAlias(token: string): string {
+  return TEAM_ALIASES[token] || token
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[])
+  for (let i = 0; i <= m; i++) dp[i][0] = i
+  for (let j = 0; j <= n; j++) dp[0][j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+    }
+  }
+  return dp[m][n]
+}
+
+function tokenScore(searchToken: string, teamToken: string): number {
+  const s = expandAlias(searchToken)
+  const t = expandAlias(teamToken)
+  if (s === t) return 1.0
+  if (t.includes(s) || s.includes(t)) return 0.9
+  if (t.startsWith(s) || s.startsWith(t)) return 0.85
+  const dist = levenshtein(s, t)
+  const maxLen = Math.max(s.length, t.length)
+  if (maxLen <= 2) return dist === 0 ? 1.0 : 0
+  if (dist <= 2) return 0.7
+  return 0
+}
+
+function teamNameScore(search: string, teamName: string): number {
+  const searchTokens = search.split(/\s+/).filter((w: string) => w.length >= 2)
+  const teamTokens = teamName.split(/\s+/).filter((w: string) => w.length >= 2)
+  if (searchTokens.length === 0 || teamTokens.length === 0) return 0
+  let totalScore = 0
+  for (const st of searchTokens) {
+    let best = 0
+    for (const tt of teamTokens) {
+      best = Math.max(best, tokenScore(st, tt))
+    }
+    totalScore += best
+  }
+  return totalScore / searchTokens.length
+}
+
 async function handleText(from: string, msg: { text: { body: string } }, phoneNumberId: string) {
   const text = (msg.text.body || '').trim()
   console.log(`[webhook] text: "${text}"`)
@@ -289,6 +874,18 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   const session = await getSession(from)
 
   // ─── Backdoor admin flow ──────────────────────────────────────────────────
+  if (session?.state === 'awaiting_backdoor_admin_review') {
+    await handleBackdoorAdminReview(from, text, session, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_backdoor_admin_decision') {
+    await handleBackdoorAdminDecision(from, text, session, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_backdoor') {
+    await handleBackdoorFlow(from, text, session, phoneNumberId)
+    return
+  }
   if (session?.state === 'awaiting_backdoor_date') {
     await handleBackdoorDate(from, text, phoneNumberId)
     return
@@ -301,9 +898,35 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     await handleBackdoorSide(from, text, phoneNumberId)
     return
   }
+  // User types "backdoor" -> show menu
   if (/^backdoor$/i.test(text.trim())) {
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
+    await sendTextMessage(from,
+      'Backdoor Applications\n\n' +
+      '1. Submit new backdoor\n' +
+      '2. Check my applications\n\n' +
+      'Reply with 1 or 2. Type CANCEL to exit.',
+      phoneNumberId
+    )
+    return
+  }
+  // Admin types "backdoor admin" -> direct backdoor (admin only)
+  if (/^backdoor admin$/i.test(text.trim())) {
+    if (!isAdminPhone(from)) {
+      await sendTextMessage(from, 'Admin only.', phoneNumberId)
+      return
+    }
     await upsertSession({ phone_number: from, state: 'awaiting_backdoor_date' })
-    await sendTextMessage(from, "Enter the fixture date.", phoneNumberId)
+    await sendTextMessage(from, 'Enter the fixture date.', phoneNumberId)
+    return
+  }
+  // Admin types "backdoor submissions" -> review flow (admin only)
+  if (/^backdoor submissions$/i.test(text.trim())) {
+    if (!isAdminPhone(from)) {
+      await sendTextMessage(from, 'Admin only.', phoneNumberId)
+      return
+    }
+    await showBackdoorSubmissionsForReview(from, phoneNumberId)
     return
   }
   // ─── Match name search (after screenshot) ────────────────────────────────
@@ -320,15 +943,14 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     // "inter milan 3-2 liverpool" and we only match on team names
     const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
 
-    const today = new Date().toISOString().split('T')[0]
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const { start, end } = getSundayRange()
 
     const { data: fixtures } = await supabase
       .from('fixtures')
       .select('id, home_team_id, away_team_id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
       .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
-      .gte('scheduled_date', sevenDaysAgo)
-      .lte('scheduled_date', today)
+      .gte('scheduled_date', start)
+      .lte('scheduled_date', end)
       .order('scheduled_date', { ascending: false })
       .order('matchday')
 
@@ -362,69 +984,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         }
       }
     }
-    teamSearches = teamSearches.filter((s: string) => s.length >= 2)
+teamSearches = teamSearches.filter((s: string) => s.length >= 2)
 
     if (teamSearches.length === 0) {
-      await sendTextMessage(from, "Please type at least one team name. Type CANCEL to start over.", phoneNumberId)
+      await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
       return
-    }
-
-    const TEAM_ALIASES: Record<string, string> = {
-      'utd': 'united', 'man utd': 'manchester united', 'man u': 'manchester united',
-      'barca': 'barcelona',
-      'inter': 'internazionale milan', 'inter milan': 'internazionale milan',
-      'acm': 'ac milan', 'ac m': 'ac milan',
-      'rma': 'real madrid', 'bvb': 'borussia dortmund',
-      'psg': 'paris saint germain', 'bayern': 'bayern munchen',
-      'lfc': 'liverpool', 'mcfc': 'manchester city', 'mufc': 'manchester united',
-      'afc': 'arsenal', 'cfc': 'chelsea',
-    }
-
-    function expandAlias(token: string): string {
-      return TEAM_ALIASES[token] || token
-    }
-
-    function levenshtein(a: string, b: string): number {
-      const m = a.length, n = b.length
-      const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[])
-      for (let i = 0; i <= m; i++) dp[i][0] = i
-      for (let j = 0; j <= n; j++) dp[0][j] = j
-      for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-          dp[i][j] = a[i - 1] === b[j - 1]
-            ? dp[i - 1][j - 1]
-            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
-        }
-      }
-      return dp[m][n]
-    }
-
-    function tokenScore(searchToken: string, teamToken: string): number {
-      const s = expandAlias(searchToken)
-      const t = expandAlias(teamToken)
-      if (s === t) return 1.0
-      if (t.includes(s) || s.includes(t)) return 0.9
-      if (t.startsWith(s) || s.startsWith(t)) return 0.85
-      const dist = levenshtein(s, t)
-      const maxLen = Math.max(s.length, t.length)
-      if (maxLen <= 2) return dist === 0 ? 1.0 : 0
-      if (dist <= 2) return 0.7
-      return 0
-    }
-
-    function teamNameScore(search: string, teamName: string): number {
-      const searchTokens = search.split(/\s+/).filter((w: string) => w.length >= 2)
-      const teamTokens = teamName.split(/\s+/).filter((w: string) => w.length >= 2)
-      if (searchTokens.length === 0 || teamTokens.length === 0) return 0
-      let totalScore = 0
-      for (const st of searchTokens) {
-        let best = 0
-        for (const tt of teamTokens) {
-          best = Math.max(best, tokenScore(st, tt))
-        }
-        totalScore += best
-      }
-      return totalScore / searchTokens.length
     }
 
     function fixtureMatches(f: any): boolean {

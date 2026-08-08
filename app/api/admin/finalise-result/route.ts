@@ -308,6 +308,13 @@ export async function POST(request: Request) {
     }
   }
 
+  // Void any pending backdoor submissions for this fixture
+  await adminSupabase
+    .from('backdoor_submissions')
+    .update({ status: 'void_game_played' })
+    .eq('fixture_id', fixture_id)
+    .eq('status', 'pending')
+
   // ── Forfeit balance tracking ─────────────────────────────────────────────
   if (home_forfeit || away_forfeit) {
     if (home_forfeit) {

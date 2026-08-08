@@ -216,7 +216,10 @@ export default function ResultSubmitClient({
     // 1. Status Filter check
     if (statusFilter !== 'all') {
       if (statusFilter === 'completed') {
-        if (!['completed', 'confirmed', 'abandoned'].includes(fx.status)) return false
+        if (!['confirmed', 'abandoned'].includes(fx.status)) return false
+      } else if (statusFilter === 'scheduled') {
+        // "Sched." = submittable fixtures (both scheduled and awaiting_confirmation)
+        if (!['scheduled', 'awaiting_confirmation'].includes(fx.status)) return false
       } else if (fx.status !== statusFilter) {
         return false
       }
