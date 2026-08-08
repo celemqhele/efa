@@ -60,9 +60,30 @@ export async function POST(request: NextRequest) {
     if (!messages?.length) return new NextResponse(null, { status: 200 })
 
     const msg = messages[0]
+    const messageId = msg.id
     const from = msg.from as string
     const phoneNumberId = metadata?.phone_number_id as string
-    console.log(`[webhook] from=${from} type=${msg.type} count=${messages.length}`)
+    
+    // Deduplicate messages - WhatsApp can deliver same message multiple times
+    const processedKey = `processed_msg_${messageId}`
+    const supabaseCheck = await createAdminClient()
+    const { data: alreadyProcessed } = await supabaseCheck
+      .from('processed_messages')
+      .select('id')
+      .eq('message_id', messageId)
+      .maybeSingle()
+    
+    if (alreadyProcessed) {
+      console.log(`[webhook] Duplicate message ignored: ${messageId}`)
+      return new NextResponse(null, { status: 200 })
+    }
+    
+    // Mark as processed (ignore errors if table doesn't exist yet)
+    await supabaseCheck
+      .from('processed_messages')
+      .insert({ message_id: messageId, created_at: new Date().toISOString() })
+
+    console.log(`[webhook] from=${from} type=${msg.type} count=${messages.length} msgId=${messageId}`)
 
     // Handle multiple images: find the first one with a valid score
     const imageMessages = messages.filter((m: any) => m.type === 'image')
@@ -409,8 +430,22 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
   function fixtureMatches(f: any): boolean {
     const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
     const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-    const score = fixtureMatchScore(teamSearches, hName, aName)
-    return score >= 0.4 // 40% minimum match threshold
+    
+    if (teamSearches.length === 2) {
+      const [s1, s2] = teamSearches
+      // Check both permutations: s1->home & s2->away OR s1->away & s2->home
+      // BOTH teams must meet 40% threshold
+      const score1_home = combinedTeamScore(s1, hName)
+      const score1_away = combinedTeamScore(s1, aName)
+      const score2_home = combinedTeamScore(s2, hName)
+      const score2_away = combinedTeamScore(s2, aName)
+      
+      const perm1 = (score1_home >= 0.4 && score2_away >= 0.4)
+      const perm2 = (score1_away >= 0.4 && score2_home >= 0.4)
+      
+      return perm1 || perm2
+    }
+    return false
   }
 
   const matchedFixtures = allFixtures
@@ -1147,8 +1182,20 @@ teamSearches = teamSearches.filter((s: string) => s.length >= 2)
     function fixtureMatches(f: any): boolean {
       const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
       const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-      const score = fixtureMatchScore(teamSearches, hName, aName)
-      return score >= 0.5
+      
+      if (teamSearches.length === 2) {
+        const [s1, s2] = teamSearches
+        const score1_home = combinedTeamScore(s1, hName)
+        const score1_away = combinedTeamScore(s1, aName)
+        const score2_home = combinedTeamScore(s2, hName)
+        const score2_away = combinedTeamScore(s2, aName)
+        
+        const perm1 = (score1_home >= 0.4 && score2_away >= 0.4)
+        const perm2 = (score1_away >= 0.4 && score2_home >= 0.4)
+        
+        return perm1 || perm2
+      }
+      return false
     }
 
     const matchedFixtures = allFixtures
