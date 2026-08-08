@@ -528,31 +528,37 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
   }
   teamSearches = teamSearches.filter((s: string) => s.length >= 2)
 
-  if (teamSearches.length === 0) {
+if (teamSearches.length === 0) {
     await sendTextMessage(from, 'Please type at least one team name. Type CANCEL to start over.', phoneNumberId)
     return
   }
 
+  // Backdoor fixture search
   function fixtureMatches(f: any): boolean {
-    const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
-    const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-    
-    if (teamSearches.length === 2) {
-      const [s1, s2] = teamSearches
-      // Check both permutations: s1->home & s2->away OR s1->away & s2->home
-      // BOTH teams must meet 20% threshold
-      const score1_home = combinedTeamScore(s1, hName)
-      const score1_away = combinedTeamScore(s1, aName)
-      const score2_home = combinedTeamScore(s2, hName)
-      const score2_away = combinedTeamScore(s2, aName)
+      const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+      const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
       
-      const perm1 = (score1_home >= 0.2 && score2_away >= 0.2)
-      const perm2 = (score1_away >= 0.2 && score2_home >= 0.2)
-      
-      return perm1 || perm2
+      if (teamSearches.length === 2) {
+        const [s1, s2] = teamSearches
+        
+        // Keyword matching: split search terms and team names into keywords
+        const s1Keywords = s1.split(/\s+/).filter((k: string) => k.length >= 2)
+        const s2Keywords = s2.split(/\s+/).filter((k: string) => k.length >= 2)
+        const hKeywords = hName.split(/\s+/).filter((k: string) => k.length >= 2)
+        const aKeywords = aName.split(/\s+/).filter((k: string) => k.length >= 2)
+        
+        // Check if at least one keyword from s1 matches home AND at least one from s2 matches away
+        const s1MatchesHome = s1Keywords.some(k => hKeywords.includes(k))
+        const s2MatchesAway = s2Keywords.some(k => aKeywords.includes(k))
+        
+        // Check permutation: s1 matches away AND s2 matches home
+        const s1MatchesAway = s1Keywords.some(k => aKeywords.includes(k))
+        const s2MatchesHome = s2Keywords.some(k => hKeywords.includes(k))
+        
+        return (s1MatchesHome && s2MatchesAway) || (s1MatchesAway && s2MatchesHome)
+      }
+      return false
     }
-    return false
-  }
 
   const matchedFixtures = allFixtures
     .filter(fixtureMatches)
@@ -1524,21 +1530,29 @@ teamSearches = teamSearches.filter((s: string) => s.length >= 2)
       return
     }
 
+    // Regular match search
     function fixtureMatches(f: any): boolean {
       const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
       const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
       
       if (teamSearches.length === 2) {
         const [s1, s2] = teamSearches
-        const score1_home = combinedTeamScore(s1, hName)
-        const score1_away = combinedTeamScore(s1, aName)
-        const score2_home = combinedTeamScore(s2, hName)
-        const score2_away = combinedTeamScore(s2, aName)
         
-        const perm1 = (score1_home >= 0.2 && score2_away >= 0.2)
-        const perm2 = (score1_away >= 0.2 && score2_home >= 0.2)
+        // Keyword matching: split search terms and team names into keywords
+        const s1Keywords = s1.split(/\s+/).filter((k: string) => k.length >= 2)
+        const s2Keywords = s2.split(/\s+/).filter((k: string) => k.length >= 2)
+        const hKeywords = hName.split(/\s+/).filter((k: string) => k.length >= 2)
+        const aKeywords = aName.split(/\s+/).filter((k: string) => k.length >= 2)
         
-        return perm1 || perm2
+        // Check if at least one keyword from s1 matches home AND at least one from s2 matches away
+        const s1MatchesHome = s1Keywords.some(k => hKeywords.includes(k))
+        const s2MatchesAway = s2Keywords.some(k => aKeywords.includes(k))
+        
+        // Check permutation: s1 matches away AND s2 matches home
+        const s1MatchesAway = s1Keywords.some(k => aKeywords.includes(k))
+        const s2MatchesHome = s2Keywords.some(k => hKeywords.includes(k))
+        
+        return (s1MatchesHome && s2MatchesAway) || (s1MatchesAway && s2MatchesHome)
       }
       return false
     }
