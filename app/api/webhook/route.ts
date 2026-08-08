@@ -1051,29 +1051,34 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   let awayScore = session.away_score
   let forfeitBalanceNote = ''
 
-  // Forfeit balance aggregate: check if either team has active forfeit balances
+  // Forfeit balance aggregate: check if either team has active forfeit balances against the current opponent
   // Skip when this is a forfeit confirm — handleForfeitYes already applied the +3
   if (!isForfeitConfirm && fixture?.home_team_id && fixture?.away_team_id && homeScore !== awayScore) {
     const losingTeamId = homeScore < awayScore ? fixture.home_team_id : fixture.away_team_id
+    const opponentTeamId = homeScore < awayScore ? fixture.away_team_id : fixture.home_team_id
     const { data: balances } = await supabase
       .from('forfeit_balances')
-      .select('id, opponent_score, forfeiting_team:teams!forfeit_balances_forfeiting_team_id_fkey(name), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
+      .select('id, forfeiting_score, opponent_score, forfeiting_team:teams!forfeit_balances_forfeiting_team_id_fkey(name), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
       .eq('forfeiting_team_id', losingTeamId)
+      .eq('opponent_team_id', opponentTeamId)
       .gt('remaining', 0)
 
     if (balances && balances.length > 0) {
-      let totalForfeitGoals = 0
       for (const bal of balances) {
-        totalForfeitGoals += 3
+        if (homeScore < awayScore) {
+          homeScore += bal.forfeiting_score
+          awayScore += bal.opponent_score
+        } else {
+          awayScore += bal.forfeiting_score
+          homeScore += bal.opponent_score
+        }
         await supabase.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
       }
-      if (homeScore < awayScore) awayScore += totalForfeitGoals
-      else homeScore += totalForfeitGoals
 
       const teamName = (Array.isArray(balances[0]?.forfeiting_team) ? balances[0].forfeiting_team[0]?.name : balances[0]?.forfeiting_team?.name) || 'Team'
       const oppName = (Array.isArray(balances[0]?.opponent_team) ? balances[0].opponent_team[0]?.name : balances[0]?.opponent_team?.name) || 'Opponent'
-      forfeitBalanceNote = `\n\nForfeit balance applied: ${teamName} had ${balances.length} active forfeit balance(s) from ${oppName} (3 goals each). Adjusted to ${homeScore}-${awayScore}.`
-      console.log('[webhook] forfeit balance applied:', teamName, '+', totalForfeitGoals, 'goals')
+      forfeitBalanceNote = `\n\nForfeit balance applied: ${teamName} had ${balances.length} active forfeit balance(s) from ${oppName}. Aggregate adjusted to ${homeScore}-${awayScore}.`
+      console.log('[webhook] forfeit balance applied:', teamName, 'vs', oppName, 'aggregate:', homeScore, '-', awayScore)
     }
   }
 

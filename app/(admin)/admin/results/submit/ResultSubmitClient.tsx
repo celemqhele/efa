@@ -154,9 +154,14 @@ export default function ResultSubmitClient({
     const res = await fetch('/api/admin/forfeit-balances/use', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ balance_id: balanceId }),
+      body: JSON.stringify({ balance_id: balanceId, fixture_id: selectedFixtureId }),
     })
     if (res.ok) {
+      const data = await res.json()
+      if (data.aggregate) {
+        setHomeScore(String(data.aggregate.home_score))
+        setAwayScore(String(data.aggregate.away_score))
+      }
       setForfeitBalances((prev) =>
         prev.map((x: any) =>
           x.id === balanceId ? { ...x, remaining: x.remaining - 1 } : x
@@ -190,6 +195,22 @@ export default function ResultSubmitClient({
 
   const isFinished = selectedFixture ? ['completed', 'confirmed', 'abandoned'].includes(selectedFixture.status) : false
 
+  // Auto-select fixture from URL on mount and when fixtures load
+  useEffect(() => {
+    if (defaultFixtureId && pendingFixtures.length > 0) {
+      const fixture = pendingFixtures.find(f => f.id === defaultFixtureId)
+      if (fixture && fixture.id !== selectedFixtureId) {
+        setSelectedFixtureId(fixture.id)
+        resetOcr()
+      }
+    }
+  }, [defaultFixtureId, pendingFixtures, selectedFixtureId])
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[ResultSubmitClient] pendingFixtures:', pendingFixtures.length, 'defaultFixtureId:', defaultFixtureId, 'selectedFixtureId:', selectedFixtureId)
+  }, [pendingFixtures.length, defaultFixtureId, selectedFixtureId])
+
   // Advanced Filter Logic (Handles multi-word search & status buttons)
   const filteredFixtures = pendingFixtures.filter((fx) => {
     // 1. Status Filter check
@@ -206,12 +227,16 @@ export default function ResultSubmitClient({
     
     // Split text by spaces and filter out empty strings
     const searchWords = search.toLowerCase().split(/\s+/).filter(Boolean)
-    const homeName = fx.home_team?.name.toLowerCase() ?? ''
-    const awayName = fx.away_team?.name.toLowerCase() ?? ''
-    const combinedMatchText = `${homeName} vs ${awayName} ${fx.id.toLowerCase()}`
+    const homeName = fx.home_team?.name?.toLowerCase() ?? ''
+    const awayName = fx.away_team?.name?.toLowerCase() ?? ''
+    const fixtureId = fx.id.toLowerCase()
 
-    // Every word typed must match somewhere in the combined match text string
-    return searchWords.every((word) => combinedMatchText.includes(word))
+    // Every word typed must match home name, away name, OR fixture ID
+    return searchWords.every((word) => 
+      homeName.includes(word) || 
+      awayName.includes(word) || 
+      fixtureId.includes(word)
+    )
   })
 
   // Auto-set scores when absent flags change
