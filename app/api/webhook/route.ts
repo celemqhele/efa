@@ -377,6 +377,8 @@ async function handleSubmissionType(from: string, text: string, session: Session
   const step = session.submission_menu_step
   const lower = text.trim().toLowerCase()
 
+  console.log('[handleSubmissionType] session:', JSON.stringify(session))
+
   if (/^cancel$/i.test(text.trim())) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
@@ -1389,6 +1391,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   console.log(`[webhook] text: "${text}"`)
 
   const session = await getSession(from)
+  console.log('[handleText] session:', JSON.stringify(session))
 
   // ─── Backdoor admin flow ──────────────────────────────────────────────────
   if (session?.state === 'awaiting_backdoor_admin_review') {
