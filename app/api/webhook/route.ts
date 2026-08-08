@@ -90,8 +90,21 @@ export async function POST(request: NextRequest) {
     } else if (msg.type === 'image') {
       // Check if user is in backdoor screenshot step
       const session = await getSession(from)
+      const caption = msg.image.caption?.trim() || ''
+      
       if (session?.state === 'awaiting_backdoor' && session.backdoor_menu_step === 'screenshot') {
         const mediaId = msg.image.id
+        if (caption) {
+          // User sent screenshot with team names in caption - search directly
+          await upsertSession({
+            phone_number: from,
+            state: 'awaiting_backdoor',
+            backdoor_menu_step: 'fixture_search',
+            backdoor_screenshot_media_id: mediaId
+          })
+          await handleBackdoorFixtureSearch(from, caption, session, phoneNumberId)
+          return
+        }
         await upsertSession({
           phone_number: from,
           state: 'awaiting_backdoor',
@@ -101,6 +114,8 @@ export async function POST(request: NextRequest) {
         await sendTextMessage(from, 'Which fixture? Type team names (e.g., "Arsenal vs Chelsea").', phoneNumberId)
         return
       }
+      // For regular result submission, if caption has team names, could auto-search
+      // But for now just proceed to handleImage which will OCR
       await handleImage(from, msg, phoneNumberId)
     } else if (msg.type === 'text') {
       await handleText(from, msg, phoneNumberId)
@@ -379,16 +394,18 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
   function fixtureMatches(f: any): boolean {
     const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
     const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-    if (teamSearches.length === 2) {
-      const s1 = teamSearches[0], s2 = teamSearches[1]
-      const score1 = Math.max(teamNameScore(s1, hName) + teamNameScore(s2, aName),
-                              teamNameScore(s1, aName) + teamNameScore(s2, hName)) / 2
-      return score1 >= 0.7
-    }
-    return teamNameScore(teamSearches[0], hName) >= 0.7 || teamNameScore(teamSearches[0], aName) >= 0.7
+    const score = fixtureMatchScore(teamSearches, hName, aName)
+    return score >= 0.5 // Lower threshold since combined score is more permissive
   }
 
-  const matchedFixtures = allFixtures.filter(fixtureMatches)
+  const matchedFixtures = allFixtures
+    .filter(fixtureMatches)
+    .map(f => ({ fixture: f, score: fixtureMatchScore(teamSearches, 
+      (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || '',
+      (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+    )}))
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.fixture)
 
   if (matchedFixtures.length === 0) {
     await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
@@ -824,6 +841,51 @@ function expandAlias(token: string): string {
   return TEAM_ALIASES[token] || token
 }
 
+// ─── Letter-based team name matching ──────────────────────────────────────────────
+// Scores based on how many letters from search appear in team name (order-independent)
+// Handles typos, extra chars, quotes, etc. Better for "inter vs barca" matching "Internazionale vs Barcelona"
+
+function letterMatchScore(search: string, teamName: string): number {
+  const cleanSearch = search.toLowerCase().replace(/[^a-z]/g, '')
+  const cleanTeam = teamName.toLowerCase().replace(/[^a-z]/g, '')
+  if (!cleanSearch || !cleanTeam) return 0
+  
+  // Count matching letters (each letter in search that appears in team name)
+  const teamLetterCounts = new Map<string, number>()
+  for (const ch of cleanTeam) {
+    teamLetterCounts.set(ch, (teamLetterCounts.get(ch) || 0) + 1)
+  }
+  
+  let matches = 0
+  for (const ch of cleanSearch) {
+    const count = teamLetterCounts.get(ch) || 0
+    if (count > 0) {
+      matches++
+      teamLetterCounts.set(ch, count - 1)
+    }
+  }
+  
+  // Score = matched letters / search length (0-1)
+  return matches / cleanSearch.length
+}
+
+// Combined score: letter match (70%) + token score (30%) for best of both worlds
+function combinedTeamScore(search: string, teamName: string): number {
+  const letterScore = letterMatchScore(search, teamName)
+  const tokenScore = teamNameScore(search, teamName) // existing token-based score
+  return letterScore * 0.7 + tokenScore * 0.3
+}
+
+function fixtureMatchScore(searchParts: string[], homeName: string, awayName: string): number {
+  if (searchParts.length === 2) {
+    const [s1, s2] = searchParts
+    const score1 = (combinedTeamScore(s1, homeName) + combinedTeamScore(s2, awayName)) / 2
+    const score2 = (combinedTeamScore(s1, awayName) + combinedTeamScore(s2, homeName)) / 2
+    return Math.max(score1, score2)
+  }
+  return Math.max(combinedTeamScore(searchParts[0], homeName), combinedTeamScore(searchParts[0], awayName))
+}
+
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length
   const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[])
@@ -994,16 +1056,18 @@ teamSearches = teamSearches.filter((s: string) => s.length >= 2)
     function fixtureMatches(f: any): boolean {
       const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
       const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-      if (teamSearches.length === 2) {
-        const s1 = teamSearches[0], s2 = teamSearches[1]
-        const score1 = Math.max(teamNameScore(s1, hName) + teamNameScore(s2, aName),
-                                teamNameScore(s1, aName) + teamNameScore(s2, hName)) / 2
-        return score1 >= 0.7
-      }
-      return teamNameScore(teamSearches[0], hName) >= 0.7 || teamNameScore(teamSearches[0], aName) >= 0.7
+      const score = fixtureMatchScore(teamSearches, hName, aName)
+      return score >= 0.5
     }
 
-    const matchedFixtures = allFixtures.filter(fixtureMatches)
+    const matchedFixtures = allFixtures
+    .filter(fixtureMatches)
+    .map(f => ({ fixture: f, score: fixtureMatchScore(teamSearches,
+      (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || '',
+      (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+    )}))
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.fixture)
 
     if (matchedFixtures.length === 0) {
       await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
@@ -1047,7 +1111,9 @@ teamSearches = teamSearches.filter((s: string) => s.length >= 2)
   }
 
   // Only reject users who have no active session at all (never sent a screenshot)
-  if (!session || (session.home_score === null && session.away_score === null)) {
+  // Exclude backdoor flow states which don't use scores
+  const isBackdoorState = session?.state?.startsWith('awaiting_backdoor') === true
+  if (!session || (!isBackdoorState && session.home_score === null && session.away_score === null)) {
     await sendTextMessage(from, "I only help with submitting match results. Send a screenshot of your result screen and I'll take it from there.", phoneNumberId)
     return
   }
