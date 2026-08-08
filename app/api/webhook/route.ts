@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const metadata = value?.metadata
     if (!messages?.length) return new NextResponse(null, { status: 200 })
 
-    const msg = messages[0]
+const msg = messages[0]
     const messageId = msg.id
     const from = msg.from as string
     const phoneNumberId = metadata?.phone_number_id as string
@@ -67,22 +67,28 @@ export async function POST(request: NextRequest) {
     // Deduplicate messages - WhatsApp can deliver same message multiple times
     const processedKey = `processed_msg_${messageId}`
     const supabaseCheck = await createAdminClient()
-    const { data: alreadyProcessed } = await supabaseCheck
-      .from('processed_messages')
-      .select('id')
-      .eq('message_id', messageId)
-      .maybeSingle()
     
-    if (alreadyProcessed) {
-      console.log(`[webhook] Duplicate message ignored: ${messageId}`)
-      return new NextResponse(null, { status: 200 })
+    // Gracefully handle missing processed_messages table
+    try {
+      const { data: alreadyProcessed } = await supabaseCheck
+        .from('processed_messages')
+        .select('id')
+        .eq('message_id', messageId)
+        .maybeSingle()
+      
+      if (alreadyProcessed) {
+        console.log(`[webhook] Duplicate message ignored: ${messageId}`)
+        return new NextResponse(null, { status: 200 })
+      }
+      
+      // Mark as processed (ignore errors if table doesn't exist yet)
+      await supabaseCheck
+        .from('processed_messages')
+        .insert({ message_id: messageId, created_at: new Date().toISOString() })
+    } catch (e) {
+      console.log('[webhook] processed_messages table not available, skipping dedup:', e)
     }
     
-    // Mark as processed (ignore errors if table doesn't exist yet)
-    await supabaseCheck
-      .from('processed_messages')
-      .insert({ message_id: messageId, created_at: new Date().toISOString() })
-
     console.log(`[webhook] from=${from} type=${msg.type} count=${messages.length} msgId=${messageId}`)
 
     // Check maintenance mode
