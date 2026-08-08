@@ -32,6 +32,19 @@ function getSundayRange(): { start: string; end: string } {
   }
 }
 
+// ─── Date range helper: Last 7 days to Next 7 days (inclusive) ─────────────────────
+function getWeekRange(): { start: string; end: string } {
+  const today = new Date()
+  const start = new Date(today)
+  start.setDate(today.getDate() - 7)
+  const end = new Date(today)
+  end.setDate(today.getDate() + 7)
+  return {
+    start: start.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0]
+  }
+}
+
 // ─── Admin phone numbers ──────────────────────────────────────────────────────────
 const ADMIN_PHONES = ['+27678721810', '+27732509506', '+27734776081']
 function isAdminPhone(phone: string): boolean {
@@ -220,6 +233,9 @@ type SessionData = {
   backdoor_side: 'home' | 'away' | null
   backdoor_menu_step: 'menu' | 'screenshot' | 'fixture_search' | 'fixture_select' | 'side' | 'check' | null
   backdoor_screenshot_media_id: string | null
+  // Submission type fields
+  submission_type: 'new' | 'fix' | null
+  submission_menu_step: 'menu' | null
 }
 
 async function getSession(phoneNumber: string): Promise<SessionData | null> {
@@ -353,6 +369,38 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
 
   await clearSession(from)
   await sendTextMessage(from, "Backdoor win submitted.", phoneNumberId)
+}
+
+// ─── Submission Type Selection (after OCR) ────────────────────────────────────
+
+async function handleSubmissionType(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  const step = session.submission_menu_step
+  const lower = text.trim().toLowerCase()
+
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+
+  if (step === 'menu') {
+    if (lower === '1') {
+      // Submitting scheduled fixture - filter by scheduled status
+      await upsertSession({ phone_number: from, state: 'awaiting_match_name', submission_type: 'new' })
+      const { start, end } = getWeekRange()
+      await sendTextMessage(from, `Submitting scheduled fixture (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
+      return
+    }
+    if (lower === '2') {
+      // Fixing already submitted fixture - filter by confirmed/awaiting_confirmation
+      await upsertSession({ phone_number: from, state: 'awaiting_match_name', submission_type: 'fix' })
+      const { start, end } = getWeekRange()
+      await sendTextMessage(from, `Fixing already submitted fixture (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
+      return
+    }
+    await sendTextMessage(from, 'Reply 1 or 2.', phoneNumberId)
+    return
+  }
 }
 
 // ─── Backdoor User Flow ──────────────────────────────────────────────────────────
@@ -541,6 +589,7 @@ function formatFixtureListWithHeadings(fixtures: any[]): string {
   
   const lines: string[] = []
   let globalIndex = 1
+  const MAX_CHARS = 3800 // Leave buffer for WhatsApp 4096 limit
   
   for (const date of sortedDates) {
     const dayFixtures = byDate.get(date)!
@@ -554,27 +603,46 @@ function formatFixtureListWithHeadings(fixtures: any[]): string {
     const awaiting = dayFixtures.filter(f => f.status === 'awaiting_confirmation')
     const confirmed = dayFixtures.filter(f => f.status === 'confirmed')
     
+    // Check if adding date label would exceed limit
+    const dateLabelLine = dateLabel + '\n'
+    if (lines.join('\n').length + dateLabelLine.length > MAX_CHARS) {
+      const remaining = fixtures.length - globalIndex + 1
+      lines.push(`\n... and ${remaining} more matches. Type team names to narrow search.`)
+      break
+    }
     lines.push(dateLabel)
     
     if (pending.length > 0) {
+      const pendingHeader = '  ⏳ **Pending:**\n'
+      if (lines.join('\n').length + pendingHeader.length > MAX_CHARS) break
       lines.push('  ⏳ **Pending:**')
       for (const f of pending) {
+        const line = `    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Pending)\n`
+        if (lines.join('\n').length + line.length > MAX_CHARS) break
         lines.push(`    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Pending)`)
         globalIndex++
       }
     }
     if (awaiting.length > 0) {
+      const awaitingHeader = '  ⚠️ **Awaiting Confirmation:**\n'
+      if (lines.join('\n').length + awaitingHeader.length > MAX_CHARS) break
       lines.push('  ⚠️ **Awaiting Confirmation:**')
       for (const f of awaiting) {
+        const line = `    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Awaiting)\n`
+        if (lines.join('\n').length + line.length > MAX_CHARS) break
         lines.push(`    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Awaiting)`)
         globalIndex++
       }
     }
     if (confirmed.length > 0) {
+      const confirmedHeader = '  ✅ **Submitted:**\n'
+      if (lines.join('\n').length + confirmedHeader.length > MAX_CHARS) break
       lines.push('  ✅ **Submitted:**')
       for (const f of confirmed) {
         const result = Array.isArray(f.results) ? f.results[0] : f.results
         const score = result ? ` ${result.home_score}-${result.away_score}` : ''
+        const line = `    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}${score} (Submitted)\n`
+        if (lines.join('\n').length + line.length > MAX_CHARS) break
         lines.push(`    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}${score} (Submitted)`)
         globalIndex++
       }
@@ -971,6 +1039,7 @@ function isFixtureConfirmed(f: any): boolean {
 // ─── Team name matching helpers (shared) ────────────────────────────────────────
 
 const TEAM_ALIASES: Record<string, string> = {
+  // Existing
   'utd': 'united', 'man utd': 'manchester united', 'man u': 'manchester united',
   'barca': 'barcelona',
   'inter': 'internazionale milan', 'inter milan': 'internazionale milan',
@@ -979,6 +1048,228 @@ const TEAM_ALIASES: Record<string, string> = {
   'psg': 'paris saint germain', 'bayern': 'bayern munchen',
   'lfc': 'liverpool', 'mcfc': 'manchester city', 'mufc': 'manchester united',
   'afc': 'arsenal', 'cfc': 'chelsea',
+  
+  // New - AC Milan
+  'milan': 'ac milan',
+  
+  // New - Ajax
+  'aja': 'ajax',
+  
+  // New - Al Ettifaq
+  'ett': 'al ettifaq',
+  
+  // New - Al Hilal
+  'hil': 'al hilal',
+  
+  // New - Al Khaleej
+  'kha': 'al khaleej',
+  
+  // New - Al Nassr
+  'nas': 'al nassr',
+  
+  // New - Algeria
+  'alg': 'algeria national team',
+  
+  // New - Argentina
+  'arg': 'argentina national team',
+  
+  // New - Arsenal
+  'ars': 'arsenal',
+  
+  // New - Aston Villa
+  'avl': 'aston villa', 'villa': 'aston villa',
+  
+  // New - Atlas Lions
+  'atl': 'atlas lions',
+  
+  // New - Atletico Madrid
+  'atm': 'atletico madrid', 'atleti': 'atletico madrid',
+  
+  // New - Barcelona
+  'bar': 'barcelona', 'fcb': 'barcelona',
+  
+  // New - Bayer Leverkusen
+  'b04': 'bayer leverkusen', 'lev': 'bayer leverkusen',
+  
+  // New - Bayern Munich
+  'bay': 'bayern munchen',
+  
+  // New - Belgium
+  'bel': 'belgium national team',
+  
+  // New - Borussia Dortmund
+  'dor': 'borussia dortmund',
+  
+  // New - Bournemouth
+  'bou': 'bournemouth',
+  
+  // New - Brazil
+  'bra': 'brazil national team',
+  
+  // New - Brentford
+  'bre': 'brentford',
+  
+  // New - Brighton
+  'bha': 'brighton & hove albion', 'bri': 'brighton & hove albion',
+  
+  // New - Burnley
+  'bur': 'burnley',
+  
+  // New - Chelsea
+  'che': 'chelsea',
+  
+  // New - Club Brugge
+  'clb': 'club brugge', 'bru': 'club brugge',
+  
+  // New - Cobalt FC
+  'cob': 'cobalt fc',
+  
+  // New - Como 1907
+  'com': 'como 1907',
+  
+  // New - Croatia
+  'cro': 'croatia national team',
+  
+  // New - Crystal Palace
+  'cry': 'crystal palace', 'cpfc': 'crystal palace',
+  
+  // New - Dundee United
+  'dun': 'dundee united',
+  
+  // New - Egypt
+  'egy': 'egypt national team',
+  
+  // New - England
+  'eng': 'england national team',
+  
+  // New - Everton
+  'eve': 'everton',
+  
+  // New - France
+  'fra': 'france national team',
+  
+  // New - Fulham
+  'ful': 'fulham',
+  
+  // New - Germany
+  'ger': 'germany national team',
+  
+  // New - Ghana
+  'gha': 'ghana national team',
+  
+  // New - Haiti
+  'hai': 'haiti national team',
+  
+  // New - Inter Milan
+  'int': 'inter milan',
+  
+  // New - Ipswich
+  'ips': 'ipswich',
+  
+  // New - Iran
+  'irn': 'iran national team',
+  
+  // New - Japan
+  'jpn': 'japan national team',
+  
+  // New - Juventus
+  'juv': 'juventus',
+  
+  // New - Leeds
+  'lee': 'leeds united',
+  
+  // New - Liverpool
+  'liv': 'liverpool',
+  
+  // New - Manchester City
+  'mci': 'manchester city', 'mancity': 'manchester city',
+  
+  // New - Manchester United
+  'mun': 'manchester united', 'manu': 'manchester united',
+  
+  // New - Mexico
+  'mex': 'mexico national team',
+  
+  // New - Morocco
+  'mar': 'morocco national team', 'mor': 'morocco national team',
+  
+  // New - Nantes
+  'nan': 'nantes', 'fcn': 'nantes',
+  
+  // New - Napoli
+  'nap': 'napoli',
+  
+  // New - Netherlands
+  'ned': 'netherlands national team', 'hol': 'netherlands national team',
+  
+  // New - New Zealand
+  'nzl': 'new zealand national team',
+  
+  // New - Newcastle
+  'new': 'newcastle united', 'nufc': 'newcastle united',
+  
+  // New - Norway
+  'nor': 'norway national team',
+  
+  // New - Nottingham Forest
+  'nfo': 'nottingham forest', 'forest': 'nottingham forest',
+  
+  // New - Palmeiras
+  'pal': 'palmeiras',
+  
+  // New - Portugal
+  'por': 'portuguese football federation',
+  
+  // New - Real Betis
+  'bet': 'real betis',
+  
+  // New - Real Madrid
+  'madrid': 'real madrid',
+  
+  // New - Santos
+  'san': 'santos',
+  
+  // New - Saudi Arabia
+  'ksa': 'saudi arabia national team', 'sau': 'saudi arabia national team', 'sa': 'saudi arabia national team',
+  
+  // New - South Africa
+  'rsa': 'south africa national team',
+  
+  // New - South Korea
+  'kor': 'south korea national team',
+  
+  // New - Spain
+  'esp': 'spain national team',
+  
+  // New - Sporting CP
+  'scp': 'sporting cp', 'sporting': 'sporting cp',
+  
+  // New - Sunderland
+  'sun': 'sunderland',
+  
+  // New - Switzerland
+  'sui': 'switzerland national team',
+  
+  // New - Tottenham
+  'tot': 'tottenham hotspur', 'spurs': 'tottenham hotspur',
+  
+  // New - Turkey
+  'tur': 'turkey national team',
+  
+  // New - Uruguay
+  'uru': 'uruguay national team',
+  
+  // New - USA
+  'usa': 'usa national team',
+  
+  // New - Uzbekistan
+  'uzb': 'uzbekistan national team',
+  
+  // New - West Ham
+  'whu': 'west ham united', 'hammers': 'west ham united',
+  
+  // New - Wolves
+  'wol': 'wolves', 'wlv': 'wolves',
 }
 
 function expandAlias(token: string): string {
@@ -1135,6 +1426,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     await showBackdoorSubmissionsForReview(from, phoneNumberId)
     return
   }
+  // ─── Submission type selection (after screenshot OCR) ────────────────────────
+  if (session?.state === 'awaiting_submission_type') {
+    await handleSubmissionType(from, text, session, phoneNumberId)
+    return
+  }
   // ─── Match name search (after screenshot) ────────────────────────────────
   if (session?.state === 'awaiting_match_name') {
     if (/^cancel$/i.test(text.trim())) {
@@ -1149,12 +1445,20 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     // "inter milan 3-2 liverpool" and we only match on team names
     const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
 
-    const { start, end } = getSundayRange()
+    const { start, end } = getWeekRange()
+
+    // Determine status filter based on submission type
+    let statusFilter: string[]
+    if (session.submission_type === 'fix') {
+      statusFilter = ['confirmed', 'awaiting_confirmation']
+    } else {
+      statusFilter = ['scheduled']
+    }
 
     const { data: fixtures } = await supabase
       .from('fixtures')
       .select('id, home_team_id, away_team_id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
-      .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
+      .in('status', statusFilter)
       .gte('scheduled_date', start)
       .lte('scheduled_date', end)
       .order('scheduled_date', { ascending: false })
@@ -1767,10 +2071,12 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     phone_number: from,
     home_team: homeTeam, away_team: awayTeam, home_score: homeScore, away_score: awayScore,
     match_stats: matchStats, matched_fixture_id: null, screenshot_media_id: imageId,
-    state: 'awaiting_match_name',
+    state: 'awaiting_submission_type',
+    submission_type: null,
+    submission_menu_step: 'menu'
   })
 
-  await sendTextMessage(from, `Score extracted: ${homeTeam || '?'} ${homeScore}-${awayScore} ${awayTeam || '?'}\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
+  await sendTextMessage(from, `Score extracted: ${homeTeam || '?'} ${homeScore}-${awayScore} ${awayTeam || '?'}\n\nWhat are we doing?\n1. Submitting scheduled fixture\n2. Fixing already submitted fixture\n\nReply 1 or 2. Type CANCEL to start over.`, phoneNumberId)
 }
 
 // ─── DB write ────────────────────────────────────────────────────────────────────
