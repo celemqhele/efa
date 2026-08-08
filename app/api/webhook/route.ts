@@ -386,14 +386,34 @@ async function handleSubmissionType(from: string, text: string, session: Session
   if (step === 'menu') {
     if (lower === '1') {
       // Submitting scheduled fixture - filter by scheduled status
-      await upsertSession({ phone_number: from, state: 'awaiting_match_name', submission_type: 'new' })
+      await upsertSession({ 
+        phone_number: from, 
+        state: 'awaiting_match_name', 
+        submission_type: 'new',
+        home_team: session.home_team,
+        away_team: session.away_team,
+        home_score: session.home_score,
+        away_score: session.away_score,
+        match_stats: session.match_stats,
+        screenshot_media_id: session.screenshot_media_id,
+      })
       const { start, end } = getWeekRange()
       await sendTextMessage(from, `Submitting scheduled fixture (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
       return
     }
     if (lower === '2') {
       // Fixing already submitted fixture - filter by confirmed/awaiting_confirmation
-      await upsertSession({ phone_number: from, state: 'awaiting_match_name', submission_type: 'fix' })
+      await upsertSession({ 
+        phone_number: from, 
+        state: 'awaiting_match_name', 
+        submission_type: 'fix',
+        home_team: session.home_team,
+        away_team: session.away_team,
+        home_score: session.home_score,
+        away_score: session.away_score,
+        match_stats: session.match_stats,
+        screenshot_media_id: session.screenshot_media_id,
+      })
       const { start, end } = getWeekRange()
       await sendTextMessage(from, `Fixing already submitted fixture (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
       return
