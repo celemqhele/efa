@@ -187,21 +187,6 @@ const msg = messages[0]
         return
       }
       
-      // For regular result submission: if caption has team names, search fixture FIRST
-      if (caption) {
-        // Check if caption looks like team names (contains "vs" or similar)
-        const hasTeamNames = /\bvs\.?\b|versus|playing|against/i.test(caption) || caption.toLowerCase().split(/\s+/).length >= 2
-        if (hasTeamNames) {
-          await upsertSession({
-            phone_number: from,
-            state: 'awaiting_match_name',
-            screenshot_media_id: msg.image.id
-          })
-          await handleFixtureSearchFromCaption(from, caption, msg.image.id, phoneNumberId)
-          return
-        }
-      }
-      
       // No useful caption, proceed to OCR
       await handleImage(from, msg, phoneNumberId)
     } else if (msg.type === 'text') {
@@ -598,24 +583,6 @@ function formatFixtureListWithHeadings(fixtures: any[]): string {
   }
   
   return lines.join('\n')
-}
-
-async function handleFixtureSearchFromCaption(from: string, caption: string, mediaId: string, phoneNumberId: string) {
-  const session = await getSession(from)
-  if (!session) {
-    await sendTextMessage(from, 'Session expired. Send screenshot again.', phoneNumberId)
-    return
-  }
-
-  await upsertSession({
-    phone_number: from,
-    state: 'awaiting_match_name',
-    screenshot_media_id: mediaId,
-    displayed_fixtures: null
-  })
-
-  // Reuse the existing fixture search logic but with the caption as search input
-  await handleBackdoorFixtureSearch(from, caption, session, phoneNumberId)
 }
 
 async function handleBackdoorFixtureSelect(from: string, text: string, session: SessionData, phoneNumberId: string) {
