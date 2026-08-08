@@ -85,6 +85,51 @@ export async function POST(request: NextRequest) {
 
     console.log(`[webhook] from=${from} type=${msg.type} count=${messages.length} msgId=${messageId}`)
 
+    // Check maintenance mode
+    const { data: maintenance } = await supabaseCheck
+      .from('maintenance_mode')
+      .select('enabled, message')
+      .maybeSingle()
+    
+    if (maintenance?.enabled) {
+      // Check if admin command to disable maintenance
+      const text = msg.type === 'text' ? (msg.text?.body || '').trim().toLowerCase() : ''
+      if (text === 'disable maintenance mode' && isAdminPhone(from)) {
+        await supabaseCheck
+          .from('maintenance_mode')
+          .update({ enabled: false, disabled_by: (await supabaseCheck.auth.getUser()).data.user?.id, disabled_at: new Date().toISOString() })
+          .eq('enabled', true)
+        await sendTextMessage(from, 'Maintenance mode disabled. Service is now available.', phoneNumberId)
+        return new NextResponse(null, { status: 200 })
+      }
+      
+      // Cache the message for later processing
+      await supabaseCheck
+        .from('cached_messages')
+        .insert({
+          phone_number: from,
+          message_type: msg.type,
+          content: msg as any
+        })
+      
+      // Send maintenance message
+      await sendTextMessage(from, maintenance.message || 'We are currently under maintenance. Please send your screenshot again in 2-3 hours.', phoneNumberId)
+      return new NextResponse(null, { status: 200 })
+    }
+    
+    // Check for admin enable maintenance command (for any message type)
+    if (msg.type === 'text') {
+      const text = msg.text?.body?.trim().toLowerCase() || ''
+      if (text === 'enable maintenance mode' && isAdminPhone(from)) {
+        await supabaseCheck
+          .from('maintenance_mode')
+          .update({ enabled: true, enabled_by: (await supabaseCheck.auth.getUser()).data.user?.id, enabled_at: new Date().toISOString() })
+          .eq('enabled', false)
+        await sendTextMessage(from, 'Maintenance mode enabled. All incoming messages will be cached.', phoneNumberId)
+        return new NextResponse(null, { status: 200 })
+      }
+    }
+
     // Handle multiple images: find the first one with a valid score
     const imageMessages = messages.filter((m: any) => m.type === 'image')
     if (imageMessages.length > 1) {
