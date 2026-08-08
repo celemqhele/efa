@@ -479,14 +479,14 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
     if (teamSearches.length === 2) {
       const [s1, s2] = teamSearches
       // Check both permutations: s1->home & s2->away OR s1->away & s2->home
-      // BOTH teams must meet 40% threshold
+      // BOTH teams must meet 20% threshold
       const score1_home = combinedTeamScore(s1, hName)
       const score1_away = combinedTeamScore(s1, aName)
       const score2_home = combinedTeamScore(s2, hName)
       const score2_away = combinedTeamScore(s2, aName)
       
-      const perm1 = (score1_home >= 0.4 && score2_away >= 0.4)
-      const perm2 = (score1_away >= 0.4 && score2_home >= 0.4)
+      const perm1 = (score1_home >= 0.2 && score2_away >= 0.2)
+      const perm2 = (score1_away >= 0.2 && score2_home >= 0.2)
       
       return perm1 || perm2
     }
@@ -1235,8 +1235,8 @@ teamSearches = teamSearches.filter((s: string) => s.length >= 2)
         const score2_home = combinedTeamScore(s2, hName)
         const score2_away = combinedTeamScore(s2, aName)
         
-        const perm1 = (score1_home >= 0.4 && score2_away >= 0.4)
-        const perm2 = (score1_away >= 0.4 && score2_home >= 0.4)
+        const perm1 = (score1_home >= 0.2 && score2_away >= 0.2)
+        const perm2 = (score1_away >= 0.2 && score2_home >= 0.2)
         
         return perm1 || perm2
       }
