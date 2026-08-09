@@ -486,7 +486,7 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
   // Strip score patterns
   const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
 
-  const { start, end } = getSundayRange()
+  const { start, end } = getWeekRange()
 
   const { data: fixtures } = await supabase
     .from('fixtures')
@@ -506,25 +506,6 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
   } else {
     const words = stripped.toLowerCase().split(/\s+/).filter((w: string) => w.length >= 1)
     teamSearches = [stripped.toLowerCase().trim()]
-    if (words.length >= 2 && allFixtures.length > 0) {
-      let bestSplit: string[] | null = null
-      let bestScore = 0
-      for (let i = 1; i < words.length; i++) {
-        const left = words.slice(0, i).join(' ')
-        const right = words.slice(i).join(' ')
-        if (left.length < 2 || right.length < 2) continue
-        for (const f of allFixtures) {
-          const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
-          const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-          const s = Math.max(teamNameScore(left, hName) + teamNameScore(right, aName),
-                             teamNameScore(left, aName) + teamNameScore(right, hName)) / 2
-          if (s > bestScore) { bestScore = s; bestSplit = [left, right] }
-        }
-      }
-      if (bestSplit && bestScore >= 0.6) {
-        teamSearches = bestSplit
-      }
-    }
   }
   teamSearches = teamSearches.filter((s: string) => s.length >= 2)
 
@@ -533,41 +514,35 @@ if (teamSearches.length === 0) {
     return
   }
 
-  // Backdoor fixture search
-  function fixtureMatches(f: any): boolean {
-      const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
-      const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-      
-      if (teamSearches.length === 2) {
-        const [s1, s2] = teamSearches
-        
-        // Keyword matching: split search terms and team names into keywords
-        const s1Keywords = s1.split(/\s+/).filter((k: string) => k.length >= 2)
-        const s2Keywords = s2.split(/\s+/).filter((k: string) => k.length >= 2)
-        const hKeywords = hName.split(/\s+/).filter((k: string) => k.length >= 2)
-        const aKeywords = aName.split(/\s+/).filter((k: string) => k.length >= 2)
-        
-        // Check if at least one keyword from s1 matches home AND at least one from s2 matches away
-        const s1MatchesHome = s1Keywords.some(k => hKeywords.includes(k))
-        const s2MatchesAway = s2Keywords.some(k => aKeywords.includes(k))
-        
-        // Check permutation: s1 matches away AND s2 matches home
-        const s1MatchesAway = s1Keywords.some(k => aKeywords.includes(k))
-        const s2MatchesHome = s2Keywords.some(k => hKeywords.includes(k))
-        
-        return (s1MatchesHome && s2MatchesAway) || (s1MatchesAway && s2MatchesHome)
-      }
-      return false
-    }
+  // Resolve team names using database aliases
+  const resolvedTeams = await Promise.all(
+    teamSearches.map(s => resolveTeamName(s))
+  )
+  
+  if (resolvedTeams.some(r => r === null)) {
+    await sendTextMessage(from, `Could not find teams matching your input. Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+    return
+  }
 
-  const matchedFixtures = allFixtures
-    .filter(fixtureMatches)
-    .map(f => ({ fixture: f, score: fixtureMatchScore(teamSearches, 
-      (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || '',
-      (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-    )}))
-    .sort((a, b) => b.score - a.score)
-    .map(x => x.fixture)
+  const [resolved1, resolved2] = resolvedTeams as [string, string]
+  
+  // Strict exact matching - both teams must match exactly (case-insensitive, permutation-aware)
+  const matchedFixtures = allFixtures.filter(f => {
+    const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+    const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
+    
+    const r1 = resolved1.toLowerCase()
+    const r2 = resolved2.toLowerCase()
+    const h = hName.toLowerCase()
+    const a = aName.toLowerCase()
+    
+    return (h === r1 && a === r2) || (h === r2 && a === r1)
+  })
+
+  if (matchedFixtures.length === 0) {
+    await sendTextMessage(from, `No fixtures found matching "${searchInput}". Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+    return
+  }
 
   if (matchedFixtures.length === 0) {
     await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
@@ -1064,332 +1039,63 @@ function isFixtureConfirmed(f: any): boolean {
   return f.status === 'confirmed' || f.status === 'awaiting_confirmation'
 }
 
+// ─── Team name resolution (database-backed) ─────────────────────────────────────
+
+async function resolveTeamName(input: string): Promise<string | null> {
+  const cleanInput = input.trim().toLowerCase()
+  const supabase = await createAdminClient()
+  
+  // 1. Exact alias match (case-insensitive)
+  const { data: aliasMatch } = await supabase
+    .from('team_aliases')
+    .select('teams!inner(name)')
+    .ilike('alias', cleanInput)
+    .maybeSingle()
+  
+  if (aliasMatch) return (aliasMatch as any).teams?.name
+  
+  // 2. Full-text search on teams table
+  const { data: teams } = await supabase
+    .from('teams')
+    .select('name')
+    .textSearch('search_vector', cleanInput, { type: 'websearch' })
+    .limit(3)
+  
+  if (teams?.length === 1) return teams[0].name
+  return null
+}
+
 // ─── Team name matching helpers (shared) ────────────────────────────────────────
 
-const TEAM_ALIASES: Record<string, string> = {
-  // Existing
-  'utd': 'united', 'man utd': 'manchester united', 'man u': 'manchester united',
-  'barca': 'barcelona',
-  'inter': 'internazionale milan', 'inter milan': 'internazionale milan',
-  'acm': 'ac milan', 'ac m': 'ac milan',
-  'rma': 'real madrid', 'bvb': 'borussia dortmund',
-  'psg': 'paris saint germain', 'bayern': 'bayern munchen',
-  'lfc': 'liverpool', 'mcfc': 'manchester city', 'mufc': 'manchester united',
-  'afc': 'arsenal', 'cfc': 'chelsea',
-  
-  // New - AC Milan
-  'milan': 'ac milan',
-  
-  // New - Ajax
-  'aja': 'ajax',
-  
-  // New - Al Ettifaq
-  'ett': 'al ettifaq',
-  
-  // New - Al Hilal
-  'hil': 'al hilal',
-  
-  // New - Al Khaleej
-  'kha': 'al khaleej',
-  
-  // New - Al Nassr
-  'nas': 'al nassr',
-  
-  // New - Algeria
-  'alg': 'algeria national team',
-  
-  // New - Argentina
-  'arg': 'argentina national team',
-  
-  // New - Arsenal
-  'ars': 'arsenal',
-  
-  // New - Aston Villa
-  'avl': 'aston villa', 'villa': 'aston villa',
-  
-  // New - Atlas Lions
-  'atl': 'atlas lions',
-  
-  // New - Atletico Madrid
-  'atm': 'atletico madrid', 'atleti': 'atletico madrid',
-  
-  // New - Barcelona
-  'bar': 'barcelona', 'fcb': 'barcelona',
-  
-  // New - Bayer Leverkusen
-  'b04': 'bayer leverkusen', 'lev': 'bayer leverkusen',
-  
-  // New - Bayern Munich
-  'bay': 'bayern munchen',
-  
-  // New - Belgium
-  'bel': 'belgium national team',
-  
-  // New - Borussia Dortmund
-  'dor': 'borussia dortmund',
-  
-  // New - Bournemouth
-  'bou': 'bournemouth',
-  
-  // New - Brazil
-  'bra': 'brazil national team',
-  
-  // New - Brentford
-  'bre': 'brentford',
-  
-  // New - Brighton
-  'bha': 'brighton & hove albion', 'bri': 'brighton & hove albion',
-  
-  // New - Burnley
-  'bur': 'burnley',
-  
-  // New - Chelsea
-  'che': 'chelsea',
-  
-  // New - Club Brugge
-  'clb': 'club brugge', 'bru': 'club brugge',
-  
-  // New - Cobalt FC
-  'cob': 'cobalt fc',
-  
-  // New - Como 1907
-  'com': 'como 1907',
-  
-  // New - Croatia
-  'cro': 'croatia national team',
-  
-  // New - Crystal Palace
-  'cry': 'crystal palace', 'cpfc': 'crystal palace',
-  
-  // New - Dundee United
-  'dun': 'dundee united',
-  
-  // New - Egypt
-  'egy': 'egypt national team',
-  
-  // New - England
-  'eng': 'england national team',
-  
-  // New - Everton
-  'eve': 'everton',
-  
-  // New - France
-  'fra': 'france national team',
-  
-  // New - Fulham
-  'ful': 'fulham',
-  
-  // New - Germany
-  'ger': 'germany national team',
-  
-  // New - Ghana
-  'gha': 'ghana national team',
-  
-  // New - Haiti
-  'hai': 'haiti national team',
-  
-  // New - Inter Milan
-  'int': 'inter milan',
-  
-  // New - Ipswich
-  'ips': 'ipswich',
-  
-  // New - Iran
-  'irn': 'iran national team',
-  
-  // New - Japan
-  'jpn': 'japan national team',
-  
-  // New - Juventus
-  'juv': 'juventus',
-  
-  // New - Leeds
-  'lee': 'leeds united',
-  
-  // New - Liverpool
-  'liv': 'liverpool',
-  
-  // New - Manchester City
-  'mci': 'manchester city', 'mancity': 'manchester city',
-  
-  // New - Manchester United
-  'mun': 'manchester united', 'manu': 'manchester united',
-  
-  // New - Mexico
-  'mex': 'mexico national team',
-  
-  // New - Morocco
-  'mar': 'morocco national team', 'mor': 'morocco national team',
-  
-  // New - Nantes
-  'nan': 'nantes', 'fcn': 'nantes',
-  
-  // New - Napoli
-  'nap': 'napoli',
-  
-  // New - Netherlands
-  'ned': 'netherlands national team', 'hol': 'netherlands national team',
-  
-  // New - New Zealand
-  'nzl': 'new zealand national team',
-  
-  // New - Newcastle
-  'new': 'newcastle united', 'nufc': 'newcastle united',
-  
-  // New - Norway
-  'nor': 'norway national team',
-  
-  // New - Nottingham Forest
-  'nfo': 'nottingham forest', 'forest': 'nottingham forest',
-  
-  // New - Palmeiras
-  'pal': 'palmeiras',
-  
-  // New - Portugal
-  'por': 'portuguese football federation',
-  
-  // New - Real Betis
-  'bet': 'real betis',
-  
-  // New - Real Madrid
-  'madrid': 'real madrid',
-  
-  // New - Santos
-  'san': 'santos',
-  
-  // New - Saudi Arabia
-  'ksa': 'saudi arabia national team', 'sau': 'saudi arabia national team', 'sa': 'saudi arabia national team',
-  
-  // New - South Africa
-  'rsa': 'south africa national team',
-  
-  // New - South Korea
-  'kor': 'south korea national team',
-  
-  // New - Spain
-  'esp': 'spain national team',
-  
-  // New - Sporting CP
-  'scp': 'sporting cp', 'sporting': 'sporting cp',
-  
-  // New - Sunderland
-  'sun': 'sunderland',
-  
-  // New - Switzerland
-  'sui': 'switzerland national team',
-  
-  // New - Tottenham
-  'tot': 'tottenham hotspur', 'spurs': 'tottenham hotspur',
-  
-  // New - Turkey
-  'tur': 'turkey national team',
-  
-  // New - Uruguay
-  'uru': 'uruguay national team',
-  
-  // New - USA
-  'usa': 'usa national team',
-  
-  // New - Uzbekistan
-  'uzb': 'uzbekistan national team',
-  
-  // New - West Ham
-  'whu': 'west ham united', 'hammers': 'west ham united',
-  
-  // New - Wolves
-  'wol': 'wolves', 'wlv': 'wolves',
-}
+// ─── Strict exact team name matching ──────────────────────────────────────────────
+// Both teams must match exactly (case-insensitive, permutation-aware)
 
-function expandAlias(token: string): string {
-  return TEAM_ALIASES[token] || token
-}
-
-// ─── Letter-based team name matching ──────────────────────────────────────────────
-// Scores based on how many letters from search appear in team name (order-independent)
-// Handles typos, extra chars, quotes, etc. Better for "inter vs barca" matching "Internazionale vs Barcelona"
-
-function letterMatchScore(search: string, teamName: string): number {
-  const cleanSearch = search.toLowerCase().replace(/[^a-z]/g, '')
-  const cleanTeam = teamName.toLowerCase().replace(/[^a-z]/g, '')
-  if (!cleanSearch || !cleanTeam) return 0
+async function fixtureMatches(f: any, teamSearches: string[]): Promise<boolean> {
+  const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
+  const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
   
-  // Count matching letters (each letter in search that appears in team name)
-  const teamLetterCounts = new Map<string, number>()
-  for (const ch of cleanTeam) {
-    teamLetterCounts.set(ch, (teamLetterCounts.get(ch) || 0) + 1)
-  }
+  if (teamSearches.length !== 2) return false
   
-  let matches = 0
-  for (const ch of cleanSearch) {
-    const count = teamLetterCounts.get(ch) || 0
-    if (count > 0) {
-      matches++
-      teamLetterCounts.set(ch, count - 1)
-    }
-  }
+  const [s1, s2] = teamSearches
   
-  // Score = matched letters / search length (0-1)
-  return matches / cleanSearch.length
-}
-
-// Combined score: letter match (70%) + token score (30%) for best of both worlds
-function combinedTeamScore(search: string, teamName: string): number {
-  const letterScore = letterMatchScore(search, teamName)
-  const tokenScore = teamNameScore(search, teamName) // existing token-based score
-  return letterScore * 0.7 + tokenScore * 0.3
-}
-
-function fixtureMatchScore(searchParts: string[], homeName: string, awayName: string): number {
-  if (searchParts.length === 2) {
-    const [s1, s2] = searchParts
-    const score1 = (combinedTeamScore(s1, homeName) + combinedTeamScore(s2, awayName)) / 2
-    const score2 = (combinedTeamScore(s1, awayName) + combinedTeamScore(s2, homeName)) / 2
-    return Math.max(score1, score2)
-  }
-  return Math.max(combinedTeamScore(searchParts[0], homeName), combinedTeamScore(searchParts[0], awayName))
-}
-
-function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[])
-  for (let i = 0; i <= m; i++) dp[i][0] = i
-  for (let j = 0; j <= n; j++) dp[0][j] = j
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i - 1] === b[j - 1]
-        ? dp[i - 1][j - 1]
-        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
-    }
-  }
-  return dp[m][n]
-}
-
-function tokenScore(searchToken: string, teamToken: string): number {
-  const s = expandAlias(searchToken)
-  const t = expandAlias(teamToken)
-  if (s === t) return 1.0
-  if (t.includes(s) || s.includes(t)) return 0.9
-  if (t.startsWith(s) || s.startsWith(t)) return 0.85
-  const dist = levenshtein(s, t)
-  const maxLen = Math.max(s.length, t.length)
-  if (maxLen <= 2) return dist === 0 ? 1.0 : 0
-  if (dist <= 2) return 0.7
-  return 0
-}
-
-function teamNameScore(search: string, teamName: string): number {
-  const searchTokens = search.split(/\s+/).filter((w: string) => w.length >= 2)
-  const teamTokens = teamName.split(/\s+/).filter((w: string) => w.length >= 2)
-  if (searchTokens.length === 0 || teamTokens.length === 0) return 0
-  let totalScore = 0
-  for (const st of searchTokens) {
-    let best = 0
-    for (const tt of teamTokens) {
-      best = Math.max(best, tokenScore(st, tt))
-    }
-    totalScore += best
-  }
-  return totalScore / searchTokens.length
+  // Resolve aliases
+  const [resolved1, resolved2] = await Promise.all([
+    resolveTeamName(s1),
+    resolveTeamName(s2)
+  ])
+  
+  if (!resolved1 || !resolved2) return false
+  
+  const r1 = resolved1.toLowerCase()
+  const r2 = resolved2.toLowerCase()
+  const h = hName.toLowerCase()
+  const a = aName.toLowerCase()
+  
+  // Exact word match (case-insensitive, permutation-aware)
+  const match1 = (h === r1 && a === r2)
+  const match2 = (h === r2 && a === r1)
+  
+  return match1 || match2
 }
 
 async function handleText(from: string, msg: { text: { body: string } }, phoneNumberId: string) {
@@ -1495,79 +1201,49 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const allFixtures = (fixtures as any[]) || []
 
-    const vsParts = stripped.split(/\s+vs\.?\s+/i)
+const vsParts = stripped.split(/\s+vs\.?\s+/i)
     let teamSearches: string[]
     if (vsParts.length >= 2) {
       teamSearches = [vsParts[0].trim().toLowerCase(), vsParts.slice(1).join(' ').trim().toLowerCase()]
     } else {
-      // No "vs" — try every possible split point and pick the one that best matches fixtures
-      const words = stripped.toLowerCase().split(/\s+/).filter((w: string) => w.length >= 1)
-      teamSearches = [stripped.toLowerCase().trim()] // fallback: whole string as one search
-      if (words.length >= 2 && allFixtures.length > 0) {
-        let bestSplit: string[] | null = null
-        let bestScore = 0
-        for (let i = 1; i < words.length; i++) {
-          const left = words.slice(0, i).join(' ')
-          const right = words.slice(i).join(' ')
-          if (left.length < 2 || right.length < 2) continue
-          for (const f of allFixtures) {
-            const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
-            const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-            const s = Math.max(teamNameScore(left, hName) + teamNameScore(right, aName),
-                               teamNameScore(left, aName) + teamNameScore(right, hName)) / 2
-            if (s > bestScore) { bestScore = s; bestSplit = [left, right] }
-          }
-        }
-        if (bestSplit && bestScore >= 0.6) {
-          teamSearches = bestSplit
-        }
-      }
+      // No "vs" separator — ask user to use proper format
+      await sendTextMessage(from, 'Please use format "Team A vs Team B" (e.g. "Arsenal vs Everton").', phoneNumberId)
+      return
     }
-teamSearches = teamSearches.filter((s: string) => s.length >= 2)
+    teamSearches = teamSearches.filter((s: string) => s.length >= 2)
 
     if (teamSearches.length === 0) {
       await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
       return
     }
 
-    // Regular match search
-    function fixtureMatches(f: any): boolean {
+    // Resolve team names using database aliases
+    const resolvedTeams = await Promise.all(
+      teamSearches.map(s => resolveTeamName(s))
+    )
+    
+    if (resolvedTeams.some(r => r === null)) {
+      await sendTextMessage(from, `Could not find teams matching your input. Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+      return
+    }
+
+    const [resolved1, resolved2] = resolvedTeams as [string, string]
+    
+    // Strict exact matching - both teams must match exactly (case-insensitive, permutation-aware)
+    const matchedFixtures = allFixtures.filter(f => {
       const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
       const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
       
-      if (teamSearches.length === 2) {
-        const [s1, s2] = teamSearches
-        
-        // Keyword matching: split search terms and team names into keywords
-        const s1Keywords = s1.split(/\s+/).filter((k: string) => k.length >= 2)
-        const s2Keywords = s2.split(/\s+/).filter((k: string) => k.length >= 2)
-        const hKeywords = hName.split(/\s+/).filter((k: string) => k.length >= 2)
-        const aKeywords = aName.split(/\s+/).filter((k: string) => k.length >= 2)
-        
-        // Check if at least one keyword from s1 matches home AND at least one from s2 matches away
-        const s1MatchesHome = s1Keywords.some(k => hKeywords.includes(k))
-        const s2MatchesAway = s2Keywords.some(k => aKeywords.includes(k))
-        
-        // Check permutation: s1 matches away AND s2 matches home
-        const s1MatchesAway = s1Keywords.some(k => aKeywords.includes(k))
-        const s2MatchesHome = s2Keywords.some(k => hKeywords.includes(k))
-        
-        return (s1MatchesHome && s2MatchesAway) || (s1MatchesAway && s2MatchesHome)
-      }
-      return false
-    }
-
-    const matchedFixtures = allFixtures
-    .filter(fixtureMatches)
-    .map(f => ({ fixture: f, score: fixtureMatchScore(teamSearches,
-      (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || '',
-      (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-    )}))
-    .sort((a, b) => b.score - a.score)
-    .map(x => x.fixture)
+      const r1 = resolved1.toLowerCase()
+      const r2 = resolved2.toLowerCase()
+      const h = hName.toLowerCase()
+      const a = aName.toLowerCase()
+      
+      return (h === r1 && a === r2) || (h === r2 && a === r1)
+    })
 
     if (matchedFixtures.length === 0) {
-      await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
+      await sendTextMessage(from, `No fixtures found matching "${searchInput}". Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
       return
     }
 
