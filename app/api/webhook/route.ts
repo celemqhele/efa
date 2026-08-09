@@ -78,27 +78,23 @@ const msg = messages[0]
     const from = msg.from as string
     const phoneNumberId = metadata?.phone_number_id as string
     
-    // Deduplicate messages - WhatsApp can deliver same message multiple times
-    const processedKey = `processed_msg_${messageId}`
+    // Deduplicate messages - WhatsApp can deliver same message multiple times.
+    // Atomic: rely on the UNIQUE constraint on message_id; a race between two
+    // deliveries of the same message must result in only one winning the INSERT.
     const supabaseCheck = await createAdminClient()
-    
+
     // Gracefully handle missing processed_messages table
     try {
-      const { data: alreadyProcessed } = await supabaseCheck
+      const { error } = await supabaseCheck
         .from('processed_messages')
-        .select('id')
-        .eq('message_id', messageId)
-        .maybeSingle()
-      
-      if (alreadyProcessed) {
+        .insert({ message_id: messageId, created_at: new Date().toISOString() })
+      if (error?.code === '23505') {
         console.log(`[webhook] Duplicate message ignored: ${messageId}`)
         return new NextResponse(null, { status: 200 })
       }
-      
-      // Mark as processed (ignore errors if table doesn't exist yet)
-      await supabaseCheck
-        .from('processed_messages')
-        .insert({ message_id: messageId, created_at: new Date().toISOString() })
+      if (error) {
+        console.log('[webhook] processed_messages dedup insert error:', error)
+      }
     } catch (e) {
       console.log('[webhook] processed_messages table not available, skipping dedup:', e)
     }
@@ -150,8 +146,53 @@ const msg = messages[0]
       }
     }
 
-    // Handle multiple images: find the first one with a valid score
     const imageMessages = messages.filter((m: any) => m.type === 'image')
+
+    // If the sender is mid-backdoor-flow, treat any image as a backdoor
+    // screenshot. Never run OCR on it: a duplicate/stray image must not trigger
+    // the results-submit path or wipe the backdoor session.
+    if (imageMessages.length > 0) {
+      const session = await getSession(from)
+      if (session?.state === 'awaiting_backdoor') {
+        const imgMsg = imageMessages[0]
+        const caption = imgMsg.image.caption?.trim() || ''
+        const mediaId = imgMsg.image.id
+        if (session.backdoor_menu_step === 'screenshot') {
+          if (caption) {
+            // User sent screenshot with team names in caption - search directly
+            await upsertSession({
+              phone_number: from,
+              state: 'awaiting_backdoor',
+              backdoor_menu_step: 'fixture_search',
+              backdoor_screenshot_media_id: mediaId
+            })
+            await handleBackdoorFixtureSearch(from, caption, session, phoneNumberId)
+            return
+          }
+          await upsertSession({
+            phone_number: from,
+            state: 'awaiting_backdoor',
+            backdoor_menu_step: 'fixture_search',
+            backdoor_screenshot_media_id: mediaId
+          })
+          await sendTextMessage(from, 'Which fixture? Type team names (e.g., "Arsenal vs Chelsea").', phoneNumberId)
+          return
+        }
+        // Already past the screenshot step - ignore stray/duplicate images
+        const backdoorPrompts: Record<string, string> = {
+          menu: 'Reply 1 or 2. Type CANCEL to exit.',
+          fixture_search: 'Screenshot received. Which fixture? Type team names (e.g., "Arsenal vs Chelsea").',
+          fixture_select: 'Screenshot received. Reply with the number of your match.',
+          side: 'Screenshot received. Reply "home" or "away". Type CANCEL to abort.',
+          check: 'Reply 1 or 2. Type CANCEL to exit.',
+        }
+        const prompt = backdoorPrompts[session.backdoor_menu_step || ''] || 'Type team names or type CANCEL to exit.'
+        await sendTextMessage(from, prompt, phoneNumberId)
+        return
+      }
+    }
+
+    // Handle multiple images: find the first one with a valid score
     if (imageMessages.length > 1) {
       console.log(`[webhook] ${imageMessages.length} images received, scanning for valid score...`)
       let winner: any = null
@@ -173,34 +214,7 @@ const msg = messages[0]
       } else {
         await sendTextMessage(from, "I couldn't analyse the image. Send to the group.", phoneNumberId)
       }
-} else if (msg.type === 'image') {
-      // Check if user is in backdoor screenshot step
-      const session = await getSession(from)
-      const caption = msg.image.caption?.trim() || ''
-      
-      if (session?.state === 'awaiting_backdoor' && session.backdoor_menu_step === 'screenshot') {
-        const mediaId = msg.image.id
-        if (caption) {
-          // User sent screenshot with team names in caption - search directly
-          await upsertSession({
-            phone_number: from,
-            state: 'awaiting_backdoor',
-            backdoor_menu_step: 'fixture_search',
-            backdoor_screenshot_media_id: mediaId
-          })
-          await handleBackdoorFixtureSearch(from, caption, session, phoneNumberId)
-          return
-        }
-        await upsertSession({
-          phone_number: from,
-          state: 'awaiting_backdoor',
-          backdoor_menu_step: 'fixture_search',
-          backdoor_screenshot_media_id: mediaId
-        })
-        await sendTextMessage(from, 'Which fixture? Type team names (e.g., "Arsenal vs Chelsea").', phoneNumberId)
-        return
-      }
-      
+    } else if (msg.type === 'image') {
       // No useful caption, proceed to OCR
       await handleImage(from, msg, phoneNumberId)
     } else if (msg.type === 'text') {
