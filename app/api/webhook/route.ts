@@ -769,7 +769,7 @@ async function showUserBackdoorApplications(from: string, phoneNumberId: string)
   const supabase = await createAdminClient()
   const { data: submissions } = await supabase
     .from('backdoor_submissions')
-    .select('id, fixture_id, side_claimed, status, created_at, fixtures!inner(home_team:name, away_team:name, scheduled_date)')
+    .select('id, fixture_id, side_claimed, status, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date)')
     .eq('submitter_phone', from)
     .order('created_at', { ascending: false })
 
@@ -821,7 +821,7 @@ async function showBackdoorSubmissionsForReview(from: string, phoneNumberId: str
   const supabase = await createAdminClient()
   const { data: pending } = await supabase
     .from('backdoor_submissions')
-    .select('id, fixture_id, submitter_phone, side_claimed, screenshot_url, created_at, fixtures!inner(home_team:name, away_team:name, scheduled_date)')
+    .select('id, fixture_id, submitter_phone, side_claimed, screenshot_url, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date)')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
@@ -843,11 +843,13 @@ async function showBackdoorSubmissionsForReview(from: string, phoneNumberId: str
   const fixtureIds: string[] = []
   for (const [fixtureId, subs] of byFixture) {
     const f = subs[0].fixtures
-    const teams = `${f.home_team} vs ${f.away_team}`
+    const homeName = fixtureTeamName(f, 'home')
+    const awayName = fixtureTeamName(f, 'away')
+    const teams = `${homeName} vs ${awayName}`
     if (subs.length === 2) {
       lines.push(`${idx}. ${teams} (${f.scheduled_date}) - backdoor submitted by both teams`)
     } else {
-      const side = subs[0].side_claimed === 'home' ? f.home_team : f.away_team
+      const side = subs[0].side_claimed === 'home' ? homeName : awayName
       lines.push(`${idx}. ${teams} (${f.scheduled_date}) - backdoor submitted by ${side}`)
     }
     fixtureIds.push(fixtureId)
@@ -974,9 +976,10 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
     await sendTextMessage(from, `Approved. Result: ${homeScore}-${awayScore}. Fixture confirmed.`, phoneNumberId)
   } else {
     // Decline
+    const adminUserId = await getAdminUserId(supabase)
     await supabase
       .from('backdoor_submissions')
-      .update({ status: 'declined', reviewed_by: (await supabase.auth.getUser()).data.user?.id, reviewed_at: new Date().toISOString() })
+      .update({ status: 'declined', reviewed_by: adminUserId, reviewed_at: new Date().toISOString() })
       .in('id', submissionIds)
 
     await sendTextMessage(from, 'Declined. Fixture remains scheduled.', phoneNumberId)
