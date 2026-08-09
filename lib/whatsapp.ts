@@ -461,6 +461,45 @@ export async function conversationalReply(
   }
 }
 
+export async function resolveTeamNameWithLLM(input: string, knownTeams: string[]): Promise<string | null> {
+  const cleanInput = input.trim().toLowerCase()
+  
+  // Quick exact match check first
+  const exactMatch = knownTeams.find(t => t.toLowerCase() === cleanInput)
+  if (exactMatch) return exactMatch
+
+  const prompt = `You are a football team name resolver. Given a user's abbreviated/partial team name, return the exact full team name from the known list.
+
+Known teams: ${knownTeams.join(', ')}
+
+User input: "${input}"
+
+Respond with ONLY the exact team name from the list, or "NONE" if no clear match.`
+
+  try {
+    const res = await fetch(`${GEMINI_API}?key=${process.env.GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 50 },
+      }),
+    })
+
+    if (!res.ok) return null
+
+    const json = await res.json()
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+    if (!text || text === 'NONE') return null
+
+    // Verify the returned name is in our known list
+    const matched = knownTeams.find(t => t.toLowerCase() === text.toLowerCase())
+    return matched || null
+  } catch {
+    return null
+  }
+}
+
 function parseIntent(text: string): ConversationIntent {
   try {
     const parsed = JSON.parse(text)

@@ -8,6 +8,7 @@ import {
   cleanOcrText,
   cleanOcrWithGroq,
   conversationalReply,
+  resolveTeamNameWithLLM,
 } from '@/lib/whatsapp'
 
 import { parseScreenshot } from '@/lib/screenshot-parser'
@@ -1039,31 +1040,46 @@ function isFixtureConfirmed(f: any): boolean {
   return f.status === 'confirmed' || f.status === 'awaiting_confirmation'
 }
 
-// ─── Team name resolution (database-backed) ─────────────────────────────────────
+// ─── Team name resolution (LLM + database fallback) ──────────────────────────────
+// Fetches all team names once, then uses LLM to match abbreviations like "psg" -> "Paris Saint Germain"
+
+let knownTeamsCache: string[] | null = null
+
+async function getKnownTeams(): Promise<string[]> {
+  if (knownTeamsCache) return knownTeamsCache
+  const supabase = await createAdminClient()
+  const { data } = await supabase.from('teams').select('name')
+  knownTeamsCache = (data as any[])?.map(t => t.name).filter(Boolean) || []
+  return knownTeamsCache
+}
 
 async function resolveTeamName(input: string): Promise<string | null> {
-  const cleanInput = input.trim().toLowerCase()
-  const supabase = await createAdminClient()
+  const knownTeams = await getKnownTeams()
   
-  // 1. Exact alias match (case-insensitive)
-  const { data: aliasMatch, error: aliasError } = await supabase
+  // 1. LLM-based resolution (handles abbreviations, nicknames, typos)
+  const llmMatch = await resolveTeamNameWithLLM(input, knownTeams)
+  if (llmMatch) {
+    console.log('[resolveTeamName] LLM resolved:', input, '->', llmMatch)
+    return llmMatch
+  }
+  
+  // 2. Fallback: exact alias match (case-insensitive)
+  const supabase = await createAdminClient()
+  const cleanInput = input.trim().toLowerCase()
+  const { data: aliasMatch } = await supabase
     .from('team_aliases')
-    .select('team_id, alias, teams!inner(name)')
+    .select('teams!inner(name)')
     .ilike('alias', cleanInput)
     .maybeSingle()
   
-  console.log('[resolveTeamName] input:', cleanInput, 'aliasMatch:', aliasMatch, 'error:', aliasError)
-  
   if (aliasMatch) return (aliasMatch as any).teams?.name
   
-  // 2. Full-text search on teams table
-  const { data: teams, error: ftsError } = await supabase
+  // 3. Fallback: full-text search on teams table
+  const { data: teams } = await supabase
     .from('teams')
     .select('name')
     .textSearch('search_vector', cleanInput, { type: 'websearch' })
     .limit(3)
-  
-  console.log('[resolveTeamName] fts teams:', teams, 'error:', ftsError)
   
   if (teams?.length === 1) return teams[0].name
   return null
