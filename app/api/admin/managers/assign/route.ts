@@ -54,13 +54,26 @@ export async function POST(request: Request) {
       .single(),
     adminSupabase
       .from('profiles')
-      .select('id, username')
+      .select('id, username, sacked_at')
       .eq('id', user_id)
       .single(),
   ])
 
   if (!team) return Response.json({ error: 'Team not found' }, { status: 404 })
   if (!targetProfile) return Response.json({ error: 'User not found' }, { status: 404 })
+
+  // Enforce the 1-week reassignment cooldown after a sacking
+  const SACK_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
+  if (targetProfile.sacked_at) {
+    const cooldownEnds = new Date(new Date(targetProfile.sacked_at).getTime() + SACK_COOLDOWN_MS)
+    if (cooldownEnds.getTime() > Date.now()) {
+      return Response.json({
+        error: `This manager was recently sacked. Wait until ${cooldownEnds.toISOString()} before reassigning.`,
+        code: 'SACK_COOLDOWN',
+        cooldown_ends_at: cooldownEnds.toISOString(),
+      }, { status: 409 })
+    }
+  }
 
   // Find all sibling rows for this club
   let allClubIds: string[] = [resolvedTeamId]

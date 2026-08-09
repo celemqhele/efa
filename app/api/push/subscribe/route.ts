@@ -14,6 +14,13 @@ export async function POST(request: Request) {
   const p256dh = sub.keys?.p256dh ?? ''
   const auth = sub.keys?.auth ?? ''
 
+  console.log('[subscribe] POST', {
+    user_id: user.id,
+    endpoint: String(sub.endpoint).slice(0, 60),
+    hasKeys: Boolean(sub.keys),
+    p256dhPreview: p256dh.slice(0, 24),
+  })
+
   await supabase
     .from('push_subscriptions')
     .upsert(

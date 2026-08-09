@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { generateLeagueFixtures, generateGroupFixtures, type GeneratedFixture } from '@/lib/fixture-generator'
 import type { Database } from '@/lib/supabase/types'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 type FixtureInsert = Database['public']['Tables']['fixtures']['Insert']
 
@@ -180,7 +181,7 @@ export async function POST(request: Request) {
       }))
 
     if (managerNotifications.length > 0) {
-      await adminSupabase.from('notifications').insert(managerNotifications)
+      await insertNotificationsAndPush(adminSupabase, managerNotifications)
     }
   }
 

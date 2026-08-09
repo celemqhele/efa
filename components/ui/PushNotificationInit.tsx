@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Bell, X } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const STORAGE_KEY = 'efa-push-dismissed'
 
@@ -10,13 +11,28 @@ export default function PushNotificationInit() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-    if (Notification.permission === 'granted') {
-      registerAndSubscribe()
-      return
-    }
     if (Notification.permission === 'denied') return
-    if (localStorage.getItem(STORAGE_KEY)) return
-    setShow(true)
+
+    const supabase = createClient()
+
+    async function sync() {
+      if (Notification.permission !== 'granted') {
+        if (localStorage.getItem(STORAGE_KEY)) return
+        setShow(true)
+        return
+      }
+      const { data } = await supabase.auth.getSession()
+      if (!data.session) return
+      await registerAndSubscribe()
+    }
+
+    sync()
+
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      sync()
+    })
+
+    return () => sub.subscription.unsubscribe()
   }, [])
 
   async function registerAndSubscribe() {
@@ -24,16 +40,27 @@ export default function PushNotificationInit() {
       const reg = await navigator.serviceWorker.register('/sw.js')
       await navigator.serviceWorker.ready
 
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+      const currentKey = urlBase64ToUint8Array(vapidKey)
+
       const existing = await reg.pushManager.getSubscription()
       if (existing) {
-        await saveSubscription(existing)
-        return
+        const existingKey = existing.getKey('applicationServerKey' as unknown as PushEncryptionKeyName)
+        const matches =
+          existingKey &&
+          existingKey.byteLength === currentKey.byteLength &&
+          Array.from(new Uint8Array(existingKey)).every((b, i) => b === currentKey[i])
+
+        if (matches) {
+          await saveSubscription(existing)
+          return
+        }
+        await existing.unsubscribe()
       }
 
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        applicationServerKey: currentKey,
       })
       await saveSubscription(sub)
     } catch (err) {
@@ -42,11 +69,12 @@ export default function PushNotificationInit() {
   }
 
   async function saveSubscription(sub: PushSubscription) {
-    await fetch('/api/push/subscribe', {
+    const res = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sub.toJSON()),
     })
+    if (!res.ok) throw new Error(`saveSubscription failed: HTTP ${res.status}`)
   }
 
   async function handleAllow() {

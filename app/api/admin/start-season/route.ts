@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { generateLeagueFixtures } from '@/lib/fixture-generator'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -119,7 +120,7 @@ export async function POST(request: Request) {
     }))
 
   if (notifs.length > 0) {
-    await adminSupabase.from('notifications').insert(notifs)
+    await insertNotificationsAndPush(adminSupabase, notifs)
   }
 
   // 6. Audit log

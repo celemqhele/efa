@@ -25,6 +25,10 @@ export async function POST(request: Request) {
 
   const sackUserId = team.manager_id
 
+  // Record sack time for the 1-week reassignment cooldown
+  const now = new Date().toISOString()
+  await adminSupabase.from('profiles').update({ sacked_at: now }).eq('id', sackUserId)
+
   // Find all sibling rows for this club
   let allClubIds: string[] = [team_id]
   if (team.logo_league_folder && team.logo_team_slug) {
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
   // Close open tenures
   await adminSupabase
     .from('manager_tenures' as any)
-    .update({ ended_at: new Date().toISOString() })
+    .update({ ended_at: now })
     .in('team_id', allClubIds)
     .is('ended_at', null)
 

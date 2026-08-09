@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { sendPushToUsers } from '@/lib/push'
+import { insertNotificationsAndPush, type NotificationRow } from '@/lib/notify'
 
 type ReminderType = 'morning' | 'midday' | 'afternoon' | 'deadline'
 
@@ -88,7 +88,7 @@ export async function runNotificationCron(
     }
   }
 
-  const inserts: { user_id: string; type: string; title: string; body: string; data: Record<string, any> }[] = []
+  const inserts: NotificationRow[] = []
 
   for (const [userId, mf] of managerMap) {
     const count = mf.fixtures.length
@@ -129,22 +129,12 @@ export async function runNotificationCron(
       title: title!,
       body: body!,
       data: { date: targetDate, notification_type: type },
+      push_url: '/fixtures',
     })
   }
 
   if (inserts.length > 0) {
-    const { error: insertErr } = await supabase.from('notifications').insert(inserts)
-    if (insertErr) console.error('[notification-cron] insert error:', insertErr.message)
-  }
-
-  // Send push notifications
-  for (const n of inserts) {
-    await sendPushToUsers(supabase, [n.user_id], {
-      title: n.title,
-      body: n.body,
-      url: '/fixtures',
-      tag: `reminder-${type}-${n.user_id}`,
-    }).catch(() => {})
+    await insertNotificationsAndPush(supabase, inserts)
   }
 
   return { notified: inserts.length, type, targetDate }

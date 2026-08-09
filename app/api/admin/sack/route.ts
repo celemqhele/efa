@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -24,6 +25,10 @@ export async function POST(request: Request) {
   if (!team.manager_id) return Response.json({ error: 'This team has no manager' }, { status: 400 })
 
   const sackedUserId = team.manager_id
+
+  // Record sack time for the 1-week reassignment cooldown
+  const now = new Date().toISOString()
+  await adminSupabase.from('profiles').update({ sacked_at: now }).eq('id', sackedUserId)
 
   // ── Seal the active tenure ────────────────────────────────────────────────
   const { data: tenure } = await adminSupabase
@@ -58,7 +63,7 @@ export async function POST(request: Request) {
 
     await adminSupabase
       .from('manager_tenures' as any)
-      .update({ ended_at: new Date().toISOString(), wins, draws, losses, goals_for, goals_against })
+      .update({ ended_at: now, wins, draws, losses, goals_for, goals_against })
       .eq('id', tenure.id)
   }
 
@@ -70,8 +75,8 @@ export async function POST(request: Request) {
 
   if (updateError) return Response.json({ error: updateError.message }, { status: 500 })
 
-  // Notify sacked manager
-  await adminSupabase.from('notifications').insert({
+  // Notify sacked manager (in-app + push)
+  await insertNotificationsAndPush(adminSupabase, {
     user_id: sackedUserId,
     type: 'sacking',
     title: 'You have been sacked',

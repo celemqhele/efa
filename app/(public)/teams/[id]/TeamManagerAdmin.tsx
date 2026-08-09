@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
 
 interface Profile {
   id: string
@@ -31,6 +32,8 @@ export default function TeamManagerAdmin({
   const [managerId, setManagerId] = useState(currentManagerId)
   const [managerUsername, setManagerUsername] = useState(currentManagerUsername)
   const [managerAvatar, setManagerAvatar] = useState(currentManagerAvatar)
+
+  const [cooldown, setCooldown] = useState<{ username: string; cooldownEndsAt: string } | null>(null)
 
   const freeUsers = allProfiles.filter((p) => !managedTeamByUser[p.id])
   const busyUsers = allProfiles.filter((p) => !!managedTeamByUser[p.id] && p.id !== managerId)
@@ -66,7 +69,13 @@ export default function TeamManagerAdmin({
         body: JSON.stringify({ team_id: teamId, user_id: userId }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      if (!res.ok) {
+        if (data?.code === 'SACK_COOLDOWN') {
+          const profile = allProfiles.find((p) => p.id === userId)
+          setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
+        }
+        throw new Error(data.error ?? 'Failed')
+      }
       const profile = allProfiles.find((p) => p.id === userId)
       setManagerId(userId)
       setManagerUsername(profile?.username ?? null)
@@ -165,6 +174,13 @@ export default function TeamManagerAdmin({
           </div>
         </div>
       )}
+
+      <SackCooldownDialog
+        open={!!cooldown}
+        username={cooldown?.username ?? ''}
+        cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
+        onClose={() => setCooldown(null)}
+      />
     </div>
   )
 }

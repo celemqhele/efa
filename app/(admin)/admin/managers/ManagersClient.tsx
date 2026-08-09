@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import WhatsAppButton from '@/components/ui/WhatsAppButton'
+import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
 import { Briefcase, Circle } from 'lucide-react'
 
 interface Team {
@@ -39,6 +40,9 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
   const [localTeams, setLocalTeams] = useState<Team[]>(teams)
   const [localManagedMap, setLocalManagedMap] = useState<Record<string, Team>>(managedTeamByUser)
   const [localProfiles, setLocalProfiles] = useState<Profile[]>(profiles)
+
+  // Sack cooldown popup state
+  const [cooldown, setCooldown] = useState<{ username: string; cooldownEndsAt: string } | null>(null)
 
   // WhatsApp number editing state
   const [editingWa, setEditingWa] = useState(false)
@@ -92,7 +96,13 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
         body: JSON.stringify({ team_id: teamId, user_id: userId }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to assign manager')
+      if (!res.ok) {
+        if (data?.code === 'SACK_COOLDOWN') {
+          const profile = localProfiles.find((p) => p.id === userId)
+          setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
+        }
+        throw new Error(data.error ?? 'Failed to assign manager')
+      }
 
       setLocalTeams((prev) =>
         prev.map((t) => (t.id === teamId ? { ...t, manager_id: userId } : t))
@@ -144,6 +154,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
   const managedCount = localTeams.filter((t) => t.manager_id).length
 
   return (
+    <>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Team list */}
       <div className="space-y-3">
@@ -421,6 +432,13 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
         )}
       </div>
     </div>
+
+      <SackCooldownDialog
+        open={!!cooldown}
+        username={cooldown?.username ?? ''}
+        cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
+        onClose={() => setCooldown(null)}
+      />
+    </>
   )
 }
-

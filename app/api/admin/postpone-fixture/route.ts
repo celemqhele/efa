@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { sendPushToUser } from '@/lib/push'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 const APP_TIME_ZONE = 'Africa/Johannesburg'
 
@@ -90,13 +90,13 @@ export async function POST(request: Request) {
       ? formatJhb(new Date(fixture.scheduled_date))
       : 'TBD'
     const newWhen = formatJhb(newDateTime)
-    const fixtureUrl = `/fixtures/${fixtureId}`
 
     const managerIds = [home?.manager_id, away?.manager_id].filter(Boolean) as string[]
 
-    // In-app notifications
+    // In-app notifications + push
     if (managerIds.length > 0) {
-      await adminSupabase.from('notifications').insert(
+      await insertNotificationsAndPush(
+        adminSupabase,
         managerIds.map((uid) => ({
           user_id: uid,
           type: 'fixture_postponed',
@@ -111,23 +111,6 @@ export async function POST(request: Request) {
           },
         }))
       )
-    }
-
-    // Push notifications
-    for (const uid of managerIds) {
-      const { data: subs } = await adminSupabase
-        .from('push_subscriptions')
-        .select('endpoint, p256dh, auth')
-        .eq('user_id', uid)
-
-      if (subs?.length) {
-        await sendPushToUser(subs, {
-          title: 'Match Postponed',
-          body: `${matchLabel} moved to ${newWhen}`,
-          url: fixtureUrl,
-          tag: `postpone-${fixtureId}`,
-        })
-      }
     }
   } catch {
     // Silently swallow notification errors — the postpone itself succeeded

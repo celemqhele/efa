@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
     })
   }
 
-  await adminSupabase.from('notifications').insert(notifications)
+  await insertNotificationsAndPush(adminSupabase, notifications)
 
   await adminSupabase.from('audit_log').insert({
     admin_id: user.id,

@@ -6,6 +6,7 @@ import {
 } from '@/lib/tournament-progression'
 import { recalculateStandings } from '@/lib/standings-engine'
 import type { Database } from '@/lib/supabase/types'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 type MatchStatsInsert = Database['public']['Tables']['match_stats']['Insert']
 
@@ -68,13 +69,16 @@ async function checkAndAutoSack(
 
   await db.from('teams').update({ manager_id: null }).in('id', allClubIds)
 
+  // Record sack time for the 1-week reassignment cooldown
+  await db.from('profiles').update({ sacked_at: new Date().toISOString() }).eq('id', sackUserId)
+
   await db
     .from('manager_tenures' as any)
     .update({ ended_at: new Date().toISOString() })
     .in('team_id', allClubIds)
     .is('ended_at', null)
 
-  await db.from('notifications').insert({
+  await insertNotificationsAndPush(db, {
     user_id: sackUserId,
     type: 'manager_sacked',
     title: 'Automatically Removed as Manager',
@@ -520,7 +524,7 @@ export async function POST(request: Request) {
   }
 
   if (notifications.length > 0) {
-    await adminSupabase.from('notifications').insert(notifications)
+    await insertNotificationsAndPush(adminSupabase, notifications)
   }
 
   await adminSupabase.from('audit_log').insert({

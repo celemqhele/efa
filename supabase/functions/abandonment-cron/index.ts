@@ -3,6 +3,30 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import webpush from 'https://esm.sh/web-push@3.6.7'
+
+async function pushToUser(supabase: any, userId: string, payload: { title: string; body: string; url?: string }) {
+  const { data: subs } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .eq('user_id', userId)
+  if (!subs?.length) return
+
+  webpush.setVapidDetails(
+    Deno.env.get('VAPID_SUBJECT')!,
+    Deno.env.get('VAPID_PUBLIC_KEY')!,
+    Deno.env.get('VAPID_PRIVATE_KEY')!
+  )
+
+  for (const row of subs) {
+    await webpush
+      .sendNotification(
+        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+        JSON.stringify({ ...payload, url: payload.url ?? '/', tag: 'abandonment-flag' })
+      )
+      .catch(() => {})
+  }
+}
 
 serve(async (req) => {
   const authHeader = req.headers.get('Authorization')
@@ -115,13 +139,16 @@ serve(async (req) => {
 
     for (const admin of admins ?? []) {
       const manager = (team.profiles as { username: string } | null)
+      const title = '3+ Abandonments'
+      const body = `${manager?.username ?? team.name} has ${team.abandon_count} abandonments — review for sacking`
       await supabase.from('notifications').insert({
         user_id: admin.id,
         type: 'team_request',
-        title: '3+ Abandonments',
-        body: `${manager?.username ?? team.name} has ${team.abandon_count} abandonments — review for sacking`,
+        title,
+        body,
         data: { team_id: team.id },
       })
+      await pushToUser(supabase, admin.id, { title, body, url: '/admin/users/manage' })
     }
   }
 

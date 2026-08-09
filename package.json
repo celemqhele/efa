@@ -5,6 +5,7 @@
   "scripts": {
     "fix-encoding": "node scripts/fix-encoding.js",
     "db": "tsx scripts/db.ts",
+    "generate-onboarding-pdf": "tsx scripts/generate-onboarding-pdf.tsx",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -15,6 +16,7 @@
     "@babel/preset-env": "^7.29.7",
     "@babel/preset-react": "^7.29.7",
     "@babel/preset-typescript": "^7.29.7",
+    "@react-pdf/renderer": "^4.6.0",
     "@serwist/next": "^9.5.11",
     "@serwist/precaching": "^9.5.11",
     "@supabase/ssr": "^0.10.3",

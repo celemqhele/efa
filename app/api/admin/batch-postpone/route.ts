@@ -1,6 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { addDays, format, parseISO, isAfter } from 'date-fns'
-import { sendPushToUser } from '@/lib/push'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 const APP_TIME_ZONE = 'Africa/Johannesburg'
 
@@ -154,25 +154,11 @@ export async function POST(request: Request) {
             reason,
           },
         })
-
-        const { data: subs } = await adminSupabase
-          .from('push_subscriptions')
-          .select('endpoint, p256dh, auth')
-          .eq('user_id', uid)
-
-        if (subs?.length) {
-          await sendPushToUser(subs, {
-            title: 'Match Postponed',
-            body: `${matchLabel} moved to ${newWhen}`,
-            url: fixtureUrl,
-            tag: `postpone-${u.id}`,
-          })
-        }
       }
     }
 
     if (inAppRows.length > 0) {
-      await (adminSupabase.from('notifications') as any).insert(inAppRows)
+      await insertNotificationsAndPush(adminSupabase, inAppRows)
     }
   } catch {
     // ignore notification errors

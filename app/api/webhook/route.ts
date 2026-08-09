@@ -146,6 +146,27 @@ const msg = messages[0]
       }
     }
 
+    // Admin commands to open/close the backdoor window (admin only)
+    if (msg.type === 'text') {
+      const text = msg.text?.body?.trim().toLowerCase() || ''
+      if (text === 'disable backdoor window' && isAdminPhone(from)) {
+        await supabaseCheck
+          .from('backdoor_window')
+          .update({ enabled: false, disabled_by: (await supabaseCheck.auth.getUser()).data.user?.id, disabled_at: new Date().toISOString() })
+          .eq('enabled', true)
+        await sendTextMessage(from, 'Backdoor window disabled. Backdoor submissions are now blocked.', phoneNumberId)
+        return new NextResponse(null, { status: 200 })
+      }
+      if (text === 'enable backdoor window' && isAdminPhone(from)) {
+        await supabaseCheck
+          .from('backdoor_window')
+          .update({ enabled: true, enabled_by: (await supabaseCheck.auth.getUser()).data.user?.id, enabled_at: new Date().toISOString() })
+          .eq('enabled', false)
+        await sendTextMessage(from, 'Backdoor window enabled. Backdoor submissions are open again.', phoneNumberId)
+        return new NextResponse(null, { status: 200 })
+      }
+    }
+
     const imageMessages = messages.filter((m: any) => m.type === 'image')
 
     // If the sender is mid-backdoor-flow, treat any image as a backdoor
@@ -279,28 +300,74 @@ async function clearSession(phoneNumber: string) {
 
 // ─── Backdoor admin flow ──────────────────────────────────────────────────────
 
-async function handleBackdoorDate(from: string, text: string, phoneNumberId: string) {
+async function isBackdoorWindowEnabled(supabase: any): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('backdoor_window')
+      .select('enabled')
+      .maybeSingle()
+    return data?.enabled ?? true
+  } catch {
+    return true
+  }
+}
+
+const BACKDOOR_DISABLED_MESSAGE =
+  'Backdoor submissions are currently disabled because it is too early to be submitting backdoor. Submit again on Thursday when it opens'
+
+async function handleBackdoorSearch(from: string, text: string, phoneNumberId: string) {
   if (/^cancel$/i.test(text.trim())) {
     await clearSession(from)
     await sendTextMessage(from, "Cancelled.", phoneNumberId)
     return
   }
-  const parsed = parseUserDate(text)
-  if (!parsed) {
-    await sendTextMessage(from, "Couldn't parse that date. Try \"12 Jul\", \"July 12\", or \"2026-07-12\".", phoneNumberId)
-    return
-  }
   const supabase = await createAdminClient()
-  const { data } = await supabase
+  const searchInput = text.trim()
+  const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
+
+  const { start, end } = getWeekRange()
+
+  const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
-    .eq('scheduled_date', parsed.dateKey)
+    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
     .eq('status', 'scheduled')
+    .gte('scheduled_date', start)
+    .lte('scheduled_date', end)
+    .order('scheduled_date', { ascending: true })
     .order('matchday', { ascending: true })
 
-  const fixtures = (data as any[]) || []
-  if (fixtures.length === 0) {
-    await sendTextMessage(from, `No unconfirmed fixtures for ${parsed.dateKey}.`, phoneNumberId)
+  const allFixtures = (fixtures as any[]) || []
+
+  const vsParts = stripped.split(/\s+vs\.?\s+/i)
+  let teamSearches: string[]
+  if (vsParts.length >= 2) {
+    teamSearches = [vsParts[0].trim().toLowerCase(), vsParts.slice(1).join(' ').trim().toLowerCase()]
+  } else {
+    teamSearches = [stripped.toLowerCase().trim()]
+  }
+  teamSearches = teamSearches.filter((s: string) => s.length >= 2)
+
+  if (teamSearches.length === 0) {
+    await sendTextMessage(from, 'Please type at least one team name. Type CANCEL to start over.', phoneNumberId)
+    return
+  }
+
+  const resolvedTeams = await Promise.all(teamSearches.map((s: string) => resolveTeamName(s)))
+
+  if (resolvedTeams.some((r: string | null) => r === null)) {
+    await sendTextMessage(from, `Could not find teams matching your input. Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+    return
+  }
+
+  const [r1, r2] = resolvedTeams as [string, string]
+  const matchedFixtures = allFixtures.filter((f: any) => {
+    const hName = fixtureTeamName(f, 'home').toLowerCase()
+    const aName = fixtureTeamName(f, 'away').toLowerCase()
+    return (hName === r1.toLowerCase() && aName === r2.toLowerCase()) || (hName === r2.toLowerCase() && aName === r1.toLowerCase())
+  })
+
+  if (matchedFixtures.length === 0) {
+    await sendTextMessage(from, `No unconfirmed fixtures found matching "${searchInput}" in the last 7 days or next 7 days. Try different team names or type CANCEL.`, phoneNumberId)
     await clearSession(from)
     return
   }
@@ -308,12 +375,11 @@ async function handleBackdoorDate(from: string, text: string, phoneNumberId: str
   await upsertSession({
     phone_number: from,
     state: 'awaiting_backdoor_fixture',
-    pending_date: parsed.dateKey,
-    displayed_fixtures: fixtures.map((f: any) => f.id),
+    displayed_fixtures: matchedFixtures.map((f: any) => f.id),
   })
 
-  const lines = fixtures.map((f: any, i: number) => `${i + 1}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}`)
-  await sendTextMessage(from, `Fixtures for ${parsed.dateKey}:\n\n${lines.join('\n')}\n\nReply with the number. Type CANCEL to abort.`, phoneNumberId)
+  const lines = matchedFixtures.map((f: any, i: number) => `${i + 1}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} - ${f.scheduled_date}`)
+  await sendTextMessage(from, `Found ${matchedFixtures.length} match${matchedFixtures.length === 1 ? '' : 'es'}:\n\n${lines.join('\n')}\n\nReply with the number. Type CANCEL to abort.`, phoneNumberId)
 }
 
 async function handleBackdoorFixture(from: string, text: string, phoneNumberId: string) {
@@ -388,6 +454,32 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
 
   await supabase.from('fixtures').update({ status: 'confirmed' }).eq('id', session.matched_fixture_id)
 
+  const { data: fx } = await supabase
+    .from('fixtures')
+    .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .eq('id', session.matched_fixture_id)
+    .single()
+  const h = fixtureTeamName(fx, 'home')
+  const a = fixtureTeamName(fx, 'away')
+  const winner = homeScore === 3 ? h : a
+  const title = 'Backdoor win submitted'
+  const body = `${winner} won ${homeScore}-${awayScore} vs ${winner === h ? a : h}`
+  if (adminUserId) {
+    await supabase.from('notifications').insert({
+      user_id: adminUserId,
+      type: 'match_result',
+      title,
+      body,
+      data: { fixture_id: session.matched_fixture_id },
+    })
+    await sendPushToUsers(supabase, [adminUserId], {
+      title,
+      body,
+      url: '/admin/results',
+      tag: 'backdoor-win',
+    }).catch(() => {})
+  }
+
   await clearSession(from)
   await sendTextMessage(from, "Backdoor win submitted.", phoneNumberId)
 }
@@ -460,6 +552,11 @@ async function handleBackdoorFlow(from: string, text: string, session: SessionDa
 
   if (step === 'menu') {
     if (lower === '1') {
+      const supabase = await createAdminClient()
+      if (!(await isBackdoorWindowEnabled(supabase))) {
+        await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
+        return
+      }
       await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot' })
       await sendTextMessage(from, 'Send a screenshot showing the opponent not responding.', phoneNumberId)
       return
@@ -717,6 +814,13 @@ async function handleBackdoorSideSelect(from: string, text: string, session: Ses
   const side = lower as 'home' | 'away'
   const supabase = await createAdminClient()
 
+  // Final gate: if the backdoor window has been closed since the flow started, block.
+  if (!(await isBackdoorWindowEnabled(supabase))) {
+    await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
+    await clearSession(from)
+    return
+  }
+
   // Check duplicate
   const { data: existing } = await supabase
     .from('backdoor_submissions')
@@ -787,10 +891,21 @@ async function handleBackdoorSideSelect(from: string, text: string, session: Ses
 
 async function showUserBackdoorApplications(from: string, phoneNumberId: string) {
   const supabase = await createAdminClient()
+
+  // Expire approved/declined/void submissions older than 7 days so they stop piling up
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  await supabase
+    .from('backdoor_submissions')
+    .update({ status: 'expired' })
+    .eq('submitter_phone', from)
+    .in('status', ['approved', 'declined', 'void_game_played'])
+    .or(`reviewed_at.lt.${weekAgo},and(reviewed_at.is.null,created_at.lt.${weekAgo})`)
+
   const { data: submissions } = await supabase
     .from('backdoor_submissions')
     .select('id, fixture_id, side_claimed, status, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date)')
     .eq('submitter_phone', from)
+    .neq('status', 'expired')
     .order('created_at', { ascending: false })
 
   if (!submissions?.length) {
@@ -1161,8 +1276,8 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     await handleBackdoorFlow(from, text, session, phoneNumberId)
     return
   }
-  if (session?.state === 'awaiting_backdoor_date') {
-    await handleBackdoorDate(from, text, phoneNumberId)
+  if (session?.state === 'awaiting_backdoor_search') {
+    await handleBackdoorSearch(from, text, phoneNumberId)
     return
   }
   if (session?.state === 'awaiting_backdoor_fixture') {
@@ -1191,8 +1306,8 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await sendTextMessage(from, 'Admin only.', phoneNumberId)
       return
     }
-    await upsertSession({ phone_number: from, state: 'awaiting_backdoor_date' })
-    await sendTextMessage(from, 'Enter the fixture date.', phoneNumberId)
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor_search' })
+    await sendTextMessage(from, 'Enter the fixture (team names, e.g. "Arsenal vs Chelsea").', phoneNumberId)
     return
   }
   // Admin types "backdoor submissions" -> review flow (admin only)

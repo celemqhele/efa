@@ -43,6 +43,7 @@ const ACTIONS = [
   { href: '/admin/polls', label: 'Polls', variant: 'outline' as const },
   { href: '/admin/hall-of-fame', label: 'Hall of Fame', variant: 'outline' as const },
   { href: '/admin/export', label: 'Export', variant: 'outline' as const },
+  { href: '/admin/push-shooter', label: 'Send Push', variant: 'outline' as const },
 ]
 
 function ConflictCard({ fx, confs }: { fx: any; confs: any[] }) {

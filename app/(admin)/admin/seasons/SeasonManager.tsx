@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { getTeamLogo } from '@/lib/logo-resolver'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -342,6 +343,7 @@ function StartPhaseDialog({
   const [localManagers, setLocalManagers] = useState<Record<string, string>>({})
   const [assigningTeamId, setAssigningTeamId] = useState<string | null>(null)
   const [assignErrors, setAssignErrors] = useState<Record<string, string>>({})
+  const [cooldown, setCooldown] = useState<{ username: string; cooldownEndsAt: string } | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
   const [seasonName, setSeasonName] = useState('')
@@ -672,7 +674,13 @@ function StartPhaseDialog({
                                   }),
                                 })
                                 const data = await res.json()
-                                if (!res.ok) throw new Error(data.error ?? 'Failed to assign')
+                                if (!res.ok) {
+                                  if (data?.code === 'SACK_COOLDOWN') {
+                                    const profile = users.find((u) => u.id === userId)
+                                    setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
+                                  }
+                                  throw new Error(data.error ?? 'Failed to assign')
+                                }
                                 setLocalManagers((prev) => ({ ...prev, [team.logo_team_slug]: userId }))
                               } catch (err: any) {
                                 setAssignErrors((prev) => ({ ...prev, [team.logo_team_slug]: err.message }))
@@ -849,6 +857,13 @@ function StartPhaseDialog({
             </Button>
           )}
         </div>
+
+        <SackCooldownDialog
+          open={!!cooldown}
+          username={cooldown?.username ?? ''}
+          cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
+          onClose={() => setCooldown(null)}
+        />
       </div>
     </div>
   )

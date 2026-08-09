@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
       .eq('id', request_id)
 
     // Notify user
-    await adminSupabase.from('notifications').insert({
+    await insertNotificationsAndPush(adminSupabase, {
       user_id: changeRequest.requesting_user_id,
       type: 'team_request_reviewed',
       title: 'Team Change Approved',
@@ -132,7 +133,7 @@ export async function POST(request: Request) {
       .eq('id', request_id)
 
     // Notify user
-    await adminSupabase.from('notifications').insert({
+    await insertNotificationsAndPush(adminSupabase, {
       user_id: changeRequest.requesting_user_id,
       type: 'team_request_reviewed',
       title: 'Team Change Denied',

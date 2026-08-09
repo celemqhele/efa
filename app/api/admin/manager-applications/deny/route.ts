@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
     .update({ status: 'denied', reviewed_at: now, reviewed_by: user.id })
     .eq('id', application_id)
 
-  await adminSupabase.from('notifications').insert({
+  await insertNotificationsAndPush(adminSupabase, {
     user_id: applicantId,
     type: 'application_denied',
     title: 'Application Denied',

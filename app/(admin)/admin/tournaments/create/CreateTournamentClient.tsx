@@ -9,6 +9,7 @@ import { getTeamLogo } from '@/lib/logo-resolver'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, CheckCircle } from 'lucide-react'
 import ModalPortal from '@/components/ui/ModalPortal'
+import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
 
 interface Season {
   id: string
@@ -80,6 +81,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
   const [localManagers, setLocalManagers] = useState<Record<string, string>>({}) // slug -> user_id
   const [assigningSlug, setAssigningSlug] = useState<string | null>(null)
   const [assignErrors, setAssignErrors] = useState<Record<string, string>>({})
+  const [cooldown, setCooldown] = useState<{ username: string; cooldownEndsAt: string } | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -461,7 +463,13 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
                             }),
                           })
                           const data = await res.json()
-                          if (!res.ok) throw new Error(data.error ?? 'Failed to assign')
+                          if (!res.ok) {
+                            if (data?.code === 'SACK_COOLDOWN') {
+                              const profile = users.find((u) => u.id === userId)
+                              setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
+                            }
+                            throw new Error(data.error ?? 'Failed to assign')
+                          }
                           setLocalManagers((prev) => ({ ...prev, [slug]: userId }))
                         } catch (err: any) {
                           setAssignErrors((prev) => ({ ...prev, [slug]: err.message }))
@@ -528,6 +536,13 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
           </div>
         </ModalPortal>
       )}
+
+      <SackCooldownDialog
+        open={!!cooldown}
+        username={cooldown?.username ?? ''}
+        cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
+        onClose={() => setCooldown(null)}
+      />
     </>
   )
 }
