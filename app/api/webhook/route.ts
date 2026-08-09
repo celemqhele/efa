@@ -157,6 +157,12 @@ const msg = messages[0]
         const imgMsg = imageMessages[0]
         const caption = imgMsg.image.caption?.trim() || ''
         const mediaId = imgMsg.image.id
+        // Ignore re-deliveries of a screenshot we already saved for this flow
+        // (WhatsApp/Vercel can deliver the same image with different message ids).
+        if (session.backdoor_screenshot_media_id && session.backdoor_screenshot_media_id === mediaId) {
+          console.log(`[webhook] duplicate backdoor screenshot ignored: ${mediaId}`)
+          return
+        }
         if (session.backdoor_menu_step === 'screenshot') {
           if (caption) {
             // User sent screenshot with team names in caption - search directly
