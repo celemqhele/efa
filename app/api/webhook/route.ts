@@ -1150,8 +1150,8 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     await handleBackdoorSide(from, text, phoneNumberId)
     return
   }
-  // User types "backdoor" -> show menu
-  if (/^backdoor$/i.test(text.trim())) {
+  // User types "backdoor" -> show menu (also accept common variants)
+  if (/^(backdoor|backdoor applications|backdoor apps|check backdoor|my backdoors)$/i.test(text.trim())) {
     await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
     await sendTextMessage(from,
       'Backdoor Applications\n\n' +
