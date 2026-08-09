@@ -1046,20 +1046,24 @@ async function resolveTeamName(input: string): Promise<string | null> {
   const supabase = await createAdminClient()
   
   // 1. Exact alias match (case-insensitive)
-  const { data: aliasMatch } = await supabase
+  const { data: aliasMatch, error: aliasError } = await supabase
     .from('team_aliases')
-    .select('teams!inner(name)')
+    .select('team_id, alias, teams!inner(name)')
     .ilike('alias', cleanInput)
     .maybeSingle()
+  
+  console.log('[resolveTeamName] input:', cleanInput, 'aliasMatch:', aliasMatch, 'error:', aliasError)
   
   if (aliasMatch) return (aliasMatch as any).teams?.name
   
   // 2. Full-text search on teams table
-  const { data: teams } = await supabase
+  const { data: teams, error: ftsError } = await supabase
     .from('teams')
     .select('name')
     .textSearch('search_vector', cleanInput, { type: 'websearch' })
     .limit(3)
+  
+  console.log('[resolveTeamName] fts teams:', teams, 'error:', ftsError)
   
   if (teams?.length === 1) return teams[0].name
   return null
