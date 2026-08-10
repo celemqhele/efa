@@ -615,6 +615,205 @@ function InfoPage() {
   )
 }
 
+function AiGuidePage() {
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader />
+
+      {/* Submit a Result */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.sectionTitle}>Using the EFA AI — Submit a Result</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>1. Send a screenshot.</Text> After your match, send a
+              screenshot of the final score screen to the EFA AI.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>2. Choose the type.</Text> The AI replies with the score
+              it read. Reply <Text style={styles.rowLabel}>1</Text> to submit a scheduled fixture,
+              or <Text style={styles.rowLabel}>2</Text> to fix an already submitted fixture.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>3. Name the match.</Text> Type it as{' '}
+              <Text style={styles.rowLabel}>"Team A vs Team B"</Text>, e.g. "Arsenal vs Everton".
+              Short names work too ("psg vs arsenal").
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>4. Confirm.</Text> Reply <Text style={styles.rowLabel}>YES</Text>{' '}
+              when the AI asks to confirm, then answer the forfeit question (did the losing team
+              forfeit before the game finished?) with <Text style={styles.rowLabel}>yes</Text> or{' '}
+              <Text style={styles.rowLabel}>no</Text>.
+            </Text>
+          </View>
+          <View style={styles.rowLast}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>5. Done.</Text> The AI records your result and sends the
+              standings link. Your opponent submits the same score and the AI confirms it.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Reply Commands */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.sectionTitle}>Reply Commands</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>SWAP</Text> — scores or stats are on the wrong side, the
+              AI flips them.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>EDIT SCORE</Text> — override the score (aggregate or
+              replay). Then type the new score, e.g. <Text style={styles.rowLabel}>3-2</Text>.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>check other date</Text> — if your fixture was on a
+              different day. Then reply with the date, e.g. "12 Jul", "July 12" or "2026-07-12".
+            </Text>
+          </View>
+          <View style={styles.rowLast}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>CANCEL</Text> — start over any time.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Screenshot fallback */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.sectionTitle}>If the AI Can't Read the Screenshot</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.rowLast}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              If it replies <Text style={styles.warning}>"I couldn't analyse the image"</Text>, send
+              the screenshot to the group instead. It may ask for team names, a date, or a number —
+              just follow its prompts.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>EFA — EFOOTBALL FEDERAL ASSOCIATION</Text>
+        <Text style={styles.footerText}>PLAY • COMPETE • REPRESENT</Text>
+      </View>
+    </Page>
+  )
+}
+
+function BackdoorGuidePage() {
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader />
+
+      {/* Backdoor funnel */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.sectionTitle}>Backdoor — Opponent Not Responding</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              If your opponent isn't responding, don't lose the match for nothing. The backdoor is a{' '}
+              <Text style={styles.rowLabel}>free win</Text> awarded to you. The backdoor window opens
+              on <Text style={styles.rowLabel}>Thursday</Text>.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>1. Send "backdoor"</Text> to the EFA AI.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>2. Reply 1</Text> to submit a new backdoor, or{' '}
+              <Text style={styles.rowLabel}>2</Text> to check your applications.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>3. Send a screenshot</Text> showing the opponent not
+              responding.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>4. Type the fixture.</Text> e.g. "Arsenal vs Chelsea".
+            </Text>
+          </View>
+          <View style={styles.rowLast}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>5. Reply "home" or "away".</Text> Tell the AI which side
+              you are. It records your application.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Check applications */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.sectionTitle}>Check Your Backdoor Applications</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.rowLast}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              Send <Text style={styles.rowLabel}>"backdoor"</Text> and reply{' '}
+              <Text style={styles.rowLabel}>2</Text> any time to see the status of your applications
+              (Pending, Approved, Declined or Void).
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>EFA — EFOOTBALL FEDERAL ASSOCIATION</Text>
+        <Text style={styles.footerText}>PLAY • COMPETE • REPRESENT</Text>
+      </View>
+    </Page>
+  )
+}
+
 const doc = (
   <Document
     title="EFA Manager Onboarding Guide"
@@ -625,6 +824,8 @@ const doc = (
     <RulesPage />
     <DropsPage />
     <InfoPage />
+    <AiGuidePage />
+    <BackdoorGuidePage />
   </Document>
 )
 
