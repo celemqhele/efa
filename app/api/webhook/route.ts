@@ -329,7 +329,7 @@ async function handleBackdoorSearch(from: string, text: string, phoneNumberId: s
 
   const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
     .eq('status', 'scheduled')
     .gte('scheduled_date', start)
     .lte('scheduled_date', end)
@@ -378,7 +378,12 @@ async function handleBackdoorSearch(from: string, text: string, phoneNumberId: s
     displayed_fixtures: matchedFixtures.map((f: any) => f.id),
   })
 
-  const lines = matchedFixtures.map((f: any, i: number) => `${i + 1}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} - ${f.scheduled_date}`)
+  const lines = matchedFixtures.map((f: any, i: number) => {
+    const parts = [`${i + 1}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}`]
+    if (f.scheduled_date) parts.push(f.scheduled_date)
+    if (fixtureTournamentName(f)) parts.push(fixtureTournamentName(f))
+    return parts.join(' - ')
+  })
   await sendTextMessage(from, `Found ${matchedFixtures.length} match${matchedFixtures.length === 1 ? '' : 'es'}:\n\n${lines.join('\n')}\n\nReply with the number. Type CANCEL to abort.`, phoneNumberId)
 }
 
@@ -608,7 +613,7 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
 
   const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('id, home_team_id, away_team_id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
+    .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
     .eq('status', 'scheduled')
     .gte('scheduled_date', start)
     .lte('scheduled_date', end)
@@ -697,80 +702,44 @@ if (teamSearches.length === 0) {
 
 function formatFixtureListWithHeadings(fixtures: any[]): string {
   if (fixtures.length === 0) return 'No matches found.'
-  
-  // Group fixtures by date
-  const byDate = new Map<string, any[]>()
-  for (const f of fixtures) {
-    const date = f.scheduled_date || 'Unknown date'
-    if (!byDate.has(date)) byDate.set(date, [])
-    byDate.get(date)!.push(f)
-  }
-  
-  const sortedDates = Array.from(byDate.keys()).sort()
-  
+
   const lines: string[] = []
-  let globalIndex = 1
   const MAX_CHARS = 3800 // Leave buffer for WhatsApp 4096 limit
-  
-  for (const date of sortedDates) {
-    const dayFixtures = byDate.get(date)!
-    
-    // Separate by status
-    const today = new Date().toISOString().split('T')[0]
-    const isToday = date === today
-    const dateLabel = isToday ? `📅 **${date} (TODAY)**` : `📅 **${date}**`
-    
-    const pending = dayFixtures.filter(f => f.status === 'scheduled')
-    const awaiting = dayFixtures.filter(f => f.status === 'awaiting_confirmation')
-    const confirmed = dayFixtures.filter(f => f.status === 'confirmed')
-    
-    // Check if adding date label would exceed limit
-    const dateLabelLine = dateLabel + '\n'
-    if (lines.join('\n').length + dateLabelLine.length > MAX_CHARS) {
-      const remaining = fixtures.length - globalIndex + 1
-      lines.push(`\n... and ${remaining} more matches. Type team names to narrow search.`)
+
+  // Sort by date ascending, fixtures without a date last
+  const sorted = [...fixtures].sort((a, b) => {
+    const da = a.scheduled_date || '9999-12-31'
+    const db = b.scheduled_date || '9999-12-31'
+    return da.localeCompare(db)
+  })
+
+  for (let i = 0; i < sorted.length; i++) {
+    const f = sorted[i]
+    const home = fixtureTeamName(f, 'home')
+    const away = fixtureTeamName(f, 'away')
+    const date = f.scheduled_date || ''
+    const tournament = fixtureTournamentName(f)
+
+    let status: string
+    if (f.status === 'confirmed') {
+      const result = Array.isArray(f.results) ? f.results[0] : f.results
+      status = result ? `Submitted, ${result.home_score}-${result.away_score}` : 'Submitted'
+    } else if (f.status === 'awaiting_confirmation') {
+      status = 'Awaiting confirmation'
+    } else {
+      status = 'Pending'
+    }
+
+    const line = `${i + 1}. ${home} vs ${away}${date ? ` - ${date}` : ''}${tournament ? ` - ${tournament}` : ''} (${status})`
+
+    if (lines.join('\n').length + line.length > MAX_CHARS) {
+      const remaining = sorted.length - i
+      lines.push(`... and ${remaining} more matches. Type team names to narrow search.`)
       break
     }
-    lines.push(dateLabel)
-    
-    if (pending.length > 0) {
-      const pendingHeader = '  ⏳ **Pending:**\n'
-      if (lines.join('\n').length + pendingHeader.length > MAX_CHARS) break
-      lines.push('  ⏳ **Pending:**')
-      for (const f of pending) {
-        const line = `    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Pending)\n`
-        if (lines.join('\n').length + line.length > MAX_CHARS) break
-        lines.push(`    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Pending)`)
-        globalIndex++
-      }
-    }
-    if (awaiting.length > 0) {
-      const awaitingHeader = '  ⚠️ **Awaiting Confirmation:**\n'
-      if (lines.join('\n').length + awaitingHeader.length > MAX_CHARS) break
-      lines.push('  ⚠️ **Awaiting Confirmation:**')
-      for (const f of awaiting) {
-        const line = `    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Awaiting)\n`
-        if (lines.join('\n').length + line.length > MAX_CHARS) break
-        lines.push(`    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')} (Awaiting)`)
-        globalIndex++
-      }
-    }
-    if (confirmed.length > 0) {
-      const confirmedHeader = '  ✅ **Submitted:**\n'
-      if (lines.join('\n').length + confirmedHeader.length > MAX_CHARS) break
-      lines.push('  ✅ **Submitted:**')
-      for (const f of confirmed) {
-        const result = Array.isArray(f.results) ? f.results[0] : f.results
-        const score = result ? ` ${result.home_score}-${result.away_score}` : ''
-        const line = `    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}${score} (Submitted)\n`
-        if (lines.join('\n').length + line.length > MAX_CHARS) break
-        lines.push(`    ${globalIndex}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}${score} (Submitted)`)
-        globalIndex++
-      }
-    }
-    lines.push('') // empty line between dates
+    lines.push(line)
   }
-  
+
   return lines.join('\n')
 }
 
@@ -903,7 +872,7 @@ async function showUserBackdoorApplications(from: string, phoneNumberId: string)
 
   const { data: submissions } = await supabase
     .from('backdoor_submissions')
-    .select('id, fixture_id, side_claimed, status, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date)')
+    .select('id, fixture_id, side_claimed, status, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date, tournament:tournaments(name))')
     .eq('submitter_phone', from)
     .neq('status', 'expired')
     .order('created_at', { ascending: false })
@@ -926,7 +895,11 @@ async function showUserBackdoorApplications(from: string, phoneNumberId: string)
       void_game_played: '🕳️ Void - game already played',
       expired: '⏰ Expired'
     }[status] || s.status
-    return `${i + 1}. ${teams} (${f.scheduled_date}) - ${statusLabel}`
+    const parts = [`${i + 1}. ${teams}`]
+    if (f.scheduled_date) parts.push(f.scheduled_date)
+    if (fixtureTournamentName(f)) parts.push(fixtureTournamentName(f))
+    parts.push(`(${statusLabel})`)
+    return parts.join(' - ')
   })
 
   await sendTextMessage(from, `Your Backdoor Applications:\n\n${lines.join('\n')}`, phoneNumberId)
@@ -956,7 +929,7 @@ async function showBackdoorSubmissionsForReview(from: string, phoneNumberId: str
   const supabase = await createAdminClient()
   const { data: pending } = await supabase
     .from('backdoor_submissions')
-    .select('id, fixture_id, submitter_phone, side_claimed, screenshot_url, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date)')
+    .select('id, fixture_id, submitter_phone, side_claimed, screenshot_url, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date, tournament:tournaments(name))')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
@@ -981,11 +954,12 @@ async function showBackdoorSubmissionsForReview(from: string, phoneNumberId: str
     const homeName = fixtureTeamName(f, 'home')
     const awayName = fixtureTeamName(f, 'away')
     const teams = `${homeName} vs ${awayName}`
+    const meta = [f.scheduled_date, fixtureTournamentName(f)].filter(Boolean).join(' - ')
     if (subs.length === 2) {
-      lines.push(`${idx}. ${teams} (${f.scheduled_date}) - backdoor submitted by both teams`)
+      lines.push(`${idx}. ${teams}${meta ? ` - ${meta}` : ''} - backdoor submitted by both teams`)
     } else {
       const side = subs[0].side_claimed === 'home' ? homeName : awayName
-      lines.push(`${idx}. ${teams} (${f.scheduled_date}) - backdoor submitted by ${side}`)
+      lines.push(`${idx}. ${teams}${meta ? ` - ${meta}` : ''} - backdoor submitted by ${side}`)
     }
     fixtureIds.push(fixtureId)
     idx++
@@ -1164,14 +1138,24 @@ function fixtureTeamName(f: any, side: 'home' | 'away'): string {
   return (Array.isArray(raw) ? raw[0]?.name : raw?.name) || '?'
 }
 
+function fixtureTournamentName(f: any): string {
+  const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
+  return (t?.name as string) || ''
+}
+
 function formatFixtureLine(f: any, index: number): string {
   const hN = fixtureTeamName(f, 'home')
   const aN = fixtureTeamName(f, 'away')
+  const date = f.scheduled_date || ''
+  const tournament = fixtureTournamentName(f)
   const result = Array.isArray(f.results) ? f.results[0] : f.results
+  let line: string
   if (result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation')) {
-    return `${index + 1}. ${hN} ${result.home_score} - ${result.away_score} ${aN} SUBMITTED.`
+    line = `${index + 1}. ${hN} ${result.home_score} - ${result.away_score} ${aN}`
+  } else {
+    line = `${index + 1}. ${hN} vs ${aN}`
   }
-  return `${index + 1}. ${hN} vs ${aN}`
+  return `${line}${date ? ` - ${date}` : ''}${tournament ? ` - ${tournament}` : ''}${result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation') ? ' (SUBMITTED)' : ''}`
 }
 
 function isFixtureConfirmed(f: any): boolean {
@@ -1350,7 +1334,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const { data: fixtures } = await supabase
       .from('fixtures')
-      .select('id, home_team_id, away_team_id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+      .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
       .in('status', statusFilter)
       .gte('scheduled_date', start)
       .lte('scheduled_date', end)
@@ -1436,7 +1420,6 @@ const vsParts = stripped.split(/\s+vs\.?\s+/i)
       displayed_fixtures: matchedFixtures.map((f: any) => f.id),
     })
 
-    const lines = matchedFixtures.map((f: any, i: number) => formatFixtureLine(f, i))
     await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
     return
   }
@@ -1603,7 +1586,7 @@ const vsParts = stripped.split(/\s+vs\.?\s+/i)
     const { dateKey } = parsed
     const { data: dateFixtures } = await supabase
       .from('fixtures')
-      .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+      .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
       .eq('scheduled_date', dateKey)
       .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
       .order('matchday', { ascending: true })
@@ -1739,7 +1722,7 @@ const vsParts = stripped.split(/\s+vs\.?\s+/i)
         if (fixtureIds && fixtureIds.length > 0) {
           const { data: candidateFixtures } = await supabase
             .from('fixtures')
-            .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+            .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
             .in('id', fixtureIds)
 
           const matches = ((candidateFixtures as any[]) || []).filter((f: any) => {
