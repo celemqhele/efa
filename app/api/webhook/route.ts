@@ -518,7 +518,7 @@ async function handleSubmissionType(from: string, text: string, session: Session
         screenshot_media_id: session.screenshot_media_id,
       })
       const { start, end } = getWeekRange()
-      await sendTextMessage(from, `Submitting scheduled fixture (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
+      await sendTextMessage(from, `First-time submission (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
       return
     }
     if (lower === '2') {
@@ -535,7 +535,7 @@ async function handleSubmissionType(from: string, text: string, session: Session
         screenshot_media_id: session.screenshot_media_id,
       })
       const { start, end } = getWeekRange()
-      await sendTextMessage(from, `Fixing already submitted fixture (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
+      await sendTextMessage(from, `Changing an already-submitted score (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
       return
     }
     await sendTextMessage(from, 'Reply 1 or 2.', phoneNumberId)
@@ -1930,7 +1930,7 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     submission_menu_step: 'menu'
   })
 
-  await sendTextMessage(from, `Score extracted: ${homeTeam || '?'} ${homeScore}-${awayScore} ${awayTeam || '?'}\n\nWhat are we doing?\n1. Submitting scheduled fixture\n2. Fixing already submitted fixture\n\nReply 1 or 2. Type CANCEL to start over.`, phoneNumberId)
+  await sendTextMessage(from, `Score extracted: ${homeTeam || '?'} ${homeScore}-${awayScore} ${awayTeam || '?'}\n\nWhat are we doing?\n1. Submitting this match's score for the first time\n2. Changing a score that was already submitted\n\nReply 1 or 2. Type CANCEL to start over.`, phoneNumberId)
 }
 
 // ─── DB write ────────────────────────────────────────────────────────────────────
