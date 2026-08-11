@@ -650,7 +650,7 @@ if (teamSearches.length === 0) {
   const [resolved1, resolved2] = resolvedTeams as [string, string]
   
   // Strict exact matching - both teams must match exactly (case-insensitive, permutation-aware)
-  const matchedFixtures = allFixtures.filter(f => {
+  const matched = allFixtures.filter(f => {
     const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
     const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
     
@@ -661,6 +661,7 @@ if (teamSearches.length === 0) {
     
     return (h === r1 && a === r2) || (h === r2 && a === r1)
   })
+  const matchedFixtures = sortFixturesForDisplay(matched)
 
   if (matchedFixtures.length === 0) {
     await sendTextMessage(from, `No fixtures found matching "${searchInput}". Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
@@ -698,6 +699,17 @@ if (teamSearches.length === 0) {
   })
 
   await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+}
+
+// Sort fixtures the same way formatFixtureListWithHeadings displays them so the
+// numbered list a manager sees is always in the same order as the stored id
+// arrays (displayed_fixtures / backdoor_fixture_ids) that selection indexes into.
+function sortFixturesForDisplay(fixtures: any[]): any[] {
+  return [...fixtures].sort((a, b) => {
+    const da = a?.scheduled_date || '9999-12-31'
+    const db = b?.scheduled_date || '9999-12-31'
+    return String(da).localeCompare(String(db))
+  })
 }
 
 function formatFixtureListWithHeadings(fixtures: any[]): string {
@@ -1384,7 +1396,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       .order('scheduled_date', { ascending: false })
       .order('matchday')
 
-    const matchedFixtures = (fixtures as any[]) || []
+    const matchedFixtures = sortFixturesForDisplay((fixtures as any[]) || [])
 
     if (matchedFixtures.length === 0) {
       await sendTextMessage(from, `No fixtures found matching "${searchInput}". Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
