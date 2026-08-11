@@ -280,14 +280,18 @@ export async function recalculateStandings(tournamentId: string) {
   const allFixtures = (fixtures ?? []) as FixtureRow[]
   const fixtureIds = allFixtures.map((fixture) => fixture.id).filter(Boolean)
 
-  const { data: results, error: resultsErr } = fixtureIds.length > 0
-    ? await db
+  const results: any[] = []
+  if (fixtureIds.length > 0) {
+    for (let i = 0; i < fixtureIds.length; i += 200) {
+      const chunk = fixtureIds.slice(i, i + 200)
+      const { data: chunkResults, error: chunkErr } = await db
         .from('results')
         .select('fixture_id, home_score, away_score, override_reason, is_abandoned, abandoned_type')
-        .in('fixture_id', fixtureIds)
-    : { data: [], error: null }
-
-  if (resultsErr) throw new Error(resultsErr.message)
+        .in('fixture_id', chunk)
+      if (chunkErr) throw new Error(chunkErr.message)
+      results.push(...(chunkResults ?? []))
+    }
+  }
 
   const resultsByFixture: Record<string, ResultRow> = {}
   for (const result of results ?? []) {
