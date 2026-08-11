@@ -199,7 +199,7 @@ export async function GET() {
     }
 
     // Standings
-    const standingsResult = await buildLiveStandings(supabase, tournament.id, tournament.type)
+    const standingsResult: any = await buildLiveStandings(supabase, tournament.id, tournament.type)
     if (standingsResult.leagueStandings.length > 0) {
       lines.push('  STANDINGS:')
       lines.push(...formatStandingsRows(standingsResult.leagueStandings))
