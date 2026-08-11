@@ -1322,8 +1322,6 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     // "inter milan 3-2 liverpool" and we only match on team names
     const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
 
-    const { start, end } = getWeekRange()
-
     // Determine status filter based on submission type
     let statusFilter: string[]
     if (session.submission_type === 'fix') {
@@ -1332,18 +1330,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       statusFilter = ['scheduled']
     }
 
-    const { data: fixtures } = await supabase
-      .from('fixtures')
-      .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
-      .in('status', statusFilter)
-      .gte('scheduled_date', start)
-      .lte('scheduled_date', end)
-      .order('scheduled_date', { ascending: false })
-      .order('matchday')
-
-    const allFixtures = (fixtures as any[]) || []
-
-const vsParts = stripped.split(/\s+vs\.?\s+/i)
+    const vsParts = stripped.split(/\s+vs\.?\s+/i)
     let teamSearches: string[]
     if (vsParts.length >= 2) {
       teamSearches = [vsParts[0].trim().toLowerCase(), vsParts.slice(1).join(' ').trim().toLowerCase()]
@@ -1363,26 +1350,41 @@ const vsParts = stripped.split(/\s+vs\.?\s+/i)
     const resolvedTeams = await Promise.all(
       teamSearches.map(s => resolveTeamName(s))
     )
-    
+
     if (resolvedTeams.some(r => r === null)) {
       await sendTextMessage(from, `Could not find teams matching your input. Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
       return
     }
 
     const [resolved1, resolved2] = resolvedTeams as [string, string]
-    
-    // Strict exact matching - both teams must match exactly (case-insensitive, permutation-aware)
-    const matchedFixtures = allFixtures.filter(f => {
-      const hName = (Array.isArray(f.home_team) ? f.home_team[0]?.name : f.home_team?.name)?.toLowerCase() || ''
-      const aName = (Array.isArray(f.away_team) ? f.away_team[0]?.name : f.away_team?.name)?.toLowerCase() || ''
-      
-      const r1 = resolved1.toLowerCase()
-      const r2 = resolved2.toLowerCase()
-      const h = hName.toLowerCase()
-      const a = aName.toLowerCase()
-      
-      return (h === r1 && a === r2) || (h === r2 && a === r1)
-    })
+
+    // Resolve canonical team names to team IDs
+    const { data: teamRows } = await supabase
+      .from('teams')
+      .select('id, name')
+      .in('name', resolvedTeams as string[])
+    const idByName = new Map((teamRows as any[] || []).map(t => [t.name.toLowerCase(), t.id]))
+    const id1 = idByName.get(resolved1.toLowerCase())
+    const id2 = idByName.get(resolved2.toLowerCase())
+
+    if (!id1 || !id2) {
+      await sendTextMessage(from, `Could not find teams matching your input. Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+      return
+    }
+
+    // Search ALL fixtures for this exact team pair (no date window) so a result
+    // can be submitted even if the fixture fell outside the current ±7 day range.
+    // If the pair has fixtures in multiple tournaments/dates, the numbered list
+    // below lets the submitter pick the correct one.
+    const { data: fixtures } = await supabase
+      .from('fixtures')
+      .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+      .in('status', statusFilter)
+      .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
+      .order('scheduled_date', { ascending: false })
+      .order('matchday')
+
+    const matchedFixtures = (fixtures as any[]) || []
 
     if (matchedFixtures.length === 0) {
       await sendTextMessage(from, `No fixtures found matching "${searchInput}". Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
@@ -1407,9 +1409,11 @@ const vsParts = stripped.split(/\s+vs\.?\s+/i)
       const resultLine = result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation')
         ? ` (already submitted: ${result.home_score}-${result.away_score})`
         : ''
+      const dateLine = f.scheduled_date ? ` - ${new Date(f.scheduled_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''
+      const tournamentLine = fixtureTournamentName(f) ? ` - ${fixtureTournamentName(f)}` : ''
       const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
       const statsBlock = formatStatsBlock(session.match_stats)
-      await sendTextMessage(from, `Found: ${hName} vs ${aName}${resultLine}\n\nConfirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.`, phoneNumberId)
+      await sendTextMessage(from, `Found: ${hName} vs ${aName}${dateLine}${tournamentLine}${resultLine}\n\nConfirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.`, phoneNumberId)
       return
     }
 
