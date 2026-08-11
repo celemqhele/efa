@@ -729,7 +729,7 @@ function formatFixtureListWithHeadings(fixtures: any[]): string {
     const f = sorted[i]
     const home = fixtureTeamName(f, 'home')
     const away = fixtureTeamName(f, 'away')
-    const date = f.scheduled_date || ''
+    const date = formatFixtureWhen(f)
     const tournament = fixtureTournamentName(f)
 
     let status: string
@@ -1150,6 +1150,30 @@ function fixtureTeamName(f: any, side: 'home' | 'away'): string {
   return (Array.isArray(raw) ? raw[0]?.name : raw?.name) || '?'
 }
 
+const APP_TIME_ZONE = 'Africa/Johannesburg'
+
+// Render a fixture's kickoff as a readable SAST label (e.g. "Tue 12 Aug · 02:00")
+// so every WhatsApp list/confirm shows the same date the admin dashboard shows.
+function formatFixtureWhen(f: any): string {
+  const raw = f?.scheduled_date
+  if (!raw) return ''
+  try {
+    const d = new Date(raw)
+    if (Number.isNaN(d.getTime())) return String(raw)
+    const datePart = d.toLocaleDateString('en-GB', {
+      weekday: 'short', day: 'numeric', month: 'short',
+      timeZone: APP_TIME_ZONE,
+    })
+    const timePart = d.toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit',
+      timeZone: APP_TIME_ZONE,
+    })
+    return `${datePart} · ${timePart}`
+  } catch {
+    return String(raw)
+  }
+}
+
 function fixtureTournamentName(f: any): string {
   const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
   return (t?.name as string) || ''
@@ -1158,7 +1182,7 @@ function fixtureTournamentName(f: any): string {
 function formatFixtureLine(f: any, index: number): string {
   const hN = fixtureTeamName(f, 'home')
   const aN = fixtureTeamName(f, 'away')
-  const date = f.scheduled_date || ''
+  const date = formatFixtureWhen(f)
   const tournament = fixtureTournamentName(f)
   const result = Array.isArray(f.results) ? f.results[0] : f.results
   let line: string
@@ -1421,7 +1445,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       const resultLine = result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation')
         ? ` (already submitted: ${result.home_score}-${result.away_score})`
         : ''
-      const dateLine = f.scheduled_date ? ` - ${new Date(f.scheduled_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''
+      const dateLine = formatFixtureWhen(f) ? ` - ${formatFixtureWhen(f)}` : ''
       const tournamentLine = fixtureTournamentName(f) ? ` - ${fixtureTournamentName(f)}` : ''
       const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
       const statsBlock = formatStatsBlock(session.match_stats)
