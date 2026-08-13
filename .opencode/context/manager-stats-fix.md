@@ -12,4 +12,9 @@ Manager tenure stats (wins, draws, losses, etc.) were not updating in real-time.
 1. Migration `054_fix_manager_stats_trigger.sql`:
    - Removed the `f.status` filter from `recalc_tenure_stats` (a `results` row implies finalisation).
    - Added `AFTER DELETE` trigger handler to recompute tenure stats when results are voided/reset.
-2. Backfill: `SELECT recalc_tenure_stats(id) FROM manager_tenures;`.
+
+## Restore File Section
+| Original Path | Description | Recycle Bin Path |
+|---------------|-------------|------------------|
+| N/A | N/A | N/A |
+

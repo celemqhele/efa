@@ -11,3 +11,9 @@ Unbalanced fixtures with mixed legs (e.g., leg 2 before leg 1) and high fixture 
 - Updated generators (`league`, `groups`, `friendlies`) to pass scheduling options.
 - Fixed `exhibition` duplicate-pairings bug (used circle-method round-robin).
 - Updated UI estimate in `GenerateFixturesButton.tsx` (30/week).
+
+## Restore File Section
+| Original Path | Description | Recycle Bin Path |
+|---------------|-------------|------------------|
+| N/A | N/A | N/A |
+

@@ -6,4 +6,9 @@ WhatsApp fixture lists and confirm messages showed raw UTC ISO timestamps (e.g.,
 ## Fix
 - Added `formatFixtureWhen(fixture)` helper that renders the SAST kickoff time consistently (e.g., "Tue 12 Aug · 02:00").
 - Applied to all list formatters and confirm messages.
-- Standardised `APP_TIME_ZONE = 'Africa/Johannesburg'` in `app/api/webhook/route.ts`.
+
+## Restore File Section
+| Original Path | Description | Recycle Bin Path |
+|---------------|-------------|------------------|
+| N/A | N/A | N/A |
+

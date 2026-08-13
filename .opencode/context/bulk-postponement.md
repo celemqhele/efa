@@ -8,4 +8,9 @@ Need to postpone fixtures from today (Aug 11/12) to tomorrow.
   - Target 28 fixtures with `status='scheduled'`.
   - Update `scheduled_date` (+1 day).
   - Set `is_postponed=true` and `postponed_from`.
-  - Send manager notifications and audit logs.
+
+## Restore File Section
+| Original Path | Description | Recycle Bin Path |
+|---------------|-------------|------------------|
+| N/A | N/A | N/A |
+
