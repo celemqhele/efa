@@ -1,0 +1,9 @@
+# WhatsApp Readable Dates
+
+## Problem
+WhatsApp fixture lists and confirm messages showed raw UTC ISO timestamps (e.g., `2026-08-14T22:00:00.000Z`) which were unreadable and conflicted with SAST dates on the admin dashboard.
+
+## Fix
+- Added `formatFixtureWhen(fixture)` helper that renders the SAST kickoff time consistently (e.g., "Tue 12 Aug · 02:00").
+- Applied to all list formatters and confirm messages.
+- Standardised `APP_TIME_ZONE = 'Africa/Johannesburg'` in `app/api/webhook/route.ts`.

@@ -2212,7 +2212,7 @@ async function resetAndResubmit(from: string, session: SessionData, supabase: an
     return
   }
 
-  if ((fixtureRow.whatsapp_reset_count || 0) >= MAX_WHATSAPP_RESETS) {
+  if ((fixtureRow.whatsapp_reset_count || 0) >= MAX_WHATSAPP_RESETS && !isAdminPhone(from)) {
     console.log('[webhook] reset limit reached for fixture:', session.matched_fixture_id)
     await clearSession(from)
     await sendTextMessage(from, 'This match has already been reset twice. Contact admin at 0732509506 for further assistance.', phoneNumberId)
