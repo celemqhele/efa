@@ -22,6 +22,12 @@ Schema changes (DDL) need `npm run db`. For plain queries you can also use the R
 
 Project ref: `dtxnqtfqsehofezdmdbd`
 
-### NON-NEGOTIABLE RULE
-
-**After creating or editing any migration under `supabase/migrations/`, run it against the remote Supabase database with `npm run db -- supabase/migrations/<file>.sql` in the same session.** Do not leave a migration unapplied to production. If the migration is idempotent (uses `IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`), it is safe to re-run.
+## File Deletion Policy
+**NEVER permanently delete files.** 
+Whenever a file needs to be removed:
+1. Move it to the `.recycle/` directory instead of using `rm` or `Remove-Item`.
+2. Update the "Restore File Section" in the corresponding `.opencode/context/*.md` file with:
+   - Original path
+   - Purpose of the file
+   - New path inside `.recycle/`
+3. Commit the move and the updated context file.
