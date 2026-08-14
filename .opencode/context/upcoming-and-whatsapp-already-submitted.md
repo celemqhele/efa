@@ -1,0 +1,28 @@
+# Upcoming Widget + WhatsApp Already-Submitted Handling
+
+## Problem
+1. Home page "Upcoming" widget included finished (FT) fixtures — a `confirmed` fixture on the same matchday rendered with a score and "FT" badge, which is wrong for an "Upcoming" list.
+2. On WhatsApp, a user who submitted a screenshot, chose option 1 (first-time submission), then typed a fixture that was already submitted got "No fixtures found matching ..." — misleading and made the bot look broken.
+
+## Fix
+
+### 1. Home page upcoming widget (`app/page.tsx`)
+- Removed `'confirmed'` from the batch query status filter (was `['scheduled', 'awaiting_confirmation', 'confirmed']`, now `['scheduled', 'awaiting_confirmation']`). Finished matches no longer appear in "Upcoming".
+- The date-gating query already only looked at `scheduled`/`awaiting_confirmation`, so the widget still resolves the correct next matchday.
+
+### 2. WhatsApp already-submitted handling (`app/api/webhook/route.ts`)
+- New session state `awaiting_already_submitted` (plain text on the existing `whatsapp_sessions.state` column, no migration).
+- In the `awaiting_match_name` block, when `submission_type === 'new'` and the `['scheduled']` search finds nothing, a second query looks up the same team pair with statuses `['confirmed', 'awaiting_confirmation', 'completed', 'abandoned']` (embedded `results(home_score, away_score, match_stats(*))`). If found, it takes the **most recent** fixture and replies:
+  "This match has already been submitted. Here are the results and stats: ... Would you like to edit it? Reply YES or NO."
+  Sets state to `awaiting_already_submitted`.
+- New state handler (before the affirmative "direct bypass"):
+  - YES → clear session + "Send a new screenshot and choose option 2 (Changing a score that was already submitted)."
+  - NO → clear session + "If you need to submit a new match, send a new screenshot and let me know."
+  - CANCEL → clear session + "No stress. Send a new screenshot when you're ready."
+  - other → re-prompt "Reply YES or NO."
+- Added `dbStatsToSessionFormat()` helper that converts a `match_stats` DB row (`home_possession`/`away_possession`/etc.) back to the `{ possession: { home, away }, ... }` shape so `formatStatsBlock` renders the stored stats.
+
+## Restore File Section
+| Original Path | Description | Recycle Bin Path |
+|---------------|-------------|------------------|
+| N/A | N/A | N/A |

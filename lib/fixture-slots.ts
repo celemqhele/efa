@@ -1,4 +1,4 @@
-import { addDays, format, parseISO, subDays } from 'date-fns'
+import { addDays, format, parseISO } from 'date-fns'
 
 const SA_PUBLIC_HOLIDAYS_2025 = new Set([
   '2025-01-01', '2025-03-21', '2025-04-18', '2025-04-21',
@@ -57,77 +57,122 @@ export interface SlotAssignment {
   leg?: number
 }
 
-function countSlotsInWindow(
-  windowStart: string,
-  dateStr: string,
-  assignments: SlotAssignment[]
-): number {
-  return assignments.filter(a =>
-    a.scheduled_date >= windowStart &&
-    a.scheduled_date <= dateStr
-  ).length * 2
+export interface SlotOptions {
+  // Total matches the whole tournament is allowed per 7-day window (default 30).
+  weeklyMatches?: number
+  // Total matches allowed on any single calendar day (default 5).
+  dailyMatchCap?: number
 }
 
+/**
+ * Balanced weekly fixture scheduling.
+ *
+ * Rules (applies to league, group and friendly generation):
+ * - Weekly pool: `weeklyMatches` matches per 7-day window anchored to the start
+ *   date. Each team plays `q` or `q+1` games per window where
+ *   q = floor(2 * weeklyMatches / N). The leftover games go to the teams with
+ *   the fewest total games so far, which rotates each week so every team stays
+ *   level ("almost the same amount of games every week").
+ * - Daily: at most `dailyMatchCap` matches per day tournament-wide, and at most
+ *   one match per team per day.
+ * - Legs: fixtures are processed grouped by leg ascending (stable within a leg),
+ *   so every leg-1 fixture is dated before any leg-2 fixture.
+ */
 export async function assignFixtureSlots(
   db: any,
   fixtures: Array<{ home_team_id: string; away_team_id: string; leg?: number }>,
   startFrom?: string,
   reservedSlots: number = 0,
   tournamentId?: string,
-  weeklySlotBudget?: number
+  opts?: SlotOptions
 ): Promise<SlotAssignment[]> {
+  const weeklyMatches = opts?.weeklyMatches ?? 30
+  const dailyMatchCap = (opts?.dailyMatchCap ?? 5) - reservedSlots
   const startDate = startFrom ?? format(new Date(), 'yyyy-MM-dd')
+
+  const teamIds = new Set<string>()
+  for (const f of fixtures) {
+    teamIds.add(f.home_team_id)
+    teamIds.add(f.away_team_id)
+  }
+  const N = teamIds.size
+  const slotsPerWeek = weeklyMatches * 2
+  const q = Math.floor(slotsPerWeek / N)
+  const rem = slotsPerWeek % N
+
+  // Leg-ordered queue: all leg-1 fixtures are placed before any leg-2 fixture.
+  // Stable sort preserves the input (round-robin) order within a leg.
+  const queue = [...fixtures].sort((a, b) => (a.leg ?? 1) - (b.leg ?? 1))
+
+  const played = new Map<string, number>()
+  for (const id of teamIds) played.set(id, 0)
+
   const assignments: SlotAssignment[] = []
-  const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
+  const dayCount: Record<string, number> = {}
+  const dayTeams: Record<string, Set<string>> = {}
+  const weekCount = new Map<string, number>()
 
-  for (const fx of fixtures) {
-    const { home_team_id, away_team_id } = fx
-    let currentDate = parseISO(startDate)
-    let assigned = false
+  const maxWindows = 1000
+  for (let w = 0; w < maxWindows && queue.length > 0; w++) {
+    const winStart = addDays(parseISO(startDate), w * 7)
 
-    for (let safety = 0; safety < 730; safety++) {
-      const dateStr = format(currentDate, 'yyyy-MM-dd')
+    // Award the leftover games to the `rem` lightest-loaded teams this window.
+    const sorted = [...teamIds].sort((a, b) => (played.get(a) ?? 0) - (played.get(b) ?? 0))
+    const target = new Map<string, number>()
+    for (let i = 0; i < sorted.length; i++) {
+      target.set(sorted[i], i < rem ? q + 1 : q)
+    }
+    weekCount.clear()
+    for (const id of teamIds) weekCount.set(id, 0)
 
-      if (!slotCache[dateStr]) {
-        slotCache[dateStr] = await getSlotStateForDate(db, dateStr, tournamentId)
-      }
+    for (let d = 0; d < 7 && queue.length > 0; d++) {
+      const dateStr = format(addDays(winStart, d), 'yyyy-MM-dd')
+      if (dayCount[dateStr] === undefined) dayCount[dateStr] = 0
+      if (!dayTeams[dateStr]) dayTeams[dateStr] = new Set()
 
-      const state = slotCache[dateStr]
-      const { globalCap, teamCap } = getDailyCapacity(dateStr)
-      const cap = globalCap - reservedSlots * 2
+      let placed = true
+      while (placed && queue.length > 0) {
+        placed = false
+        for (let i = 0; i < queue.length; i++) {
+          const fx = queue[i]
+          if (dayCount[dateStr] >= dailyMatchCap) break
+          if (dayTeams[dateStr].has(fx.home_team_id) || dayTeams[dateStr].has(fx.away_team_id)) continue
+          if ((weekCount.get(fx.home_team_id) ?? 0) >= (target.get(fx.home_team_id) ?? 0)) continue
+          if ((weekCount.get(fx.away_team_id) ?? 0) >= (target.get(fx.away_team_id) ?? 0)) continue
 
-      const homeUsedToday = state.teamUsed[home_team_id] ?? 0
-      const awayUsedToday = state.teamUsed[away_team_id] ?? 0
-
-      if (homeUsedToday >= teamCap || awayUsedToday >= teamCap) {
-        currentDate = addDays(currentDate, 1)
-        continue
-      }
-
-      if (state.globalUsed + 2 > cap) {
-        currentDate = addDays(currentDate, 1)
-        continue
-      }
-
-      if (weeklySlotBudget !== undefined && weeklySlotBudget > 0) {
-        const windowStart = format(subDays(currentDate, 6), 'yyyy-MM-dd')
-        const slotsUsed = countSlotsInWindow(windowStart, dateStr, assignments)
-        if (slotsUsed + 2 > weeklySlotBudget) {
-          currentDate = addDays(currentDate, 1)
-          continue
+          assignments.push({
+            home_team_id: fx.home_team_id,
+            away_team_id: fx.away_team_id,
+            scheduled_date: dateStr,
+            leg: fx.leg,
+          })
+          queue.splice(i, 1)
+          dayCount[dateStr]++
+          dayTeams[dateStr].add(fx.home_team_id)
+          dayTeams[dateStr].add(fx.away_team_id)
+          weekCount.set(fx.home_team_id, (weekCount.get(fx.home_team_id) ?? 0) + 1)
+          weekCount.set(fx.away_team_id, (weekCount.get(fx.away_team_id) ?? 0) + 1)
+          played.set(fx.home_team_id, (played.get(fx.home_team_id) ?? 0) + 1)
+          played.set(fx.away_team_id, (played.get(fx.away_team_id) ?? 0) + 1)
+          placed = true
+          break
         }
       }
-
-      assignments.push({ home_team_id, away_team_id, scheduled_date: dateStr, leg: fx.leg })
-      state.globalUsed += 2
-      state.teamUsed[home_team_id] = homeUsedToday + 1
-      state.teamUsed[away_team_id] = awayUsedToday + 1
-      assigned = true
-      break
     }
+  }
 
-    if (!assigned) {
-      assignments.push({ home_team_id, away_team_id, scheduled_date: format(currentDate ?? parseISO(startDate), 'yyyy-MM-dd'), leg: fx.leg })
+  // Safety net for any leftovers (shouldn't normally happen): park them on
+  // consecutive days after the scheduled span.
+  if (queue.length > 0) {
+    let dateStr = format(addDays(parseISO(startDate), maxWindows * 7), 'yyyy-MM-dd')
+    for (const fx of queue) {
+      assignments.push({
+        home_team_id: fx.home_team_id,
+        away_team_id: fx.away_team_id,
+        scheduled_date: dateStr,
+        leg: fx.leg,
+      })
+      dateStr = format(addDays(parseISO(dateStr), 1), 'yyyy-MM-dd')
     }
   }
 

@@ -12,7 +12,7 @@ interface Props {
   type?: string
 }
 
-const DAILY_CAP = 15
+const MATCHES_PER_WEEK = 30
 
 export default function GenerateFixturesButton({ tournamentId, tournamentName, type }: Props) {
   const [loading, setLoading] = useState(false)
@@ -21,6 +21,7 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName, t
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [settings, setSettings] = useState<any>(null)
+  const [teamCount, setTeamCount] = useState<number | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -29,17 +30,18 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName, t
     const numGroups = settings?.num_groups
     const teamsPerGroup = settings?.teams_per_group
     const numRounds = settings?.num_rounds ?? 2
+    const n = teamCount ?? 20
 
     let estMatches = 0
     if (fixtureMode === 'groups' && numGroups && teamsPerGroup) {
       estMatches = numGroups * teamsPerGroup * (teamsPerGroup - 1) * numRounds / 2
     } else {
-      estMatches = 20 * 19 * numRounds / 2
+      estMatches = n * (n - 1) * numRounds / 2
     }
-    const estDays = Math.max(1, Math.ceil(estMatches / DAILY_CAP))
-    const end = addDays(new Date(startDate), estDays)
+    const estWeeks = Math.max(1, Math.ceil(estMatches / MATCHES_PER_WEEK))
+    const end = addDays(new Date(startDate), estWeeks * 7)
     setEndDate(format(end, 'yyyy-MM-dd'))
-  }, [startDate, settings])
+  }, [startDate, settings, teamCount])
 
   if (type === 'friendlies') return null
 
@@ -53,6 +55,7 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName, t
         const data = await res.json()
         if (res.ok && data.tournament) {
           setSettings(data.tournament.settings ?? {})
+          setTeamCount(data.tournament.team_count ?? null)
         }
       } catch {
         // non-critical

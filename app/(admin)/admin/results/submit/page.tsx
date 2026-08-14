@@ -12,16 +12,25 @@ export default async function ResultSubmitPage({
 
   const resolvedSearchParams = await searchParams
 
+  const selectFixture = `
+    id, matchday, round_type, leg, scheduled_date, status, tournament_id,
+    home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+    away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+    tournament:tournaments!fixtures_tournament_id_fkey(id, name, type)
+  `
+
   const { data: pendingFixtures } = await supabase
     .from('fixtures')
-    .select(`
-      id, matchday, round_type, leg, scheduled_date, status, tournament_id,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-      tournament:tournaments!fixtures_tournament_id_fkey(id, name, type)
-    `)
-    .not('status', 'eq', 'abandoned')
+    .select(selectFixture)
+    .in('status', ['scheduled', 'awaiting_confirmation'])
     .order('scheduled_date', { ascending: true })
+
+  const { data: completedFixtures } = await supabase
+    .from('fixtures')
+    .select(selectFixture)
+    .eq('status', 'confirmed')
+    .order('scheduled_date', { ascending: false })
+    .limit(500)
 
   const { data: allConfirmations } = await supabase
     .from('result_confirmations')
@@ -33,7 +42,7 @@ export default async function ResultSubmitPage({
     confirmationsByFixture[c.fixture_id]!.push(c)
   }
 
-  const relevantFixtures = pendingFixtures ?? []
+  const relevantFixtures = [...(pendingFixtures ?? []), ...(completedFixtures ?? [])]
 
   const { data: teamNameMappings } = await supabase
     .from('team_name_mappings')

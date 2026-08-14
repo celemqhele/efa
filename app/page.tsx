@@ -74,7 +74,7 @@ export default async function HomePage() {
         results(home_score, away_score)
       `)
       .eq('scheduled_date', nextDate)
-      .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
+      .in('status', ['scheduled', 'awaiting_confirmation'])
       .order('deadline')
 
     if (teamOrFilter) {

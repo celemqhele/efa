@@ -1422,6 +1422,33 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const matchedFixtures = sortFixturesForDisplay((fixtures as any[]) || [])
 
+    // If the user chose "first-time submission" and no scheduled fixture matches,
+    // the match may already be submitted/confirmed. Surface the existing result
+    // instead of a confusing "no fixture found" and offer to edit it.
+    if (matchedFixtures.length === 0 && session.submission_type === 'new') {
+      const { data: alreadyFixtures } = await supabase
+        .from('fixtures')
+        .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score, match_stats:match_stats(*))')
+        .in('status', ['confirmed', 'awaiting_confirmation', 'completed', 'abandoned'])
+        .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
+        .order('scheduled_date', { ascending: false })
+        .order('matchday')
+
+      const alreadySubmitted = sortFixturesForDisplay((alreadyFixtures as any[]) || [])
+      if (alreadySubmitted.length > 0) {
+        const f = alreadySubmitted[alreadySubmitted.length - 1]
+        const hName = fixtureTeamName(f, 'home')
+        const aName = fixtureTeamName(f, 'away')
+        const result = Array.isArray(f.results) ? f.results[0] : f.results
+        const statsRow = Array.isArray(result?.match_stats) ? result.match_stats[0] : (result?.match_stats ?? null)
+        const statsBlock = formatStatsBlock(statsRow ? dbStatsToSessionFormat(statsRow) : null)
+        const dateLine = formatFixtureWhen(f) ? ` - ${formatFixtureWhen(f)}` : ''
+        await upsertSession({ phone_number: from, state: 'awaiting_already_submitted' })
+        await sendTextMessage(from, `This match has already been submitted. Here are the results and stats:\n\n${hName} ${result?.home_score ?? '?'}-${result?.away_score ?? '?'} ${aName}${dateLine}${statsBlock ? '\n\n' + statsBlock : ''}\n\nWould you like to edit it? Reply YES or NO.`, phoneNumberId)
+        return
+      }
+    }
+
     if (matchedFixtures.length === 0) {
       await sendTextMessage(from, `No fixtures found matching "${searchInput}". Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
       return
@@ -1461,6 +1488,24 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     })
 
     await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+    return
+  }
+
+  // ─── Already-submitted match (user chose "first time" but fixture is confirmed) ─
+  if (session?.state === 'awaiting_already_submitted') {
+    const lower = text.trim().toLowerCase()
+    if (/^(yes|yeah|yep|y|ja|ok|okay|sure|correct|edit|fix)$/i.test(lower)) {
+      await clearSession(from)
+      await sendTextMessage(from, "Got it. Send a new screenshot and choose option 2 (Changing a score that was already submitted).", phoneNumberId)
+    } else if (/^(no|nah|nope|n)$/i.test(lower)) {
+      await clearSession(from)
+      await sendTextMessage(from, "If you need to submit a new match, send a new screenshot and let me know.", phoneNumberId)
+    } else if (/^cancel$/i.test(text.trim())) {
+      await clearSession(from)
+      await sendTextMessage(from, "No stress. Send a new screenshot when you're ready.", phoneNumberId)
+    } else {
+      await sendTextMessage(from, "Would you like to edit the submitted result? Reply YES or NO.", phoneNumberId)
+    }
     return
   }
 
@@ -2002,6 +2047,19 @@ function matchStatsToDbColumns(matchStats: Record<string, { home: number; away: 
     }
   }
   return Object.keys(cols).length > 0 ? cols : null
+}
+
+function dbStatsToSessionFormat(statsRow: Record<string, number | null> | null): Record<string, { home: number; away: number }> | null {
+  if (!statsRow) return null
+  const out: Record<string, { home: number; away: number }> = {}
+  for (const [key, [homeCol, awayCol]] of Object.entries(STAT_KEY_TO_DB)) {
+    const home = statsRow[homeCol]
+    const away = statsRow[awayCol]
+    if (home !== null && home !== undefined && away !== null && away !== undefined) {
+      out[key] = { home, away }
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null
 }
 
 async function getAdminUserId(supabase: any): Promise<string | null> {

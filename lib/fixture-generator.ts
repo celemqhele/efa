@@ -1,3 +1,5 @@
+import type { SlotOptions } from './fixture-slots'
+
 export interface GeneratedFixture {
   home_team_id: string
   away_team_id: string
@@ -43,12 +45,58 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+// Circle-method round robin. Produces exactly one round per team; each team
+// plays every other team once (skipping a bye for odd-sized fields).
+function buildRoundRobinRounds(teamIds: string[]): Array<Array<[string, string]>> {
+  const n = teamIds.length
+  if (n < 2) return []
+
+  const pool = n % 2 === 1 ? [...teamIds, '__BYE__'] : [...teamIds]
+  const m = pool.length
+  const rounds: Array<Array<[string, string]>> = []
+
+  for (let r = 0; r < m - 1; r++) {
+    const roundPairs: Array<[string, string]> = []
+    for (let i = 0; i < m / 2; i++) {
+      roundPairs.push([pool[i], pool[m - 1 - i]])
+    }
+    rounds.push(roundPairs)
+
+    // Rotate: keep the first team fixed, rotate the rest.
+    const last = pool[m - 1]
+    for (let i = m - 1; i > 1; i--) pool[i] = pool[i - 1]
+    pool[1] = last
+  }
+
+  return rounds
+}
+
+// Exhibition pairings: each team plays exactly `matchesPerTeam` distinct-ish
+// games by cycling the round robin. Byes are dropped.
+function buildExhibitionPairs(
+  teamIds: string[],
+  matchesPerTeam: number
+): Array<{ home_team_id: string; away_team_id: string }> {
+  const rounds = buildRoundRobinRounds(teamIds)
+  if (rounds.length === 0) return []
+
+  const pairs: Array<{ home_team_id: string; away_team_id: string }> = []
+  for (let g = 0; g < matchesPerTeam; g++) {
+    for (const [a, b] of rounds[g % rounds.length]) {
+      if (a === '__BYE__' || b === '__BYE__') continue
+      pairs.push({ home_team_id: a, away_team_id: b })
+    }
+  }
+  return pairs
+}
+
 export async function generateLeagueFixtures(
   db: any,
   teamIds: string[],
   tournamentId: string,
   numRounds: number = 2,
-  startFrom?: string
+  startFrom?: string,
+  opts?: SlotOptions
 ): Promise<GeneratedFixture[]> {
   const { assignFixtureSlots } = await import('./fixture-slots')
   const matchupsPerRound = (teamIds.length * (teamIds.length - 1)) / 2
@@ -59,7 +107,7 @@ export async function generateLeagueFixtures(
     leg: Math.floor(i / matchupsPerRound) + 1,
   }))
 
-  const assignments = await assignFixtureSlots(db, pairs, startFrom, 0, tournamentId)
+  const assignments = await assignFixtureSlots(db, pairs, startFrom, 0, tournamentId, opts)
 
   return assignments.map((a, i) => ({
     home_team_id: a.home_team_id,
@@ -78,7 +126,7 @@ export async function generateGroupFixtures(
   numRounds: number = 2,
   startFrom?: string,
   tournamentId?: string,
-  weeklySlotBudget?: number
+  opts?: SlotOptions
 ): Promise<GeneratedFixture[]> {
   const { assignFixtureSlots: assignSlots } = await import('./fixture-slots')
 
@@ -91,7 +139,7 @@ export async function generateGroupFixtures(
     })
   }
 
-  const assignments = await assignSlots(db, allPairs, startFrom, 0, tournamentId, weeklySlotBudget)
+  const assignments = await assignSlots(db, allPairs, startFrom, 0, tournamentId, opts)
   let matchdayCounter = 0
 
   return assignments.map((a) => {
@@ -113,24 +161,15 @@ export async function generateExhibitionFixtures(
   teamIds: string[],
   matchesPerTeam: number,
   startFrom?: string,
-  tournamentId?: string
+  tournamentId?: string,
+  opts?: SlotOptions
 ): Promise<GeneratedFixture[]> {
   const { assignFixtureSlots } = await import('./fixture-slots')
-  
-  // Simple round-robin pairings for exhibition
-  const pairs: Array<{ home_team_id: string; away_team_id: string }> = []
+
   const shuffledTeams = shuffle([...teamIds])
+  const pairs = buildExhibitionPairs(shuffledTeams, matchesPerTeam)
 
-  // Basic heuristic: each team plays each other until matchesPerTeam is reached
-  for (let m = 0; m < matchesPerTeam; m++) {
-    for (let i = 0; i < shuffledTeams.length; i++) {
-      for (let j = i + 1; j < shuffledTeams.length; j++) {
-        pairs.push({ home_team_id: shuffledTeams[i], away_team_id: shuffledTeams[j] })
-      }
-    }
-  }
-
-  const assignments = await assignFixtureSlots(db, pairs.map(p => ({ ...p, leg: 1 })), startFrom, 0, tournamentId)
+  const assignments = await assignFixtureSlots(db, pairs.map(p => ({ ...p, leg: 1 })), startFrom, 0, tournamentId, opts)
 
   return assignments.map((a, i) => ({
     home_team_id: a.home_team_id,
