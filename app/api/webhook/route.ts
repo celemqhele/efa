@@ -923,6 +923,7 @@ async function sendOpponentContact(from: string, fixtureId: string, myTeamIds: s
   const opponent = !homeIsMine && !awayIsMine ? homeTeam : homeIsMine && awayIsMine ? homeTeam : homeIsMine ? awayTeam : homeTeam
 
   if (!opponent) {
+    await clearSession(from)
     await sendTextMessage(from, 'Could not find the opponent for that fixture.', phoneNumberId)
     return
   }
@@ -932,6 +933,7 @@ async function sendOpponentContact(from: string, fixtureId: string, myTeamIds: s
   const phone = toInternationalPhone(phoneRaw)
 
   if (!phone) {
+    await clearSession(from)
     await sendTextMessage(from, `No contact number is saved for ${opponent.name} yet.`, phoneNumberId)
     return
   }
@@ -940,6 +942,7 @@ async function sendOpponentContact(from: string, fixtureId: string, myTeamIds: s
   if (!sent) {
     await sendTextMessage(from, `Here is ${opponent.name}'s number: +${phone}`, phoneNumberId)
   }
+  await clearSession(from)
 }
 
 async function handleFixturesAction(from: string, text: string, session: SessionData, phoneNumberId: string) {
