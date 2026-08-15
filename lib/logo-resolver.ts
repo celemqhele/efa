@@ -43,6 +43,13 @@ export function getLeagueFolders(): string[] {
     'ucl-champions-league-2025-2026.football-logos.cc',
     'uefa-conference-league-2025-2026.football-logos.cc',
     'uefa-europa-league-2025-2026.football-logos.cc',
+    // New 2026-27 folders
+    'moroccan-league-2026-2027.football-logos.cc',
+    'thai-league-2026-2027.football-logos.cc',
+    'malaysia-super-league-2026-2027.football-logos.cc',
+    'korean-league-2026-2027.football-logos.cc',
+    'afc-champions-league-elite-2026-2027.football-logos.cc',
+    'afc-champions-league-two-2026-2027.football-logos.cc',
   ]
 }
 

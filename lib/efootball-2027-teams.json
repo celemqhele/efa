@@ -1,0 +1,20 @@
+{
+  "leagues": {
+    "english-premier-league-2025-2026.football-logos.cc": [
+      "manchester-united", "arsenal", "chelsea", "liverpool", "manchester-city",
+      "tottenham", "newcastle", "aston-villa", "west-ham", "everton",
+      "fulham", "wolves", "brighton", "bournemouth", "brentford",
+      "nottingham-forest", "sunderland", "crystal-palace", "ipswich", "leeds-united"
+    ],
+    "spain-la-liga-2025-2026.football-logos.cc": [
+      "barcelona", "real-madrid", "atletico-madrid", "real-sociedad", "athletic-club",
+      "villarreal", "betis", "sevilla", "valencia", "celta", "girona", "rayo-vallecano",
+      "getafe", "mallorca", "osasuna", "alaves", "leganes", "las-palmas", "valladolid", "espanyol"
+    ],
+    "italy-serie-a-2025-2026.football-logos.cc": [
+      "inter", "ac-milan", "juventus", "roma", "napoli", "lazio", "atalanta",
+      "fiorentina", "torino", "bologna", "udinese", "genoa", "monza", "verona", "lecci",
+      "cagliari", "como", "parma", "venezia", "empoli"
+    ]
+  }
+}

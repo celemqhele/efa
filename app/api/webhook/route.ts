@@ -1819,8 +1819,10 @@ async function handleManagerApplicationsStart(from: string, phoneNumberId: strin
   )
 }
 
+import { isAllowedTeam } from '@/lib/allowed-teams'
+
 async function getTeamsForAssignment(supabase: any): Promise<{ id: string; name: string }[]> {
-  const teamMap = new Map<string, string>()
+  const teamMap = new Map<string, { name: string; folder: string; slug: string }>()
 
   // Teams in active tournaments
   const { data: tournaments } = await supabase
@@ -1831,12 +1833,13 @@ async function getTeamsForAssignment(supabase: any): Promise<{ id: string; name:
   if (tournaments?.length) {
     const { data: participants } = await supabase
       .from('tournament_participants')
-      .select('team_id, team:teams(id, name)')
+      .select('team_id, team:teams(id, name, logo_league_folder, logo_team_slug)')
       .in('tournament_id', tournaments.map((t: any) => t.id))
 
     for (const p of participants ?? []) {
       const team = Array.isArray(p.team) ? p.team[0] : p.team
-      if (team?.id && team?.name) teamMap.set(team.id, team.name)
+      if (team?.id && team?.name && team?.logo_league_folder && team?.logo_team_slug)
+        teamMap.set(team.id, { name: team.name, folder: team.logo_league_folder, slug: team.logo_team_slug })
     }
   }
 
@@ -1846,7 +1849,11 @@ async function getTeamsForAssignment(supabase: any): Promise<{ id: string; name:
     .from('backdoor_submissions')
     .select(`
       side_claimed,
-      fixture:fixtures(id, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name), away_team:teams!fixtures_away_team_id_fkey(id, name))
+      fixture:fixtures(
+        id, home_team_id, away_team_id, 
+        home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug), 
+        away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug)
+      )
     `)
     .eq('status', 'approved')
     .gte('reviewed_at', cutoff)
@@ -1858,11 +1865,13 @@ async function getTeamsForAssignment(supabase: any): Promise<{ id: string; name:
     const away = Array.isArray(fixture.away_team) ? fixture.away_team[0] : fixture.away_team
     const loserId = s.side_claimed === 'home' ? fixture.away_team_id : fixture.home_team_id
     const loser = loserId === home?.id ? home : away
-    if (loser?.id && loser?.name) teamMap.set(loser.id, loser.name)
+    if (loser?.id && loser?.name && loser?.logo_league_folder && loser?.logo_team_slug)
+      teamMap.set(loser.id, { name: loser.name, folder: loser.logo_league_folder, slug: loser.logo_team_slug })
   }
 
   return Array.from(teamMap.entries())
-    .map(([id, name]) => ({ id, name }))
+    .filter(([id, data]) => isAllowedTeam(data.folder, data.slug))
+    .map(([id, data]) => ({ id, name: data.name }))
     .sort((a, b) => a.name.localeCompare(b.name))
     .slice(0, 30)
 }

@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import { createClient } from '@/lib/supabase/server'
 import { getLeagueFolders, slugToDisplayName } from '@/lib/logo-resolver'
+import { filterTeams } from '@/lib/allowed-teams'
 import Shell from './_shell'
 
 export default async function SeasonsPage() {
@@ -128,7 +129,7 @@ export default async function SeasonsPage() {
     }
   }
 
-  const allTeams = Array.from(clubMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+  const allTeams = filterTeams(Array.from(clubMap.values())).sort((a, b) => a.name.localeCompare(b.name))
 
   const completedSeason = (rawSeasons ?? []).find((s: any) => s.status === 'completed')
   let prevSeasonStandings: { team_id: string; team_name: string }[] | null = null

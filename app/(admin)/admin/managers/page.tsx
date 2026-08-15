@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { filterTeams } from '@/lib/allowed-teams'
 import Shell from './_shell'
 
 export default async function ManageManagersPage() {
@@ -35,7 +36,7 @@ export default async function ManageManagersPage() {
       seen.set(key, team)
     }
   }
-  const teams = Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name))
+  const teams = filterTeams(Array.from(seen.values())).sort((a, b) => a.name.localeCompare(b.name))
 
   const managedTeamByUser: Record<string, TeamRow> = {}
   for (const team of teams) {
