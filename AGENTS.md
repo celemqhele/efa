@@ -26,8 +26,27 @@ Project ref: `dtxnqtfqsehofezdmdbd`
 **NEVER permanently delete files.** 
 Whenever a file needs to be removed:
 1. Move it to the `.recycle/` directory instead of using `rm` or `Remove-Item`.
-2. Update the "Restore File Section" in the corresponding `.opencode/context/*.md` file with:
+2. Update the "Restore File Section" in the corresponding `.opencode/context/**/*.md` file with:
    - Original path
    - Purpose of the file
    - New path inside `.recycle/`
 3. Commit the move and the updated context file.
+
+## Context Files — organization rules
+
+Context files live in `.opencode/context/`, grouped into category folders.
+
+### Category folders
+
+- `whatsapp/` — WhatsApp/webhook bot flows
+- `fixtures/` — fixture scheduling and postponement
+- `notifications/` — notification sounds and triggers
+- `results/` — result submission and admin results pages
+- `stats/` — stats/trigger fixes
+- `ui/` — frontend/UI changes
+
+### Naming requirement
+Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's last-modified date. New files use the current date. When a file is substantially edited on a later day, rename it to the new date.
+
+### Placement rule
+When creating a new context file, place it in the relevant category folder above. If none of the categories fit, create a NEW category folder (lowercase single word, e.g. `auth/`) and add it to the list above.
