@@ -59,16 +59,71 @@ function notifIconColour(type: string): string {
   return 'bg-accent/10 text-accent'
 }
 
-// Play the uploaded custom notification sound. Best-effort: if the file can't
-// load or autoplay is blocked, this fails silently and the OS notification
-// sound is the fallback.
+// Play the uploaded custom notification sound.
+//
+// Mobile browsers block autoplay-with-sound without a user gesture, so a bare
+// `new Audio().play()` silently fails when a push/SW message or the 60s poll
+// arrives. Workaround: decode the MP3 into an AudioContext that is "unlocked"
+// (resumed) on the first user gesture — once `running`, sounds can be scheduled
+// programmatically without a gesture. Element-based playback remains the
+// fallback (covers desktop, where past interaction satisfies autoplay policy).
+const SOUND_URL = '/sounds/efa-notify.mp3'
+
+let audioCtx: AudioContext | null = null
+let soundBuffer: AudioBuffer | null = null
+let soundDecoding: Promise<void> | null = null
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null
+  if (!audioCtx) {
+    const Ctor: any = window.AudioContext || (window as any).webkitAudioContext
+    if (!Ctor) return null
+    audioCtx = new Ctor()
+  }
+  return audioCtx
+}
+
+function ensureSoundDecoded(): Promise<void> {
+  if (soundBuffer) return Promise.resolve()
+  if (soundDecoding) return soundDecoding
+  soundDecoding = (async () => {
+    const ctx = getAudioContext()
+    if (!ctx) return
+    const res = await fetch(SOUND_URL)
+    const buf = await res.arrayBuffer()
+    soundBuffer = await ctx.decodeAudioData(buf)
+  })().catch((err) => {
+    soundDecoding = null
+    console.warn('Failed to decode notification sound', err)
+  })
+  return soundDecoding
+}
+
+function unlockAudio() {
+  const ctx = getAudioContext()
+  if (!ctx) return
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+  ensureSoundDecoded()
+}
+
 function playNotificationSound() {
   try {
-    const audio = new Audio('/sounds/efa-notify.mp3')
+    const ctx = audioCtx
+    if (ctx && soundBuffer && ctx.state === 'running') {
+      const src = ctx.createBufferSource()
+      src.buffer = soundBuffer
+      const gain = ctx.createGain()
+      gain.gain.value = 0.8
+      src.connect(gain)
+      gain.connect(ctx.destination)
+      src.start()
+      return
+    }
+    const audio = new Audio(SOUND_URL)
     audio.volume = 0.8
     audio.play().catch(() => {})
   } catch {
-    // ignore
+    // ignore — OS notification sound is the fallback
   }
 }
 
@@ -176,10 +231,20 @@ export default function GlobalNotifications() {
     }
     navigator.serviceWorker?.addEventListener('message', handleSwMessage)
 
+    // Unlock the AudioContext on any user gesture so the custom sound can play
+    // programmatically later (mobile autoplay policy requires a gesture).
+    const unlock = () => unlockAudio()
+    window.addEventListener('pointerdown', unlock, { capture: true })
+    window.addEventListener('touchstart', unlock, { capture: true, passive: true })
+    window.addEventListener('keydown', unlock, { capture: true })
+
     return () => {
       clearInterval(interval)
       window.removeEventListener('show-notification', handleManualNotif)
       navigator.serviceWorker?.removeEventListener('message', handleSwMessage)
+      window.removeEventListener('pointerdown', unlock, { capture: true } as any)
+      window.removeEventListener('touchstart', unlock, { capture: true } as any)
+      window.removeEventListener('keydown', unlock, { capture: true } as any)
     }
   }, [])
 

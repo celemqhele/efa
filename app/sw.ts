@@ -37,19 +37,15 @@ self.addEventListener('push', (event: any) => {
       })
 
       // Custom sound: if a window is open, tell it to play the sound (service
-      // worker audio is unreliable). Otherwise best-effort from the worker —
-      // on failure the OS/browser default notification sound (silent: false)
-      // is the fallback.
+      // workers can't play audio; the client's AudioContext unlock handles
+      // mobile autoplay). With no open client the OS/browser default
+      // notification sound (silent: false) is the fallback.
       try {
         const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
         if (clients.length > 0) {
           for (const client of clients) {
             client.postMessage({ type: 'play-notification-sound' })
           }
-        } else {
-          const audio = new Audio('/sounds/efa-notify.mp3')
-          audio.volume = 0.8
-          await audio.play()
         }
       } catch {
         // ignore — system notification sound remains the fallback
