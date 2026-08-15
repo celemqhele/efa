@@ -29,18 +29,30 @@ export default function AdminNotificationsClient({ pendingRequests, notification
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [broadcastMsg, setBroadcastMsg] = useState({ title: '', body: '' })
   const [sending, setSending] = useState(false)
 
   async function handleRequest(requestId: string, action: 'approve' | 'deny') {
     setLoading(requestId)
-    await fetch('/api/admin/team-change', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ request_id: requestId, action }),
-    })
-    setLoading(null)
-    router.refresh()
+    setErrorMsg(null)
+    try {
+      const res = await fetch('/api/admin/team-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: requestId, action }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setErrorMsg(body.error ?? `Request failed (${res.status})`)
+      } else {
+        router.refresh()
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong. Try again.')
+    } finally {
+      setLoading(null)
+    }
   }
 
   async function sendBroadcast() {
@@ -77,8 +89,12 @@ export default function AdminNotificationsClient({ pendingRequests, notification
         {pendingRequests.length === 0 ? (
           <p className="text-sm text-text-muted">No pending requests.</p>
         ) : (
-          <div className="space-y-space-3">
-            {pendingRequests.map((req) => (
+          <>
+            {errorMsg && (
+              <p className="text-xs text-feedback-error mb-space-3">{errorMsg}</p>
+            )}
+            <div className="space-y-space-3">
+              {pendingRequests.map((req) => (
               <div key={req.id} className="bg-bg-elevated border border-border rounded-xl p-space-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-space-4">
                   {/* User */}
@@ -144,6 +160,7 @@ export default function AdminNotificationsClient({ pendingRequests, notification
               </div>
             ))}
           </div>
+          </>
         )}
       </Card>
 

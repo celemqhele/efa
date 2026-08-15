@@ -42,128 +42,146 @@ export async function POST(request: Request) {
 
   const adminSupabase = await createAdminClient()
 
-  // Fetch the request details
-  const { data: changeRequest, error: requestError } = await adminSupabase
-    .from('team_change_requests')
-    .select(`
-      id,
-      requesting_user_id,
-      current_team_id,
-      requested_team_id,
-      status,
-      requested_team:teams!team_change_requests_requested_team_id_fkey(id, name, logo_league_folder, logo_team_slug)
-    `)
-    .eq('id', request_id)
-    .single()
+  try {
+    // Fetch the request details
+    const { data: changeRequest, error: requestError } = await adminSupabase
+      .from('team_change_requests')
+      .select(`
+        id,
+        requesting_user_id,
+        current_team_id,
+        requested_team_id,
+        status,
+        requested_team:teams!team_change_requests_requested_team_id_fkey(id, name, logo_league_folder, logo_team_slug)
+      `)
+      .eq('id', request_id)
+      .single()
 
-  if (requestError || !changeRequest) {
-    return Response.json({ error: 'Request not found' }, { status: 404 })
-  }
-
-  if (changeRequest.status !== 'pending') {
-    return Response.json(
-      { error: 'This request has already been reviewed' },
-      { status: 409 }
-    )
-  }
-
-  const requestedTeam = Array.isArray(changeRequest.requested_team)
-    ? changeRequest.requested_team[0]
-    : changeRequest.requested_team
-
-  if (action === 'approve') {
-    // Release current team
-    if (changeRequest.current_team_id) {
-      await adminSupabase
-        .from('teams')
-        .update({ manager_id: null })
-        .eq('id', changeRequest.current_team_id)
+    if (requestError || !changeRequest) {
+      console.error('[team-change] fetch request error:', requestError?.message)
+      return Response.json({ error: 'Request not found' }, { status: 404 })
     }
 
-    // Assign requested team
-    await adminSupabase
-      .from('teams')
-      .update({ manager_id: changeRequest.requesting_user_id })
-      .eq('id', changeRequest.requested_team_id)
+    if (changeRequest.status !== 'pending') {
+      return Response.json(
+        { error: 'This request has already been reviewed' },
+        { status: 409 }
+      )
+    }
 
-    // Update request status
-    await adminSupabase
-      .from('team_change_requests')
-      .update({
-        status: 'approved',
-        reviewed_by: user.id,
-        reviewed_at: new Date().toISOString(),
+    const requestedTeam = Array.isArray(changeRequest.requested_team)
+      ? changeRequest.requested_team[0]
+      : changeRequest.requested_team
+
+    if (action === 'approve') {
+      // Release current team
+      if (changeRequest.current_team_id) {
+        const { error: relErr } = await adminSupabase
+          .from('teams')
+          .update({ manager_id: null })
+          .eq('id', changeRequest.current_team_id)
+        if (relErr) throw new Error(`release current team: ${relErr.message}`)
+      }
+
+      // Assign requested team
+      const { error: assignErr } = await adminSupabase
+        .from('teams')
+        .update({ manager_id: changeRequest.requesting_user_id })
+        .eq('id', changeRequest.requested_team_id)
+      if (assignErr) throw new Error(`assign team: ${assignErr.message}`)
+
+      // Update request status
+      const { error: statusErr } = await adminSupabase
+        .from('team_change_requests')
+        .update({
+          status: 'approved',
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', request_id)
+      if (statusErr) throw new Error(`update status: ${statusErr.message}`)
+
+      // Notify user
+      await insertNotificationsAndPush(adminSupabase, {
+        user_id: changeRequest.requesting_user_id,
+        type: 'team_request_reviewed',
+        title: 'Team Change Approved',
+        body: `Your team change to ${requestedTeam?.name ?? 'your new team'} has been approved.`,
+        data: {
+          approved: 'true',
+          team: requestedTeam?.name ?? '',
+          team_id: changeRequest.requested_team_id,
+        },
       })
-      .eq('id', request_id)
 
-    // Notify user
-    await insertNotificationsAndPush(adminSupabase, {
-      user_id: changeRequest.requesting_user_id,
-      type: 'team_request_reviewed',
-      title: 'Team Change Approved',
-      body: `Your team change to ${requestedTeam?.name ?? 'your new team'} has been approved.`,
-      data: {
-        approved: 'true',
-        team: requestedTeam?.name ?? '',
-        team_id: changeRequest.requested_team_id,
-      },
-    })
-
-    // Audit log
-    await adminSupabase.from('audit_log').insert({
-      admin_id: user.id,
-      action: 'approve_team_change',
-      target_type: 'team_change_request',
-      target_id: request_id,
-      details: {
-        requesting_user_id: changeRequest.requesting_user_id,
-        from_team_id: changeRequest.current_team_id,
-        to_team_id: changeRequest.requested_team_id,
-      },
-    })
-  } else {
-    // Deny
-    await adminSupabase
-      .from('team_change_requests')
-      .update({
-        status: 'denied',
-        reviewed_by: user.id,
-        reviewed_at: new Date().toISOString(),
+      // Audit log
+      const { error: auditErr } = await adminSupabase.from('audit_log').insert({
+        admin_id: user.id,
+        action: 'approve_team_change',
+        target_type: 'team_change_request',
+        target_id: request_id,
+        details: {
+          requesting_user_id: changeRequest.requesting_user_id,
+          from_team_id: changeRequest.current_team_id,
+          to_team_id: changeRequest.requested_team_id,
+        },
       })
-      .eq('id', request_id)
+      if (auditErr) console.error('[team-change] audit log error:', auditErr.message)
+    } else {
+      // Deny
+      const { error: statusErr } = await adminSupabase
+        .from('team_change_requests')
+        .update({
+          status: 'denied',
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', request_id)
+      if (statusErr) throw new Error(`update status: ${statusErr.message}`)
 
-    // Notify user
-    await insertNotificationsAndPush(adminSupabase, {
-      user_id: changeRequest.requesting_user_id,
-      type: 'team_request_reviewed',
-      title: 'Team Change Denied',
-      body: 'Your team change request was denied.',
-      data: {
-        approved: 'false',
-        team: requestedTeam?.name ?? '',
-        team_id: changeRequest.requested_team_id,
-      },
-    })
+      // Notify user
+      await insertNotificationsAndPush(adminSupabase, {
+        user_id: changeRequest.requesting_user_id,
+        type: 'team_request_reviewed',
+        title: 'Team Change Denied',
+        body: 'Your team change request was denied.',
+        data: {
+          approved: 'false',
+          team: requestedTeam?.name ?? '',
+          team_id: changeRequest.requested_team_id,
+        },
+      })
 
-    // Audit log
-    await adminSupabase.from('audit_log').insert({
-      admin_id: user.id,
-      action: 'deny_team_change',
-      target_type: 'team_change_request',
-      target_id: request_id,
-      details: {
-        requesting_user_id: changeRequest.requesting_user_id,
-        requested_team_id: changeRequest.requested_team_id,
-      },
-    })
+      // Audit log
+      const { error: auditErr } = await adminSupabase.from('audit_log').insert({
+        admin_id: user.id,
+        action: 'deny_team_change',
+        target_type: 'team_change_request',
+        target_id: request_id,
+        details: {
+          requesting_user_id: changeRequest.requesting_user_id,
+          requested_team_id: changeRequest.requested_team_id,
+        },
+      })
+      if (auditErr) console.error('[team-change] audit log error:', auditErr.message)
+    }
+
+    // Clear the "Approve?" team_request notifications for all admins so the
+    // reviewed request no longer shows up in anyone's notification feed.
+    const { error: notifErr } = await adminSupabase
+      .from('notifications')
+      .delete()
+      .eq('type', 'team_request')
+      .eq('data->>requesting_user_id', changeRequest.requesting_user_id)
+      .eq('data->>requested_team_id', changeRequest.requested_team_id)
+    if (notifErr) console.error('[team-change] notification cleanup error:', notifErr.message)
+
+    return Response.json({ success: true, action })
+  } catch (err) {
+    console.error('[team-change] error:', err)
+    return Response.json(
+      { error: err instanceof Error ? err.message : 'Internal error' },
+      { status: 500 }
+    )
   }
-
-  // Mark the requesting admin's own notification as read
-  await adminSupabase.from('notifications')
-    .update({ read: true })
-    .eq('user_id', user.id)
-    .eq('type', 'team_request')
-    .eq('read', false)
-
-  return Response.json({ success: true, action })
 }

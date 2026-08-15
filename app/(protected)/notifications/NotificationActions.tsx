@@ -146,19 +146,27 @@ export function TeamChangeRequestRow({
   const [loading, setLoading] = useState<'approve' | 'deny' | null>(null)
   const [done, setDone] = useState(false)
   const [result, setResult] = useState<'approved' | 'denied' | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const act = async (action: 'approve' | 'deny') => {
     setLoading(action)
+    setErrorMsg(null)
     try {
       const res = await fetch('/api/admin/team-change', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ request_id: request.id, action }),
       })
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setErrorMsg(body.error ?? `Request failed (${res.status})`)
+        return
+      }
       setResult(action === 'approve' ? 'approved' : 'denied')
       setDone(true)
       setTimeout(() => router.refresh(), 800)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong. Try again.')
     } finally {
       setLoading(null)
     }
@@ -190,23 +198,30 @@ export function TeamChangeRequestRow({
           {request.current_team ? `Currently: ${request.current_team.name}` : 'No current team'} · {dateStr}
         </p>
       </div>
-      <div className="flex gap-space-2 shrink-0">
-        <Button
-          onClick={() => act('approve')}
-          isLoading={loading === 'approve'}
-          variant="primary"
-          className="text-xs px-space-3 py-space-1.5"
-        >
-          Approve
-        </Button>
-        <Button
-          onClick={() => act('deny')}
-          isLoading={loading === 'deny'}
-          variant="destructive"
-          className="text-xs px-space-3 py-space-1.5"
-        >
-          Deny
-        </Button>
+      <div className="flex flex-col items-end gap-space-2 shrink-0">
+        <div className="flex gap-space-2">
+          <Button
+            onClick={() => act('approve')}
+            isLoading={loading === 'approve'}
+            variant="primary"
+            className="text-xs px-space-3 py-space-1.5"
+          >
+            Approve
+          </Button>
+          <Button
+            onClick={() => act('deny')}
+            isLoading={loading === 'deny'}
+            variant="destructive"
+            className="text-xs px-space-3 py-space-1.5"
+          >
+            Deny
+          </Button>
+        </div>
+        {errorMsg && (
+          <p className="text-[11px] text-feedback-error text-right max-w-[220px]">
+            {errorMsg}
+          </p>
+        )}
       </div>
     </div>
   )
