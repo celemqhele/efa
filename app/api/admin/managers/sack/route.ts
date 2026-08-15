@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { insertNotificationsAndPush } from '@/lib/notify'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -55,6 +56,19 @@ export async function POST(request: Request) {
     .update({ ended_at: now })
     .in('team_id', allClubIds)
     .is('ended_at', null)
+
+  // Notify the sacked manager (in-app + push)
+  try {
+    await insertNotificationsAndPush(adminSupabase, {
+      user_id: sackUserId,
+      type: 'sacking',
+      title: 'You have been sacked',
+      body: `Your management of ${team.name} has ended. You can pick a new team.`,
+      data: { team_id, team_name: team.name },
+    })
+  } catch (e) {
+    console.error('[managers/sack] notify failed:', e)
+  }
 
   await adminSupabase.from('audit_log').insert({
     admin_id: user.id,

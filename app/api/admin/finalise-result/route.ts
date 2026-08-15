@@ -7,6 +7,7 @@ import {
 import { recalculateStandings } from '@/lib/standings-engine'
 import type { Database } from '@/lib/supabase/types'
 import { insertNotificationsAndPush } from '@/lib/notify'
+import { notifyAdminsOfResult } from '@/lib/backdoor-notify'
 
 type MatchStatsInsert = Database['public']['Tables']['match_stats']['Insert']
 
@@ -525,6 +526,13 @@ export async function POST(request: Request) {
 
   if (notifications.length > 0) {
     await insertNotificationsAndPush(adminSupabase, notifications)
+  }
+
+  // Browser push to all admins (in-app rows come from the DB trigger)
+  try {
+    await notifyAdminsOfResult(adminSupabase, fixture_id)
+  } catch (e) {
+    console.error('[finalise-result] admin notify failed:', e)
   }
 
   await adminSupabase.from('audit_log').insert({

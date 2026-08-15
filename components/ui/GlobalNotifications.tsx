@@ -38,6 +38,9 @@ const NOTIF_ICONS: Record<string, React.ReactNode> = {
   qualification: <Star className="w-5 h-5" />,
   application_approved: <CheckCircle className="w-5 h-5" />,
   application_denied: <X className="w-5 h-5" />,
+  backdoor_submitted: <UserPlus className="w-5 h-5" />,
+  backdoor_approved: <CheckCircle className="w-5 h-5" />,
+  backdoor_declined: <X className="w-5 h-5" />,
 }
 
 function notifIcon(type: string): React.ReactNode {
@@ -47,13 +50,26 @@ function notifIcon(type: string): React.ReactNode {
 function notifIconColour(type: string): string {
   if (RESULT_TYPES.has(type) || type === 'qualification' || type === 'fixtures_released')
     return 'bg-accent/10 text-accent'
-  if (type === 'sacking' || type === 'manager_sacked' || type === 'team_request_denied' || type === 'application_denied')
+  if (type === 'sacking' || type === 'manager_sacked' || type === 'team_request_denied' || type === 'application_denied' || type === 'backdoor_declined')
     return 'bg-feedback-error/10 text-feedback-error'
-  if (type === 'team_request_approved' || type === 'application_approved')
+  if (type === 'team_request_approved' || type === 'application_approved' || type === 'backdoor_approved')
     return 'bg-feedback-success/10 text-feedback-success'
-  if (type === 'deadline_warning' || type === 'fixture_postponed')
+  if (type === 'deadline_warning' || type === 'fixture_postponed' || type === 'backdoor_submitted')
     return 'bg-feedback-warning/10 text-feedback-warning'
   return 'bg-accent/10 text-accent'
+}
+
+// Play the uploaded custom notification sound. Best-effort: if the file can't
+// load or autoplay is blocked, this fails silently and the OS notification
+// sound is the fallback.
+function playNotificationSound() {
+  try {
+    const audio = new Audio('/sounds/efa-notify.mp3')
+    audio.volume = 0.8
+    audio.play().catch(() => {})
+  } catch {
+    // ignore
+  }
 }
 
 function makeKey(n: { id?: string; type: string; title: string; body?: string }): string {
@@ -134,6 +150,7 @@ export default function GlobalNotifications() {
   const [results, setResults] = useState<PopupNotification[]>([])
   const [others, setOthers] = useState<PopupNotification[]>([])
   const dismissedKeysRef = useRef<Set<string>>(new Set())
+  const lastSoundAtRef = useRef(0)
   const supabase = createClient()
   const router = useRouter()
 
@@ -154,9 +171,15 @@ export default function GlobalNotifications() {
     }
     window.addEventListener('show-notification', handleManualNotif)
 
+    const handleSwMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'play-notification-sound') playNotificationSound()
+    }
+    navigator.serviceWorker?.addEventListener('message', handleSwMessage)
+
     return () => {
       clearInterval(interval)
       window.removeEventListener('show-notification', handleManualNotif)
+      navigator.serviceWorker?.removeEventListener('message', handleSwMessage)
     }
   }, [])
 
@@ -197,6 +220,16 @@ export default function GlobalNotifications() {
     const trulyNew = unseen.filter(n => !existingKeys.has(n.key))
     if (trulyNew.length === 0) return
 
+    // Play the custom sound for real notifications (skip manual "Saved" toasts).
+    // Deduped so a push (SW message) and the 60s poll don't double-play.
+    if (!trulyNew.every(n => n.key.startsWith('custom:'))) {
+      const now = Date.now()
+      if (now - lastSoundAtRef.current > 2000) {
+        lastSoundAtRef.current = now
+        playNotificationSound()
+      }
+    }
+
     const newResults = trulyNew.filter(n => RESULT_TYPES.has(n.type))
     const newOthers = trulyNew.filter(n => !RESULT_TYPES.has(n.type))
 
@@ -229,7 +262,8 @@ export default function GlobalNotifications() {
 
   function handleItemClick(n: PopupNotification) {
     const data = n.data ?? {}
-    if (data.fixture_id) router.push(`/fixtures/${data.fixture_id}`)
+    if (data.url) router.push(data.url)
+    else if (data.fixture_id) router.push(`/fixtures/${data.fixture_id}`)
     else if (data.team_id) router.push(`/teams/${data.team_id}`)
   }
 

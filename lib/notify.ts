@@ -10,6 +10,14 @@ export interface NotificationRow {
   push_url?: string
 }
 
+export interface AdminNotificationRow {
+  type: string
+  title: string
+  body: string
+  data?: any
+  push_url?: string
+}
+
 export function pushUrlFromData(data?: any): string {
   if (data?.fixture_id) return `/fixtures/${data.fixture_id}`
   if (data?.team_id) return `/teams/${data.team_id}`
@@ -36,4 +44,31 @@ export async function insertNotificationsAndPush(
       tag: `${row.type}-${row.user_id}`,
     }).catch(() => {})
   }
+}
+
+// Insert in-app notifications + push to every admin profile.
+// Used for admin-facing events (backdoor submissions, postponements, etc.)
+export async function notifyAllAdmins(
+  supabase: SupabaseClient,
+  rows: AdminNotificationRow | AdminNotificationRow[]
+) {
+  const arr = Array.isArray(rows) ? rows : [rows]
+  if (arr.length === 0) return
+
+  const { data: admins, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+
+  if (error || !admins?.length) return
+
+  await insertNotificationsAndPush(
+    supabase,
+    arr.flatMap((row) =>
+      admins.map((a) => ({
+        ...row,
+        user_id: a.id,
+      }))
+    )
+  )
 }

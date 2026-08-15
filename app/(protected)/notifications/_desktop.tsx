@@ -20,6 +20,9 @@ const NOTIFICATION_ICON: Record<string, ReactNode> = {
   deadline_warning: <AlertTriangle className="w-4 h-4" />,
   super_cup: <Star className="w-4 h-4" />,
   qualification: <Star className="w-4 h-4" />,
+  backdoor_submitted: <UserPlus className="w-4 h-4" />,
+  backdoor_approved: <CheckCircle className="w-4 h-4" />,
+  backdoor_declined: <X className="w-4 h-4" />,
 }
 
 function getIcon(type: string): ReactNode {

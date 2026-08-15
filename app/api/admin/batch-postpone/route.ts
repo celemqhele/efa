@@ -1,6 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { addDays, format, parseISO, isAfter } from 'date-fns'
-import { insertNotificationsAndPush } from '@/lib/notify'
+import { insertNotificationsAndPush, notifyAllAdmins } from '@/lib/notify'
 
 const APP_TIME_ZONE = 'Africa/Johannesburg'
 
@@ -160,6 +160,21 @@ export async function POST(request: Request) {
     if (inAppRows.length > 0) {
       await insertNotificationsAndPush(adminSupabase, inAppRows)
     }
+  } catch {
+    // ignore notification errors
+  }
+
+  // Notify all admins (in-app + browser push)
+  try {
+    const summary = updates
+      .map((u) => `${u.home?.name ?? 'Home'} vs ${u.away?.name ?? 'Away'}`)
+      .join(', ')
+    await notifyAllAdmins(adminSupabase, {
+      type: 'fixture_postponed',
+      title: `${updates.length} Match${updates.length === 1 ? '' : 'es'} Postponed`,
+      body: `${summary}${reason ? ` — Reason: ${reason}` : ''}`,
+      data: { fixture_ids: updates.map((u) => u.id) },
+    })
   } catch {
     // ignore notification errors
   }

@@ -4,6 +4,7 @@ import {
   fetchImageBytes,
   normalizeToLandscape,
   sendTextMessage,
+  sendContactMessage,
   analyzeScreenshot,
   cleanOcrText,
   cleanOcrWithGroq,
@@ -15,6 +16,7 @@ import { parseScreenshot } from '@/lib/screenshot-parser'
 import { createAdminClient } from '@/lib/supabase/server'
 import { CAT_SYSTEM_PROMPT, buildConversationContext, formatStatsBlock } from '@/lib/system-prompt'
 import { sendPushToUsers } from '@/lib/push'
+import { notifyBackdoorSubmitted, notifyBackdoorDecision } from '@/lib/backdoor-notify'
 import { parseUserDate } from '@/lib/date-parser'
 import { recalculateStandings } from '@/lib/standings-engine'
 
@@ -269,6 +271,10 @@ type SessionData = {
   screenshot_media_id: string | null
   displayed_fixtures: string[] | null
   pending_date: string | null
+  team_id: string | null
+  // Phone-number update fields (result submission mismatch flow)
+  phone_update_profile_id: string | null
+  phone_update_candidates: { profileId: string; teamName: string }[] | null
   // Backdoor fields
   backdoor_fixture_ids: string[] | null
   backdoor_submission_id: string | null
@@ -541,6 +547,349 @@ async function handleSubmissionType(from: string, text: string, session: Session
     await sendTextMessage(from, 'Reply 1 or 2.', phoneNumberId)
     return
   }
+}
+
+// ─── Phone number update (result submission mismatch flow) ────────────────────
+//
+// After a result is submitted, compare the WhatsApp number the manager is
+// texting from against the phone number stored on their profile. If they no
+// longer match (or the profile has no number), offer to update it.
+
+function normalizePhone(n: string | null | undefined): string | null {
+  if (!n) return null
+  const digits = String(n).replace(/\D/g, '')
+  return digits || null
+}
+
+const PHONE_UPDATE_PROMPT =
+  '\n\nYour number on the app does not match the number you are texting from. Update? Yes or No.'
+
+async function getPhoneUpdatePrompt(from: string, session: SessionData, supabase: any): Promise<string | null> {
+  if (!session.matched_fixture_id) return null
+
+  const { data: fixture } = await supabase
+    .from('fixtures')
+    .select('home_team:teams!fixtures_home_team_id_fkey(id, name, manager:profiles!teams_manager_id_fkey(id, username, phone)), away_team:teams!fixtures_away_team_id_fkey(id, name, manager:profiles!teams_manager_id_fkey(id, username, phone))')
+    .eq('id', session.matched_fixture_id)
+    .single()
+
+  if (!fixture) return null
+
+  const managers = [fixture.home_team, fixture.away_team]
+    .map((t: any) => {
+      const team = Array.isArray(t) ? t[0] : t
+      const manager = Array.isArray(team?.manager) ? team.manager[0] : team?.manager
+      return {
+        profileId: manager?.id || null,
+        teamName: team?.name || '?',
+        phone: manager?.phone || null,
+      }
+    })
+    .filter((m: any) => m.profileId)
+
+  if (managers.length === 0) return null
+
+  const normFrom = normalizePhone(from)
+
+  // If the texting number matches a manager's stored number, that manager is the
+  // submitter — numbers agree, nothing to update.
+  if (managers.some(m => normalizePhone(m.phone) === normFrom)) return null
+
+  // Otherwise the submitter is a manager whose stored number is missing/different.
+  const candidates = managers.filter(m => normalizePhone(m.phone) !== normFrom)
+
+  if (candidates.length === 1) {
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_phone_update',
+      phone_update_profile_id: candidates[0].profileId,
+    })
+    return PHONE_UPDATE_PROMPT
+  }
+
+  // Both managers look like candidates — ask which team they manage first.
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_phone_team_confirm',
+    phone_update_candidates: candidates.map(c => ({ profileId: c.profileId, teamName: c.teamName })),
+  })
+  return PHONE_UPDATE_PROMPT
+}
+
+async function handlePhoneUpdate(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  const lower = text.trim().toLowerCase()
+  const supabase = await createAdminClient()
+
+  if (/^(yes|yeah|yep|y|ja|ok|okay|sure|update|confirm)$/i.test(lower)) {
+    if (!session.phone_update_profile_id) {
+      await clearSession(from)
+      await sendTextMessage(from, 'Something went wrong. Try again later.', phoneNumberId)
+      return
+    }
+    await supabase.from('profiles').update({ phone: from }).eq('id', session.phone_update_profile_id)
+    await clearSession(from)
+    await sendTextMessage(from, `Updated! Your number on the app is now ${from}.`, phoneNumberId)
+    return
+  }
+
+  if (/^(no|nah|nope|n|cancel)$/i.test(lower)) {
+    await clearSession(from)
+    await sendTextMessage(from, 'No problem. Your number stays as it is.', phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(from, `Update your number to ${from}? Reply YES or NO.`, phoneNumberId)
+}
+
+async function handlePhoneTeamConfirm(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  const lower = text.trim().toLowerCase()
+  const supabase = await createAdminClient()
+
+  if (/^cancel$/i.test(lower)) {
+    await clearSession(from)
+    await sendTextMessage(from, 'No problem. Your number stays as it is.', phoneNumberId)
+    return
+  }
+
+  const candidates: { profileId: string; teamName: string }[] = session.phone_update_candidates || []
+  if (candidates.length === 0) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Something went wrong. Try again later.', phoneNumberId)
+    return
+  }
+
+  const match = candidates.find(c =>
+    c.teamName.toLowerCase() === lower ||
+    lower.includes(c.teamName.toLowerCase()) ||
+    c.teamName.toLowerCase().includes(lower),
+  )
+
+  if (!match) {
+    await sendTextMessage(from, `Which team do you manage? Reply ${candidates.map(c => c.teamName).join(' or ')}. Type CANCEL to skip.`, phoneNumberId)
+    return
+  }
+
+  await supabase.from('profiles').update({ phone: from }).eq('id', match.profileId)
+  await clearSession(from)
+  await sendTextMessage(from, `Updated! Your number on the app is now ${from}.`, phoneNumberId)
+}
+
+// ─── Check fixtures flow ───────────────────────────────────────────────────────
+
+function formatDateLabel(dateKey: string): string {
+  try {
+    const d = new Date(`${dateKey}T00:00:00.000Z`)
+    if (Number.isNaN(d.getTime())) return dateKey
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+  } catch {
+    return dateKey
+  }
+}
+
+async function sendFixturesForTeam(from: string, teamId: string, teamName: string, dateKey: string | null, phoneNumberId: string) {
+  const supabase = await createAdminClient()
+  const useDate = dateKey || new Date().toISOString().slice(0, 10)
+
+  const { data: fixtures } = await supabase
+    .from('fixtures')
+    .select('id, status, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .or(`and(home_team_id.eq.${teamId},scheduled_date.eq.${useDate}),and(away_team_id.eq.${teamId},scheduled_date.eq.${useDate})`)
+    .in('status', ['scheduled', 'confirmed'])
+    .order('matchday', { ascending: true })
+    .order('scheduled_date', { ascending: true })
+
+  const allFixtures = (fixtures as any[]) || []
+
+  if (allFixtures.length === 0) {
+    await upsertSession({ phone_number: from, pending_date: useDate })
+    await sendTextMessage(from, `No fixtures found for ${teamName} on ${formatDateLabel(useDate)}.\n\nType a date (e.g. 15 Aug) to check another day, or type CANCEL to exit.`, phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    pending_date: useDate,
+    displayed_fixtures: allFixtures.map(f => f.id),
+  })
+
+  const scheduled = allFixtures.filter(f => f.status === 'scheduled')
+  const confirmed = allFixtures.filter(f => f.status === 'confirmed')
+
+  const lines: string[] = []
+  let idx = 0
+  if (scheduled.length > 0) {
+    lines.push('Scheduled:')
+    for (const f of scheduled) lines.push(formatFixtureLine(f, idx++))
+    lines.push('')
+  }
+  if (confirmed.length > 0) {
+    lines.push('Confirmed:')
+    for (const f of confirmed) lines.push(formatFixtureLine(f, idx++))
+    lines.push('')
+  }
+
+  await sendTextMessage(from, `Fixtures for ${teamName} on ${formatDateLabel(useDate)}:\n\n${lines.join('\n')}\n\nReply with a number to get your opponent's contact, or type a date (e.g. 15 Aug) to check fixtures for another day. Type CANCEL to exit.`, phoneNumberId)
+}
+
+async function handleFixturesTeam(from: string, text: string, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const teamName = await resolveTeamName(text.trim())
+  if (!teamName) {
+    await sendTextMessage(from, `Could not find a team matching "${text.trim()}". Please write the full team name. Type CANCEL to exit.`, phoneNumberId)
+    return
+  }
+
+  const { data: team } = await supabase
+    .from('teams')
+    .select('id, name, manager:profiles!teams_manager_id_fkey(id, phone)')
+    .eq('name', teamName)
+    .maybeSingle()
+  if (!team) {
+    await sendTextMessage(from, `Could not find a team matching "${text.trim()}". Please write the full team name. Type CANCEL to exit.`, phoneNumberId)
+    return
+  }
+
+  const manager = Array.isArray(team.manager) ? team.manager[0] : team.manager
+  const storedPhone = normalizePhone(manager?.phone || null)
+  const normFrom = normalizePhone(from)
+  const phoneMatches = storedPhone !== null && storedPhone === normFrom
+
+  // Number matches (or there is no manager profile to compare) → fixtures directly.
+  if (!manager?.id || phoneMatches) {
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_fixtures_action',
+      home_team: team.name,
+      team_id: team.id,
+    })
+    await sendFixturesForTeam(from, team.id, team.name, null, phoneNumberId)
+    return
+  }
+
+  // Number is missing or different from what's on the system → offer to update
+  // before showing the fixtures (yes updates, later skips; fixtures show either way).
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_fixtures_phone_confirm',
+    home_team: team.name,
+    team_id: team.id,
+    phone_update_profile_id: manager.id,
+  })
+  await sendTextMessage(from, `The number you are texting from does not match the number on the system for ${team.name}. Update? Yes or Later.`, phoneNumberId)
+}
+
+async function handleFixturesPhoneConfirm(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  const lower = text.trim().toLowerCase()
+  const supabase = await createAdminClient()
+
+  const affirm = /^(yes|yeah|yep|y|ja|ok|okay|sure|update|confirm)$/i.test(lower)
+  const decline = /^(later|no|nah|nope|n|skip)$/i.test(lower)
+
+  if (affirm) {
+    if (session.phone_update_profile_id) {
+      await supabase.from('profiles').update({ phone: from }).eq('id', session.phone_update_profile_id)
+      await sendTextMessage(from, 'Updated!', phoneNumberId)
+    } else {
+      await sendTextMessage(from, 'Could not update — no profile saved for this team.', phoneNumberId)
+    }
+  } else if (decline) {
+    await sendTextMessage(from, 'No problem. Here are your fixtures.', phoneNumberId)
+  } else {
+    await sendTextMessage(from, 'Update the number you are texting from? Reply YES or LATER.', phoneNumberId)
+    return
+  }
+
+  if (!session.team_id) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Something went wrong. Type "check fixtures" to start again.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_fixtures_action',
+    home_team: session.home_team,
+    team_id: session.team_id,
+    phone_update_profile_id: null,
+  })
+  await sendFixturesForTeam(from, session.team_id, session.home_team || 'your team', null, phoneNumberId)
+}
+
+async function sendOpponentContact(from: string, fixtureId: string, myTeamId: string, phoneNumberId: string) {
+  const supabase = await createAdminClient()
+  const { data: fixture } = await supabase
+    .from('fixtures')
+    .select('home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name, manager:profiles!teams_manager_id_fkey(id, username, phone, whatsapp_number)), away_team:teams!fixtures_away_team_id_fkey(id, name, manager:profiles!teams_manager_id_fkey(id, username, phone, whatsapp_number))')
+    .eq('id', fixtureId)
+    .single()
+
+  if (!fixture) {
+    await sendTextMessage(from, 'Could not load that fixture. Try again.', phoneNumberId)
+    return
+  }
+
+  const homeTeam = Array.isArray(fixture.home_team) ? fixture.home_team[0] : fixture.home_team
+  const awayTeam = Array.isArray(fixture.away_team) ? fixture.away_team[0] : fixture.away_team
+  const opponent = String(fixture.home_team_id) === String(myTeamId) ? awayTeam : homeTeam
+
+  if (!opponent) {
+    await sendTextMessage(from, 'Could not find the opponent for that fixture.', phoneNumberId)
+    return
+  }
+
+  const manager = Array.isArray(opponent.manager) ? opponent.manager[0] : opponent.manager
+  const phoneRaw = manager?.phone || manager?.whatsapp_number || null
+  const phone = phoneRaw ? String(phoneRaw).replace(/\D/g, '') : null
+
+  if (!phone) {
+    await sendTextMessage(from, `No contact number is saved for ${opponent.name} yet.`, phoneNumberId)
+    return
+  }
+
+  await sendContactMessage(from, { formattedName: opponent.name, phone }, phoneNumberId)
+}
+
+async function handleFixturesAction(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+
+  const trimmed = text.trim()
+  const isPureNumber = /^\d+$/.test(trimmed)
+
+  if (isPureNumber) {
+    const num = parseInt(trimmed, 10)
+    if (session.displayed_fixtures && num >= 1 && num <= session.displayed_fixtures.length) {
+      if (!session.team_id) {
+        await clearSession(from)
+        await sendTextMessage(from, 'Something went wrong. Type "check fixtures" to start again.', phoneNumberId)
+        return
+      }
+      await sendOpponentContact(from, session.displayed_fixtures[num - 1], session.team_id, phoneNumberId)
+      return
+    }
+  }
+
+  const parsed = parseUserDate(trimmed)
+  if (parsed) {
+    if (!session.team_id) {
+      await clearSession(from)
+      await sendTextMessage(from, 'Something went wrong. Type "check fixtures" to start again.', phoneNumberId)
+      return
+    }
+    await sendFixturesForTeam(from, session.team_id, session.home_team || 'your team', parsed.dateKey, phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(from, `Reply with a number from the list to get your opponent's contact, or type a date (e.g. 15 Aug) to check fixtures for another day. Type CANCEL to exit.`, phoneNumberId)
 }
 
 // ─── Backdoor User Flow ──────────────────────────────────────────────────────────
@@ -866,6 +1215,24 @@ async function handleBackdoorSideSelect(from: string, text: string, session: Ses
     return
   }
 
+  // Notify all admins (in-app + browser push)
+  try {
+    const { data: fx } = await supabase
+      .from('fixtures')
+      .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+      .eq('id', session.matched_fixture_id)
+      .single()
+    await notifyBackdoorSubmitted(supabase, {
+      submissionId: submission.id,
+      fixtureId: session.matched_fixture_id!,
+      nonRespondingSide: side,
+      homeName: fixtureTeamName(fx, 'home'),
+      awayName: fixtureTeamName(fx, 'away'),
+    })
+  } catch (e) {
+    console.error('[backdoor] admin notify failed:', e)
+  }
+
   await clearSession(from)
   await sendTextMessage(from, 'Thanks. Admin will review and get back to you.', phoneNumberId)
 }
@@ -1088,6 +1455,13 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
       .update({ status: 'approved', reviewed_by: adminUserId, reviewed_at: new Date().toISOString() })
       .in('id', submissionIds)
 
+    // Notify the reporting manager(s) (in-app + push) + admins (push)
+    try {
+      await notifyBackdoorDecision(supabase, submissionIds, 'approved')
+    } catch (e) {
+      console.error('[backdoor] approve notify failed:', e)
+    }
+
     // Recalculate standings
     const { data: fixData } = await supabase.from('fixtures').select('tournament_id').eq('id', fixtureId).single()
     if (fixData?.tournament_id) {
@@ -1102,6 +1476,13 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
       .from('backdoor_submissions')
       .update({ status: 'declined', reviewed_by: adminUserId, reviewed_at: new Date().toISOString() })
       .in('id', submissionIds)
+
+    // Notify the reporting manager(s) (in-app + push)
+    try {
+      await notifyBackdoorDecision(supabase, submissionIds, 'declined')
+    } catch (e) {
+      console.error('[backdoor] decline notify failed:', e)
+    }
 
     await sendTextMessage(from, 'Declined. Fixture remains scheduled.', phoneNumberId)
   }
@@ -1306,6 +1687,42 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   }
   if (session?.state === 'awaiting_backdoor_side') {
     await handleBackdoorSide(from, text, phoneNumberId)
+    return
+  }
+  // ─── Phone number update (after result submission) ────────────────────────
+  if (session?.state === 'awaiting_phone_update') {
+    await handlePhoneUpdate(from, text, session, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_phone_team_confirm') {
+    await handlePhoneTeamConfirm(from, text, session, phoneNumberId)
+    return
+  }
+  // ─── Check fixtures ───────────────────────────────────────────────────────
+  if (session?.state === 'awaiting_fixtures_team') {
+    await handleFixturesTeam(from, text, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_fixtures_phone_confirm') {
+    await handleFixturesPhoneConfirm(from, text, session, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_fixtures_action') {
+    await handleFixturesAction(from, text, session, phoneNumberId)
+    return
+  }
+  if (/^(check\s*)?(my\s*)?fixtures?$/i.test(text.trim())) {
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_fixtures_team',
+      home_team: null,
+      team_id: null,
+      pending_date: null,
+      displayed_fixtures: null,
+      phone_update_profile_id: null,
+      phone_update_candidates: null,
+    })
+    await sendTextMessage(from, 'What is your team name? Type CANCEL to exit.', phoneNumberId)
     return
   }
   // User types "backdoor" -> show menu (also accept common variants)
@@ -2219,8 +2636,19 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   }
 
   console.log('[webhook] result written:', { fixture_id: session.matched_fixture_id, home_score: homeScore, away_score: awayScore, submitted_by: adminUserId })
-  await clearSession(from)
-  await sendTextMessage(from, `Result submitted!${forfeitBalanceNote}\n\nCheck your standings here: https://efa-fxyk.vercel.app/standings`, phoneNumberId)
+
+  const submittedMessage = `Result submitted!${forfeitBalanceNote}\n\nCheck your standings here: https://efa-fxyk.vercel.app/standings`
+
+  // If the number the manager is texting from no longer matches their stored
+  // profile phone, append an offer to update it (session stays live for the
+  // follow-up answer).
+  const phoneUpdatePrompt = await getPhoneUpdatePrompt(from, session, supabase)
+  if (phoneUpdatePrompt) {
+    await sendTextMessage(from, submittedMessage + phoneUpdatePrompt, phoneNumberId)
+  } else {
+    await clearSession(from)
+    await sendTextMessage(from, submittedMessage, phoneNumberId)
+  }
 
   // Send push notification to admin
   if (adminUserId) {

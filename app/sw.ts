@@ -23,13 +23,38 @@ serwist.addEventListeners()
 self.addEventListener('push', (event: any) => {
   if (!event.data) return
   const data = event.data.json()
+  const tag = data.tag || 'efa-notification'
   event.waitUntil(
-    self.registration.showNotification(data.title || 'EFA', {
-      body: data.body || '',
-      icon: '/icon-192.png',
-      tag: data.tag || 'efa-notification',
-      data: { url: data.url || '/' },
-    })
+    (async () => {
+      await self.registration.showNotification(data.title || 'EFA', {
+        body: data.body || '',
+        icon: '/icon-192.png',
+        tag,
+        data: { url: data.url || '/' },
+        silent: false,
+        vibrate: [200, 100, 200],
+        renotify: true,
+      })
+
+      // Custom sound: if a window is open, tell it to play the sound (service
+      // worker audio is unreliable). Otherwise best-effort from the worker —
+      // on failure the OS/browser default notification sound (silent: false)
+      // is the fallback.
+      try {
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        if (clients.length > 0) {
+          for (const client of clients) {
+            client.postMessage({ type: 'play-notification-sound' })
+          }
+        } else {
+          const audio = new Audio('/sounds/efa-notify.mp3')
+          audio.volume = 0.8
+          await audio.play()
+        }
+      } catch {
+        // ignore — system notification sound remains the fallback
+      }
+    })()
   )
 })
 

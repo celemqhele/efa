@@ -71,6 +71,16 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
     setLoadingFixtureId(fixtureId)
     setActionError(null)
 
+    const notifyDecision = async (outcome: 'approved' | 'declined') => {
+      try {
+        await fetch('/api/admin/backdoor/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ submissionIds, outcome }),
+        })
+      } catch (e) {}
+    }
+
     try {
       if (action === 'approve') {
         // Determine outcome based on number of submissions
@@ -128,6 +138,8 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
             body: JSON.stringify({ tournament_id: fixData.tournament_id })
           }) } catch (e) {}
         }
+
+        await notifyDecision('approved')
       } else {
         // Decline
         const { data: { user } } = await supabase.auth.getUser()
@@ -137,6 +149,8 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
           .from('backdoor_submissions')
           .update({ status: 'declined', reviewed_by: user.id, reviewed_at: new Date().toISOString() })
           .in('id', submissionIds)
+
+        await notifyDecision('declined')
       }
 
       setRefreshKey(k => k + 1)

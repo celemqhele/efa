@@ -184,6 +184,35 @@ export async function sendTextMessage(to: string, body: string, phoneNumberId: s
   }
 }
 
+export async function sendContactMessage(
+  to: string,
+  contact: { formattedName: string; phone: string },
+  phoneNumberId: string,
+): Promise<void> {
+  const res = await fetch(`${GRAPH_API}/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: authHeader(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'contacts',
+      contacts: [
+        {
+          name: { formatted_name: contact.formattedName },
+          phones: [{ phone: contact.phone, type: 'CELL' }],
+        },
+      ],
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    console.error('WhatsApp contact send failed:', err)
+  }
+}
+
 export async function cleanOcrText(ocrText: string): Promise<OcrCleanedResult | null> {
   const prompt = `You are reading OCR output from a screenshot of the mobile game eFootball. The OCR text may contain garbled characters, split lines, or misread text.
 

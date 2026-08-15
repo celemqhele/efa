@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { insertNotificationsAndPush } from '@/lib/notify'
+import { insertNotificationsAndPush, notifyAllAdmins } from '@/lib/notify'
 
 const APP_TIME_ZONE = 'Africa/Johannesburg'
 
@@ -112,6 +112,15 @@ export async function POST(request: Request) {
         }))
       )
     }
+
+    // Notify all admins (in-app + browser push)
+    await notifyAllAdmins(adminSupabase, {
+      type: 'fixture_postponed',
+      title: 'Match Postponed',
+      body: `${matchLabel} moved from ${oldWhen} to ${newWhen}.`,
+      data: { fixture_id: fixtureId },
+      push_url: `/fixtures/${fixtureId}`,
+    })
   } catch {
     // Silently swallow notification errors — the postpone itself succeeded
   }
