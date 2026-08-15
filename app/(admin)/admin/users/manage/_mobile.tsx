@@ -47,18 +47,24 @@ export default function Mobile({ data }: { data: any }) {
                     <span className="text-text-muted text-xs ml-auto">{new Date(app.created_at).toLocaleDateString('en-GB')}</span>
                   </div>
                   <div className="flex items-center gap-space-2 flex-wrap">
-                    {team?.logo_league_folder && (
-                      <Image
-                        src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                        alt="" width={20} height={20} className="object-contain"
-                      />
-                    )}
-                    <span className="text-text-primary text-sm">Wants to manage: <strong>{team?.name}</strong></span>
-                    {currentManagerName && (
-                      <span className="text-text-muted text-xs">(Current: @{currentManagerName})</span>
+                    {team ? (
+                      <>
+                        {team.logo_league_folder && (
+                          <Image
+                            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                            alt="" width={20} height={20} className="object-contain"
+                          />
+                        )}
+                        <span className="text-text-primary text-sm">Wants to manage: <strong>{team.name}</strong></span>
+                        {currentManagerName && (
+                          <span className="text-text-muted text-xs">(Current: @{currentManagerName})</span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-text-muted text-xs italic">Waiting for team — assign via WhatsApp</span>
                     )}
                   </div>
-                  <ManagerApplicationButtons applicationId={app.id} />
+                  <ManagerApplicationButtons applicationId={app.id} hasTeam={!!team} />
                 </div>
               )
             })}

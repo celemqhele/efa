@@ -6,9 +6,10 @@ import { Button } from './Button'
 
 interface Props {
   applicationId: string
+  hasTeam?: boolean
 }
 
-export default function ManagerApplicationButtons({ applicationId }: Props) {
+export default function ManagerApplicationButtons({ applicationId, hasTeam = true }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState<'approve' | 'deny' | null>(null)
   const [done, setDone] = useState(false)
@@ -43,11 +44,12 @@ export default function ManagerApplicationButtons({ applicationId }: Props) {
         <Button
           onClick={() => handle('approve')}
           isLoading={loading === 'approve'}
-          disabled={!!loading && loading !== 'approve'}
+          disabled={!hasTeam || (!!loading && loading !== 'approve')}
+          title={!hasTeam ? 'Assign a team via WhatsApp (send "manager applications")' : undefined}
           variant="primary"
           className="text-xs py-space-1 px-space-3"
         >
-          Approve
+          {hasTeam ? 'Approve' : 'No team yet'}
         </Button>
         <Button
           onClick={() => handle('deny')}

@@ -59,15 +59,19 @@ export default function Desktop({ data }: { data: any }) {
                         </div>
                       </td>
                       <td className="py-space-3 pr-space-4">
-                        <div className="flex items-center gap-space-2">
-                          {team?.logo_league_folder && (
-                            <Image
-                              src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                              alt="" width={24} height={24} className="object-contain"
-                            />
-                          )}
-                          <span className="text-text-primary">{team?.name}</span>
-                        </div>
+                        {team ? (
+                          <div className="flex items-center gap-space-2">
+                            {team.logo_league_folder && (
+                              <Image
+                                src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                                alt="" width={24} height={24} className="object-contain"
+                              />
+                            )}
+                            <span className="text-text-primary">{team.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-text-muted text-xs italic">Waiting for team — assign via WhatsApp</span>
+                        )}
                       </td>
                       <td className="py-space-3 pr-space-4">
                         {currentManagerName ? (
@@ -80,7 +84,7 @@ export default function Desktop({ data }: { data: any }) {
                         {new Date(app.created_at).toLocaleDateString('en-GB')}
                       </td>
                       <td className="py-3">
-                        <ManagerApplicationButtons applicationId={app.id} />
+                        <ManagerApplicationButtons applicationId={app.id} hasTeam={!!team} />
                       </td>
                     </tr>
                   )

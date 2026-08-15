@@ -17,6 +17,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { CAT_SYSTEM_PROMPT, buildConversationContext, formatStatsBlock } from '@/lib/system-prompt'
 import { sendPushToUsers } from '@/lib/push'
 import { notifyBackdoorSubmitted, notifyBackdoorDecision } from '@/lib/backdoor-notify'
+import { insertNotificationsAndPush } from '@/lib/notify'
 import { parseUserDate } from '@/lib/date-parser'
 import { recalculateStandings } from '@/lib/standings-engine'
 
@@ -285,6 +286,13 @@ type SessionData = {
   // Submission type fields
   submission_type: 'new' | 'fix' | null
   submission_menu_step: 'menu' | null
+  // Onboarding flow (apply command)
+  onboarding_username: string | null
+  // Admin manager-assignment flow
+  admin_assign_applicants: { id: string; username: string; team_name: string | null; expires_at: string | null }[] | null
+  admin_assign_team_list: { id: string; name: string }[] | null
+  admin_assign_selected_applicant_id: string | null
+  admin_assign_selected_team_id: string | null
 }
 
 async function getSession(phoneNumber: string): Promise<SessionData | null> {
@@ -1580,6 +1588,511 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
   await clearSession(from)
 }
 
+// ─── Onboarding (apply command) ─────────────────────────────────────────────
+
+const ONBOARDING_LOGIN_URL = 'https://efa-fxyk.vercel.app/login'
+const EFA_WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/FPk19G6cr9D4dDE07HHC7T'
+const DEFAULT_USER_PASSWORD = 'Efootball@2026'
+const APPLICATION_TTL_DAYS = 7
+
+async function handleOnboardingStart(from: string, phoneNumberId: string) {
+  const supabase = await createAdminClient()
+
+  // If this phone already belongs to a profile, tell them they're registered.
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('username, whatsapp_number, phone')
+  const alreadyRegistered = (profiles ?? []).some((p: any) =>
+    phoneNumbersMatch(p.whatsapp_number, from) || phoneNumbersMatch(p.phone, from)
+  )
+
+  if (alreadyRegistered) {
+    await sendTextMessage(
+      from,
+      `You already have an EFA account. Login here: ${ONBOARDING_LOGIN_URL}`,
+      phoneNumberId
+    )
+    return
+  }
+
+  await upsertSession({ phone_number: from, state: 'awaiting_onboarding_username' })
+  await sendTextMessage(
+    from,
+    'Welcome to EFA! To create your account, reply with the username you want (letters, numbers and underscores only). Type CANCEL to exit.',
+    phoneNumberId
+  )
+}
+
+async function handleOnboardingUsername(from: string, text: string, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, 'No problem. Send "apply" whenever you are ready to join.', phoneNumberId)
+    return
+  }
+  if (/^(apply|apply to join|join efa|i want to join|join the efa)$/i.test(text.trim())) {
+    await sendTextMessage(from, 'Reply with the username you want (letters, numbers and underscores only). Type CANCEL to exit.', phoneNumberId)
+    return
+  }
+
+  const username = text.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+  if (username.length < 3 || username.length > 30) {
+    await sendTextMessage(from, 'Username must be between 3 and 30 characters (letters, numbers, underscores). Try again or type CANCEL.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('username', username)
+    .maybeSingle()
+
+  if (existing) {
+    await sendTextMessage(from, `The username "@${username}" is already taken. Pick another one or type CANCEL.`, phoneNumberId)
+    return
+  }
+
+  const email = `${username}@efa.local`
+  const { data: created, error: createError } = await supabase.auth.admin.createUser({
+    email,
+    password: DEFAULT_USER_PASSWORD,
+    email_confirm: true,
+    user_metadata: { username },
+  })
+
+  if (createError || !created.user) {
+    console.error('[webhook] onboarding createUser failed:', createError?.message)
+    await clearSession(from)
+    await sendTextMessage(from, 'Sorry, something went wrong creating your account. Please try again later.', phoneNumberId)
+    return
+  }
+
+  const profileId = created.user.id
+
+  // The on_auth_user_created trigger creates the profile; insert defensively if needed.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', profileId)
+    .maybeSingle()
+
+  if (!profile) {
+    await supabase.from('profiles').insert({ id: profileId, username, whatsapp_number: from })
+  } else {
+    await supabase.from('profiles').update({ whatsapp_number: from }).eq('id', profileId)
+  }
+
+  // Record the onboarding application (expires in 7 days, no team yet)
+  const { error: appError } = await supabase.from('manager_applications').insert({
+    applicant_id: profileId,
+    team_id: null,
+    status: 'pending',
+    expires_at: new Date(Date.now() + APPLICATION_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+  })
+  if (appError) console.error('[webhook] onboarding application insert failed:', appError.message)
+
+  await upsertSession({ phone_number: from, state: 'idle', onboarding_username: username })
+  await sendTextMessage(
+    from,
+    `Your EFA account is ready!\n\nUsername: ${username}\nPassword: ${DEFAULT_USER_PASSWORD}\n\nLogin here: ${ONBOARDING_LOGIN_URL}\n\nJoin the WhatsApp group: ${EFA_WHATSAPP_GROUP_URL}\n\nYour application has been submitted and stays valid for ${APPLICATION_TTL_DAYS} days.`,
+    phoneNumberId
+  )
+}
+
+// ─── Admin: manager applications assignment flow ────────────────────────────
+
+async function handleManagerApplicationsStart(from: string, phoneNumberId: string) {
+  if (!isAdminPhone(from)) {
+    await sendTextMessage(from, 'Admin only.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+
+  const { data: apps } = await supabase
+    .from('manager_applications')
+    .select(`
+      id, team_id, expires_at, created_at,
+      applicant:profiles!manager_applications_applicant_id_fkey(id, username),
+      team:teams!manager_applications_team_id_fkey(id, name)
+    `)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+
+  const now = Date.now()
+  const active = (apps ?? []).filter((a: any) => {
+    if (!a.expires_at) return true
+    return new Date(a.expires_at).getTime() > now
+  })
+
+  if (active.length === 0) {
+    await sendTextMessage(from, 'No pending manager applications right now.', phoneNumberId)
+    return
+  }
+
+  const applicantList = active.map((a: any) => {
+    const applicant = Array.isArray(a.applicant) ? a.applicant[0] : a.applicant
+    const team = Array.isArray(a.team) ? a.team[0] : a.team
+    return {
+      id: a.id as string,
+      username: (applicant?.username ?? 'Unknown') as string,
+      team_name: (team?.name ?? null) as string | null,
+      expires_at: (a.expires_at ?? null) as string | null,
+    }
+  })
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_admin_assign_applicant',
+    admin_assign_applicants: applicantList,
+  })
+
+  const lines = applicantList.map((a, i) => {
+    const teamLabel = a.team_name ? ` wants ${a.team_name}` : ' (no team yet)'
+    return `${i + 1}. @${a.username}${teamLabel}`
+  })
+
+  await sendTextMessage(
+    from,
+    `Pending Manager Applications:\n\n${lines.join('\n')}\n\nReply with a number to assign a team. Type CANCEL.`,
+    phoneNumberId
+  )
+}
+
+async function getTeamsForAssignment(supabase: any): Promise<{ id: string; name: string }[]> {
+  const teamMap = new Map<string, string>()
+
+  // Teams in active tournaments
+  const { data: tournaments } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('status', 'active')
+
+  if (tournaments?.length) {
+    const { data: participants } = await supabase
+      .from('tournament_participants')
+      .select('team_id, team:teams(id, name)')
+      .in('tournament_id', tournaments.map((t: any) => t.id))
+
+    for (const p of participants ?? []) {
+      const team = Array.isArray(p.team) ? p.team[0] : p.team
+      if (team?.id && team?.name) teamMap.set(team.id, team.name)
+    }
+  }
+
+  // Teams that lost via backdoor in the last 7 days (now available)
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const { data: backdoorSubs } = await supabase
+    .from('backdoor_submissions')
+    .select(`
+      side_claimed,
+      fixture:fixtures(id, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name), away_team:teams!fixtures_away_team_id_fkey(id, name))
+    `)
+    .eq('status', 'approved')
+    .gte('reviewed_at', cutoff)
+
+  for (const s of backdoorSubs ?? []) {
+    const fixture = Array.isArray(s.fixture) ? s.fixture[0] : s.fixture
+    if (!fixture) continue
+    const home = Array.isArray(fixture.home_team) ? fixture.home_team[0] : fixture.home_team
+    const away = Array.isArray(fixture.away_team) ? fixture.away_team[0] : fixture.away_team
+    const loserId = s.side_claimed === 'home' ? fixture.away_team_id : fixture.home_team_id
+    const loser = loserId === home?.id ? home : away
+    if (loser?.id && loser?.name) teamMap.set(loser.id, loser.name)
+  }
+
+  return Array.from(teamMap.entries())
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 30)
+}
+
+async function handleManagerApplicationsApplicant(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+
+  const applicants = session.admin_assign_applicants ?? []
+  const num = parseInt(text.trim(), 10)
+  if (isNaN(num) || num < 1 || num > applicants.length) {
+    await sendTextMessage(from, `Pick a number between 1 and ${applicants.length}. Type CANCEL.`, phoneNumberId)
+    return
+  }
+
+  const selected = applicants[num - 1]
+  const supabase = await createAdminClient()
+  const teams = await getTeamsForAssignment(supabase)
+
+  if (teams.length === 0) {
+    await sendTextMessage(from, 'No teams available to assign right now.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_admin_assign_team',
+    admin_assign_selected_applicant_id: selected.id,
+    admin_assign_team_list: teams,
+  })
+
+  const lines = teams.map((t, i) => `${i + 1}. ${t.name}`).join('\n')
+  await sendTextMessage(
+    from,
+    `Assign @${selected.username} to which team?\n\n${lines}\n\nReply with a number. Type CANCEL.`,
+    phoneNumberId
+  )
+}
+
+async function handleManagerApplicationsTeam(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+
+  const teams = session.admin_assign_team_list ?? []
+  const num = parseInt(text.trim(), 10)
+  if (isNaN(num) || num < 1 || num > teams.length) {
+    await sendTextMessage(from, `Pick a number between 1 and ${teams.length}. Type CANCEL.`, phoneNumberId)
+    return
+  }
+
+  const selectedTeam = teams[num - 1]
+  const applicant = (session.admin_assign_applicants ?? []).find((a) => a.id === session.admin_assign_selected_applicant_id)
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_admin_assign_confirm',
+    admin_assign_selected_team_id: selectedTeam.id,
+  })
+
+  await sendTextMessage(
+    from,
+    `Assign @${applicant?.username ?? 'user'} to ${selectedTeam.name}? Reply yes or no. Type CANCEL.`,
+    phoneNumberId
+  )
+}
+
+async function handleManagerApplicationsConfirm(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  const lower = text.trim().toLowerCase()
+
+  if (/^cancel$/i.test(lower)) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+  if (!/^(yes|y|no|n)$/i.test(lower)) {
+    await sendTextMessage(from, 'Reply yes or no. Type CANCEL to exit.', phoneNumberId)
+    return
+  }
+  if (/^(no|n)$/i.test(lower)) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled. No changes made.', phoneNumberId)
+    return
+  }
+
+  const applicationId = session.admin_assign_selected_applicant_id
+  const teamId = session.admin_assign_selected_team_id
+
+  if (!applicationId || !teamId) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Something went wrong. Try again.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const adminId = await getAdminProfileIdByPhone(supabase, from)
+  const result = await applyManagerAssignment(supabase, applicationId, teamId, adminId)
+
+  await clearSession(from)
+
+  if (!result.success) {
+    await sendTextMessage(from, result.message, phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(from, `Done. ${result.message}`, phoneNumberId)
+}
+
+async function getAdminProfileIdByPhone(supabase: any, from: string): Promise<string | null> {
+  const { data: admins } = await supabase
+    .from('profiles')
+    .select('id, whatsapp_number, phone')
+    .eq('role', 'admin')
+
+  const match = (admins ?? []).find((a: any) =>
+    phoneNumbersMatch(a.whatsapp_number, from) || phoneNumbersMatch(a.phone, from)
+  )
+  return match?.id ?? null
+}
+
+async function applyManagerAssignment(
+  supabase: any,
+  applicationId: string,
+  teamId: string,
+  adminId: string | null
+): Promise<{ success: boolean; message: string }> {
+  const [{ data: app }, { data: team }] = await Promise.all([
+    supabase
+      .from('manager_applications')
+      .select(`
+        id, applicant_id, team_id, status,
+        applicant:profiles!manager_applications_applicant_id_fkey(id, username, sacked_at)
+      `)
+      .eq('id', applicationId)
+      .single(),
+    supabase
+      .from('teams')
+      .select('id, name, logo_league_folder, logo_team_slug, manager_id')
+      .eq('id', teamId)
+      .single(),
+  ])
+
+  if (!app || !team) return { success: false, message: 'Application or team not found.' }
+  if (app.status !== 'pending') return { success: false, message: 'That application is no longer pending.' }
+
+  const applicant = Array.isArray(app.applicant) ? app.applicant[0] : app.applicant
+  const newManagerId: string = app.applicant_id
+
+  // 1-week reassignment cooldown after a sacking
+  if (applicant?.sacked_at) {
+    const cooldownEnds = new Date(new Date(applicant.sacked_at).getTime() + 7 * 24 * 60 * 60 * 1000)
+    if (cooldownEnds.getTime() > Date.now()) {
+      return {
+        success: false,
+        message: `@${applicant.username} was recently sacked. They can be reassigned from ${cooldownEnds.toISOString()}.`,
+      }
+    }
+  }
+
+  // All sibling rows for the target club (same club across phases)
+  let allClubIds: string[] = [teamId]
+  if (team.logo_league_folder && team.logo_team_slug) {
+    const { data: siblings } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('logo_league_folder', team.logo_league_folder)
+      .eq('logo_team_slug', team.logo_team_slug)
+      .neq('id', teamId)
+    allClubIds = [teamId, ...(siblings ?? []).map((s: any) => s.id)]
+  }
+
+  const now = new Date().toISOString()
+
+  // Release any other clubs the applicant currently manages
+  const { data: managedTeams } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('manager_id', newManagerId)
+
+  const previousClubIds = (managedTeams ?? [])
+    .map((t: any) => t.id)
+    .filter((id: string) => !allClubIds.includes(id))
+
+  if (previousClubIds.length > 0) {
+    await supabase.from('teams').update({ manager_id: null }).in('id', previousClubIds)
+    await supabase
+      .from('manager_tenures' as any)
+      .update({ ended_at: now })
+      .in('team_id', previousClubIds)
+      .is('ended_at', null)
+  }
+
+  // Close the target club's open tenures and assign the new manager
+  await supabase
+    .from('manager_tenures' as any)
+    .update({ ended_at: now })
+    .in('team_id', allClubIds)
+    .is('ended_at', null)
+
+  const { error: assignErr } = await supabase
+    .from('teams')
+    .update({ manager_id: newManagerId })
+    .in('id', allClubIds)
+  if (assignErr) return { success: false, message: 'Failed to assign team: ' + assignErr.message }
+
+  await supabase.from('manager_tenures' as any).insert(
+    allClubIds.map((id) => ({
+      team_id: id,
+      manager_id: newManagerId,
+      manager_username: applicant?.username ?? 'unknown',
+      started_at: now,
+    }))
+  )
+
+  // Mark this application approved (with the chosen team)
+  await supabase
+    .from('manager_applications')
+    .update({ status: 'approved', team_id: teamId, reviewed_at: now, reviewed_by: adminId })
+    .eq('id', applicationId)
+
+  // Deny the applicant's other pending applications
+  await supabase
+    .from('manager_applications')
+    .update({ status: 'denied', reviewed_at: now, reviewed_by: adminId })
+    .eq('applicant_id', newManagerId)
+    .eq('status', 'pending')
+    .neq('id', applicationId)
+
+  // Deny other pending applications for the same team
+  await supabase
+    .from('manager_applications')
+    .update({ status: 'denied', reviewed_at: now, reviewed_by: adminId })
+    .eq('team_id', teamId)
+    .eq('status', 'pending')
+    .neq('id', applicationId)
+
+  // Notifications
+  const notifications: any[] = [
+    {
+      user_id: newManagerId,
+      type: 'application_approved',
+      title: 'Application Approved!',
+      body: `You are now the manager of ${team.name}. Good luck!`,
+      data: { team_id: teamId, team_name: team.name },
+    },
+  ]
+
+  if (team.manager_id && team.manager_id !== newManagerId) {
+    notifications.push({
+      user_id: team.manager_id,
+      type: 'manager_sacked',
+      title: 'Removed as Manager',
+      body: `You have been replaced as manager of ${team.name}.`,
+      data: { team_id: teamId, team_name: team.name },
+    })
+  }
+
+  try {
+    await insertNotificationsAndPush(supabase, notifications)
+  } catch (e) {
+    console.error('[webhook] assign notify failed:', e)
+  }
+
+  try {
+    await supabase.from('audit_log').insert({
+      admin_id: adminId ?? '00000000-0000-0000-0000-000000000000',
+      action: 'approve_manager_application',
+      target_type: 'team',
+      target_id: teamId,
+      details: {
+        team_name: team.name,
+        new_manager_id: newManagerId,
+        new_manager_username: applicant?.username ?? '',
+        previous_manager_id: team.manager_id ?? null,
+        source: 'whatsapp',
+      },
+    })
+  } catch (e) {
+    console.error('[webhook] assign audit log failed:', e)
+  }
+
+  return { success: true, message: `@${applicant?.username ?? 'user'} is now the manager of ${team.name}.` }
+}
+
 // ─── Forfeit flow ───────────────────────────────────────────────────────────
 
 async function handleForfeitYes(from: string, session: SessionData, supabase: any, phoneNumberId: string) {
@@ -1754,6 +2267,25 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   const session = await getSession(from)
   console.log('[handleText] session:', JSON.stringify(session))
 
+  // ─── Onboarding flow ──────────────────────────────────────────────────────
+  if (session?.state === 'awaiting_onboarding_username') {
+    await handleOnboardingUsername(from, text, phoneNumberId)
+    return
+  }
+  // ─── Admin: manager assignment flow ───────────────────────────────────────
+  if (session?.state === 'awaiting_admin_assign_applicant') {
+    await handleManagerApplicationsApplicant(from, text, session, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_admin_assign_team') {
+    await handleManagerApplicationsTeam(from, text, session, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_admin_assign_confirm') {
+    await handleManagerApplicationsConfirm(from, text, session, phoneNumberId)
+    return
+  }
+
   // ─── Backdoor admin flow ──────────────────────────────────────────────────
   if (session?.state === 'awaiting_backdoor_admin_review') {
     await handleBackdoorAdminReview(from, text, session, phoneNumberId)
@@ -1834,6 +2366,16 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       return
     }
     await showBackdoorSubmissionsForReview(from, phoneNumberId)
+    return
+  }
+  // ─── Onboarding command (new players) ───────────────────────────────────────
+  if (/^(apply|apply to join|join efa|join the efa|i want to join|i want to apply)$/i.test(text.trim())) {
+    await handleOnboardingStart(from, phoneNumberId)
+    return
+  }
+  // ─── Admin: manager applications command ────────────────────────────────────
+  if (/^(manager applications|manager apps)$/i.test(text.trim())) {
+    await handleManagerApplicationsStart(from, phoneNumberId)
     return
   }
   // ─── Submission type selection (after screenshot OCR) ────────────────────────

@@ -697,10 +697,60 @@ function AiGuidePage() {
               different day. Then reply with the date, e.g. "12 Jul", "July 12" or "2026-07-12".
             </Text>
           </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>fixtures / check fixtures / my fixtures</Text> — see your
+              fixtures for today and get your opponent's contact.
+            </Text>
+          </View>
           <View style={styles.rowLast}>
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
               <Text style={styles.rowLabel}>CANCEL</Text> — start over any time.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Check your fixtures */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.sectionTitle}>Check Your Fixtures</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              Send <Text style={styles.rowLabel}>"check fixtures"</Text> (or just{' '}
+              <Text style={styles.rowLabel}>"fixtures"</Text> /{' '}
+              <Text style={styles.rowLabel}>"my fixtures"</Text>) to the EFA AI any time to see your
+              fixtures for today.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              If your number is saved on your profile, the AI shows fixtures for{' '}
+              <Text style={styles.rowLabel}>all teams you manage</Text> in one list, split into
+              Scheduled and Confirmed.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              Reply with a <Text style={styles.rowLabel}>number</Text> to get your opponent's contact
+              card, or type a <Text style={styles.rowLabel}>date</Text> (e.g. "15 Aug") to check
+              fixtures for another day.
+            </Text>
+          </View>
+          <View style={styles.rowLast}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              If your number isn't on the system yet, the AI asks for your{' '}
+              <Text style={styles.rowLabel}>team name</Text> — reply with it. It may also offer to
+              update the number you're texting from, so fixtures come straight to you next time.
             </Text>
           </View>
         </View>
