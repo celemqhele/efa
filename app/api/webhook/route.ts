@@ -340,14 +340,10 @@ async function handleBackdoorSearch(from: string, text: string, phoneNumberId: s
   const searchInput = text.trim()
   const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
 
-  const { start, end } = getWeekRange()
-
   const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
-    .eq('status', 'scheduled')
-    .gte('scheduled_date', start)
-    .lte('scheduled_date', end)
+    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .in('status', ['scheduled', 'confirmed', 'awaiting_confirmation', 'completed', 'abandoned'])
     .order('scheduled_date', { ascending: true })
     .order('matchday', { ascending: true })
 
@@ -382,24 +378,20 @@ async function handleBackdoorSearch(from: string, text: string, phoneNumberId: s
   })
 
   if (matchedFixtures.length === 0) {
-    await sendTextMessage(from, `No unconfirmed fixtures found matching "${searchInput}" in the last 7 days or next 7 days. Try different team names or type CANCEL.`, phoneNumberId)
+    await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
     await clearSession(from)
     return
   }
 
+  const sortedForDisplay = sortFixturesForDisplay(matchedFixtures)
   await upsertSession({
     phone_number: from,
     state: 'awaiting_backdoor_fixture',
-    displayed_fixtures: matchedFixtures.map((f: any) => f.id),
+    displayed_fixtures: sortedForDisplay.map((f: any) => f.id),
   })
 
-  const lines = matchedFixtures.map((f: any, i: number) => {
-    const parts = [`${i + 1}. ${fixtureTeamName(f, 'home')} vs ${fixtureTeamName(f, 'away')}`]
-    if (f.scheduled_date) parts.push(f.scheduled_date)
-    if (fixtureTournamentName(f)) parts.push(fixtureTournamentName(f))
-    return parts.join(' - ')
-  })
-  await sendTextMessage(from, `Found ${matchedFixtures.length} match${matchedFixtures.length === 1 ? '' : 'es'}:\n\n${lines.join('\n')}\n\nReply with the number. Type CANCEL to abort.`, phoneNumberId)
+  const lines = formatFixtureListWithHeadings(sortedForDisplay)
+  await sendTextMessage(from, `Found ${sortedForDisplay.length} match${sortedForDisplay.length === 1 ? '' : 'es'}:\n\n${lines}\n\nReply with the number. Type CANCEL to abort.`, phoneNumberId)
 }
 
 async function handleBackdoorFixture(from: string, text: string, phoneNumberId: string) {
@@ -420,21 +412,73 @@ async function handleBackdoorFixture(from: string, text: string, phoneNumberId: 
     return
   }
   const fixtureId = session.displayed_fixtures[num - 1]
+
+  const supabase = await createAdminClient()
+  const { data } = await supabase
+    .from('fixtures')
+    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .eq('id', fixtureId)
+    .single()
+  const h = fixtureTeamName(data, 'home')
+  const a = fixtureTeamName(data, 'away')
+  const result = data ? (Array.isArray(data.results) ? data.results[0] : data.results) : null
+  const alreadyApplied = !!data && !!result && (data.status === 'confirmed' || data.status === 'awaiting_confirmation' || data.status === 'completed')
+
+  if (alreadyApplied) {
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_backdoor_override_confirm',
+      matched_fixture_id: fixtureId,
+    })
+    await sendTextMessage(from, `This match has already been applied backdoor (Result: ${h} ${result?.home_score}-${result?.away_score} ${a}). Would you like to override and correct? Reply YES or NO.`, phoneNumberId)
+    return
+  }
+
   await upsertSession({
     phone_number: from,
     state: 'awaiting_backdoor_side',
     matched_fixture_id: fixtureId,
   })
 
-  const supabase = await createAdminClient()
-  const { data } = await supabase
-    .from('fixtures')
-    .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
-    .eq('id', fixtureId)
-    .single()
-  const h = fixtureTeamName(data, 'home')
-  const a = fixtureTeamName(data, 'away')
   await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Reply "home" or "away". Type CANCEL to abort.`, phoneNumberId)
+}
+
+async function handleBackdoorOverrideConfirm(from: string, text: string, phoneNumberId: string) {
+  if (/^cancel$/i.test(text.trim())) {
+    await clearSession(from)
+    await sendTextMessage(from, "Cancelled.", phoneNumberId)
+    return
+  }
+  const session = await getSession(from)
+  if (!session?.matched_fixture_id) {
+    await clearSession(from)
+    await sendTextMessage(from, "Something went wrong. Start over.", phoneNumberId)
+    return
+  }
+  const lower = text.trim().toLowerCase()
+  if (/^yes$/i.test(lower)) {
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_backdoor_side',
+      matched_fixture_id: session.matched_fixture_id,
+    })
+    const supabase = await createAdminClient()
+    const { data } = await supabase
+      .from('fixtures')
+      .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+      .eq('id', session.matched_fixture_id)
+      .single()
+    const h = fixtureTeamName(data, 'home')
+    const a = fixtureTeamName(data, 'away')
+    await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Reply "home" or "away". Type CANCEL to abort.`, phoneNumberId)
+    return
+  }
+  if (/^no$/i.test(lower)) {
+    await clearSession(from)
+    await sendTextMessage(from, "OK. No changes made.", phoneNumberId)
+    return
+  }
+  await sendTextMessage(from, 'Reply YES or NO.', phoneNumberId)
 }
 
 async function handleBackdoorSide(from: string, text: string, phoneNumberId: string) {
@@ -458,6 +502,15 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
   const supabase = await createAdminClient()
   const adminUserId = await getAdminUserId(supabase)
 
+  // Detect if this is an override of an already-confirmed backdoor result
+  const { data: existingFix } = await supabase
+    .from('fixtures')
+    .select('id, status, tournament_id, results!results_fixture_id_fkey(home_score, away_score)')
+    .eq('id', session.matched_fixture_id)
+    .single()
+  const existingResult = existingFix ? (Array.isArray(existingFix.results) ? existingFix.results[0] : existingFix.results) : null
+  const isOverride = !!existingFix && !!existingResult && (existingFix.status === 'confirmed' || existingFix.status === 'awaiting_confirmation' || existingFix.status === 'completed')
+
   await supabase.from('result_confirmations').insert({
     fixture_id: session.matched_fixture_id,
     home_score: homeScore,
@@ -470,9 +523,15 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
     home_score: homeScore,
     away_score: awayScore,
     ...(adminUserId ? { finalised_by: adminUserId } : {}),
+    ...(isOverride ? { override_reason: 'backdoor override' } : {}),
   }, { onConflict: 'fixture_id' })
 
   await supabase.from('fixtures').update({ status: 'confirmed' }).eq('id', session.matched_fixture_id)
+
+  // Recalculate standings so the overridden result is reflected
+  if (existingFix?.tournament_id) {
+    try { await recalculateStandings(existingFix.tournament_id) } catch (e) {}
+  }
 
   const { data: fx } = await supabase
     .from('fixtures')
@@ -2301,6 +2360,10 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   }
   if (session?.state === 'awaiting_backdoor_search') {
     await handleBackdoorSearch(from, text, phoneNumberId)
+    return
+  }
+  if (session?.state === 'awaiting_backdoor_override_confirm') {
+    await handleBackdoorOverrideConfirm(from, text, phoneNumberId)
     return
   }
   if (session?.state === 'awaiting_backdoor_fixture') {
