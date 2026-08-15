@@ -574,6 +574,19 @@ function phoneNumbersMatch(stored: string | null | undefined, from: string): boo
   return false
 }
 
+// Normalizes a stored number to international E.164 digits for the WhatsApp
+// contacts API. Numbers that already carry a country code ("+27 65 261 8652",
+// "+233591519713") pass through unchanged; local SA numbers ("0795932223") get
+// the country code prepended. The WhatsApp API rejects contact cards whose
+// phone is not international format (error 131009).
+function toInternationalPhone(n: string | null | undefined): string | null {
+  let digits = normalizePhone(n)
+  if (!digits) return null
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (digits.startsWith('0')) return `27${digits.slice(1)}`
+  return digits
+}
+
 const PHONE_UPDATE_PROMPT =
   '\n\nYour number on the app does not match the number you are texting from. Update? Yes or No.'
 
@@ -916,14 +929,17 @@ async function sendOpponentContact(from: string, fixtureId: string, myTeamIds: s
 
   const manager = Array.isArray(opponent.manager) ? opponent.manager[0] : opponent.manager
   const phoneRaw = manager?.phone || manager?.whatsapp_number || null
-  const phone = phoneRaw ? String(phoneRaw).replace(/\D/g, '') : null
+  const phone = toInternationalPhone(phoneRaw)
 
   if (!phone) {
     await sendTextMessage(from, `No contact number is saved for ${opponent.name} yet.`, phoneNumberId)
     return
   }
 
-  await sendContactMessage(from, { formattedName: opponent.name, phone }, phoneNumberId)
+  const sent = await sendContactMessage(from, { formattedName: opponent.name, phone }, phoneNumberId)
+  if (!sent) {
+    await sendTextMessage(from, `Here is ${opponent.name}'s number: +${phone}`, phoneNumberId)
+  }
 }
 
 async function handleFixturesAction(from: string, text: string, session: SessionData, phoneNumberId: string) {

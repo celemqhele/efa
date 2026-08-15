@@ -188,7 +188,7 @@ export async function sendContactMessage(
   to: string,
   contact: { formattedName: string; phone: string },
   phoneNumberId: string,
-): Promise<void> {
+): Promise<boolean> {
   const res = await fetch(`${GRAPH_API}/${phoneNumberId}/messages`, {
     method: 'POST',
     headers: {
@@ -210,7 +210,9 @@ export async function sendContactMessage(
   if (!res.ok) {
     const err = await res.text()
     console.error('WhatsApp contact send failed:', err)
+    return false
   }
+  return true
 }
 
 export async function cleanOcrText(ocrText: string): Promise<OcrCleanedResult | null> {
