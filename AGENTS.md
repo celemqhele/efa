@@ -36,6 +36,15 @@ Whenever a file needs to be removed:
 
 Context files live in `.opencode/context/`, grouped into category folders.
 
+### IMPORTANT: finding context files
+The Glob/Grep file tools SKIP hidden/dot-directories, so `.opencode/` is invisible to
+them (`glob(".opencode/context/**/*.md")` returns nothing). To list/search context files
+you MUST use the shell or the Read tool instead:
+```powershell
+Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-Object FullName
+Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-String -Pattern "keyword" -SimpleMatch
+```
+
 ### Category folders
 
 - `whatsapp/` — WhatsApp/webhook bot flows
