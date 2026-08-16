@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     .from('profiles').select('role').eq('id', user.id).single()
   if (adminProfile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { team_id, user_id, logo_league_folder, logo_team_slug, name } = await request.json()
+  const { team_id, user_id, logo_league_folder, logo_team_slug, name, override } = await request.json()
   if (!user_id || (!team_id && (!logo_league_folder || !logo_team_slug))) {
     return Response.json({ error: 'user_id and (team_id or logo info) are required' }, { status: 400 })
   }
@@ -62,9 +62,9 @@ export async function POST(request: Request) {
   if (!team) return Response.json({ error: 'Team not found' }, { status: 404 })
   if (!targetProfile) return Response.json({ error: 'User not found' }, { status: 404 })
 
-  // Enforce the 1-week reassignment cooldown after a sacking
-  const SACK_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
-  if (targetProfile.sacked_at) {
+  // Enforce the 1-week reassignment cooldown after a sacking (unless overridden)
+  if (!override && targetProfile.sacked_at) {
+    const SACK_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
     const cooldownEnds = new Date(new Date(targetProfile.sacked_at).getTime() + SACK_COOLDOWN_MS)
     if (cooldownEnds.getTime() > Date.now()) {
       return Response.json({

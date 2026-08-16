@@ -86,20 +86,22 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
     }
   }
 
-  async function handleAssign(teamId: string, userId: string) {
+  async function handleAssign(teamId: string, userId: string, override: boolean = false) {
     setLoading(true)
     setError('')
     try {
       const res = await fetch('/api/admin/managers/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team_id: teamId, user_id: userId }),
+        body: JSON.stringify({ team_id: teamId, user_id: userId, override }),
       })
       const data = await res.json()
       if (!res.ok) {
-        if (data?.code === 'SACK_COOLDOWN') {
+        if (!override && data?.code === 'SACK_COOLDOWN') {
           const profile = localProfiles.find((p) => p.id === userId)
           setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
+          setLoading(false)
+          return
         }
         throw new Error(data.error ?? 'Failed to assign manager')
       }
@@ -113,6 +115,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
       }
       setSelectedTeam((t) => (t ? { ...t, manager_id: userId } : null))
       setEditingWa(false)
+      setCooldown(null)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -438,6 +441,12 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
         username={cooldown?.username ?? ''}
         cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
         onClose={() => setCooldown(null)}
+        onOverride={() => {
+          if (cooldown && selectedTeam) {
+            const user = localProfiles.find(p => p.username === cooldown.username)
+            if (user) handleAssign(selectedTeam.id, user.id, true)
+          }
+        }}
       />
     </>
   )

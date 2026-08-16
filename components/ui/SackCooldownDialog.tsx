@@ -8,9 +8,10 @@ interface Props {
   username: string
   cooldownEndsAt: string
   onClose: () => void
+  onOverride: () => void
 }
 
-export default function SackCooldownDialog({ open, username, cooldownEndsAt, onClose }: Props) {
+export default function SackCooldownDialog({ open, username, cooldownEndsAt, onClose, onOverride }: Props) {
   const date = new Date(cooldownEndsAt)
   const formatted = isNaN(date.getTime())
     ? cooldownEndsAt
@@ -26,6 +27,9 @@ export default function SackCooldownDialog({ open, username, cooldownEndsAt, onC
       <div className="flex gap-space-2 justify-end">
         <Button variant="secondary" onClick={onClose}>
           Got it
+        </Button>
+        <Button variant="danger" onClick={onOverride}>
+          Override
         </Button>
       </div>
     </BottomSheet>

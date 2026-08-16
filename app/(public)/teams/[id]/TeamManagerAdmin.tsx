@@ -59,20 +59,22 @@ export default function TeamManagerAdmin({
     }
   }
 
-  async function handleAssign(userId: string) {
+  async function handleAssign(userId: string, override: boolean = false) {
     setLoading(true)
     setError('')
     try {
       const res = await fetch('/api/admin/managers/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team_id: teamId, user_id: userId }),
+        body: JSON.stringify({ team_id: teamId, user_id: userId, override }),
       })
       const data = await res.json()
       if (!res.ok) {
-        if (data?.code === 'SACK_COOLDOWN') {
+        if (!override && data?.code === 'SACK_COOLDOWN') {
           const profile = allProfiles.find((p) => p.id === userId)
           setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
+          setLoading(false)
+          return
         }
         throw new Error(data.error ?? 'Failed')
       }
@@ -80,6 +82,7 @@ export default function TeamManagerAdmin({
       setManagerId(userId)
       setManagerUsername(profile?.username ?? null)
       setManagerAvatar(profile?.avatar_url ?? null)
+      setCooldown(null)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -180,6 +183,7 @@ export default function TeamManagerAdmin({
         username={cooldown?.username ?? ''}
         cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
         onClose={() => setCooldown(null)}
+        onOverride={() => cooldown && handleAssign(allProfiles.find(p => p.username === cooldown.username)?.id!, true)}
       />
     </div>
   )

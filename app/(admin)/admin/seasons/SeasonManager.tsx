@@ -660,32 +660,34 @@ function StartPhaseDialog({
                               if (!userId) return
                               setAssigningTeamId(team.logo_team_slug)
                               setAssignErrors((prev) => { const n = { ...prev }; delete n[team.logo_team_slug]; return n })
-                              try {
-                                const res = await fetch('/api/admin/managers/assign', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    team_id: team.id,
-                                    user_id: userId,
-                                    logo_league_folder: team.logo_league_folder,
-                                    logo_team_slug: team.logo_team_slug,
-                                    name: team.name,
-                                  }),
-                                })
-                                const data = await res.json()
-                                if (!res.ok) {
-                                  if (data?.code === 'SACK_COOLDOWN') {
-                                    const profile = users.find((u) => u.id === userId)
-                                    setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
+                                try {
+                                  const res = await fetch('/api/admin/managers/assign', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      team_id: team.id,
+                                      user_id: userId,
+                                      logo_league_folder: team.logo_league_folder,
+                                      logo_team_slug: team.logo_team_slug,
+                                      name: team.name,
+                                      override: false,
+                                    }),
+                                  })
+                                  const data = await res.json()
+                                  if (!res.ok) {
+                                    if (data?.code === 'SACK_COOLDOWN') {
+                                      const profile = users.find((u) => u.id === userId)
+                                      setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
+                                    }
+                                    throw new Error(data.error ?? 'Failed to assign')
                                   }
-                                  throw new Error(data.error ?? 'Failed to assign')
+                                  setLocalManagers((prev) => ({ ...prev, [team.logo_team_slug]: userId }))
+                                } catch (err: any) {
+                                  setAssignErrors((prev) => ({ ...prev, [team.logo_team_slug]: err.message }))
+                                } finally {
+                                  setAssigningTeamId(null)
                                 }
-                                setLocalManagers((prev) => ({ ...prev, [team.logo_team_slug]: userId }))
-                              } catch (err: any) {
-                                setAssignErrors((prev) => ({ ...prev, [team.logo_team_slug]: err.message }))
-                              } finally {
-                                setAssigningTeamId(null)
-                              }
+
                             }}
                           >
                             <option value="">{isAssigning ? 'Assigning...' : '— assign —'}</option>
@@ -857,12 +859,40 @@ function StartPhaseDialog({
           )}
         </div>
 
-        <SackCooldownDialog
-          open={!!cooldown}
-          username={cooldown?.username ?? ''}
-          cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
-          onClose={() => setCooldown(null)}
-        />
+      <SackCooldownDialog
+        open={!!cooldown}
+        username={cooldown?.username ?? ''}
+        cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
+        onClose={() => setCooldown(null)}
+        onOverride={() => {
+          if (cooldown && assigningTeamId) {
+            const user = users.find(u => u.username === cooldown.username)
+            const team = allTeams.find(t => t.logo_team_slug === assigningTeamId)
+            if (user && team) {
+              setCooldown(null)
+              fetch('/api/admin/managers/assign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  team_id: team.id,
+                  user_id: user.id,
+                  logo_league_folder: team.logo_league_folder,
+                  logo_team_slug: team.logo_team_slug,
+                  name: team.name,
+                  override: true,
+                }),
+              }).then(res => res.json()).then(data => {
+                if (data.success) {
+                  setLocalManagers((prev) => ({ ...prev, [team.logo_team_slug]: user.id }))
+                } else {
+                  setAssignErrors((prev) => ({ ...prev, [team.logo_team_slug]: data.error }))
+                }
+              })
+            }
+          }
+        }}
+      />
+
       </div>
     </div>
   )
