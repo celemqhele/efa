@@ -87,6 +87,9 @@ function TournamentCard({
     ? 'text-green-400 bg-green-500/10 border-green-500/20'
     : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
   const progress = fixtureCount > 0 ? Math.round((completedCount / fixtureCount) * 100) : 0
+  const isClubType = ['tournament_club', 'tournament_international'].includes(tournament.type)
+  const actionCount = 4 + (fixtureCount > 0 ? 1 : 0) + (isClubType ? 2 : 0)
+  const deleteClass = `${CARD_ACTION_BTN_DANGER}${actionCount % 2 === 1 ? ' col-span-2' : ''}`
 
   return (
     <div className="bg-bg-base border border-border rounded-xl p-5 space-y-4">
@@ -133,7 +136,7 @@ function TournamentCard({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
+      <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border">
         <Link
           href={`/admin/fixtures/manage?tournament=${tournament.id}`}
           className={CARD_ACTION_BTN}
@@ -158,16 +161,16 @@ function TournamentCard({
         >
           Standings
         </Link>
-        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
+        {isClubType && (
           <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={CARD_ACTION_BTN} />
         )}
-        {['tournament_club', 'tournament_international'].includes(tournament.type) && (
+        {isClubType && (
           <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={CARD_ACTION_BTN} />
         )}
         {tournament.type === 'friendlies' && (
           <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={CARD_ACTION_BTN} />
         )}
-        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={CARD_ACTION_BTN_DANGER} />
+        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={deleteClass} />
       </div>
     </div>
   )
