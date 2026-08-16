@@ -1,8 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO, isSameDay } from 'date-fns'
 import CalendarGrid from './CalendarGrid'
 import { Card } from '@/components/ui/Card'
@@ -135,7 +134,7 @@ export default function Mobile({ data }: MobileProps) {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   {f.home_team?.logo_league_folder && (
-                    <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={28} height={28} className="object-contain shrink-0" />
+                    <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt="" className="w-7 h-7 shrink-0" />
                   )}
                   <span className="text-sm font-bold text-text-primary truncate">{f.home_team?.name}</span>
                 </div>
@@ -143,7 +142,7 @@ export default function Mobile({ data }: MobileProps) {
                 <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
                   <span className="text-sm font-bold text-text-primary truncate">{f.away_team?.name}</span>
                   {f.away_team?.logo_league_folder && (
-                    <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={28} height={28} className="object-contain shrink-0" />
+                    <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt="" className="w-7 h-7 shrink-0" />
                   )}
                 </div>
               </div>

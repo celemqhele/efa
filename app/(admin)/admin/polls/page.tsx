@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { toPng } from 'html-to-image'
+import { ShieldQuestion } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { createClient } from '@/lib/supabase/client'
@@ -16,6 +17,13 @@ function TeamLogoInline({
   size?: number
 }) {
   if (!folder || !slug) return null
+  if (folder === 'custom' && slug === 'noname') {
+    return (
+      <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <ShieldQuestion size={size * 0.85} strokeWidth={1.5} style={{ color: 'var(--color-text-muted)' }} />
+      </div>
+    )
+  }
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img

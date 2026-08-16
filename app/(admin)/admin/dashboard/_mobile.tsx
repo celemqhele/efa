@@ -1,8 +1,7 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 import DueFixturesExportButton from './DueFixturesExportButton'
 import NewsTopicExportButton from './NewsTopicExportButton'
@@ -80,11 +79,12 @@ function FixtureDueCard({ fx }: { fx: any }) {
       <div className="flex items-center gap-3">
         <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
           {fx.home_team?.logo_league_folder && (
-            <Image
-              src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')}
+            <TeamLogo
+              leagueFolder={fx.home_team.logo_league_folder}
+              teamSlug={fx.home_team.logo_team_slug}
+              context="standings_row"
               alt=""
-              width={24} height={24}
-              className="object-contain shrink-0"
+              className="w-6 h-6 shrink-0"
             />
           )}
           <span className="text-xs font-semibold text-text-primary text-center leading-tight truncate max-w-full">
@@ -96,11 +96,12 @@ function FixtureDueCard({ fx }: { fx: any }) {
         </div>
         <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
           {fx.away_team?.logo_league_folder && (
-            <Image
-              src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')}
+            <TeamLogo
+              leagueFolder={fx.away_team.logo_league_folder}
+              teamSlug={fx.away_team.logo_team_slug}
+              context="standings_row"
               alt=""
-              width={24} height={24}
-              className="object-contain shrink-0"
+              className="w-6 h-6 shrink-0"
             />
           )}
           <span className="text-xs font-semibold text-text-primary text-center leading-tight truncate max-w-full">

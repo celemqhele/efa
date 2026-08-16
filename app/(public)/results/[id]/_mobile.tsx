@@ -1,7 +1,6 @@
 'use client'
 import Link from 'next/link'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import { AlertTriangle, BarChart3, ChevronDown, Camera, ArrowLeft, ChevronRight } from 'lucide-react'
 
@@ -63,7 +62,7 @@ export default function Mobile({ data }: { data: any }) {
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
               {home?.logo_league_folder && (
-                <Image src={getTeamLogo(home.logo_league_folder, home.logo_team_slug, 'match_detail_hero')} alt={home.name} width={44} height={44} className="object-contain w-11 h-11" />
+                <TeamLogo leagueFolder={home.logo_league_folder} teamSlug={home.logo_team_slug} context="match_detail_hero" alt={home.name} className="w-11 h-11 shrink-0" />
               )}
               <span className="text-xs font-bold text-foreground-primary text-center leading-tight truncate max-w-[90px]">{home?.name}</span>
             </div>
@@ -91,7 +90,7 @@ export default function Mobile({ data }: { data: any }) {
 
             <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
               {away?.logo_league_folder && (
-                <Image src={getTeamLogo(away.logo_league_folder, away.logo_team_slug, 'match_detail_hero')} alt={away.name} width={44} height={44} className="object-contain w-11 h-11" />
+                <TeamLogo leagueFolder={away.logo_league_folder} teamSlug={away.logo_team_slug} context="match_detail_hero" alt={away.name} className="w-11 h-11 shrink-0" />
               )}
               <span className="text-xs font-bold text-foreground-primary text-center leading-tight truncate max-w-[90px]">{away?.name}</span>
             </div>

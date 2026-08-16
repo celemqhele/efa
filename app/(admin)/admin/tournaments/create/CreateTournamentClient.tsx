@@ -2,10 +2,9 @@
 
 // File encoding: UTF-8
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, CheckCircle } from 'lucide-react'
 import ModalPortal from '@/components/ui/ModalPortal'
@@ -293,11 +292,12 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
                   }`}
                 >
                   {team.logo_league_folder ? (
-                    <Image
-                      src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                    <TeamLogo
+                      leagueFolder={team.logo_league_folder}
+                      teamSlug={team.logo_team_slug}
+                      context="standings_row"
                       alt={team.name}
-                      width={24} height={24}
-                      className="object-contain shrink-0"
+                      className="w-6 h-6 shrink-0"
                     />
                   ) : (
                     <div className="w-6 h-6 rounded bg-navy-border shrink-0" />
@@ -321,9 +321,12 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
                   return (
                     <div key={slug} className="flex items-center gap-1.5 bg-gold/10 border border-gold/30 rounded-full pl-1.5 pr-2.5 py-0.5">
                       {team.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                          alt={team.name} width={18} height={18} className="object-contain"
+                        <TeamLogo
+                          leagueFolder={team.logo_league_folder}
+                          teamSlug={team.logo_team_slug}
+                          context="standings_row"
+                          alt={team.name}
+                          className="w-[18px] h-[18px]"
                         />
                       )}
                       <span className="text-xs text-foreground-primary">{team.name}</span>
@@ -371,9 +374,12 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
                   }`}
                 >
                   {team.logo_league_folder ? (
-                    <Image
-                      src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                      alt={team.name} width={24} height={24} className="object-contain shrink-0"
+                    <TeamLogo
+                      leagueFolder={team.logo_league_folder}
+                      teamSlug={team.logo_team_slug}
+                      context="standings_row"
+                      alt={team.name}
+                      className="w-6 h-6 shrink-0"
                     />
                   ) : (
                     <div className="w-6 h-6 rounded bg-navy-border shrink-0" />
@@ -409,12 +415,12 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
               return (
                 <div key={slug} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-navy-light border border-navy-border">
                   {team.logo_league_folder && (
-                    <Image
-                      src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                    <TeamLogo
+                      leagueFolder={team.logo_league_folder}
+                      teamSlug={team.logo_team_slug}
+                      context="standings_row"
                       alt={team.name}
-                      width={20}
-                      height={20}
-                      className="object-contain shrink-0"
+                      className="w-5 h-5 shrink-0"
                     />
                   )}
                   <span className="text-xs font-medium text-foreground-primary truncate flex-1 min-w-0">{team.name}</span>

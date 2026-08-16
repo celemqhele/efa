@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { notify } from '@/lib/notifications'
 
 interface Qualifier {
@@ -107,9 +106,12 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
                 {qualifiers.map((q, idx) => (
                   <div key={q.team_id} className="flex items-center gap-3 p-2 rounded-lg bg-navy-light border border-navy-border">
                     <span className="text-[10px] font-bold text-text-muted w-4">{idx + 1}</span>
-                    <Image
-                      src={getTeamLogo(q.team.logo_league_folder, q.team.logo_team_slug, 'standings_row')}
-                      alt={q.team.name} width={20} height={20} className="object-contain"
+                    <TeamLogo
+                      leagueFolder={q.team.logo_league_folder}
+                      teamSlug={q.team.logo_team_slug}
+                      context="standings_row"
+                      alt={q.team.name}
+                      className="w-5 h-5"
                     />
                     <span className="text-xs font-medium text-foreground-primary flex-1 truncate">{q.team.name}</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold border border-gold/20 font-bold">

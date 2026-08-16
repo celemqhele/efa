@@ -1,8 +1,7 @@
 'use client'
 
-import Image from 'next/image'
+import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
 import { Trophy, Star, Globe, Medal, Award, Crown } from 'lucide-react'
 
 const TROPHY_ICONS: Record<string, React.ReactNode> = {
@@ -105,11 +104,12 @@ export default function Desktop({ data }: DesktopProps) {
               <p className="text-xs font-semibold text-accent uppercase tracking-widest mb-3">
                 Most Trophies Overall
               </p>
-              <Image
-                src={getTeamLogo(mostTotal[1].team.logo_league_folder, mostTotal[1].team.logo_team_slug, 'news_thumb')}
+              <TeamLogo
+                leagueFolder={mostTotal[1].team.logo_league_folder}
+                teamSlug={mostTotal[1].team.logo_team_slug}
+                context="news_thumb"
                 alt={mostTotal[1].team.name}
-                width={64} height={64}
-                className="object-contain mx-auto mb-2"
+                className="w-16 h-16 mx-auto mb-2"
               />
               <p className="font-bold text-text-primary">{mostTotal[1].team.name}</p>
               <p className="text-3xl font-black text-accent mt-1">{mostTotal[1].total}</p>
@@ -122,11 +122,12 @@ export default function Desktop({ data }: DesktopProps) {
               <p className="text-xs font-semibold text-accent uppercase tracking-widest mb-3">
                 <Trophy className="w-3.5 h-3.5 inline-block -mt-0.5" /> Most League Titles
               </p>
-              <Image
-                src={getTeamLogo(mostPL[1].team.logo_league_folder, mostPL[1].team.logo_team_slug, 'news_thumb')}
+              <TeamLogo
+                leagueFolder={mostPL[1].team.logo_league_folder}
+                teamSlug={mostPL[1].team.logo_team_slug}
+                context="news_thumb"
                 alt={mostPL[1].team.name}
-                width={64} height={64}
-                className="object-contain mx-auto mb-2"
+                className="w-16 h-16 mx-auto mb-2"
               />
               <p className="font-bold text-text-primary">{mostPL[1].team.name}</p>
               <p className="text-3xl font-black text-accent mt-1">{mostPL[1].byType['league']}</p>
@@ -139,11 +140,12 @@ export default function Desktop({ data }: DesktopProps) {
               <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-3">
                 <Globe className="w-3.5 h-3.5 inline-block -mt-0.5" /> Most UCL Wins
               </p>
-              <Image
-                src={getTeamLogo(mostUCL[1].team.logo_league_folder, mostUCL[1].team.logo_team_slug, 'news_thumb')}
+              <TeamLogo
+                leagueFolder={mostUCL[1].team.logo_league_folder}
+                teamSlug={mostUCL[1].team.logo_team_slug}
+                context="news_thumb"
                 alt={mostUCL[1].team.name}
-                width={64} height={64}
-                className="object-contain mx-auto mb-2"
+                className="w-16 h-16 mx-auto mb-2"
               />
               <p className="font-bold text-text-primary">{mostUCL[1].team.name}</p>
               <p className="text-3xl font-black text-blue-400 mt-1">{mostUCL[1].byType['tournament_club']}</p>
@@ -172,7 +174,7 @@ export default function Desktop({ data }: DesktopProps) {
                       <td className="px-5 py-3">
                         <Link href={`/teams/${tid}`} className="flex items-center gap-3 hover:text-accent transition-colors">
                           <span className="text-text-muted text-xs w-5 shrink-0 font-bold tabular-nums">#{idx + 1}</span>
-                          <Image src={getTeamLogo(data.team.logo_league_folder, data.team.logo_team_slug, 'standings_row')} alt={data.team.name} width={28} height={28} className="object-contain shrink-0" />
+                          <TeamLogo leagueFolder={data.team.logo_league_folder} teamSlug={data.team.logo_team_slug} context="standings_row" alt={data.team.name} className="w-7 h-7 shrink-0" />
                           <span className="font-semibold text-text-primary">{data.team.name}</span>
                         </Link>
                       </td>
@@ -230,7 +232,7 @@ export default function Desktop({ data }: DesktopProps) {
 
                           {winner ? (
                             <Link href={`/teams/${winner.team.id}`} className="block hover:opacity-90 transition-opacity">
-                              <Image src={getTeamLogo(winner.team.logo_league_folder, winner.team.logo_team_slug, 'profile_avatar')} alt={winner.team.name} width={64} height={64} className="object-contain mx-auto mb-2" />
+                              <TeamLogo leagueFolder={winner.team.logo_league_folder} teamSlug={winner.team.logo_team_slug} context="profile_avatar" alt={winner.team.name} className="w-16 h-16 mx-auto mb-2" />
                               <p className="font-bold text-text-primary text-sm leading-snug">{winner.team.name}</p>
                               <p className="text-xs text-text-muted mt-0.5">{winner.tournament?.name}</p>
                             </Link>

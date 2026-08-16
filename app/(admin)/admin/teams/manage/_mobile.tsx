@@ -1,7 +1,7 @@
 'use client'
 
+import TeamLogo from '@/components/ui/TeamLogo'
 import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamManageActions from './TeamManageActions'
 import AddTeamForm from './AddTeamForm'
 import { AlertTriangle } from 'lucide-react'
@@ -34,11 +34,12 @@ export default function Mobile({ data }: { data: any }) {
               <div key={team.id} className="p-4 space-y-3">
                 <div className="flex items-center gap-3">
                   {team.logo_league_folder ? (
-                    <Image
-                      src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                    <TeamLogo
+                      leagueFolder={team.logo_league_folder}
+                      teamSlug={team.logo_team_slug}
+                      context="standings_row"
                       alt={team.name}
-                      width={44} height={44}
-                      className="object-contain shrink-0"
+                      className="w-11 h-11 shrink-0"
                     />
                   ) : (
                     <div className="w-11 h-11 rounded bg-bg-base flex items-center justify-center text-text-muted text-xs shrink-0">?</div>

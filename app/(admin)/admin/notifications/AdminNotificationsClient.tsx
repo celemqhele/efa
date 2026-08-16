@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import type { Notification } from '@/lib/supabase/types'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/Button'
@@ -114,11 +113,12 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                   <div className="flex items-center gap-space-3 text-sm flex-1">
                     <div className="text-center">
                       {req.current_team?.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(req.current_team.logo_league_folder, req.current_team.logo_team_slug, 'standings_row')}
+                        <TeamLogo
+                          leagueFolder={req.current_team.logo_league_folder}
+                          teamSlug={req.current_team.logo_team_slug}
+                          context="standings_row"
                           alt={req.current_team.name}
-                          width={32} height={32}
-                          className="object-contain mx-auto"
+                          className="w-8 h-8 mx-auto"
                         />
                       )}
                       <p className="text-xs text-text-muted mt-space-1">{req.current_team?.name ?? '-'}</p>
@@ -126,11 +126,12 @@ export default function AdminNotificationsClient({ pendingRequests, notification
                     <span className="text-accent">→</span>
                     <div className="text-center">
                       {req.requested_team?.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')}
+                        <TeamLogo
+                          leagueFolder={req.requested_team.logo_league_folder}
+                          teamSlug={req.requested_team.logo_team_slug}
+                          context="standings_row"
                           alt={req.requested_team.name}
-                          width={32} height={32}
-                          className="object-contain mx-auto"
+                          className="w-8 h-8 mx-auto"
                         />
                       )}
                       <p className="text-xs text-text-primary font-medium mt-space-1">{req.requested_team?.name}</p>

@@ -1,8 +1,7 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { Card } from '@/components/ui/Card'
 
 interface FixtureSummary {
@@ -159,13 +158,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                     >
                       <div className="flex items-center gap-1 min-w-0">
                         {f.home_team?.logo_league_folder && (
-                          <Image
-                            src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')}
-                            alt={f.home_team.name}
-                            width={16}
-                            height={16}
-                            className="object-contain shrink-0"
-                          />
+                          <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt={f.home_team.name} className="w-4 h-4 shrink-0" />
                         )}
                         {hasResult ? (
                           <span className="text-[10px] font-bold text-text-primary tabular-nums mx-0.5">
@@ -175,13 +168,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                           <span className="text-[9px] font-bold text-accent mx-0.5">vs</span>
                         )}
                         {f.away_team?.logo_league_folder && (
-                          <Image
-                            src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')}
-                            alt={f.away_team.name}
-                            width={16}
-                            height={16}
-                            className="object-contain shrink-0"
-                          />
+                          <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt={f.away_team.name} className="w-4 h-4 shrink-0" />
                         )}
                       </div>
                       <div className={`mt-0.5 h-1 w-full rounded-full ${STATUS_PILL[f.status]?.split(' ')[0] ?? 'bg-border/20'}`} />
@@ -247,13 +234,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                     {/* Home */}
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       {f.home_team?.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')}
-                          alt={f.home_team.name}
-                          width={28}
-                          height={28}
-                          className="object-contain shrink-0"
-                        />
+                        <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt={f.home_team.name} className="w-7 h-7 shrink-0" />
                       )}
                       <span className="text-sm font-semibold text-text-primary truncate">
                         {f.home_team?.name ?? 'TBD'}
@@ -284,13 +265,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                         {f.away_team?.name ?? 'TBD'}
                       </span>
                       {f.away_team?.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')}
-                          alt={f.away_team.name}
-                          width={28}
-                          height={28}
-                          className="object-contain shrink-0"
-                        />
+                        <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt={f.away_team.name} className="w-7 h-7 shrink-0" />
                       )}
                     </div>
                   </Link>

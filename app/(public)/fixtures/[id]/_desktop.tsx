@@ -1,7 +1,6 @@
 'use client'
-import Image from 'next/image'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
 import MatchroomCode from '@/components/ui/MatchroomCode'
@@ -114,7 +113,7 @@ export default function Desktop({ data }: { data: any }) {
         {hasResult ? (
           <div className="flex items-center justify-center gap-10">
             <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <Image src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')} alt={homeTeam.name} width={64} height={64} className="object-contain group-hover:scale-105 transition-transform" />
+              <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="match_detail_hero" alt={homeTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
               <div className="text-center">
                 <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
                 <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
@@ -140,7 +139,7 @@ export default function Desktop({ data }: { data: any }) {
               </div>
             )}
             <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <Image src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')} alt={awayTeam.name} width={64} height={64} className="object-contain group-hover:scale-105 transition-transform" />
+              <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="match_detail_hero" alt={awayTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
               <div className="text-center">
                 <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
                 <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
@@ -150,7 +149,7 @@ export default function Desktop({ data }: { data: any }) {
         ) : (
           <div className="flex items-center justify-center gap-10">
             <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <Image src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')} alt={homeTeam.name} width={64} height={64} className="object-contain group-hover:scale-105 transition-transform" />
+              <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="match_detail_hero" alt={homeTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
               <div className="text-center">
                 <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
                 <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
@@ -160,7 +159,7 @@ export default function Desktop({ data }: { data: any }) {
               <span className="text-5xl font-black text-text-muted tracking-widest">VS</span>
             </div>
             <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <Image src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')} alt={awayTeam.name} width={64} height={64} className="object-contain group-hover:scale-105 transition-transform" />
+              <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="match_detail_hero" alt={awayTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
               <div className="text-center">
                 <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
                 <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
@@ -311,7 +310,7 @@ export default function Desktop({ data }: { data: any }) {
                     <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-bg-elevated/30 hover:bg-bg-elevated/50 transition-colors">
                       <Link href={`/teams/${hTeam.id}`} className="flex items-center gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
                         {hTeam.logo_league_folder && (
-                          <Image src={getTeamLogo(hTeam.logo_league_folder, hTeam.logo_team_slug, 'standings_row')} alt={hTeam.name} width={24} height={24} className="object-contain shrink-0" />
+                          <TeamLogo leagueFolder={hTeam.logo_league_folder} teamSlug={hTeam.logo_team_slug} context="standings_row" alt={hTeam.name} className="w-6 h-6 shrink-0" />
                         )}
                         <span className="text-xs text-text-muted truncate">{hTeam.name}</span>
                       </Link>
@@ -321,7 +320,7 @@ export default function Desktop({ data }: { data: any }) {
                       <Link href={`/teams/${aTeam.id}`} className="flex items-center justify-end gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
                         <span className="text-xs text-text-muted text-right truncate">{aTeam.name}</span>
                         {aTeam.logo_league_folder && (
-                          <Image src={getTeamLogo(aTeam.logo_league_folder, aTeam.logo_team_slug, 'standings_row')} alt={aTeam.name} width={24} height={24} className="object-contain shrink-0" />
+                          <TeamLogo leagueFolder={aTeam.logo_league_folder} teamSlug={aTeam.logo_team_slug} context="standings_row" alt={aTeam.name} className="w-6 h-6 shrink-0" />
                         )}
                       </Link>
                       <span className={`text-xs font-black w-5 text-center shrink-0 ${outcomeColor}`}>{outcome}</span>

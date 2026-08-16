@@ -1,4 +1,4 @@
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import Image from 'next/image'
 import UserActionButtons from './UserActionButtons'
 import TeamRequestButtons from '@/components/ui/TeamRequestButtons'
@@ -62,10 +62,7 @@ export default function Desktop({ data }: { data: any }) {
                         {team ? (
                           <div className="flex items-center gap-space-2">
                             {team.logo_league_folder && (
-                              <Image
-                                src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                                alt="" width={24} height={24} className="object-contain"
-                              />
+                              <TeamLogo leagueFolder={team.logo_league_folder} teamSlug={team.logo_team_slug} context="standings_row" alt="" className="w-6 h-6" />
                             )}
                             <span className="text-text-primary">{team.name}</span>
                           </div>
@@ -135,10 +132,7 @@ export default function Desktop({ data }: { data: any }) {
                     <td className="py-space-3 pr-space-4">
                       <div className="flex items-center gap-space-2">
                         {req.requested_team?.logo_league_folder && (
-                          <Image
-                            src={getTeamLogo(req.requested_team.logo_league_folder, req.requested_team.logo_team_slug, 'standings_row')}
-                            alt="" width={24} height={24} className="object-contain"
-                          />
+                          <TeamLogo leagueFolder={req.requested_team.logo_league_folder} teamSlug={req.requested_team.logo_team_slug} context="standings_row" alt="" className="w-6 h-6" />
                         )}
                         <span className="text-text-primary">{req.requested_team?.name}</span>
                       </div>
@@ -206,12 +200,7 @@ export default function Desktop({ data }: { data: any }) {
                       {team ? (
                         <div className="flex items-center gap-space-2">
                           {team.logo_league_folder && (
-                            <Image
-                              src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
-                              alt={team.name}
-                              width={28} height={28}
-                              className="object-contain"
-                            />
+                            <TeamLogo leagueFolder={team.logo_league_folder} teamSlug={team.logo_team_slug} context="standings_row" alt={team.name} className="w-7 h-7" />
                           )}
                           <span className="text-text-primary text-sm">{team.name}</span>
                         </div>

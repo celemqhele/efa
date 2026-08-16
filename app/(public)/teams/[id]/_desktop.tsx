@@ -1,7 +1,5 @@
 'use client'
-import Image from 'next/image'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import TeamStateBadges from '@/components/ui/TeamStateBadge'
@@ -105,12 +103,12 @@ export default function Desktop({ data }: { data: any }) {
         <div className="px-6 pb-6 -mt-14 relative">
           <div className="flex items-end gap-6">
             <div className="bg-bg-base rounded-2xl overflow-hidden ring-1 ring-border-subtle shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
-              <Image
-                src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
+              <TeamLogo
+                leagueFolder={team.logo_league_folder}
+                teamSlug={team.logo_team_slug}
+                context="match_detail_hero"
                 alt={team.name}
-                width={112}
-                height={112}
-                className="object-contain w-28 h-28"
+                className="w-28 h-28"
               />
             </div>
             <div className="pb-2 flex-1 min-w-0">

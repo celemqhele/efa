@@ -1,8 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { format } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -112,13 +111,13 @@ export default function Desktop({ data }: { data: any }) {
                       >
                         <div className="flex items-center gap-1">
                           {f.home_team?.logo_league_folder && (
-                            <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={12} height={12} className="object-contain" />
+                            <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt="" className="w-3 h-3 shrink-0" />
                           )}
                           <span className={`text-[10px] font-bold ${colors.text}`}>
                             {result ? `${result.home_score}-${result.away_score}` : 'vs'}
                           </span>
                           {f.away_team?.logo_league_folder && (
-                            <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={12} height={12} className="object-contain" />
+                            <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt="" className="w-3 h-3 shrink-0" />
                           )}
                         </div>
                       </Link>
@@ -141,7 +140,7 @@ export default function Desktop({ data }: { data: any }) {
               <div key={f.id} className="flex items-center justify-between gap-4 py-3 px-4 bg-bg-base border border-border rounded-xl">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {f.home_team?.logo_league_folder && (
-                    <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={28} height={28} className="object-contain shrink-0" />
+                    <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt="" className="w-7 h-7 shrink-0" />
                   )}
                   <span className="text-sm font-medium text-text-primary">{f.home_team?.name}</span>
                 </div>
@@ -154,7 +153,7 @@ export default function Desktop({ data }: { data: any }) {
                 <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
                   <span className="text-sm font-medium text-text-primary">{f.away_team?.name}</span>
                   {f.away_team?.logo_league_folder && (
-                    <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={28} height={28} className="object-contain shrink-0" />
+                    <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt="" className="w-7 h-7 shrink-0" />
                   )}
                 </div>
                 <Link href={`/admin/results/submit?fixture=${f.id}`} className="text-sm font-semibold px-4 py-2 rounded-lg bg-accent text-bg-surface hover:bg-accent-hover transition-colors shrink-0">

@@ -1,7 +1,6 @@
 'use client'
-import Image from 'next/image'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
 import MatchroomCode from '@/components/ui/MatchroomCode'
@@ -181,12 +180,12 @@ export default function Mobile({ data }: { data: any }) {
         {hasResult ? (
           <div className="flex flex-col items-center gap-4">
             <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
-              <Image
-                src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
+              <TeamLogo
+                leagueFolder={homeTeam.logo_league_folder}
+                teamSlug={homeTeam.logo_team_slug}
+                context="match_detail_hero"
                 alt={homeTeam.name}
-                width={64}
-                height={64}
-                className="object-contain"
+                className="w-16 h-16"
               />
               <div className="text-center">
                 <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
@@ -219,12 +218,12 @@ export default function Mobile({ data }: { data: any }) {
             )}
 
             <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
-              <Image
-                src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
+              <TeamLogo
+                leagueFolder={awayTeam.logo_league_folder}
+                teamSlug={awayTeam.logo_team_slug}
+                context="match_detail_hero"
                 alt={awayTeam.name}
-                width={64}
-                height={64}
-                className="object-contain"
+                className="w-16 h-16"
               />
               <div className="text-center">
                 <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
@@ -235,12 +234,12 @@ export default function Mobile({ data }: { data: any }) {
         ) : (
           <div className="flex flex-col items-center gap-4">
             <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
-              <Image
-                src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'match_detail_hero')}
+              <TeamLogo
+                leagueFolder={homeTeam.logo_league_folder}
+                teamSlug={homeTeam.logo_team_slug}
+                context="match_detail_hero"
                 alt={homeTeam.name}
-                width={64}
-                height={64}
-                className="object-contain"
+                className="w-16 h-16"
               />
               <div className="text-center">
                 <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
@@ -253,12 +252,12 @@ export default function Mobile({ data }: { data: any }) {
             </div>
 
             <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
-              <Image
-                src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'match_detail_hero')}
+              <TeamLogo
+                leagueFolder={awayTeam.logo_league_folder}
+                teamSlug={awayTeam.logo_team_slug}
+                context="match_detail_hero"
                 alt={awayTeam.name}
-                width={64}
-                height={64}
-                className="object-contain"
+                className="w-16 h-16"
               />
               <div className="text-center">
                 <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
@@ -494,11 +493,12 @@ export default function Mobile({ data }: { data: any }) {
                         <div key={f.id} className="flex items-center gap-2 p-3 rounded-lg bg-navy-border/30 min-h-[48px]">
                           <Link href={`/teams/${hTeam.id}`} className="flex items-center gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
                             {hTeam.logo_league_folder && (
-                              <Image
-                                src={getTeamLogo(hTeam.logo_league_folder, hTeam.logo_team_slug, 'standings_row')}
+                              <TeamLogo
+                                leagueFolder={hTeam.logo_league_folder}
+                                teamSlug={hTeam.logo_team_slug}
+                                context="standings_row"
                                 alt={hTeam.name}
-                                width={24} height={24}
-                                className="object-contain shrink-0"
+                                className="w-6 h-6 shrink-0"
                               />
                             )}
                             <span className="text-xs text-text-muted">{hTeam.name}</span>
@@ -511,11 +511,12 @@ export default function Mobile({ data }: { data: any }) {
                           <Link href={`/teams/${aTeam.id}`} className="flex items-center justify-end gap-1.5 flex-1 min-w-0 hover:opacity-75 transition-opacity">
                             <span className="text-xs text-text-muted text-right">{aTeam.name}</span>
                             {aTeam.logo_league_folder && (
-                              <Image
-                                src={getTeamLogo(aTeam.logo_league_folder, aTeam.logo_team_slug, 'standings_row')}
+                              <TeamLogo
+                                leagueFolder={aTeam.logo_league_folder}
+                                teamSlug={aTeam.logo_team_slug}
+                                context="standings_row"
                                 alt={aTeam.name}
-                                width={24} height={24}
-                                className="object-contain shrink-0"
+                                className="w-6 h-6 shrink-0"
                               />
                             )}
                           </Link>

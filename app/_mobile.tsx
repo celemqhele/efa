@@ -5,7 +5,6 @@ import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import TeamLogo from '@/components/ui/TeamLogo'
-import { getTeamLogo } from '@/lib/logo-resolver'
 import { Trophy, ClipboardList, CalendarDays, Flame, Vote } from 'lucide-react'
 
 export default function Mobile({ data }: { data: any }) {
@@ -189,7 +188,13 @@ export default function Mobile({ data }: { data: any }) {
                 {unbeaten.map((u: any, i: number) => (
                   <div key={i} className="flex items-center gap-space-2">
                     {u.teams?.logo_league_folder && (
-                      <Image src={getTeamLogo(u.teams.logo_league_folder, u.teams.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain shrink-0" />
+                      <TeamLogo
+                        leagueFolder={u.teams.logo_league_folder}
+                        teamSlug={u.teams.logo_team_slug}
+                        context="standings_row"
+                        alt={u.teams.name}
+                        className="w-6 h-6 shrink-0"
+                      />
                     )}
                     <span className="flex-1 text-sm text-text-primary truncate">{u.teams?.name}</span>
                     <span className="text-xs bg-feedback-success/20 text-feedback-success px-space-2 py-0.5 rounded font-bold shrink-0">

@@ -1,8 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
 import CalendarGrid from './CalendarGrid'
 import { Card } from '@/components/ui/Card'
@@ -81,12 +80,12 @@ export default function Desktop({ data }: DesktopProps) {
                       {nextFixture.home_team?.name ?? 'TBD'}
                     </span>
                     {nextFixture.home_team?.logo_league_folder && (
-                      <Image
-                        src={getTeamLogo(nextFixture.home_team.logo_league_folder, nextFixture.home_team.logo_team_slug, 'standings_row')}
+                      <TeamLogo
+                        leagueFolder={nextFixture.home_team.logo_league_folder}
+                        teamSlug={nextFixture.home_team.logo_team_slug}
+                        context="standings_row"
                         alt={nextFixture.home_team.name}
-                        width={36}
-                        height={36}
-                        className="object-contain shrink-0"
+                        className="w-9 h-9 shrink-0"
                       />
                     )}
                   </div>
@@ -95,12 +94,12 @@ export default function Desktop({ data }: DesktopProps) {
 
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {nextFixture.away_team?.logo_league_folder && (
-                      <Image
-                        src={getTeamLogo(nextFixture.away_team.logo_league_folder, nextFixture.away_team.logo_team_slug, 'standings_row')}
+                      <TeamLogo
+                        leagueFolder={nextFixture.away_team.logo_league_folder}
+                        teamSlug={nextFixture.away_team.logo_team_slug}
+                        context="standings_row"
                         alt={nextFixture.away_team.name}
-                        width={36}
-                        height={36}
-                        className="object-contain shrink-0"
+                        className="w-9 h-9 shrink-0"
                       />
                     )}
                     <span className="text-sm font-bold text-text-primary truncate">
@@ -213,7 +212,7 @@ export default function Desktop({ data }: DesktopProps) {
                     <div className="flex-1 flex items-center gap-2 min-w-0 justify-end">
                       <span className="text-sm font-semibold text-text-primary truncate text-right">{home?.name ?? 'TBC'}</span>
                       {home?.logo_league_folder && (
-                        <Image src={getTeamLogo(home.logo_league_folder, home.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain shrink-0" />
+                        <TeamLogo leagueFolder={home.logo_league_folder} teamSlug={home.logo_team_slug} context="standings_row" alt="" className="w-6 h-6 shrink-0" />
                       )}
                     </div>
                     <div className="w-14 text-center shrink-0">
@@ -227,7 +226,7 @@ export default function Desktop({ data }: DesktopProps) {
                     </div>
                     <div className="flex-1 flex items-center gap-2 min-w-0">
                       {away?.logo_league_folder && (
-                        <Image src={getTeamLogo(away.logo_league_folder, away.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain shrink-0" />
+                        <TeamLogo leagueFolder={away.logo_league_folder} teamSlug={away.logo_team_slug} context="standings_row" alt="" className="w-6 h-6 shrink-0" />
                       )}
                       <span className="text-sm font-semibold text-text-primary truncate">{away?.name ?? 'TBC'}</span>
                     </div>

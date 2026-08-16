@@ -1,7 +1,7 @@
 'use client'
 import Image from 'next/image'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { Card } from '@/components/ui/Card'
 import { ClipboardList, BarChart3, Shirt, Binoculars, Shield, UserRound } from 'lucide-react'
 
@@ -30,12 +30,12 @@ export default function Desktop({ data }: { data: any }) {
             </div>
             {currentTeam?.logo_team_slug && (
               <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-9 h-9 rounded-full bg-bg-surface ring-2 ring-bg-surface shadow-md flex items-center justify-center overflow-hidden">
-                <Image
-                  src={getTeamLogo(currentTeam.logo_league_folder, currentTeam.logo_team_slug, 'standings_row')}
+                <TeamLogo
+                  leagueFolder={currentTeam.logo_league_folder}
+                  teamSlug={currentTeam.logo_team_slug}
+                  context="standings_row"
                   alt={currentTeam.name}
-                  width={22}
-                  height={22}
-                  className="object-contain"
+                  className="w-[22px] h-[22px]"
                 />
               </div>
             )}
@@ -152,9 +152,12 @@ export default function Desktop({ data }: { data: any }) {
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 flex items-center justify-center shrink-0">
                                 {tenure.team?.logo_team_slug ? (
-                                  <Image
-                                    src={getTeamLogo(tenure.team.logo_league_folder, tenure.team.logo_team_slug, 'standings_row')}
-                                    alt={tenure.team.name} width={30} height={30} className="object-contain"
+                                  <TeamLogo
+                                    leagueFolder={tenure.team.logo_league_folder}
+                                    teamSlug={tenure.team.logo_team_slug}
+                                    context="standings_row"
+                                    alt={tenure.team.name}
+                                    className="w-[30px] h-[30px]"
                                   />
                                 ) : <Shield className="w-5 h-5 text-text-muted" />}
                               </div>

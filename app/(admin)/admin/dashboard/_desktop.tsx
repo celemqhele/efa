@@ -1,8 +1,7 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 import DueFixturesExportButton from './DueFixturesExportButton'
 import NewsTopicExportButton from './NewsTopicExportButton'
@@ -302,7 +301,7 @@ export default function Desktop({ data }: { data: any }) {
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
                             {fx.home_team?.logo_league_folder && (
-                              <Image src={getTeamLogo(fx.home_team.logo_league_folder, fx.home_team.logo_team_slug, 'standings_row')} alt="" width={22} height={22} className="object-contain shrink-0" />
+                              <TeamLogo leagueFolder={fx.home_team.logo_league_folder} teamSlug={fx.home_team.logo_team_slug} context="standings_row" alt="" className="w-[22px] h-[22px] shrink-0" />
                             )}
                             <span className="font-semibold text-text-primary whitespace-nowrap">{cleanTeamName(fx.home_team?.name)}</span>
                           </div>
@@ -314,7 +313,7 @@ export default function Desktop({ data }: { data: any }) {
                           <div className="flex items-center gap-2 justify-end">
                             <span className="font-semibold text-text-primary whitespace-nowrap">{cleanTeamName(fx.away_team?.name)}</span>
                             {fx.away_team?.logo_league_folder && (
-                              <Image src={getTeamLogo(fx.away_team.logo_league_folder, fx.away_team.logo_team_slug, 'standings_row')} alt="" width={22} height={22} className="object-contain shrink-0" />
+                              <TeamLogo leagueFolder={fx.away_team.logo_league_folder} teamSlug={fx.away_team.logo_team_slug} context="standings_row" alt="" className="w-[22px] h-[22px] shrink-0" />
                             )}
                           </div>
                         </td>

@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { cropToStatsPanel, parseOcrText } from '@/lib/parse-screenshot-client'
 import { notify } from '@/lib/notifications'
 import ForfeitBalanceBadge from '@/components/ui/ForfeitBalanceBadge'
@@ -637,22 +636,24 @@ export default function ResultSubmitClient({
               <div className="flex items-center justify-center gap-6">
                 <div className="text-center">
                   {selectedFixture.home_team?.logo_league_folder && (
-                    <Image
-                      src={getTeamLogo(selectedFixture.home_team.logo_league_folder, selectedFixture.home_team.logo_team_slug, 'fixture_card')}
+                    <TeamLogo
+                      leagueFolder={selectedFixture.home_team.logo_league_folder}
+                      teamSlug={selectedFixture.home_team.logo_team_slug}
+                      context="fixture_card"
                       alt={selectedFixture.home_team.name}
-                      width={56} height={56}
-                      className="object-contain mx-auto"
+                      className="w-14 h-14 mx-auto"
                     />
                   )}
                 </div>
                 <div className="text-3xl font-black text-foreground-primary">vs</div>
                 <div className="text-center">
                   {selectedFixture.away_team?.logo_league_folder && (
-                    <Image
-                      src={getTeamLogo(selectedFixture.away_team.logo_league_folder, selectedFixture.away_team.logo_team_slug, 'fixture_card')}
+                    <TeamLogo
+                      leagueFolder={selectedFixture.away_team.logo_league_folder}
+                      teamSlug={selectedFixture.away_team.logo_team_slug}
+                      context="fixture_card"
                       alt={selectedFixture.away_team.name}
-                      width={56} height={56}
-                      className="object-contain mx-auto"
+                      className="w-14 h-14 mx-auto"
                     />
                   )}
                 </div>
@@ -682,11 +683,12 @@ export default function ResultSubmitClient({
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1.5">
                       {selectedFixture.home_team?.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(selectedFixture.home_team.logo_league_folder, selectedFixture.home_team.logo_team_slug, 'fixture_card')}
+                        <TeamLogo
+                          leagueFolder={selectedFixture.home_team.logo_league_folder}
+                          teamSlug={selectedFixture.home_team.logo_team_slug}
+                          context="fixture_card"
                           alt={selectedFixture.home_team.name}
-                          width={48} height={48}
-                          className="object-contain"
+                          className="w-12 h-12"
                         />
                       )}
                       <ForfeitBalanceBadge
@@ -706,11 +708,12 @@ export default function ResultSubmitClient({
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1.5">
                       {selectedFixture.away_team?.logo_league_folder && (
-                        <Image
-                          src={getTeamLogo(selectedFixture.away_team.logo_league_folder, selectedFixture.away_team.logo_team_slug, 'fixture_card')}
+                        <TeamLogo
+                          leagueFolder={selectedFixture.away_team.logo_league_folder}
+                          teamSlug={selectedFixture.away_team.logo_team_slug}
+                          context="fixture_card"
                           alt={selectedFixture.away_team.name}
-                          width={48} height={48}
-                          className="object-contain"
+                          className="w-12 h-12"
                         />
                       )}
                       <ForfeitBalanceBadge
@@ -808,10 +811,7 @@ export default function ResultSubmitClient({
                             const t = allTeams.find((x) => x.id === mappedHomeTeamId)
                             return t?.logo_league_folder ? (
                               <div className="flex items-center gap-2 mt-2">
-                                <Image
-                                  src={getTeamLogo(t.logo_league_folder, t.logo_team_slug, 'standings_row')}
-                                  alt={t.name} width={24} height={24} className="object-contain"
-                                />
+                                <TeamLogo leagueFolder={t.logo_league_folder} teamSlug={t.logo_team_slug} context="standings_row" alt={t.name} className="w-6 h-6" />
                                 <span className="text-green-400 text-xs">{t.name}</span>
                               </div>
                             ) : null
@@ -833,10 +833,7 @@ export default function ResultSubmitClient({
                             const t = allTeams.find((x) => x.id === mappedAwayTeamId)
                             return t?.logo_league_folder ? (
                               <div className="flex items-center gap-2 mt-2">
-                                <Image
-                                  src={getTeamLogo(t.logo_league_folder, t.logo_team_slug, 'standings_row')}
-                                  alt={t.name} width={24} height={24} className="object-contain"
-                                />
+                                <TeamLogo leagueFolder={t.logo_league_folder} teamSlug={t.logo_team_slug} context="standings_row" alt={t.name} className="w-6 h-6" />
                                 <span className="text-green-400 text-xs">{t.name}</span>
                               </div>
                             ) : null
@@ -1079,11 +1076,12 @@ export default function ResultSubmitClient({
                 <div className="flex items-center justify-center gap-6 py-4">
                   <div className="text-center">
                     {selectedFixture.home_team?.logo_league_folder && (
-                      <Image
-                        src={getTeamLogo(selectedFixture.home_team.logo_league_folder, selectedFixture.home_team.logo_team_slug, 'fixture_card')}
+                      <TeamLogo
+                        leagueFolder={selectedFixture.home_team.logo_league_folder}
+                        teamSlug={selectedFixture.home_team.logo_team_slug}
+                        context="fixture_card"
                         alt={selectedFixture.home_team.name}
-                        width={56} height={56}
-                        className="object-contain mx-auto"
+                        className="w-14 h-14 mx-auto"
                       />
                     )}
                     <p className="text-foreground-primary font-bold mt-1">{selectedFixture.home_team?.name}</p>
@@ -1093,11 +1091,12 @@ export default function ResultSubmitClient({
                   </div>
                   <div className="text-center">
                     {selectedFixture.away_team?.logo_league_folder && (
-                      <Image
-                        src={getTeamLogo(selectedFixture.away_team.logo_league_folder, selectedFixture.away_team.logo_team_slug, 'fixture_card')}
+                      <TeamLogo
+                        leagueFolder={selectedFixture.away_team.logo_league_folder}
+                        teamSlug={selectedFixture.away_team.logo_team_slug}
+                        context="fixture_card"
                         alt={selectedFixture.away_team.name}
-                        width={56} height={56}
-                        className="object-contain mx-auto"
+                        className="w-14 h-14 mx-auto"
                       />
                     )}
                     <p className="text-foreground-primary font-bold mt-1">{selectedFixture.away_team?.name}</p>

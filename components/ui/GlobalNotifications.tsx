@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import {
   Bell, Trophy, AlertTriangle, UserPlus, X,
   CheckCircle, Swords, CalendarClock, Star,
@@ -152,10 +151,12 @@ function ResultRow({ n, onClick }: { n: PopupNotification; onClick: () => void }
       className="w-full flex items-center gap-3 p-3 rounded-xl bg-bg-surface border border-border hover:bg-bg-elevated transition-colors text-left disabled:cursor-default"
     >
       {data.home_logo_folder && data.home_slug ? (
-        <Image
-          src={getTeamLogo(data.home_logo_folder, data.home_slug, 'standings_row')}
-          alt="Home" width={28} height={28}
-          className="object-contain shrink-0"
+        <TeamLogo
+          leagueFolder={data.home_logo_folder}
+          teamSlug={data.home_slug}
+          context="standings_row"
+          alt="Home"
+          className="w-7 h-7 shrink-0"
         />
       ) : (
         <div className="w-7 h-7 rounded-full bg-bg-elevated flex items-center justify-center shrink-0">

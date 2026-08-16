@@ -1,8 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { format } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -112,13 +111,13 @@ export default function Mobile({ data }: { data: any }) {
                       >
                         <div className="flex items-center gap-0.5">
                           {f.home_team?.logo_league_folder && (
-                            <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={10} height={10} className="object-contain" />
+                            <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt="" className="w-2.5 h-2.5 shrink-0" />
                           )}
                           <span className={`text-[8px] font-bold ${colors.text}`}>
                             {result ? `${result.home_score}-${result.away_score}` : 'vs'}
                           </span>
                           {f.away_team?.logo_league_folder && (
-                            <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={10} height={10} className="object-contain" />
+                            <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt="" className="w-2.5 h-2.5 shrink-0" />
                           )}
                         </div>
                       </Link>
@@ -143,7 +142,7 @@ export default function Mobile({ data }: { data: any }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     {f.home_team?.logo_league_folder && (
-                      <Image src={getTeamLogo(f.home_team.logo_league_folder, f.home_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain shrink-0" />
+                      <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt="" className="w-6 h-6 shrink-0" />
                     )}
                     <span className="text-sm font-medium text-text-primary truncate">{f.home_team?.name}</span>
                   </div>
@@ -156,7 +155,7 @@ export default function Mobile({ data }: { data: any }) {
                   <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
                     <span className="text-sm font-medium text-text-primary truncate">{f.away_team?.name}</span>
                     {f.away_team?.logo_league_folder && (
-                      <Image src={getTeamLogo(f.away_team.logo_league_folder, f.away_team.logo_team_slug, 'standings_row')} alt="" width={24} height={24} className="object-contain shrink-0" />
+                      <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt="" className="w-6 h-6 shrink-0" />
                     )}
                   </div>
                 </div>

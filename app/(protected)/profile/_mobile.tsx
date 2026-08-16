@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO, differenceInDays } from 'date-fns'
 import ProfileActions from './ProfileActions'
 import { Card } from '@/components/ui/Card'
@@ -104,12 +103,12 @@ export default function Mobile({ data }: { data: any }) {
               className="inline-flex items-center gap-space-2 text-text-secondary hover:text-accent transition-colors group"
             >
               {team.logo_league_folder && (
-                <Image
-                  src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                <TeamLogo
+                  leagueFolder={team.logo_league_folder}
+                  teamSlug={team.logo_team_slug}
+                  context="standings_row"
                   alt={team.name}
-                  width={24}
-                  height={24}
-                  className="object-contain"
+                  className="w-6 h-6"
                 />
               )}
               <span className="text-sm font-semibold group-hover:underline">{team.name}</span>
@@ -203,9 +202,12 @@ export default function Mobile({ data }: { data: any }) {
                 }`}>
                   <div className="w-10 h-10 flex items-center justify-center shrink-0">
                     {tenure.team?.logo_team_slug ? (
-                      <Image
-                        src={getTeamLogo(tenure.team.logo_league_folder, tenure.team.logo_team_slug, 'standings_row')}
-                        alt={tenure.team.name} width={28} height={28} className="object-contain"
+                      <TeamLogo
+                        leagueFolder={tenure.team.logo_league_folder}
+                        teamSlug={tenure.team.logo_team_slug}
+                        context="standings_row"
+                        alt={tenure.team.name}
+                        className="w-7 h-7"
                       />
                     ) : <Shield className="w-5 h-5 text-text-muted" />}
                   </div>
@@ -256,12 +258,12 @@ export default function Mobile({ data }: { data: any }) {
                     className="flex items-center gap-space-4 p-space-4 rounded-xl border border-border hover:border-accent/40 hover:bg-bg-base transition-all group"
                   >
                     {opponent?.logo_league_folder && (
-                      <Image
-                        src={getTeamLogo(opponent.logo_league_folder, opponent.logo_team_slug, 'standings_row')}
+                      <TeamLogo
+                        leagueFolder={opponent.logo_league_folder}
+                        teamSlug={opponent.logo_team_slug}
+                        context="standings_row"
                         alt={opponent.name}
-                        width={40}
-                        height={40}
-                        className="object-contain shrink-0"
+                        className="w-10 h-10 shrink-0"
                       />
                     )}
                     <div className="flex-1 min-w-0">

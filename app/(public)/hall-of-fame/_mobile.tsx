@@ -1,8 +1,7 @@
 'use client'
 
-import Image from 'next/image'
+import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
 import { Trophy, Star, Globe, Medal } from 'lucide-react'
 
 const TROPHY_ICONS: Record<string, React.ReactNode> = {
@@ -105,11 +104,12 @@ export default function Mobile({ data }: MobileProps) {
               <p className="text-[10px] font-semibold text-gold uppercase tracking-widest mb-3">
                 Most Trophies Overall
               </p>
-              <Image
-                src={getTeamLogo(mostTotal[1].team.logo_league_folder, mostTotal[1].team.logo_team_slug, 'news_thumb')}
+              <TeamLogo
+                leagueFolder={mostTotal[1].team.logo_league_folder}
+                teamSlug={mostTotal[1].team.logo_team_slug}
+                context="news_thumb"
                 alt={mostTotal[1].team.name}
-                width={48} height={48}
-                className="object-contain mx-auto mb-2"
+                className="w-12 h-12 mx-auto mb-2"
               />
               <p className="font-bold text-text-primary text-sm">{mostTotal[1].team.name}</p>
               <p className="text-2xl font-black text-gold mt-1">{mostTotal[1].total}</p>
@@ -122,11 +122,12 @@ export default function Mobile({ data }: MobileProps) {
               <p className="text-[10px] font-semibold text-gold uppercase tracking-widest mb-3">
                 Most League Titles
               </p>
-              <Image
-                src={getTeamLogo(mostPL[1].team.logo_league_folder, mostPL[1].team.logo_team_slug, 'news_thumb')}
+              <TeamLogo
+                leagueFolder={mostPL[1].team.logo_league_folder}
+                teamSlug={mostPL[1].team.logo_team_slug}
+                context="news_thumb"
                 alt={mostPL[1].team.name}
-                width={48} height={48}
-                className="object-contain mx-auto mb-2"
+                className="w-12 h-12 mx-auto mb-2"
               />
               <p className="font-bold text-text-primary text-sm">{mostPL[1].team.name}</p>
               <p className="text-2xl font-black text-gold mt-1">{mostPL[1].byType['league']}</p>
@@ -139,11 +140,12 @@ export default function Mobile({ data }: MobileProps) {
               <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest mb-3">
                 Most UCL Wins
               </p>
-              <Image
-                src={getTeamLogo(mostUCL[1].team.logo_league_folder, mostUCL[1].team.logo_team_slug, 'news_thumb')}
+              <TeamLogo
+                leagueFolder={mostUCL[1].team.logo_league_folder}
+                teamSlug={mostUCL[1].team.logo_team_slug}
+                context="news_thumb"
                 alt={mostUCL[1].team.name}
-                width={48} height={48}
-                className="object-contain mx-auto mb-2"
+                className="w-12 h-12 mx-auto mb-2"
               />
               <p className="font-bold text-text-primary text-sm">{mostUCL[1].team.name}</p>
               <p className="text-2xl font-black text-blue-400 mt-1">{mostUCL[1].byType['tournament_club']}</p>
@@ -163,11 +165,12 @@ export default function Mobile({ data }: MobileProps) {
               {allTimeRecords.map(([tid, data], idx) => (
                 <Link key={tid} href={`/teams/${tid}`} className="flex items-center gap-3 bg-bg-surface border border-border rounded-lg p-3 hover:border-gold/40 transition-colors min-h-[48px]">
                   <span className="text-text-muted text-xs w-5 shrink-0 font-bold">#{idx + 1}</span>
-                  <Image
-                    src={getTeamLogo(data.team.logo_league_folder, data.team.logo_team_slug, 'standings_row')}
+                  <TeamLogo
+                    leagueFolder={data.team.logo_league_folder}
+                    teamSlug={data.team.logo_team_slug}
+                    context="standings_row"
                     alt={data.team.name}
-                    width={28} height={28}
-                    className="object-contain shrink-0"
+                    className="w-7 h-7 shrink-0"
                   />
                   <span className="font-semibold text-sm text-text-primary flex-1 truncate">{data.team.name}</span>
                   <span className="font-black text-gold text-lg">{data.total}</span>
@@ -213,7 +216,7 @@ export default function Mobile({ data }: MobileProps) {
                           </p>
                           {winner ? (
                             <Link href={`/teams/${winner.team.id}`} className="block">
-                              <Image src={getTeamLogo(winner.team.logo_league_folder, winner.team.logo_team_slug, 'profile_avatar')} alt={winner.team.name} width={48} height={48} className="object-contain mx-auto mb-2" />
+                              <TeamLogo leagueFolder={winner.team.logo_league_folder} teamSlug={winner.team.logo_team_slug} context="profile_avatar" alt={winner.team.name} className="w-12 h-12 mx-auto mb-2" />
                               <p className="font-bold text-text-primary text-sm leading-snug">{winner.team.name}</p>
                               <p className="text-[10px] text-text-muted mt-0.5">{winner.tournament?.name}</p>
                             </Link>

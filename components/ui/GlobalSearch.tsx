@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Search, X, User, Trophy, Users, Globe } from 'lucide-react'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 
 interface SearchResult {
   id: string
@@ -67,10 +67,12 @@ function ResultRow({ result }: { result: SearchResult }) {
       {showAvatar ? (
         <Image src={result.avatar!} alt="" width={28} height={28} className="rounded-full object-cover shrink-0" />
       ) : showLogo ? (
-        <Image
-          src={getTeamLogo(result.logoFolder ?? result.leagueFolder!, result.logSlug!, 'standings_row')}
-          alt="" width={28} height={28}
-          className="object-contain rounded-full shrink-0"
+        <TeamLogo
+          leagueFolder={result.logoFolder ?? result.leagueFolder!}
+          teamSlug={result.logSlug!}
+          context="standings_row"
+          alt=""
+          className="w-7 h-7 rounded-full shrink-0"
         />
       ) : isManager ? (
         <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center shrink-0">

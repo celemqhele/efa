@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
 import { createClient } from '@/lib/supabase/client'
@@ -304,12 +303,12 @@ function TeamPickerButton({
       className={`flex items-center gap-space-2 p-space-2 text-left text-xs ${selected ? accentClass : ''}`}
     >
       {team.logo_league_folder ? (
-        <Image
-          src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+        <TeamLogo
+          leagueFolder={team.logo_league_folder}
+          teamSlug={team.logo_team_slug}
+          context="standings_row"
           alt={team.name}
-          width={20}
-          height={20}
-          className="object-contain shrink-0"
+          className="w-5 h-5 shrink-0"
         />
       ) : (
         <div className="w-5 h-5 rounded bg-bg-base shrink-0" />
@@ -622,12 +621,12 @@ function StartPhaseDialog({
                     return (
                       <div key={team.logo_team_slug} className="flex items-center gap-space-2.5 px-space-3 py-space-2 rounded-lg bg-bg-elevated border border-border">
                         {team.logo_league_folder ? (
-                          <Image
-                            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'standings_row')}
+                          <TeamLogo
+                            leagueFolder={team.logo_league_folder}
+                            teamSlug={team.logo_team_slug}
+                            context="standings_row"
                             alt={team.name}
-                            width={20}
-                            height={20}
-                            className="object-contain shrink-0"
+                            className="w-5 h-5 shrink-0"
                           />
                         ) : (
                           <div className="w-5 h-5 rounded bg-bg-base shrink-0" />

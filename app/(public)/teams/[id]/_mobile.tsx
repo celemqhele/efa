@@ -1,7 +1,5 @@
 'use client'
-import Image from 'next/image'
 import Link from 'next/link'
-import { getTeamLogo } from '@/lib/logo-resolver'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import type { DNAProfile, PersonalizedDescription } from '@/lib/dna-engine'
@@ -107,12 +105,12 @@ export default function Mobile({ data }: { data: any }) {
       </div>
       <div className="-mt-12 relative flex flex-col items-center text-center px-4">
         <div className="bg-bg-base rounded-lg overflow-hidden -mt-4 mb-3">
-          <Image
-            src={getTeamLogo(team.logo_league_folder, team.logo_team_slug, 'match_detail_hero')}
+          <TeamLogo
+            leagueFolder={team.logo_league_folder}
+            teamSlug={team.logo_team_slug}
+            context="match_detail_hero"
             alt={team.name}
-            width={80}
-            height={80}
-            className="object-contain w-20 h-20"
+            className="w-20 h-20"
           />
         </div>
         <h1 className="text-lg font-black text-text-primary">{team.name}</h1>

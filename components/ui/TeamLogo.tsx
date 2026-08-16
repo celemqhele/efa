@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { ShieldQuestion } from 'lucide-react'
 import { getTeamLogo, type LogoContext } from '@/lib/logo-resolver'
 
 interface TeamLogoProps {
@@ -21,7 +22,27 @@ const SIZE_PX: Record<LogoContext, number> = {
   broadcast_download: 700,
 }
 
+const PLACEHOLDER_FOLDER = 'custom'
+
+// Placeholder clubs (e.g. the UEL "No Name" replacement) render a lucide icon
+// instead of a logo image.
+function getPlaceholderIcon(leagueFolder: string, teamSlug: string) {
+  if (leagueFolder !== PLACEHOLDER_FOLDER) return null
+  if (teamSlug === 'noname') return ShieldQuestion
+  return null
+}
+
 export default function TeamLogo({ leagueFolder, teamSlug, context, alt, className = '' }: TeamLogoProps) {
+  const PlaceholderIcon = getPlaceholderIcon(leagueFolder, teamSlug)
+
+  if (PlaceholderIcon) {
+    return (
+      <div className={`inline-flex items-center justify-center overflow-hidden ${className}`}>
+        <PlaceholderIcon className="w-full h-full text-text-muted" strokeWidth={1.5} aria-label={alt} />
+      </div>
+    )
+  }
+
   const src = getTeamLogo(leagueFolder, teamSlug, context)
   const size = SIZE_PX[context]
 

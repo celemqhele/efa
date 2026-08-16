@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { ShieldQuestion } from 'lucide-react'
 import ExportButton from './ExportButton'
 import ExportControls from './ExportControls'
 import { Card } from '@/components/ui/Card'
@@ -23,6 +24,13 @@ function formatDate(dateStr: string): string {
 
 function TeamLogoInline({ folder, slug, size = 38 }: { folder?: string | null; slug?: string | null; size?: number }) {
   if (!folder || !slug) return null
+  if (folder === 'custom' && slug === 'noname') {
+    return (
+      <div style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <ShieldQuestion size={size * 0.85} strokeWidth={1.5} style={{ color: 'var(--color-text-muted)' }} />
+      </div>
+    )
+  }
   return (
     <img src={`/logos/${folder}/128x128/${slug}.png`} alt="" width={size} height={size} style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }} />
   )

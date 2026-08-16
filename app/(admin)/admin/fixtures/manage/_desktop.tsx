@@ -1,13 +1,12 @@
 'use client'
 
-import Image from 'next/image'
+import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
 import FixtureActions from './FixtureActions'
 import DateNav from '@/components/ui/DateNav'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import ScheduleRoundPanel from './ScheduleRoundPanel'
 import { CalendarDays } from 'lucide-react'
-import { getTeamLogo } from '@/lib/logo-resolver'
 import { cleanTeamName } from '@/lib/clean-team-name'
 
 const TYPE_ORDER = ['league', 'tournament_club', 'tournament_international', 'friendlies'] as const
@@ -147,11 +146,12 @@ export default function Desktop({ data }: { data: any }) {
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-2">
                                 {homeTeam?.logo_league_folder && (
-                                  <Image
-                                    src={getTeamLogo(homeTeam.logo_league_folder, homeTeam.logo_team_slug, 'standings_row')}
+                                  <TeamLogo
+                                    leagueFolder={homeTeam.logo_league_folder}
+                                    teamSlug={homeTeam.logo_team_slug}
+                                    context="standings_row"
                                     alt={homeTeam.name}
-                                    width={24} height={24}
-                                    className="object-contain shrink-0"
+                                    className="w-6 h-6 shrink-0"
                                   />
                                 )}
                                 <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(homeTeam?.name) ?? 'TBC'}</span>
@@ -184,11 +184,12 @@ export default function Desktop({ data }: { data: any }) {
                               <div className="flex items-center gap-2 justify-end">
                                 <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(awayTeam?.name) ?? 'TBC'}</span>
                                 {awayTeam?.logo_league_folder && (
-                                  <Image
-                                    src={getTeamLogo(awayTeam.logo_league_folder, awayTeam.logo_team_slug, 'standings_row')}
+                                  <TeamLogo
+                                    leagueFolder={awayTeam.logo_league_folder}
+                                    teamSlug={awayTeam.logo_team_slug}
+                                    context="standings_row"
                                     alt={awayTeam.name}
-                                    width={24} height={24}
-                                    className="object-contain shrink-0"
+                                    className="w-6 h-6 shrink-0"
                                   />
                                 )}
                               </div>

@@ -1,7 +1,6 @@
 'use client'
 import Link from 'next/link'
-import Image from 'next/image'
-import { getTeamLogo } from '@/lib/logo-resolver'
+import TeamLogo from '@/components/ui/TeamLogo'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import { Card } from '@/components/ui/Card'
 import { AlertTriangle, BarChart3, Camera, ArrowLeft, ChevronRight } from 'lucide-react'
@@ -39,7 +38,7 @@ export default function Desktop({ data }: { data: any }) {
                 <p className="text-xs text-text-muted">{home?.manager?.username ?? 'NO MANAGER'}</p>
               </div>
               {home?.logo_league_folder && (
-                <Image src={getTeamLogo(home.logo_league_folder, home.logo_team_slug, 'match_detail_hero')} alt={home.name} width={64} height={64} className="object-contain w-16 h-16" />
+                <TeamLogo leagueFolder={home.logo_league_folder} teamSlug={home.logo_team_slug} context="match_detail_hero" alt={home.name} className="w-16 h-16 shrink-0" />
               )}
             </div>
 
@@ -75,7 +74,7 @@ export default function Desktop({ data }: { data: any }) {
 
             <div className="flex items-center gap-5 flex-1">
               {away?.logo_league_folder && (
-                <Image src={getTeamLogo(away.logo_league_folder, away.logo_team_slug, 'match_detail_hero')} alt={away.name} width={64} height={64} className="object-contain w-16 h-16" />
+                <TeamLogo leagueFolder={away.logo_league_folder} teamSlug={away.logo_team_slug} context="match_detail_hero" alt={away.name} className="w-16 h-16 shrink-0" />
               )}
               <div>
                 <Link href={`/teams/${away?.id}`} className="text-lg font-bold text-text-primary hover:text-accent transition-colors block">{away?.name}</Link>
