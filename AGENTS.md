@@ -60,6 +60,7 @@ Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-String -P
 - `uel-no-name/` — UEL "No Name" placeholder team replacement + ShieldQuestion logo fallback
 - `admin-dashboard/` — admin dashboard UI (tournaments widget button uniformization, postpone overlay)
 - `migration-history/` — Supabase schema_migrations tracking / migration bookkeeping
+- `forfeit-balances/` — forfeit balance carry-over (website "Use" button, WhatsApp auto-apply)
 
 ### Naming requirement
 Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's last-modified date. New files use the current date. When a file is substantially edited on a later day, rename it to the new date.

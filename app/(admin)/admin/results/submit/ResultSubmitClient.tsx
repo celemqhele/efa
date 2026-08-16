@@ -148,25 +148,32 @@ export default function ResultSubmitClient({
   // Forfeit balance state
   const [forfeitBalances, setForfeitBalances] = useState<any[]>([])
   const [balanceLoading, setBalanceLoading] = useState(false)
+  const [usedBalanceIds, setUsedBalanceIds] = useState<string[]>([])
+  const [forfeitBalanceNote, setForfeitBalanceNote] = useState('')
 
   async function handleUseForfeitBalance(balanceId: string) {
-    const res = await fetch('/api/admin/forfeit-balances/use', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ balance_id: balanceId, fixture_id: selectedFixtureId }),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      if (data.aggregate) {
-        setHomeScore(String(data.aggregate.home_score))
-        setAwayScore(String(data.aggregate.away_score))
-      }
-      setForfeitBalances((prev) =>
-        prev.map((x: any) =>
-          x.id === balanceId ? { ...x, remaining: x.remaining - 1 } : x
-        ).filter((x: any) => x.remaining > 0)
-      )
-    }
+    if (!selectedFixture) return
+    const balance = forfeitBalances.find((b: any) => b.id === balanceId)
+    if (!balance || usedBalanceIds.includes(balanceId)) return
+
+    const forfeitingIsHome = balance.forfeiting_team_id === selectedFixture.home_team?.id
+    const forfeitingScore = balance.forfeiting_score ?? 0
+    const opponentScore = balance.opponent_score ?? 0
+    const homeAdd = forfeitingIsHome ? forfeitingScore : opponentScore
+    const awayAdd = forfeitingIsHome ? opponentScore : forfeitingScore
+
+    const newHomeScore = (parseInt(homeScore) || 0) + homeAdd
+    const newAwayScore = (parseInt(awayScore) || 0) + awayAdd
+    setHomeScore(String(newHomeScore))
+    setAwayScore(String(newAwayScore))
+
+    const forfeitingName = forfeitingIsHome ? selectedFixture.home_team?.name : selectedFixture.away_team?.name
+    const opponentName = forfeitingIsHome ? selectedFixture.away_team?.name : selectedFixture.home_team?.name
+    setForfeitBalanceNote(
+      `Forfeit balance applied: ${forfeitingName} +${forfeitingScore}, ${opponentName} +${opponentScore}. Score now ${newHomeScore}-${newAwayScore}.`
+    )
+    setUsedBalanceIds((prev) => [...prev, balanceId])
+    setForfeitBalances((prev) => prev.filter((x: any) => x.id !== balanceId))
   }
 
   // Score state
@@ -302,6 +309,8 @@ export default function ResultSubmitClient({
     setAwayScore('')
     setHomeAbsent(false)
     setAwayAbsent(false)
+    setUsedBalanceIds([])
+    setForfeitBalanceNote('')
   }
 
   async function handleScreenshotUpload() {
@@ -442,6 +451,7 @@ export default function ResultSubmitClient({
       ocr_home_name: ocrResult?.home_team_name ?? null,
       ocr_away_name: ocrResult?.away_team_name ?? null,
     }
+    if (usedBalanceIds.length > 0) payload.used_forfeit_balance_ids = usedBalanceIds
     if (showPenalties && penHomeScore) payload.pen_home_score = parseInt(penHomeScore)
     if (showPenalties && penAwayScore) payload.pen_away_score = parseInt(penAwayScore)
 
@@ -928,6 +938,12 @@ export default function ResultSubmitClient({
                     : homeAbsent
                     ? `${selectedFixture.home_team?.name} forfeits — result recorded as 0–3.`
                     : `${selectedFixture.away_team?.name} forfeits — result recorded as 3–0.`}
+                </div>
+              )}
+
+              {forfeitBalanceNote && (
+                <div className="mb-4 rounded-lg px-3 py-2 text-sm bg-orange-50 border border-orange-200 text-orange-700">
+                  {forfeitBalanceNote}
                 </div>
               )}
 

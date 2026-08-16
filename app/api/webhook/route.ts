@@ -213,7 +213,7 @@ const msg = messages[0]
           menu: 'Reply 1 or 2. Type CANCEL to exit.',
           fixture_search: 'Screenshot received. Which fixture? Type team names (e.g., "Arsenal vs Chelsea").',
           fixture_select: 'Screenshot received. Reply with the number of your match.',
-          side: 'Screenshot received. Reply "home" or "away". Type CANCEL to abort.',
+          side: 'Screenshot received. Type the team that is not responding. Type CANCEL to abort.',
           check: 'Reply 1 or 2. Type CANCEL to exit.',
         }
         const prompt = backdoorPrompts[session.backdoor_menu_step || ''] || 'Type team names or type CANCEL to exit.'
@@ -440,7 +440,7 @@ async function handleBackdoorFixture(from: string, text: string, phoneNumberId: 
     matched_fixture_id: fixtureId,
   })
 
-  await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Reply "home" or "away". Type CANCEL to abort.`, phoneNumberId)
+  await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Type the team name (e.g. ${h} or ${a}). Type CANCEL to abort.`, phoneNumberId)
 }
 
 async function handleBackdoorOverrideConfirm(from: string, text: string, phoneNumberId: string) {
@@ -470,7 +470,7 @@ async function handleBackdoorOverrideConfirm(from: string, text: string, phoneNu
       .single()
     const h = fixtureTeamName(data, 'home')
     const a = fixtureTeamName(data, 'away')
-    await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Reply "home" or "away". Type CANCEL to abort.`, phoneNumberId)
+    await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Type the team name (e.g. ${h} or ${a}). Type CANCEL to abort.`, phoneNumberId)
     return
   }
   if (/^no$/i.test(lower)) {
@@ -493,13 +493,23 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
     await sendTextMessage(from, "Something went wrong. Start over.", phoneNumberId)
     return
   }
-  const lower = text.trim().toLowerCase()
-  let homeScore: number, awayScore: number
-  if (/^home$/i.test(lower)) { homeScore = 3; awayScore = 0 }
-  else if (/^away$/i.test(lower)) { homeScore = 0; awayScore = 3 }
-  else { await sendTextMessage(from, "Reply \"home\" or \"away\".", phoneNumberId); return }
-
   const supabase = await createAdminClient()
+  const side = await resolveBackdoorSide(supabase, session.matched_fixture_id, text)
+  let homeScore: number, awayScore: number
+  if (side === 'home') { homeScore = 3; awayScore = 0 }
+  else if (side === 'away') { homeScore = 0; awayScore = 3 }
+  else {
+    const { data: fx } = await supabase
+      .from('fixtures')
+      .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+      .eq('id', session.matched_fixture_id)
+      .single()
+    const h = fixtureTeamName(fx, 'home')
+    const a = fixtureTeamName(fx, 'away')
+    await sendTextMessage(from, `Type the team that gets the 3-0 win (e.g. ${h} or ${a}).`, phoneNumberId)
+    return
+  }
+
   const adminUserId = await getAdminUserId(supabase)
 
   // Detect if this is an override of an already-confirmed backdoor result
@@ -1192,7 +1202,7 @@ if (teamSearches.length === 0) {
       backdoor_side: null,
     })
 
-    await sendTextMessage(from, `${hName} vs ${aName}\n\nWho is not responding? Reply "home" or "away". Type CANCEL to abort.`, phoneNumberId)
+    await sendTextMessage(from, `${hName} vs ${aName}\n\nWho is not responding? Type the team name (e.g. ${hName} or ${aName}). Type CANCEL to abort.`, phoneNumberId)
     return
   }
 
@@ -1289,17 +1299,56 @@ async function handleBackdoorFixtureSelect(from: string, text: string, session: 
     matched_fixture_id: fixtureId,
   })
 
-  await sendTextMessage(from, `${h} vs ${a}\n\nWho is not responding? Reply "home" or "away". Type CANCEL to abort.`, phoneNumberId)
+  await sendTextMessage(from, `${h} vs ${a}\n\nWho is not responding? Type the team name (e.g. ${h} or ${a}). Type CANCEL to abort.`, phoneNumberId)
+}
+
+// Resolve the team the manager typed into a home/away side for the given
+// fixture. Still accepts "home"/"away" for backwards compatibility; otherwise
+// matches the team name (exact, then via aliases/LLM). Returns null if no match.
+async function resolveBackdoorSide(
+  supabase: any,
+  fixtureId: string | null,
+  text: string
+): Promise<'home' | 'away' | null> {
+  const lower = text.trim().toLowerCase()
+  if (lower === 'home') return 'home'
+  if (lower === 'away') return 'away'
+  if (!fixtureId) return null
+
+  const { data: f } = await supabase
+    .from('fixtures')
+    .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .eq('id', fixtureId)
+    .single()
+
+  const homeName = fixtureTeamName(f, 'home').toLowerCase()
+  const awayName = fixtureTeamName(f, 'away').toLowerCase()
+  if (homeName && lower === homeName) return 'home'
+  if (awayName && lower === awayName) return 'away'
+
+  const resolved = await resolveTeamName(text.trim())
+  if (resolved) {
+    const r = resolved.toLowerCase()
+    if (r === homeName) return 'home'
+    if (r === awayName) return 'away'
+  }
+  return null
 }
 
 async function handleBackdoorSideSelect(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  const lower = text.trim().toLowerCase()
-  if (!/^(home|away)$/i.test(lower)) {
-    await sendTextMessage(from, 'Reply "home" or "away".', phoneNumberId)
+  const supabase = await createAdminClient()
+  const side = await resolveBackdoorSide(supabase, session.matched_fixture_id, text)
+  if (!side) {
+    const { data: f } = await supabase
+      .from('fixtures')
+      .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+      .eq('id', session.matched_fixture_id)
+      .single()
+    const h = fixtureTeamName(f, 'home')
+    const a = fixtureTeamName(f, 'away')
+    await sendTextMessage(from, `Type the team that's not responding (e.g. ${h} or ${a}).`, phoneNumberId)
     return
   }
-  const side = lower as 'home' | 'away'
-  const supabase = await createAdminClient()
 
   // Final gate: if the backdoor window has been closed since the flow started, block.
   if (!(await isBackdoorWindowEnabled(supabase))) {
@@ -3207,34 +3256,37 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   let awayScore = session.away_score
   let forfeitBalanceNote = ''
 
-  // Forfeit balance aggregate: check if either team has active forfeit balances against the current opponent
-  // Skip when this is a forfeit confirm — handleForfeitYes already applied the +3
-  if (!isForfeitConfirm && fixture?.home_team_id && fixture?.away_team_id && homeScore !== awayScore) {
-    const losingTeamId = homeScore < awayScore ? fixture.home_team_id : fixture.away_team_id
-    const opponentTeamId = homeScore < awayScore ? fixture.away_team_id : fixture.home_team_id
+  // Forfeit balance aggregate: check if either team has active forfeit balances against the current opponent.
+  // The forfeit score always carries over to the next meeting between the same two teams (per the rules),
+  // regardless of who is currently winning. Skip when this is a forfeit confirm — handleForfeitYes already applied the +3.
+  if (!isForfeitConfirm && fixture?.home_team_id && fixture?.away_team_id) {
     const { data: balances } = await supabase
       .from('forfeit_balances')
-      .select('id, forfeiting_score, opponent_score, forfeiting_team:teams!forfeit_balances_forfeiting_team_id_fkey(name), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
-      .eq('forfeiting_team_id', losingTeamId)
-      .eq('opponent_team_id', opponentTeamId)
+      .select('id, forfeiting_score, opponent_score, forfeiting_team_id, forfeiting_team:teams!forfeit_balances_forfeiting_team_id_fkey(name), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
+      .or(`and(forfeiting_team_id.eq.${fixture.home_team_id},opponent_team_id.eq.${fixture.away_team_id}),and(forfeiting_team_id.eq.${fixture.away_team_id},opponent_team_id.eq.${fixture.home_team_id})`)
       .gt('remaining', 0)
 
     if (balances && balances.length > 0) {
+      let noteTeamNames = ''
       for (const bal of balances) {
-        if (homeScore < awayScore) {
-          homeScore += bal.forfeiting_score
-          awayScore += bal.opponent_score
+        const forfeitingIsHome = bal.forfeiting_team_id === fixture.home_team_id
+        const forfeitingScore = bal.forfeiting_score ?? 0
+        const opponentScore = bal.opponent_score ?? 0
+        if (forfeitingIsHome) {
+          homeScore += forfeitingScore
+          awayScore += opponentScore
         } else {
-          awayScore += bal.forfeiting_score
-          homeScore += bal.opponent_score
+          awayScore += forfeitingScore
+          homeScore += opponentScore
         }
         await supabase.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
-      }
 
-      const teamName = (Array.isArray(balances[0]?.forfeiting_team) ? balances[0].forfeiting_team[0]?.name : balances[0]?.forfeiting_team?.name) || 'Team'
-      const oppName = (Array.isArray(balances[0]?.opponent_team) ? balances[0].opponent_team[0]?.name : balances[0]?.opponent_team?.name) || 'Opponent'
-      forfeitBalanceNote = `\n\nForfeit balance applied: ${teamName} had ${balances.length} active forfeit balance(s) from ${oppName}. Aggregate adjusted to ${homeScore}-${awayScore}.`
-      console.log('[webhook] forfeit balance applied:', teamName, 'vs', oppName, 'aggregate:', homeScore, '-', awayScore)
+        const teamName = (Array.isArray(bal.forfeiting_team) ? bal.forfeiting_team[0]?.name : bal.forfeiting_team?.name) || 'Team'
+        const oppName = (Array.isArray(bal.opponent_team) ? bal.opponent_team[0]?.name : bal.opponent_team?.name) || 'Opponent'
+        noteTeamNames += `${noteTeamNames ? ', ' : ''}${teamName} (from ${oppName})`
+      }
+      forfeitBalanceNote = `\n\nForfeit balance applied: ${noteTeamNames}. Aggregate adjusted to ${homeScore}-${awayScore}.`
+      console.log('[webhook] forfeit balance applied:', noteTeamNames, 'aggregate:', homeScore, '-', awayScore)
     }
   }
 

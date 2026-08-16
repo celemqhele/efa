@@ -193,6 +193,7 @@ export async function POST(request: Request) {
   const stats = body.stats
   const pen_home_score = body.pen_home_score
   const pen_away_score = body.pen_away_score
+  const used_forfeit_balance_ids: string[] = body.used_forfeit_balance_ids ?? []
 
   let home_score: number
   let away_score: number
@@ -343,6 +344,33 @@ export async function POST(request: Request) {
         forfeiting_score: body.away_score ?? 0,
         half_time_note: note,
       })
+    }
+  }
+
+  // ── Forfeit balance consumption (carry-over applied via "Use forfeit balance") ──
+  // The submit page applies the carried-over forfeit score to the result it sends;
+  // mark those balances consumed once the result is saved.
+  if (used_forfeit_balance_ids.length > 0) {
+    const { data: usedBalances, error: usedFetchErr } = await adminSupabase
+      .from('forfeit_balances')
+      .select('id, forfeiting_team_id, opponent_team_id')
+      .in('id', used_forfeit_balance_ids)
+
+    if (usedFetchErr) {
+      console.error('[finalise-result] used forfeit balances fetch failed:', usedFetchErr.message)
+    } else {
+      const validIds = (usedBalances ?? []).filter((b: any) =>
+        (b.forfeiting_team_id === fixture.home_team_id && b.opponent_team_id === fixture.away_team_id) ||
+        (b.forfeiting_team_id === fixture.away_team_id && b.opponent_team_id === fixture.home_team_id)
+      ).map((b: any) => b.id)
+
+      if (validIds.length > 0) {
+        const { error: consumeErr } = await adminSupabase
+          .from('forfeit_balances')
+          .update({ remaining: 0 })
+          .in('id', validIds)
+        if (consumeErr) console.error('[finalise-result] consume forfeit balances failed:', consumeErr.message)
+      }
     }
   }
 
