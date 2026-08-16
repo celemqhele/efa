@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle2, XCircle, ExternalLink, RefreshCw, AlertTriangle } from 'lucide-react'
 import WhatsAppButton from '@/components/ui/WhatsAppButton'
@@ -38,7 +39,7 @@ interface Props {
 }
 
 export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props) {
-  const [refreshKey, setRefreshKey] = useState(0)
+  const router = useRouter()
   const [loadingFixtureId, setLoadingFixtureId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -150,7 +151,8 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
         await notifyDecision('declined')
       }
 
-      setRefreshKey(k => k + 1)
+      setActionError(null)
+      router.refresh()
     } catch (err: any) {
       setActionError(err.message || 'Action failed')
     } finally {
@@ -172,7 +174,7 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-text-primary">All Submissions ({groupedSubmissions.length} fixtures)</h2>
         <button
-          onClick={() => setRefreshKey(k => k + 1)}
+          onClick={() => router.refresh()}
           disabled={!!loadingFixtureId}
           className="btn-outline text-sm"
         >
