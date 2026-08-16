@@ -5,16 +5,18 @@ import { useRouter } from 'next/navigation'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
 import { addDays, format } from 'date-fns'
+import { CARD_ACTION_BTN } from './card-action-classes'
 
 interface Props {
   tournamentId: string
   tournamentName: string
   type?: string
+  className?: string
 }
 
 const MATCHES_PER_WEEK = 30
 
-export default function GenerateFixturesButton({ tournamentId, tournamentName, type }: Props) {
+export default function GenerateFixturesButton({ tournamentId, tournamentName, type, className = CARD_ACTION_BTN }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -130,7 +132,7 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName, t
       <button
         onClick={openDialog}
         disabled={loading}
-        className="btn-gold text-[10px] py-1 px-2"
+        className={className}
       >
         {loading ? (
           <span className="flex items-center gap-1">

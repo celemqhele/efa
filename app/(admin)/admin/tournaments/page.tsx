@@ -8,6 +8,7 @@ import GenerateKnockoutsButton from './GenerateKnockoutsButton'
 import GenerateFriendliesButton from './GenerateFriendliesButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
 import RescheduleFixturesButton from './RescheduleFixturesButton'
+import { CARD_ACTION_BTN, CARD_ACTION_BTN_DANGER } from './card-action-classes'
 
 export const revalidate = 0
 
@@ -213,10 +214,10 @@ function TournamentCard({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-1.5 pt-3 border-t border-border">
+      <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
         <Link
           href={`/admin/fixtures/manage?tournament=${tournament.id}`}
-          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:border-accent hover:text-accent transition-colors"
+          className={CARD_ACTION_BTN}
         >
           Fixtures
         </Link>
@@ -224,15 +225,17 @@ function TournamentCard({
           tournamentId={tournament.id}
           tournamentName={tournament.name}
           type={tournament.type}
+          className={CARD_ACTION_BTN}
         />
         <RescheduleFixturesButton
           tournamentId={tournament.id}
           tournamentName={tournament.name}
           fixtureCount={fixtureCount}
+          className={CARD_ACTION_BTN}
         />
         <Link
           href={`/standings?t=${tournament.id}`}
-          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:border-accent hover:text-accent transition-colors"
+          className={CARD_ACTION_BTN}
         >
           Standings
         </Link>
@@ -241,6 +244,7 @@ function TournamentCard({
             tournamentId={tournament.id}
             tournamentName={tournament.name}
             type={tournament.type}
+            className={CARD_ACTION_BTN}
           />
         )}
         {['tournament_club', 'tournament_international'].includes(tournament.type) && (
@@ -248,6 +252,7 @@ function TournamentCard({
             tournamentId={tournament.id}
             tournamentName={tournament.name}
             type={tournament.type}
+            className={CARD_ACTION_BTN}
           />
         )}
         {tournament.type === 'friendlies' && (
@@ -255,9 +260,10 @@ function TournamentCard({
             tournamentId={tournament.id}
             tournamentName={tournament.name}
             type={tournament.type}
+            className={CARD_ACTION_BTN}
           />
         )}
-        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
+        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={CARD_ACTION_BTN_DANGER} />
       </div>
     </div>
   )

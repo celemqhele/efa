@@ -11,6 +11,7 @@ import GenerateKnockoutsButton from '@/app/(admin)/admin/tournaments/GenerateKno
 import GenerateFriendliesButton from '@/app/(admin)/admin/tournaments/GenerateFriendliesButton'
 import GenerateFixturesButton from '@/app/(admin)/admin/tournaments/GenerateFixturesButton'
 import RescheduleFixturesButton from '@/app/(admin)/admin/tournaments/RescheduleFixturesButton'
+import { CARD_ACTION_BTN, CARD_ACTION_BTN_DANGER } from '@/app/(admin)/admin/tournaments/card-action-classes'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import { Trophy, CheckCircle2, CalendarDays, ClipboardList, AlertTriangle } from 'lucide-react'
 import { cleanTeamName } from '@/lib/clean-team-name'
@@ -132,10 +133,10 @@ function TournamentCard({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-1.5 pt-3 border-t border-border">
+      <div className="flex flex-wrap gap-2 pt-3 border-t border-border">
         <Link
           href={`/admin/fixtures/manage?tournament=${tournament.id}`}
-          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:border-accent hover:text-accent transition-colors"
+          className={CARD_ACTION_BTN}
         >
           Fixtures
         </Link>
@@ -143,28 +144,30 @@ function TournamentCard({
           tournamentId={tournament.id}
           tournamentName={tournament.name}
           type={tournament.type}
+          className={CARD_ACTION_BTN}
         />
         <RescheduleFixturesButton
           tournamentId={tournament.id}
           tournamentName={tournament.name}
           fixtureCount={fixtureCount}
+          className={CARD_ACTION_BTN}
         />
         <Link
           href={`/standings?t=${tournament.id}`}
-          className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-lg border border-border hover:border-accent hover:text-accent transition-colors"
+          className={CARD_ACTION_BTN}
         >
           Standings
         </Link>
         {['tournament_club', 'tournament_international'].includes(tournament.type) && (
-          <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+          <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={CARD_ACTION_BTN} />
         )}
         {['tournament_club', 'tournament_international'].includes(tournament.type) && (
-          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={CARD_ACTION_BTN} />
         )}
         {tournament.type === 'friendlies' && (
-          <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+          <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={CARD_ACTION_BTN} />
         )}
-        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
+        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={CARD_ACTION_BTN_DANGER} />
       </div>
     </div>
   )

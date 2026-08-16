@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { notify } from '@/lib/notifications'
+import { CARD_ACTION_BTN } from './card-action-classes'
 
 interface Props {
   tournamentId: string
@@ -12,7 +13,7 @@ interface Props {
   className?: string
 }
 
-export default function GenerateFriendliesButton({ tournamentId, tournamentName, type, className = '' }: Props) {
+export default function GenerateFriendliesButton({ tournamentId, tournamentName, type, className = CARD_ACTION_BTN }: Props) {
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [matches, setMatches] = useState(1)
@@ -47,7 +48,7 @@ export default function GenerateFriendliesButton({ tournamentId, tournamentName,
     <>
       <button
         onClick={() => setShowConfirm(true)}
-        className={className || "text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"}
+        className={className}
         disabled={loading}
       >
         Generate Fixtures

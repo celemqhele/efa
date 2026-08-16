@@ -9,6 +9,12 @@ import GenerateKnockoutsButton from '../GenerateKnockoutsButton'
 import GenerateFriendliesButton from '../GenerateFriendliesButton'
 import { Trophy, ArrowLeft } from 'lucide-react'
 
+const DETAIL_ACTION_BTN =
+  'text-sm font-semibold text-center px-3 py-3 rounded-xl border border-border text-text-secondary min-h-[48px] flex items-center justify-center transition-colors hover:border-accent hover:text-accent'
+
+const DETAIL_ACTION_BTN_DANGER =
+  'text-sm font-semibold text-center px-3 py-3 rounded-xl border border-red-500/30 text-red-400 min-h-[48px] flex items-center justify-center transition-colors hover:bg-red-500/10 hover:border-red-500/40'
+
 const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
   league: { label: 'League', colour: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
   tournament_club: { label: 'Tournament (Clubs)', colour: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
@@ -124,22 +130,22 @@ export default async function TournamentDetailPage({ params }: PageProps) {
           <div className="grid grid-cols-2 gap-2">
             <Link
               href={`/standings?t=${tournament.id}`}
-              className="text-sm font-semibold text-center px-3 py-3 rounded-xl border border-border text-text-secondary min-h-[48px] flex items-center justify-center"
+              className={DETAIL_ACTION_BTN}
             >
               Standings
             </Link>
-            <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
+            <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={DETAIL_ACTION_BTN_DANGER} />
           </div>
 
           {['tournament_club', 'tournament_international'].includes(tournament.type) && (
             <div className="grid grid-cols-2 gap-2">
-              <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
-              <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+              <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={DETAIL_ACTION_BTN} />
+              <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={DETAIL_ACTION_BTN} />
             </div>
           )}
 
           {tournament.type === 'friendlies' && (
-            <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+            <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={DETAIL_ACTION_BTN} />
           )}
         </div>
       </div>

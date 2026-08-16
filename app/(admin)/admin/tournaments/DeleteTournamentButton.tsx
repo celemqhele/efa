@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ModalPortal from '@/components/ui/ModalPortal'
+import { CARD_ACTION_BTN_DANGER } from './card-action-classes'
 
-export default function DeleteTournamentButton({ tournamentId, tournamentName, className = '' }: {
+export default function DeleteTournamentButton({ tournamentId, tournamentName, className = CARD_ACTION_BTN_DANGER }: {
   tournamentId: string
   tournamentName: string
   className?: string
@@ -41,7 +42,7 @@ export default function DeleteTournamentButton({ tournamentId, tournamentName, c
     <>
       <button
         onClick={() => setOpen(true)}
-        className={className || "text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"}
+        className={className}
       >
         Delete
       </button>

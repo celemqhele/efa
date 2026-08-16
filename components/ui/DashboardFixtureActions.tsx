@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import WhatsAppButton from './WhatsAppButton'
 import { Button } from './Button'
-import { Trophy, Gamepad2 } from 'lucide-react'
+import ModalPortal from './ModalPortal'
 
 interface Props {
   fixtureId: string
@@ -16,6 +16,8 @@ interface Props {
   awayManagerName?: string | null
   awayManagerPhone?: string | null
 }
+
+const POSTPONE_POPOVER_W = 300
 
 export default function DashboardFixtureActions({
   fixtureId,
@@ -32,9 +34,48 @@ export default function DashboardFixtureActions({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null)
+  const actionsRef = useRef<HTMLDivElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
 
   const isFinished = ['confirmed', 'completed', 'abandoned'].includes(status)
   const isAwaiting = status === 'awaiting_confirmation'
+
+  useEffect(() => {
+    if (!showPostpone) return
+    const close = () => setShowPostpone(false)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const t = e.target as Node
+      if (actionsRef.current?.contains(t)) return
+      if (popoverRef.current?.contains(t)) return
+      close()
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('touchstart', onDown)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('touchstart', onDown)
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', close, true)
+    }
+  }, [showPostpone])
+
+  function togglePostpone() {
+    if (!showPostpone && actionsRef.current) {
+      const rect = actionsRef.current.getBoundingClientRect()
+      const left = Math.min(
+        Math.max(8, rect.right - POSTPONE_POPOVER_W),
+        Math.max(8, window.innerWidth - POSTPONE_POPOVER_W - 8),
+      )
+      setPopoverPos({ top: rect.bottom + 8, left })
+    }
+    setShowPostpone(!showPostpone)
+  }
 
   async function handlePostpone(e: React.FormEvent) {
     e.preventDefault()
@@ -70,7 +111,7 @@ export default function DashboardFixtureActions({
   if (done) return <span className="text-feedback-warning text-xs font-semibold">Postponed</span>
 
   return (
-    <div className="flex flex-col items-end gap-space-1 shrink-0">
+    <div className="flex flex-col items-end gap-space-1 shrink-0" ref={actionsRef}>
       <div className="flex items-center gap-space-2 flex-wrap justify-end">
         {/* WhatsApp buttons */}
         {homeManagerPhone && (
@@ -90,31 +131,44 @@ export default function DashboardFixtureActions({
         </Button>
         <Button
           variant="secondary"
-          onClick={() => setShowPostpone(!showPostpone)}
+          onClick={togglePostpone}
           className="text-xs px-space-3 py-space-1"
         >
           Postpone
         </Button>
       </div>
-      {showPostpone && (
-        <form onSubmit={handlePostpone} className="flex items-center gap-space-2 flex-wrap justify-end">
-          <input
-            type="datetime-local"
-            value={newDate}
-            onChange={(e) => setNewDate(e.target.value)}
-            className="bg-bg-surface border border-border rounded-md text-xs px-space-3 py-space-1 w-44"
-            required
-          />
-          <Button type="submit" isLoading={loading} variant="primary" className="text-xs px-space-3 py-space-1">
-            {loading ? '…' : 'Save'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => setShowPostpone(false)} className="text-xs px-space-3 py-space-1">
-            ×
-          </Button>
-          {error && <p className="text-feedback-error text-xs w-full text-right">{error}</p>}
-        </form>
+
+      {showPostpone && popoverPos && (
+        <ModalPortal>
+          <div
+            ref={popoverRef}
+            className="fixed bg-bg-elevated border border-border rounded-lg shadow-md p-2 z-[60] animate-fade-in"
+            style={{
+              top: popoverPos.top,
+              left: popoverPos.left,
+              width: POSTPONE_POPOVER_W,
+              maxWidth: 'calc(100vw - 1rem)',
+            }}
+          >
+            <form onSubmit={handlePostpone} className="flex items-center gap-space-2 flex-wrap justify-end">
+              <input
+                type="datetime-local"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+                className="bg-bg-surface border border-border rounded-md text-xs px-space-3 py-space-1 w-40"
+                required
+              />
+              <Button type="submit" isLoading={loading} variant="primary" className="text-xs px-space-3 py-space-1">
+                {loading ? '…' : 'Save'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setShowPostpone(false)} className="text-xs px-space-3 py-space-1">
+                ×
+              </Button>
+              {error && <p className="text-feedback-error text-xs w-full text-right">{error}</p>}
+            </form>
+          </div>
+        </ModalPortal>
       )}
     </div>
   )
 }
-

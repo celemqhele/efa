@@ -5,6 +5,12 @@ import GenerateKnockoutsButton from './GenerateKnockoutsButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
 import { Trophy } from 'lucide-react'
 
+const MOBILE_ACTION_BTN =
+  'text-xs font-semibold text-center px-2 py-3 rounded-lg border border-border text-text-secondary min-h-[48px] flex items-center justify-center transition-colors hover:border-accent hover:text-accent'
+
+const MOBILE_ACTION_BTN_DANGER =
+  'text-xs font-semibold text-center px-2 py-3 rounded-lg border border-red-500/30 text-red-400 min-h-[48px] flex items-center justify-center transition-colors hover:bg-red-500/10 hover:border-red-500/40'
+
 const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
   league: { label: 'League', colour: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
   tournament_club: { label: 'Tournament (Clubs)', colour: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
@@ -67,18 +73,18 @@ function TournamentCard({ tournament, participantCount, fixtureCount, completedC
 
       <div className="space-y-2 pt-1">
         <div className="grid grid-cols-3 gap-2">
-          <Link href={`/admin/fixtures/manage?tournament=${tournament.id}`} className="text-xs font-semibold text-center px-2 py-3 rounded-lg border border-border text-text-secondary min-h-[48px] flex items-center justify-center">
+          <Link href={`/admin/fixtures/manage?tournament=${tournament.id}`} className={MOBILE_ACTION_BTN}>
             Fixtures
           </Link>
-          <Link href={`/standings?t=${tournament.id}`} className="text-xs font-semibold text-center px-2 py-3 rounded-lg border border-border text-text-secondary min-h-[48px] flex items-center justify-center">
+          <Link href={`/standings?t=${tournament.id}`} className={MOBILE_ACTION_BTN}>
             Standings
           </Link>
-          <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} />
+          <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={MOBILE_ACTION_BTN_DANGER} />
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
-          <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
-          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} />
+          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
+          <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
+          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
         </div>
       </div>
     </div>

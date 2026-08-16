@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { notify } from '@/lib/notifications'
+import { CARD_ACTION_BTN } from './card-action-classes'
 
 interface Props {
   tournamentId: string
@@ -11,7 +12,7 @@ interface Props {
   className?: string
 }
 
-export default function RunTournamentDrawButton({ tournamentId, tournamentName, type, className = '' }: Props) {
+export default function RunTournamentDrawButton({ tournamentId, tournamentName, type, className = CARD_ACTION_BTN }: Props) {
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [result, setResult] = useState<{ groups?: any[]; pairings?: any[]; iterations?: number } | null>(null)
@@ -57,7 +58,7 @@ export default function RunTournamentDrawButton({ tournamentId, tournamentName, 
     <>
       <button
         onClick={() => setShowConfirm(true)}
-        className={className || "text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"}
+        className={className}
         disabled={loading}
       >
         Run Draw

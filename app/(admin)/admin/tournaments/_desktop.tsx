@@ -3,6 +3,7 @@ import DeleteTournamentButton from './DeleteTournamentButton'
 import GenerateFixturesButton from './GenerateFixturesButton'
 import GenerateKnockoutsButton from './GenerateKnockoutsButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
+import { CARD_ACTION_BTN, CARD_ACTION_BTN_DANGER } from './card-action-classes'
 import { Trophy } from 'lucide-react'
 
 const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
@@ -101,17 +102,17 @@ export default function Desktop({ data }: { data: any }) {
                           )}
                         </td>
                         <td className="px-5 py-4">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Link href={`/admin/fixtures/manage?tournament=${t.id}`} className="text-[10px] font-semibold px-2.5 py-1.5 rounded border border-border text-text-secondary hover:border-accent hover:text-accent transition-colors">
+                          <div className="flex items-center justify-end gap-2">
+                            <Link href={`/admin/fixtures/manage?tournament=${t.id}`} className={CARD_ACTION_BTN}>
                               Fixtures
                             </Link>
-                            <Link href={`/standings?t=${t.id}`} className="text-[10px] font-semibold px-2.5 py-1.5 rounded border border-border text-text-secondary hover:border-accent hover:text-accent transition-colors">
+                            <Link href={`/standings?t=${t.id}`} className={CARD_ACTION_BTN}>
                               Standings
                             </Link>
-                            <DeleteTournamentButton tournamentId={t.id} tournamentName={t.name} />
-                            <GenerateFixturesButton tournamentId={t.id} tournamentName={t.name} type={t.type} />
-                            <RunTournamentDrawButton tournamentId={t.id} tournamentName={t.name} type={t.type} />
-                            <GenerateKnockoutsButton tournamentId={t.id} tournamentName={t.name} type={t.type} />
+                            <DeleteTournamentButton tournamentId={t.id} tournamentName={t.name} className={CARD_ACTION_BTN_DANGER} />
+                            <GenerateFixturesButton tournamentId={t.id} tournamentName={t.name} type={t.type} className={CARD_ACTION_BTN} />
+                            <RunTournamentDrawButton tournamentId={t.id} tournamentName={t.name} type={t.type} className={CARD_ACTION_BTN} />
+                            <GenerateKnockoutsButton tournamentId={t.id} tournamentName={t.name} type={t.type} className={CARD_ACTION_BTN} />
                           </div>
                         </td>
                       </tr>

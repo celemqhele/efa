@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { notify } from '@/lib/notifications'
+import { CARD_ACTION_BTN } from './card-action-classes'
 
 interface Qualifier {
   team_id: string
@@ -22,7 +23,7 @@ interface Props {
   className?: string
 }
 
-export default function GenerateKnockoutsButton({ tournamentId, tournamentName, type, className = '' }: Props) {
+export default function GenerateKnockoutsButton({ tournamentId, tournamentName, type, className = CARD_ACTION_BTN }: Props) {
   const [loading, setLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [numLegs, setNumLegs] = useState<1 | 2>(1)
@@ -80,7 +81,7 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
     <>
       <button
         onClick={() => setShowConfirm(true)}
-        className={className || "text-xs font-semibold py-2.5 px-1 hover:bg-bg-base transition-colors"}
+        className={className}
         disabled={loading}
       >
         Generate Knockouts

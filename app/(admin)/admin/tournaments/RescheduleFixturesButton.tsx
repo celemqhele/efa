@@ -4,12 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
+import { CARD_ACTION_BTN } from './card-action-classes'
 
 interface Props {
   tournamentId: string
   tournamentName: string
   fixtureCount: number
   unscheduledCount?: number
+  className?: string
 }
 
 export default function RescheduleFixturesButton({
@@ -17,6 +19,7 @@ export default function RescheduleFixturesButton({
   tournamentName,
   fixtureCount,
   unscheduledCount,
+  className = CARD_ACTION_BTN,
 }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -88,7 +91,7 @@ export default function RescheduleFixturesButton({
           setDialogOpen(true)
         }}
         disabled={loading}
-        className="btn-gold text-[10px] py-1 px-2"
+        className={className}
       >
         {loading ? (
           <span className="flex items-center gap-1">
