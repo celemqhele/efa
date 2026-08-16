@@ -8,3 +8,7 @@ export function isAllowedTeam(leagueFolder: string, teamSlug: string): boolean {
 export function filterTeams<T extends { logo_league_folder: string; logo_team_slug: string }>(teams: T[]): T[] {
   return teams.filter(team => isAllowedTeam(team.logo_league_folder, team.logo_team_slug))
 }
+
+export function filterTeamsByFolder<T extends { slug: string }>(folder: string, teams: T[]): T[] {
+  return teams.filter(team => isAllowedTeam(folder, team.slug))
+}

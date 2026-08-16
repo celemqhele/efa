@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { buildRegistry } from '@/lib/registry'
-import { filterTeams } from '@/lib/allowed-teams'
+import { filterTeamsByFolder } from '@/lib/allowed-teams'
 import Shell from './_shell'
 
 export default async function PollPage({ params }: { params: Promise<{ share_code: string }> }) {
@@ -29,12 +29,12 @@ export default async function PollPage({ params }: { params: Promise<{ share_cod
   const registry = await buildRegistry()
   let leagues = registry
     .filter((r) => poll.allowed_leagues?.includes(r.folder))
-    .map(l => ({ ...l, teams: filterTeams(l.teams) }))
+    .map(l => ({ ...l, teams: filterTeamsByFolder(l.folder, l.teams) }))
 
   if (poll.allowed_international) {
     const intl = registry
       .filter((r) => r.isNational)
-      .map(l => ({ ...l, teams: filterTeams(l.teams) }))
+      .map(l => ({ ...l, teams: filterTeamsByFolder(l.folder, l.teams) }))
     leagues = [...leagues, ...intl]
   }
 
