@@ -183,7 +183,12 @@ export default function TeamManagerAdmin({
         username={cooldown?.username ?? ''}
         cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
         onClose={() => setCooldown(null)}
-        onOverride={() => cooldown && handleAssign(allProfiles.find(p => p.username === cooldown.username)?.id!, true)}
+        onOverride={() => {
+          if (cooldown) {
+            const profile = allProfiles.find(p => p.username === cooldown.username)
+            if (profile?.id) handleAssign(profile.id, true)
+          }
+        }}
       />
     </div>
   )

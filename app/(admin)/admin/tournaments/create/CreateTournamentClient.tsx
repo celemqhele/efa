@@ -548,6 +548,38 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
         username={cooldown?.username ?? ''}
         cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
         onClose={() => setCooldown(null)}
+        onOverride={() => {
+          if (cooldown) {
+            const user = users.find((u) => u.username === cooldown.username)
+            const slug = assigningSlug
+            if (user && slug) {
+              setCooldown(null)
+              const team = allTeams.find((t) => t.logo_team_slug === slug)
+              if (team) {
+                fetch('/api/admin/managers/assign', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    team_id: team.id,
+                    user_id: user.id,
+                    logo_league_folder: team.logo_league_folder,
+                    logo_team_slug: team.logo_team_slug,
+                    name: team.name,
+                    override: true,
+                  }),
+                })
+                  .then((res) => res.json())
+                  .then((data) => {
+                    if (data.success) {
+                      setLocalManagers((prev) => ({ ...prev, [slug]: user.id }))
+                    } else {
+                      setAssignErrors((prev) => ({ ...prev, [slug]: data.error }))
+                    }
+                  })
+              }
+            }
+          }
+        }}
       />
     </>
   )

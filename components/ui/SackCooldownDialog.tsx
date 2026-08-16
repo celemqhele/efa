@@ -28,7 +28,7 @@ export default function SackCooldownDialog({ open, username, cooldownEndsAt, onC
         <Button variant="secondary" onClick={onClose}>
           Got it
         </Button>
-        <Button variant="danger" onClick={onOverride}>
+        <Button variant="destructive" onClick={onOverride}>
           Override
         </Button>
       </div>
