@@ -1,7 +1,7 @@
 # Custom Notification Sound Silent on Mobile
 
 ## Problem
-- The custom notification sound (`.opencode/context/notifications/notifications-sounds_2026-08-15.md`) worked on desktop but was **silent on mobile** (Android Chrome / iOS Safari).
+- The custom notification sound (`.opencode/context/notification-sounds/notifications-sounds_2026-08-15.md`) worked on desktop but was **silent on mobile** (Android Chrome / iOS Safari).
 - Root cause: `playNotificationSound()` did `new Audio('/sounds/efa-notify.mp3').play()` with **no user gesture** (it's fired from a SW `message` event or the 60s poll). Mobile browsers block autoplay-with-sound without a gesture, so the promise rejected and `.catch(() => {})` swallowed it → silent. Desktop Chrome allows autoplay after any past page interaction, so it worked.
 - Secondary bug: `app/sw.ts` had a `new Audio('/sounds/efa-notify.mp3').play()` fallback inside the service worker. `Audio` is not available in `ServiceWorkerGlobalScope` on Chrome — it always throws and is caught. Dead code that can never play a custom sound.
 

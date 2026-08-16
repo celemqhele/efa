@@ -34,7 +34,7 @@ Whenever a file needs to be removed:
 
 ## Context Files — organization rules
 
-Context files live in `.opencode/context/`, grouped into category folders.
+Context files live in `.opencode/context/`, grouped into category folders. Each category is a **string of related incidents**: a feature/topic plus every later problem that relates to it (e.g. a flow, then follow-up bugs on that flow).
 
 ### IMPORTANT: finding context files
 The Glob/Grep file tools SKIP hidden/dot-directories, so `.opencode/` is invisible to
@@ -47,16 +47,21 @@ Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-String -P
 
 ### Category folders
 
-- `whatsapp/` — WhatsApp/webhook bot flows
-- `fixtures/` — fixture scheduling and postponement
-- `notifications/` — notification sounds and triggers
-- `results/` — result submission and admin results pages
-- `stats/` — stats/trigger fixes
-- `ui/` — frontend/UI changes
-- `admin/` — admin panel flows (approve/deny review pages, admin DB grants)
+- `check-fixtures/` — WhatsApp check-fixtures flow (phone-update, auto-detect, contact card, session close)
+- `whatsapp-results/` — WhatsApp result-submission flow (readable dates, already-submitted handling)
+- `onboarding/` — WhatsApp onboarding + admin manager-assignment + team-change requests
+- `backdoor/` — backdoor admin flow (WhatsApp override, review page, dashboard link, one-off scripts)
+- `fixture-scheduling/` — fixture scheduling and postponement
+- `admin-results/` — admin result submission (submit page, direct DB submissions)
+- `notification-sounds/` — notification sounds and triggers
+- `manager-stats/` — manager stats/trigger fixes
+- `efootball-teams/` — eFootball 2027 team restriction and follow-up fixes
+- `home-upcoming-widget/` — home page Upcoming widget
 
 ### Naming requirement
 Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's last-modified date. New files use the current date. When a file is substantially edited on a later day, rename it to the new date.
 
 ### Placement rule
-When creating a new context file, place it in the relevant category folder above. If none of the categories fit, create a NEW category folder (lowercase single word, e.g. `auth/`) and add it to the list above.
+When creating a new context file, decide whether it is part of an existing string of related incidents or a brand-new string:
+- **Part of an existing chain** (a follow-up problem/change on something already documented) → place it in that chain's category folder.
+- **Brand-new string** → create a new category folder (kebab-case theme name, e.g. `auth/`) and add it to the list above. This is only allowed when the file is unrelated to every existing category — never create a folder just to isolate a single file that could join an existing chain.
