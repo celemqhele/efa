@@ -1494,7 +1494,7 @@ async function showBackdoorSubmissionsForReview(from: string, phoneNumberId: str
     if (subs.length === 2) {
       lines.push(`${idx}. ${teams}${meta ? ` - ${meta}` : ''} - backdoor submitted by both teams`)
     } else {
-      const side = subs[0].side_claimed === 'home' ? homeName : awayName
+      const side = subs[0].side_claimed === 'home' ? awayName : homeName
       lines.push(`${idx}. ${teams}${meta ? ` - ${meta}` : ''} - backdoor submitted by ${side}`)
     }
     fixtureIds.push(fixtureId)
@@ -1549,7 +1549,7 @@ async function handleBackdoorAdminReview(from: string, text: string, session: Se
 
   // Send screenshot URLs to admin
   for (const s of submissions) {
-    const side = s.side_claimed === 'home' ? 'Home' : 'Away'
+    const side = s.side_claimed === 'home' ? 'Away' : 'Home'
     await sendTextMessage(from, `Submission by ${s.submitter_phone} (${side} team):\nScreenshot: ${s.screenshot_url}`, phoneNumberId)
   }
 
@@ -1579,11 +1579,12 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
       // Both submitted -> 0-0 draw
       homeScore = 0; awayScore = 0
     } else if (submissions?.length === 1) {
-      // One submitted -> 3-0 to that side
+      // One submitted -> 3-0 to the OPPOSITE side of side_claimed
+      // (side_claimed is the non-responding team, which gets the loss).
       if (submissions[0].side_claimed === 'home') {
-        homeScore = 3; awayScore = 0
-      } else {
         homeScore = 0; awayScore = 3
+      } else {
+        homeScore = 3; awayScore = 0
       }
     }
 
@@ -1863,7 +1864,7 @@ async function getTeamsForAssignment(supabase: any): Promise<{ id: string; name:
     if (!fixture) continue
     const home = Array.isArray(fixture.home_team) ? fixture.home_team[0] : fixture.home_team
     const away = Array.isArray(fixture.away_team) ? fixture.away_team[0] : fixture.away_team
-    const loserId = s.side_claimed === 'home' ? fixture.away_team_id : fixture.home_team_id
+    const loserId = s.side_claimed === 'home' ? fixture.home_team_id : fixture.away_team_id
     const loser = loserId === home?.id ? home : away
     if (loser?.id && loser?.name && loser?.logo_league_folder && loser?.logo_team_slug)
       teamMap.set(loser.id, { name: loser.name, folder: loser.logo_league_folder, slug: loser.logo_team_slug })

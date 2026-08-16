@@ -91,10 +91,12 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
         if (submissionsData?.length === 2) {
           homeScore = 0; awayScore = 0
         } else if (submissionsData?.length === 1) {
+          // side_claimed is the non-responding team (the loss), so the 3-0
+          // backdoor win goes to the OPPOSITE side (the reporting manager).
           if (submissionsData[0].side_claimed === 'home') {
-            homeScore = 3; awayScore = 0
-          } else {
             homeScore = 0; awayScore = 3
+          } else {
+            homeScore = 3; awayScore = 0
           }
         }
 
@@ -217,7 +219,7 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <span className="font-medium text-text-primary">
-                          {sub.submitter_phone} ({sub.side_claimed === 'home' ? 'Home' : 'Away'} team)
+                          {sub.submitter_phone} ({sub.side_claimed === 'home' ? 'Away' : 'Home'} team)
                         </span>
                         {sub.screenshot_url && (
                           <a
