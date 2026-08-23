@@ -20,6 +20,7 @@ import { notifyBackdoorSubmitted, notifyBackdoorDecision } from '@/lib/backdoor-
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { parseUserDate } from '@/lib/date-parser'
 import { recalculateStandings } from '@/lib/standings-engine'
+import { advanceWinner } from '@/lib/tournament-progression'
 
 // ─── Date range helper: Last Sunday to Next Sunday (inclusive) ─────────────────────
 function getSundayRange(): { start: string; end: string } {
@@ -515,7 +516,7 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
   // Detect if this is an override of an already-confirmed backdoor result
   const { data: existingFix } = await supabase
     .from('fixtures')
-    .select('id, status, tournament_id, results!results_fixture_id_fkey(home_score, away_score)')
+    .select('id, status, tournament_id, round_type, home_team_id, away_team_id, results!results_fixture_id_fkey(home_score, away_score)')
     .eq('id', session.matched_fixture_id)
     .single()
   const existingResult = existingFix ? (Array.isArray(existingFix.results) ? existingFix.results[0] : existingFix.results) : null
@@ -541,6 +542,22 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
   // Recalculate standings so the overridden result is reflected
   if (existingFix?.tournament_id) {
     try { await recalculateStandings(existingFix.tournament_id) } catch (e) {}
+  }
+
+  if (existingFix && ['r16', 'qf', 'sf', 'final'].includes(existingFix.round_type ?? '')) {
+    try {
+      await advanceWinner(
+        supabase,
+        existingFix.tournament_id,
+        session.matched_fixture_id,
+        homeScore,
+        awayScore,
+        existingFix.home_team_id ?? null,
+        existingFix.away_team_id ?? null
+      )
+    } catch (e) {
+      console.error('[webhook] knockout progression failed:', e)
+    }
   }
 
   const { data: fx } = await supabase
@@ -1670,9 +1687,25 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
     }
 
     // Recalculate standings
-    const { data: fixData } = await supabase.from('fixtures').select('tournament_id').eq('id', fixtureId).single()
+    const { data: fixData } = await supabase.from('fixtures').select('tournament_id, round_type, home_team_id, away_team_id').eq('id', fixtureId).single()
     if (fixData?.tournament_id) {
       try { await recalculateStandings(fixData.tournament_id) } catch (e) {}
+    }
+
+    if (fixtureId && fixData?.tournament_id && ['r16', 'qf', 'sf', 'final'].includes(fixData.round_type ?? '')) {
+      try {
+        await advanceWinner(
+          supabase,
+          fixData.tournament_id,
+          fixtureId,
+          homeScore,
+          awayScore,
+          fixData.home_team_id ?? null,
+          fixData.away_team_id ?? null
+        )
+      } catch (e) {
+        console.error('[webhook] knockout progression failed:', e)
+      }
     }
 
     await sendTextMessage(from, `Approved. Result: ${homeScore}-${awayScore}. Fixture confirmed.`, phoneNumberId)
@@ -3248,7 +3281,7 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   // Look up fixture for team IDs
   const { data: fixture } = await supabase
     .from('fixtures')
-    .select('home_team_id, away_team_id')
+    .select('home_team_id, away_team_id, round_type, tournament_id')
     .eq('id', session.matched_fixture_id)
     .single()
 
@@ -3379,6 +3412,22 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
       await clearSession(from)
       await sendTextMessage(from, 'Result was saved but failed to confirm the fixture. Please ask the admin to re-submit.', phoneNumberId)
       return
+    }
+  }
+
+  if (['r16', 'qf', 'sf', 'final'].includes(fixture?.round_type ?? '')) {
+    try {
+      await advanceWinner(
+        supabase,
+        fixture.tournament_id,
+        session.matched_fixture_id,
+        homeScore,
+        awayScore,
+        fixture.home_team_id ?? null,
+        fixture.away_team_id ?? null
+      )
+    } catch (e) {
+      console.error('[webhook] knockout progression failed:', e)
     }
   }
 
