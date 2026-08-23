@@ -155,6 +155,8 @@ const ROUND_STAGE_OFFSET: Record<string, number> = {
   r16: 0, qf: 1, sf: 2, final: 3,
 }
 
+const KO_DAILY_CAP = 5
+
 async function assignKnockoutDates(
   db: any,
   fixtures: Array<{ home_team_id: string | null; away_team_id: string | null; round_type: string }>,
@@ -181,6 +183,7 @@ async function assignKnockoutDates(
   const baseStartDate = candidateDate > today ? candidateDate : today
 
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
+  const runDayCount: Record<string, number> = {}
 
   const dates: string[] = []
 
@@ -191,6 +194,11 @@ async function assignKnockoutDates(
 
     for (let safety = 0; safety < 730; safety++) {
       const dateStr = format(currentDate, 'yyyy-MM-dd')
+
+      if ((runDayCount[dateStr] ?? 0) >= KO_DAILY_CAP) {
+        currentDate = addDays(currentDate, 1)
+        continue
+      }
 
       if (!slotCache[dateStr]) {
         const s = await getSlotStateForDate(db, dateStr)
@@ -207,6 +215,7 @@ async function assignKnockoutDates(
       if (state.globalUsed + 2 <= globalCap && homeOk && awayOk) {
         dates.push(dateStr)
         state.globalUsed += 2
+        runDayCount[dateStr] = (runDayCount[dateStr] ?? 0) + 1
         if (fx.home_team_id) state.teamUsed[fx.home_team_id] = (state.teamUsed[fx.home_team_id] ?? 0) + 1
         if (fx.away_team_id) state.teamUsed[fx.away_team_id] = (state.teamUsed[fx.away_team_id] ?? 0) + 1
         assigned = true
