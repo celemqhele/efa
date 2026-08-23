@@ -19,8 +19,19 @@ export default async function FixturesManagePage({
 
   const todayKey = await getAppTodayKey(supabase)
   const selectedDate = resolvedParams?.date ?? todayKey
+  const tournamentFilter: string | null = resolvedParams?.tournament ?? null
 
-  const { data: fixtures, error: fixturesError } = await supabase
+  let filterTournament: { id: string; name: string } | null = null
+  if (tournamentFilter) {
+    const { data: ft } = await supabase
+      .from('tournaments')
+      .select('id, name')
+      .eq('id', tournamentFilter)
+      .maybeSingle()
+    if (ft) filterTournament = ft
+  }
+
+  let query = supabase
     .from('fixtures')
     .select(`
       id, matchday, round_type, scheduled_date, status, is_postponed, leg, tournament_id,
@@ -31,6 +42,12 @@ export default async function FixturesManagePage({
     `)
     .eq('scheduled_date', selectedDate)
     .order('scheduled_date', { ascending: true })
+
+  if (filterTournament) {
+    query = query.eq('tournament_id', filterTournament.id)
+  }
+
+  const { data: fixtures, error: fixturesError } = await query
 
   // Fetch sibling results for 2-leg knockout aggregate display
   const leg2Fixtures = (fixtures ?? []).filter(
@@ -86,5 +103,5 @@ export default async function FixturesManagePage({
     }
   }
 
-  return <Shell data={{ fixtures: fixtures ?? [], todayKey, selectedDate, error: fixturesError?.message ?? null }} />
+  return <Shell data={{ fixtures: fixtures ?? [], todayKey, selectedDate, filterTournament, error: fixturesError?.message ?? null }} />
 }

@@ -20,10 +20,11 @@ interface Props {
   tournamentId: string
   tournamentName: string
   type: string
+  hasKnockouts?: boolean
   className?: string
 }
 
-export default function GenerateKnockoutsButton({ tournamentId, tournamentName, type, className = CARD_ACTION_BTN }: Props) {
+export default function GenerateKnockoutsButton({ tournamentId, tournamentName, type, hasKnockouts = false, className = CARD_ACTION_BTN }: Props) {
   const [loading, setLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [numLegs, setNumLegs] = useState<1 | 2>(1)
@@ -38,6 +39,17 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
   }, [showConfirm])
 
   if (!['tournament_club', 'tournament_international'].includes(type)) return null
+
+  if (hasKnockouts) {
+    return (
+      <span
+        className={`${className} pointer-events-none border-green-500/40 bg-green-500/10 text-green-400`}
+        title={`Knockouts already generated for ${tournamentName}`}
+      >
+        Knockouts Generated ✓
+      </span>
+    )
+  }
 
   async function fetchQualifiers() {
     setPreviewLoading(true)

@@ -106,7 +106,7 @@ export default function Desktop({ data }: { data: any }) {
                             <Link href={`/admin/fixtures/manage?tournament=${t.id}`} className={CARD_ACTION_BTN}>
                               Fixtures
                             </Link>
-                            <Link href={`/standings?t=${t.id}`} className={CARD_ACTION_BTN}>
+                            <Link href={`/standings?tournament=${t.id}`} className={CARD_ACTION_BTN}>
                               Standings
                             </Link>
                             <DeleteTournamentButton tournamentId={t.id} tournamentName={t.name} className={CARD_ACTION_BTN_DANGER} />

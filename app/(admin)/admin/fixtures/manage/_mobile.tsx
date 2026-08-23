@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import FixtureActions from './FixtureActions'
 import DateNav from '@/components/ui/DateNav'
@@ -8,12 +9,10 @@ import ScheduleRoundPanel from './ScheduleRoundPanel'
 import { CalendarDays } from 'lucide-react'
 import { cleanTeamName } from '@/lib/clean-team-name'
 
-const TYPE_ORDER = ['league', 'tournament_club', 'tournament_international', 'friendlies'] as const
-
 const TYPE_LABELS: Record<string, string> = {
   league: 'Premier League',
-  tournament_club: 'Tournament (Clubs)',
-  tournament_international: 'Tournament (Intl)',
+  tournament_club: 'Club Tournament',
+  tournament_international: 'Intl Tournament',
   friendlies: 'Friendly',
 }
 
@@ -58,15 +57,32 @@ export default function Mobile({ data }: { data: any }) {
   const todayKey = data.todayKey
   const selectedDate = data.selectedDate
   const queryError = data.error ?? null
+  const filterTournament = data.filterTournament ?? null
 
-  const grouped: Record<string, any[]> = {}
+  interface TournamentSection {
+    id: string
+    name: string
+    type: string
+    fixtures: any[]
+  }
+  const sections: TournamentSection[] = []
+  const byId = new Map<string, TournamentSection>()
   for (const f of fixtures) {
     const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
-    const key = t?.type ?? 'unknown'
-    if (!grouped[key]) grouped[key] = []
-    grouped[key].push(f)
+    const id = t?.id ?? 'unknown'
+    let section = byId.get(id)
+    if (!section) {
+      section = { id, name: t?.name ?? 'Unknown Tournament', type: t?.type ?? 'unknown', fixtures: [] }
+      byId.set(id, section)
+      sections.push(section)
+    }
+    section.fixtures.push(f)
   }
-  const orderedTypes = TYPE_ORDER.filter((t) => (grouped[t]?.length ?? 0) > 0)
+  sections.sort((a, b) => {
+    const rank = (ty: string) => (ty === 'league' ? 0 : ty === 'friendlies' ? 2 : 1)
+    if (rank(a.type) !== rank(b.type)) return rank(a.type) - rank(b.type)
+    return a.name.localeCompare(b.name)
+  })
 
   return (
     <div className="px-4 pb-8 space-y-5">
@@ -77,6 +93,15 @@ export default function Mobile({ data }: { data: any }) {
           <p className="text-text-muted text-xs mt-1">
             {fixtures.length} fixture{fixtures.length === 1 ? '' : 's'} on {format(parseISO(selectedDate), 'EEE d MMM yyyy')}
           </p>
+          {filterTournament && (
+            <p className="text-accent text-xs mt-0.5">
+              Filtered to <span className="font-bold">{filterTournament.name}</span>
+              {' · '}
+              <Link href={`/admin/fixtures/manage?date=${selectedDate}`} className="underline">
+                Show all
+              </Link>
+            </p>
+          )}
         </div>
       </div>
 
@@ -90,7 +115,7 @@ export default function Mobile({ data }: { data: any }) {
         </div>
       )}
 
-      {orderedTypes.length === 0 && !queryError ? (
+      {sections.length === 0 && !queryError ? (
         <div className="bg-bg-surface border border-border rounded-xl p-8 text-center text-text-muted space-y-2">
           <CalendarDays className="w-10 h-10 text-text-muted mx-auto" />
           <p className="text-sm">No fixtures scheduled for this day.</p>
@@ -98,15 +123,18 @@ export default function Mobile({ data }: { data: any }) {
         </div>
       ) : (
         <div className="space-y-5">
-          {orderedTypes.map((type) => {
-            const sectionFixtures = grouped[type] ?? []
+          {sections.map((section) => {
+            const sectionFixtures = section.fixtures
             return (
-              <section key={type} className="space-y-3">
+              <section key={section.id} className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${TYPE_ACCENT[type] ?? 'text-text-muted border-border'}`}>
-                    {TYPE_LABELS[type] ?? type}
-                  </h2>
-                  <span className="text-xs text-text-muted">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h2 className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border truncate ${TYPE_ACCENT[section.type] ?? 'text-text-muted border-border'}`}>
+                      {section.name}
+                    </h2>
+                    <span className="text-[9px] text-text-muted uppercase">{TYPE_LABELS[section.type] ?? section.type}</span>
+                  </div>
+                  <span className="text-xs text-text-muted shrink-0">
                     {sectionFixtures.length} {sectionFixtures.length === 1 ? 'fixture' : 'fixtures'}
                   </span>
                 </div>

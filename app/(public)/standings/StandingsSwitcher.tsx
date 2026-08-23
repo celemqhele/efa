@@ -24,7 +24,7 @@ export default function StandingsSwitcher({ tournaments, selectedId }: Props) {
       <div className="relative max-w-xs w-full">
         <select
           value={selectedId}
-          onChange={(e) => router.push(`/standings?t=${e.target.value}`)}
+          onChange={(e) => router.push(`/standings?tournament=${e.target.value}`)}
           className="input-field pr-8 appearance-none cursor-pointer"
         >
           {tournaments.map((t) => (

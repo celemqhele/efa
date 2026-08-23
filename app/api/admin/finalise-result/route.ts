@@ -1,6 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import {
-  generateTBCKnockouts,
   advanceWinner,
   awardTrophy,
 } from '@/lib/tournament-progression'
@@ -430,20 +429,11 @@ export async function POST(request: Request) {
     }
 
     if (roundType === 'group' && (tType === 'tournament_club' || tType === 'tournament_international')) {
-      const { count: pendingGroups } = await adminSupabase
-        .from('fixtures')
-        .select('*', { count: 'exact', head: true })
-        .eq('tournament_id', tournamentId)
-        .eq('round_type', 'group')
-        .neq('status', 'confirmed')
-
-      if (pendingGroups === 0) {
-        await generateTBCKnockouts(adminSupabase, tournamentId)
-      } else {
-        await recalculateStandings(tournamentId).catch(e =>
-          console.error('[finalise-result] Standings recalc failed:', e)
-        )
-      }
+      // Knockouts are no longer auto-generated here — admins create them explicitly
+      // via the Generate Knockouts button so they control timing and leg count.
+      await recalculateStandings(tournamentId).catch(e =>
+        console.error('[finalise-result] Standings recalc failed:', e)
+      )
     } else if (['r16', 'qf', 'sf', 'final'].includes(roundType)) {
       if (bothAbsent && roundType !== 'final') {
         const { data: allKO } = await adminSupabase

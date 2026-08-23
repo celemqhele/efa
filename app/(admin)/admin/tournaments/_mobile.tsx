@@ -76,7 +76,7 @@ function TournamentCard({ tournament, participantCount, fixtureCount, completedC
           <Link href={`/admin/fixtures/manage?tournament=${tournament.id}`} className={MOBILE_ACTION_BTN}>
             Fixtures
           </Link>
-          <Link href={`/standings?t=${tournament.id}`} className={MOBILE_ACTION_BTN}>
+          <Link href={`/standings?tournament=${tournament.id}`} className={MOBILE_ACTION_BTN}>
             Standings
           </Link>
           <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={MOBILE_ACTION_BTN_DANGER} />

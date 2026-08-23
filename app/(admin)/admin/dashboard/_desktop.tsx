@@ -76,11 +76,13 @@ function TournamentCard({
   participantCount,
   fixtureCount,
   completedCount,
+  knockoutCount = 0,
 }: {
   tournament: any
   participantCount: number
   fixtureCount: number
   completedCount: number
+  knockoutCount?: number
 }) {
   const typeInfo = TYPE_STYLES[tournament.type] ?? { label: tournament.type, colour: 'text-slate-400 bg-slate-500/10 border-slate-500/20' }
   const statusCls = tournament.status === 'active'
@@ -156,7 +158,7 @@ function TournamentCard({
           className={CARD_ACTION_BTN}
         />
         <Link
-          href={`/standings?t=${tournament.id}`}
+          href={`/standings?tournament=${tournament.id}`}
           className={CARD_ACTION_BTN}
         >
           Standings
@@ -165,7 +167,7 @@ function TournamentCard({
           <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={CARD_ACTION_BTN} />
         )}
         {isClubType && (
-          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={CARD_ACTION_BTN} />
+          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} hasKnockouts={knockoutCount > 0} className={CARD_ACTION_BTN} />
         )}
         {tournament.type === 'friendlies' && (
           <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={CARD_ACTION_BTN} />
@@ -177,7 +179,7 @@ function TournamentCard({
 }
 
 export default function Desktop({ data }: { data: any }) {
-  const { tournaments, participantCounts, fixtureCounts, completedCounts, dueFixtures, dueCount, conflictFixtures, conflictMap, conflictCount, auditLog } = data
+  const { tournaments, participantCounts, fixtureCounts, completedCounts, koCounts, dueFixtures, dueCount, conflictFixtures, conflictMap, conflictCount, auditLog } = data
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -247,6 +249,7 @@ export default function Desktop({ data }: { data: any }) {
                     participantCount={participantCounts[t.id] ?? 0}
                     fixtureCount={fixtureCounts[t.id] ?? 0}
                     completedCount={completedCounts[t.id] ?? 0}
+                    knockoutCount={koCounts?.[t.id] ?? 0}
                   />
                 ))}
               </div>

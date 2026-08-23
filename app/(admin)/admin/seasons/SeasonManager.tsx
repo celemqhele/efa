@@ -73,8 +73,9 @@ function SeasonCard({
   const [loading, setLoading] = useState<string | null>(null)
 
   const leagueT = season.tournaments.find((t) => t.type === 'league')
-  const uclT = season.tournaments.find((t) => t.type === 'tournament_club')
-  const europaT = season.tournaments.find((t) => t.type === 'tournament_international')
+  const clubTs = season.tournaments
+    .filter((t) => t.type === 'tournament_club' || t.type === 'tournament_international')
+    .sort((a, b) => a.name.localeCompare(b.name))
   const superCupT = season.tournaments.find((t) => t.type === 'friendlies')
 
   const total = season.league_total_fixtures
@@ -178,70 +179,73 @@ function SeasonCard({
             </div>
           )}
 
-          {/* Other tournaments */}
+          {/* Other tournaments — one tile per competition, labelled by its real name */}
           <div className="grid grid-cols-3 gap-space-2">
-            {[uclT, europaT, superCupT].map((t, idx) => {
-              if (t) {
-                return (
-                  <div key={t.id} className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
-                    <p className="text-xs font-bold text-text-primary truncate">
-                      {t.type === 'tournament_club' ? 'Tournament (Clubs)' : t.type === 'tournament_international' ? 'Tournament (Intl)' : 'Friendlies'}
-                    </p>
-                    <p
-                      className={`text-[10px] ${
-                        t.status === 'active'
-                          ? 'text-feedback-success'
-                          : t.status === 'completed'
-                          ? 'text-text-muted'
-                          : 'text-feedback-warning'
-                      }`}
-                    >
-                      {t.status === 'active' ? 'Active' : t.status === 'completed' ? 'Done' : 'Upcoming'}
-                    </p>
-                    <p className="text-[10px] text-text-secondary">
-                      {t.completed_count}/{t.fixture_count}
-                    </p>
-                    {(t.knockout_ready && isActive && (t.type === 'tournament_club' || t.type === 'tournament_international')) && (
-                      <Button
-                        onClick={() => handleGenerateKO(t.id)}
-                        isLoading={loading === `ko-${t.id}`}
-                        variant="secondary"
-                        className="w-full text-[9px] py-space-1 px-space-1"
-                      >
-                        Generate KOs
-                      </Button>
-                    )}
-                  </div>
-                )
-              }
-              return (
-                <div
-                  key={idx}
-                  className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1"
+            {clubTs.map((t) => (
+              <div key={t.id} className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
+                <p className="text-xs font-bold text-text-primary truncate" title={t.name}>
+                  {t.name}
+                </p>
+                <p
+                  className={`text-[10px] ${
+                    t.status === 'active'
+                      ? 'text-feedback-success'
+                      : t.status === 'completed'
+                      ? 'text-text-muted'
+                      : 'text-feedback-warning'
+                  }`}
                 >
-                  {idx === 2 && isActive && uclT && europaT ? (
-                    <Button
-                      onClick={() => setShowSuperCup(true)}
-                      variant="secondary"
-                      className="w-full h-full min-h-[68px] flex flex-col items-center justify-center gap-space-1"
-                    >
-                      <Trophy className="w-4 h-4 text-gold" />
-                      <span className="text-[9px]">Generate Super Cup</span>
-                    </Button>
-                  ) : (
-                    <p className="text-xs text-text-muted opacity-30">-</p>
-                  )}
-                </div>
-              )
-            })}
+                  {t.status === 'active' ? 'Active' : t.status === 'completed' ? 'Done' : 'Upcoming'}
+                </p>
+                <p className="text-[10px] text-text-secondary">
+                  {t.completed_count}/{t.fixture_count}
+                </p>
+                {(t.knockout_ready && isActive) && (
+                  <Button
+                    onClick={() => handleGenerateKO(t.id)}
+                    isLoading={loading === `ko-${t.id}`}
+                    variant="secondary"
+                    className="w-full text-[9px] py-space-1 px-space-1"
+                  >
+                    Generate KOs
+                  </Button>
+                )}
+              </div>
+            ))}
+            <div className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
+              {superCupT ? (
+                <>
+                  <p className="text-xs font-bold text-text-primary truncate" title={superCupT.name}>
+                    {superCupT.name}
+                  </p>
+                  <p className={`text-[10px] ${superCupT.status === 'completed' ? 'text-text-muted' : 'text-feedback-warning'}`}>
+                    {superCupT.status === 'completed' ? 'Done' : 'Upcoming'}
+                  </p>
+                  <p className="text-[10px] text-text-secondary">
+                    {superCupT.completed_count}/{superCupT.fixture_count}
+                  </p>
+                </>
+              ) : isActive && clubTs.length >= 2 ? (
+                <Button
+                  onClick={() => setShowSuperCup(true)}
+                  variant="secondary"
+                  className="w-full h-full min-h-[52px] flex flex-col items-center justify-center gap-space-1"
+                >
+                  <Trophy className="w-4 h-4 text-gold" />
+                  <span className="text-[9px]">Generate Super Cup</span>
+                </Button>
+              ) : (
+                <p className="text-xs text-text-muted opacity-30">-</p>
+              )}
+            </div>
           </div>
 
           {/* Super Cup generation dialog */}
           {showSuperCup && (
             <SuperCupDialog
               seasonId={season.id}
-              uclTId={uclT?.id ?? ''}
-              europaTId={europaT?.id ?? ''}
+              uclTId={clubTs[0]?.id ?? ''}
+              europaTId={clubTs[1]?.id ?? ''}
               onClose={() => { setShowSuperCup(false); setSelectedUcl(''); setSelectedEuropa('') }}
               onCreated={() => { setShowSuperCup(false); window.location.reload() }}
             />

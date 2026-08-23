@@ -14,6 +14,9 @@ export const revalidate = 0
 
 const TYPE_LABELS: Record<string, { label: string; colour: string }> = {
   league: { label: 'League', colour: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+  tournament_club: { label: 'Club Tournament', colour: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
+  tournament_international: { label: 'Intl Tournament', colour: 'text-green-400 bg-green-500/10 border-green-500/20' },
+  friendlies: { label: 'Friendly', colour: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
   ucl: { label: 'UCL', colour: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
   europa: { label: 'Europa', colour: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
   super_cup: { label: 'Super Cup', colour: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
@@ -50,14 +53,18 @@ export default async function TournamentsPage() {
   // Fixture counts
   const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('tournament_id, status')
+    .select('tournament_id, status, round_type')
 
   const fixtureCounts: Record<string, number> = {}
   const completedCounts: Record<string, number> = {}
+  const koCounts: Record<string, number> = {}
   for (const f of (fixtures ?? []) as any[]) {
     fixtureCounts[f.tournament_id] = (fixtureCounts[f.tournament_id] ?? 0) + 1
     if (f.status === 'confirmed') {
       completedCounts[f.tournament_id] = (completedCounts[f.tournament_id] ?? 0) + 1
+    }
+    if (['r16', 'qf', 'sf', 'final'].includes(f.round_type)) {
+      koCounts[f.tournament_id] = (koCounts[f.tournament_id] ?? 0) + 1
     }
   }
 
@@ -95,6 +102,7 @@ export default async function TournamentsPage() {
                 participantCount={participantCounts[t.id] ?? 0}
                 fixtureCount={fixtureCounts[t.id] ?? 0}
                 completedCount={completedCounts[t.id] ?? 0}
+                knockoutCount={koCounts[t.id] ?? 0}
               />
             ))}
           </div>
@@ -116,6 +124,7 @@ export default async function TournamentsPage() {
                 participantCount={participantCounts[t.id] ?? 0}
                 fixtureCount={fixtureCounts[t.id] ?? 0}
                 completedCount={completedCounts[t.id] ?? 0}
+                knockoutCount={koCounts[t.id] ?? 0}
               />
             ))}
           </div>
@@ -136,6 +145,7 @@ export default async function TournamentsPage() {
                 participantCount={participantCounts[t.id] ?? 0}
                 fixtureCount={fixtureCounts[t.id] ?? 0}
                 completedCount={completedCounts[t.id] ?? 0}
+                knockoutCount={koCounts[t.id] ?? 0}
               />
             ))}
           </div>
@@ -159,11 +169,13 @@ function TournamentCard({
   participantCount,
   fixtureCount,
   completedCount,
+  knockoutCount = 0,
 }: {
   tournament: any
   participantCount: number
   fixtureCount: number
   completedCount: number
+  knockoutCount?: number
 }) {
   const typeInfo = TYPE_LABELS[tournament.type] ?? { label: tournament.type, colour: 'text-text-muted bg-bg-surface0/10 border-slate-500/20' }
   const statusCls = STATUS_COLOURS[tournament.status] ?? STATUS_COLOURS.completed
@@ -237,7 +249,7 @@ function TournamentCard({
           className={CARD_ACTION_BTN}
         />
         <Link
-          href={`/standings?t=${tournament.id}`}
+          href={`/standings?tournament=${tournament.id}`}
           className={CARD_ACTION_BTN}
         >
           Standings
@@ -255,6 +267,7 @@ function TournamentCard({
             tournamentId={tournament.id}
             tournamentName={tournament.name}
             type={tournament.type}
+            hasKnockouts={knockoutCount > 0}
             className={CARD_ACTION_BTN}
           />
         )}

@@ -59,12 +59,13 @@ export default async function TournamentDetailPage({ params }: PageProps) {
 
   const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('status')
+    .select('status, round_type')
     .eq('tournament_id', id)
 
   const participantCount = (participants ?? []).length
   const fixtureCount = (fixtures ?? []).length
   const completedCount = (fixtures ?? []).filter((f: any) => f.status === 'confirmed').length
+  const knockoutCount = (fixtures ?? []).filter((f: any) => ['r16', 'qf', 'sf', 'final'].includes(f.round_type)).length
   const progress = fixtureCount > 0 ? Math.round((completedCount / fixtureCount) * 100) : 0
 
   const typeInfo = TYPE_LABELS[tournament.type] ?? { label: tournament.type, colour: 'text-text-muted bg-bg-surface0/10 border-slate-500/20' }
@@ -129,7 +130,7 @@ export default async function TournamentDetailPage({ params }: PageProps) {
 
           <div className="grid grid-cols-2 gap-2">
             <Link
-              href={`/standings?t=${tournament.id}`}
+              href={`/standings?tournament=${tournament.id}`}
               className={DETAIL_ACTION_BTN}
             >
               Standings
@@ -140,7 +141,7 @@ export default async function TournamentDetailPage({ params }: PageProps) {
           {['tournament_club', 'tournament_international'].includes(tournament.type) && (
             <div className="grid grid-cols-2 gap-2">
               <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={DETAIL_ACTION_BTN} />
-              <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={DETAIL_ACTION_BTN} />
+              <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} hasKnockouts={knockoutCount > 0} className={DETAIL_ACTION_BTN} />
             </div>
           )}
 

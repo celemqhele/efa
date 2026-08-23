@@ -34,15 +34,19 @@ export default async function AdminDashboardPage() {
   const { data: fixtures } = tournamentIds.length
     ? await supabase
         .from('fixtures')
-        .select('tournament_id, status')
+        .select('tournament_id, status, round_type')
         .in('tournament_id', tournamentIds)
     : { data: [] }
   const fixtureCounts: Record<string, number> = {}
   const completedCounts: Record<string, number> = {}
+  const koCounts: Record<string, number> = {}
   for (const f of (fixtures ?? []) as any[]) {
     fixtureCounts[f.tournament_id] = (fixtureCounts[f.tournament_id] ?? 0) + 1
     if (f.status === 'confirmed') {
       completedCounts[f.tournament_id] = (completedCounts[f.tournament_id] ?? 0) + 1
+    }
+    if (['r16', 'qf', 'sf', 'final'].includes(f.round_type)) {
+      koCounts[f.tournament_id] = (koCounts[f.tournament_id] ?? 0) + 1
     }
   }
 
@@ -101,6 +105,7 @@ export default async function AdminDashboardPage() {
       participantCounts,
       fixtureCounts,
       completedCounts,
+      koCounts,
       dueFixtures: (dueFixtures ?? []) as any[],
       dueCount: dueFixtures?.length ?? 0,
       conflictFixtures: (conflictFixtures ?? []) as any[],
