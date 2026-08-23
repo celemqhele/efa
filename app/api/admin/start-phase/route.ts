@@ -1,7 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { generateLeagueFixtures, generateGroupFixtures } from '@/lib/fixture-generator'
-import { drawGroups } from '@/lib/tournament-draw'
-import { addDays, format, differenceInDays } from 'date-fns'
+import { generateLeagueFixtures } from '@/lib/fixture-generator'
+import { addDays, format } from 'date-fns'
 
 interface TeamInput {
   id: string | null
@@ -72,30 +71,13 @@ export async function POST(request: Request) {
     season_name: string
     start_date: string
     league_teams: TeamInput[]
-    ucl_teams: TeamInput[]
-    europa_teams: TeamInput[]
-    ucl_num_groups?: number
-    ucl_num_rounds?: number
-    ucl_qualifiers_per_group?: number
-    europa_num_groups?: number
-    europa_num_rounds?: number
-    europa_qualifiers_per_group?: number
   }
 
   try { body = await request.json() } catch {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const {
-    season_name, start_date,
-    league_teams, ucl_teams, europa_teams,
-    ucl_num_groups = 2,
-    ucl_num_rounds = 2,
-    ucl_qualifiers_per_group = 2,
-    europa_num_groups = 2,
-    europa_num_rounds = 2,
-    europa_qualifiers_per_group = 2,
-  } = body
+  const { season_name, start_date, league_teams } = body
 
   if (!season_name?.trim() || !start_date) {
     return Response.json({ error: 'season_name and start_date are required' }, { status: 400 })
@@ -112,32 +94,10 @@ export async function POST(request: Request) {
 
   const leagueIds = await resolveTeams(adminSupabase, league_teams)
 
-  const uclIds = ucl_teams.length > 0 ? await resolveTeams(adminSupabase, ucl_teams) : []
-  const europaIds = europa_teams.length > 0 ? await resolveTeams(adminSupabase, europa_teams) : []
-
-  if (!uclIds.every((id) => leagueIds.includes(id))) {
-    return Response.json({ error: 'All UCL teams must be in the league' }, { status: 400 })
-  }
-  if (!europaIds.every((id) => leagueIds.includes(id))) {
-    return Response.json({ error: 'All Europa teams must be in the league' }, { status: 400 })
-  }
-
   const numRounds = 2
   const leagueFixtureCount = leagueIds.length * (leagueIds.length - 1) * numRounds / 2
 
-  let uclFixtureCount = 0
-  let europaFixtureCount = 0
-  if (uclIds.length > 0) {
-    const teamsPerGroup = Math.floor(uclIds.length / ucl_num_groups)
-    uclFixtureCount = ucl_num_groups * teamsPerGroup * (teamsPerGroup - 1) * ucl_num_rounds / 2
-  }
-  if (europaIds.length > 0) {
-    const teamsPerGroup = Math.floor(europaIds.length / europa_num_groups)
-    europaFixtureCount = europa_num_groups * teamsPerGroup * (teamsPerGroup - 1) * europa_num_rounds / 2
-  }
-
-  const totalFixtures = leagueFixtureCount + uclFixtureCount + europaFixtureCount
-  const end_date = computeEndDate(start_date, totalFixtures)
+  const end_date = computeEndDate(start_date, leagueFixtureCount)
 
   const seasonRes = await db('seasons')
     .insert({
@@ -156,7 +116,7 @@ export async function POST(request: Request) {
 
   const season_id = seasonRes.id
 
-  // League tournament
+  // League tournament — UCL/UEL are started separately once the league finishes
   const { data: leagueTournament } = await db('tournaments')
     .insert({
       season_id,
@@ -197,88 +157,6 @@ export async function POST(request: Request) {
     )
   }
 
-  // UCL tournament
-  async function createGroupTournament(
-    name: string, type: string, teamIds: string[], numGroups: number, numRounds: number, qualifiersPerGroup: number,
-  ) {
-    if (teamIds.length === 0) return { id: null, fixtureCount: 0 }
-
-    const { data: tournament } = await db('tournaments')
-      .insert({
-        season_id, name, type, status: 'active',
-        settings: { start_date, end_date, fixture_mode: 'groups', num_groups: numGroups, num_rounds: numRounds, qualifiers_per_group: qualifiersPerGroup },
-      })
-      .select('id')
-      .single()
-
-    if (!tournament) return { id: null, fixtureCount: 0 }
-
-    const tId = tournament.id
-
-    await db('tournament_participants').insert(
-      teamIds.map((team_id) => ({ tournament_id: tId, team_id }))
-    )
-
-    const teamsPayload = teamIds.map((team_id, i) => ({
-      id: team_id, rank: 0, label: '',
-    }))
-
-    const drawResult = drawGroups({ teams: teamsPayload, groupCount: numGroups })
-
-    const groupNames = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    const groups = new Map<number, string[]>()
-    for (const a of drawResult.groups) {
-      if (!groups.has(a.group)) groups.set(a.group, [])
-      groups.get(a.group)!.push(a.teamId)
-    }
-
-    for (const [groupIdx, groupTeamIds] of groups) {
-      const groupName = groupNames[groupIdx] ?? `Group ${groupIdx + 1}`
-      for (const teamId of groupTeamIds) {
-        const pot = drawResult.groups.find((a) => a.teamId === teamId)?.pot ?? 0
-        await db('tournament_participants')
-          .update({ group_name: groupName, seed_pot: pot })
-          .eq('tournament_id', tId)
-          .eq('team_id', teamId)
-      }
-    }
-
-    const allGroupTeams: Record<string, string[]> = {}
-    for (const [groupIdx, groupTeamIds] of groups) {
-      const groupName = groupNames[groupIdx] ?? `Group ${groupIdx + 1}`
-      allGroupTeams[groupName] = groupTeamIds
-
-      for (const teamId of groupTeamIds) {
-        await (db('group_standings') as any).upsert({
-          tournament_id: tId, group_name: groupName, team_id: teamId,
-          played: 0, wins: 0, draws: 0, losses: 0,
-          goals_for: 0, goals_against: 0, points: 0,
-        }, { onConflict: 'tournament_id,group_name,team_id' })
-      }
-    }
-
-    const groupFixtures = await generateGroupFixtures(adminSupabase, allGroupTeams, numRounds, start_date, tId)
-
-    if (groupFixtures.length > 0) {
-      await db('fixtures').insert(
-        groupFixtures.map((f) => ({
-          tournament_id: tId, home_team_id: f.home_team_id, away_team_id: f.away_team_id,
-          matchday: f.matchday, scheduled_date: f.scheduled_date, deadline: f.deadline,
-          round_type: f.round_type, leg: f.leg, status: 'scheduled', is_postponed: false,
-        }))
-      )
-    }
-
-    return { id: tId, fixtureCount: groupFixtures.length }
-  }
-
-  const { id: uclTId, fixtureCount: uclFxtCount } = await createGroupTournament(
-    'EFA Tournament (Clubs)', 'tournament_club', uclIds, ucl_num_groups, ucl_num_rounds, ucl_qualifiers_per_group,
-  )
-  const { id: europaTId, fixtureCount: europaFxtCount } = await createGroupTournament(
-    'EFA Tournament (International)', 'tournament_international', europaIds, europa_num_groups, europa_num_rounds, europa_qualifiers_per_group,
-  )
-
   const { data: allTeamRows } = await adminSupabase
     .from('teams')
     .select('id, name, manager_id')
@@ -305,11 +183,7 @@ export async function POST(request: Request) {
     details: {
       season_name, start_date, end_date,
       league_teams: leagueIds.length,
-      ucl_teams: uclIds.length,
-      europa_teams: europaIds.length,
       league_fixtures: leagueFixtures.length,
-      ucl_fixtures: uclFxtCount,
-      europa_fixtures: europaFxtCount,
     },
   })
 
@@ -319,9 +193,7 @@ export async function POST(request: Request) {
     end_date,
     fixtures: {
       league: leagueFixtures.length,
-      ucl: uclFxtCount,
-      europa: europaFxtCount,
-      total: leagueFixtures.length + uclFxtCount + europaFxtCount,
+      total: leagueFixtures.length,
     },
   })
 }

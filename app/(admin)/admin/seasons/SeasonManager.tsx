@@ -21,6 +21,14 @@ interface Team {
   manager_id: string | null
 }
 
+interface FinalStandingRow {
+  position: number
+  team_id: string
+  name: string
+  logo_league_folder: string
+  logo_team_slug: string
+}
+
 interface Tournament {
   id: string
   name: string
@@ -40,12 +48,13 @@ interface Season {
   tournaments: Tournament[]
   league_total_fixtures: number
   league_completed_fixtures: number
+  final_standings?: FinalStandingRow[]
+  cup_taken?: Record<string, string>
 }
 
 interface Props {
   seasons: Season[]
   allTeams: Team[]
-  prevSeasonStandings: { team_id: string; team_name: string }[] | null
 }
 
 // --- Season card -------------------------------------------------------------
@@ -56,21 +65,19 @@ function SeasonCard({
   onEndSeason,
   onCancelSeason,
   onGenerateKnockouts,
+  onRefresh,
 }: {
   season: Season
   isFirst: boolean
   onEndSeason: (id: string) => Promise<void>
   onCancelSeason: (id: string) => Promise<void>
   onGenerateKnockouts: (tournamentId: string) => Promise<void>
+  onRefresh: () => void
 }) {
   const [cancelDialog, setCancelDialog] = useState(false)
   const [showSuperCup, setShowSuperCup] = useState(false)
-  const [scLoading, setScLoading] = useState(false)
-  const [uclTeams, setUclTeams] = useState<Team[]>([])
-  const [europaTeams, setEuropaTeams] = useState<Team[]>([])
-  const [selectedUcl, setSelectedUcl] = useState<string>('')
-  const [selectedEuropa, setSelectedEuropa] = useState<string>('')
   const [loading, setLoading] = useState<string | null>(null)
+  const [startCupType, setStartCupType] = useState<'tournament_club' | 'tournament_international' | null>(null)
 
   const leagueT = season.tournaments.find((t) => t.type === 'league')
   const clubTs = season.tournaments
@@ -85,6 +92,9 @@ function SeasonCard({
   const isActive = season.status === 'active'
   const isUpcoming = season.status === 'upcoming'
   const isCompleted = season.status === 'completed'
+
+  // Cups can be started once every league fixture of an active season is played
+  const cupsStartable = isActive && allDone && !!leagueT && (season.final_standings?.length ?? 0) > 0
 
   async function handleEnd() {
     setLoading('end')
@@ -181,37 +191,62 @@ function SeasonCard({
 
           {/* Other tournaments — one tile per competition, labelled by its real name */}
           <div className="grid grid-cols-3 gap-space-2">
-            {clubTs.map((t) => (
-              <div key={t.id} className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
-                <p className="text-xs font-bold text-text-primary truncate" title={t.name}>
-                  {t.name}
-                </p>
-                <p
-                  className={`text-[10px] ${
-                    t.status === 'active'
-                      ? 'text-feedback-success'
-                      : t.status === 'completed'
-                      ? 'text-text-muted'
-                      : 'text-feedback-warning'
-                  }`}
-                >
-                  {t.status === 'active' ? 'Active' : t.status === 'completed' ? 'Done' : 'Upcoming'}
-                </p>
-                <p className="text-[10px] text-text-secondary">
-                  {t.completed_count}/{t.fixture_count}
-                </p>
-                {(t.knockout_ready && isActive) && (
-                  <Button
-                    onClick={() => handleGenerateKO(t.id)}
-                    isLoading={loading === `ko-${t.id}`}
-                    variant="secondary"
-                    className="w-full text-[9px] py-space-1 px-space-1"
-                  >
-                    Generate KOs
-                  </Button>
-                )}
-              </div>
-            ))}
+            {(['tournament_club', 'tournament_international'] as const).map((cupType) => {
+              const existing = clubTs.find((t) => t.type === cupType)
+              if (existing) {
+                return (
+                  <div key={existing.id} className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
+                    <p className="text-xs font-bold text-text-primary truncate" title={existing.name}>
+                      {existing.name}
+                    </p>
+                    <p
+                      className={`text-[10px] ${
+                        existing.status === 'active'
+                          ? 'text-feedback-success'
+                          : existing.status === 'completed'
+                          ? 'text-text-muted'
+                          : 'text-feedback-warning'
+                      }`}
+                    >
+                      {existing.status === 'active' ? 'Active' : existing.status === 'completed' ? 'Done' : 'Upcoming'}
+                    </p>
+                    <p className="text-[10px] text-text-secondary">
+                      {existing.completed_count}/{existing.fixture_count}
+                    </p>
+                    {(existing.knockout_ready && isActive) && (
+                      <Button
+                        onClick={() => handleGenerateKO(existing.id)}
+                        isLoading={loading === `ko-${existing.id}`}
+                        variant="secondary"
+                        className="w-full text-[9px] py-space-1 px-space-1"
+                      >
+                        Generate KOs
+                      </Button>
+                    )}
+                  </div>
+                )
+              }
+              return (
+                <div key={cupType} className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
+                  <p className="text-xs font-bold text-text-primary truncate">
+                    {cupType === 'tournament_club' ? 'Champions League' : 'Europa League'}
+                  </p>
+                  {cupsStartable ? (
+                    <Button
+                      onClick={() => setStartCupType(cupType)}
+                      variant="secondary"
+                      className="w-full text-[9px] py-space-1 px-space-1"
+                    >
+                      Start
+                    </Button>
+                  ) : (
+                    <p className="text-[10px] text-text-muted opacity-50 py-space-1">
+                      {isActive || isCompleted ? 'Starts after league' : 'Upcoming'}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
             <div className="bg-bg-base rounded-lg px-space-3 py-space-2 text-center space-y-space-1">
               {superCupT ? (
                 <>
@@ -244,10 +279,20 @@ function SeasonCard({
           {showSuperCup && (
             <SuperCupDialog
               seasonId={season.id}
-              uclTId={clubTs[0]?.id ?? ''}
-              europaTId={clubTs[1]?.id ?? ''}
-              onClose={() => { setShowSuperCup(false); setSelectedUcl(''); setSelectedEuropa('') }}
+              uclTId={clubTs.find((t) => t.type === 'tournament_club')?.id ?? ''}
+              europaTId={clubTs.find((t) => t.type === 'tournament_international')?.id ?? ''}
+              onClose={() => setShowSuperCup(false)}
               onCreated={() => { setShowSuperCup(false); window.location.reload() }}
+            />
+          )}
+
+          {/* Start a cup from the final league standings */}
+          {startCupType && (
+            <StartCupDialog
+              season={season}
+              cupType={startCupType}
+              onClose={() => setStartCupType(null)}
+              onStarted={() => { setStartCupType(null); onRefresh() }}
             />
           )}
 
@@ -328,11 +373,9 @@ function TeamPickerButton({
 
 function StartPhaseDialog({
   allTeams,
-  prevSeasonStandings,
   onClose,
 }: {
   allTeams: Team[]
-  prevSeasonStandings: { team_id: string; team_name: string }[] | null
   onClose: () => void
 }) {
   const router = useRouter()
@@ -353,20 +396,8 @@ function StartPhaseDialog({
   const [startDate, setStartDate] = useState(today)
   const [teamSearch, setTeamSearch] = useState('')
 
-  // UCL/Europa settings
-  const [uclNumGroups, setUclNumGroups] = useState(2)
-  const [uclQualifiersPerGroup, setUclQualifiersPerGroup] = useState(2)
-  const [europaNumGroups, setEuropaNumGroups] = useState(2)
-  const [europaQualifiersPerGroup, setEuropaQualifiersPerGroup] = useState(2)
-
   // Selection by slug
   const [leagueTeamSlugs, setLeagueTeamSlugs] = useState<string[]>(allTeams.map((t) => t.logo_team_slug))
-
-  const prevSeasonSlugs = (prevSeasonStandings ?? [])
-    .map((s) => allTeams.find((t) => t.id === s.team_id)?.logo_team_slug)
-    .filter(Boolean) as string[]
-  const [uclTeamSlugs, setUclTeamSlugs] = useState<string[]>(prevSeasonSlugs.slice(0, 12))
-  const [europaTeamSlugs, setEuropaTeamSlugs] = useState<string[]>(prevSeasonSlugs.slice(12, 20))
 
   const leagueTeamObjects = allTeams.filter((t) => leagueTeamSlugs.includes(t.logo_team_slug))
   const filteredTeams = allTeams.filter((t) =>
@@ -379,41 +410,15 @@ function StartPhaseDialog({
   function toggleLeague(slug: string) {
     if (leagueTeamSlugs.includes(slug)) {
       setLeagueTeamSlugs((prev) => prev.filter((x) => x !== slug))
-      setUclTeamSlugs((prev) => prev.filter((x) => x !== slug))
-      setEuropaTeamSlugs((prev) => prev.filter((x) => x !== slug))
     } else {
       setLeagueTeamSlugs((prev) => [...prev, slug])
     }
   }
 
-  function toggleUcl(slug: string) {
-    setUclTeamSlugs((prev) =>
-      prev.includes(slug) ? prev.filter((x) => x !== slug) : [...prev, slug]
-    )
-  }
-
-  function toggleEuropa(slug: string) {
-    setEuropaTeamSlugs((prev) =>
-      prev.includes(slug) ? prev.filter((x) => x !== slug) : [...prev, slug]
-    )
-  }
-
   function computeFixtureCounts() {
     const leagueTeams = leagueTeamSlugs.length
     const leagueCount = leagueTeams * (leagueTeams - 1)
-    const uclTeams = uclTeamSlugs.length
-    let uclCount = 0
-    if (uclTeams > 0 && uclNumGroups > 0) {
-      const perGroup = Math.floor(uclTeams / uclNumGroups)
-      uclCount = uclNumGroups * perGroup * (perGroup - 1) * 2 / 2
-    }
-    const europaTeams = europaTeamSlugs.length
-    let europaCount = 0
-    if (europaTeams > 0 && europaNumGroups > 0) {
-      const perGroup = Math.floor(europaTeams / europaNumGroups)
-      europaCount = europaNumGroups * perGroup * (perGroup - 1) * 2 / 2
-    }
-    return { league: leagueCount, ucl: uclCount, europa: europaCount, total: leagueCount + uclCount + europaCount }
+    return { league: leagueCount, total: leagueCount }
   }
 
   const endDate = (() => {
@@ -444,12 +449,6 @@ function StartPhaseDialog({
           season_name: seasonName,
           start_date: startDate,
           league_teams: toTeamData(leagueTeamSlugs),
-          ucl_teams: toTeamData(uclTeamSlugs),
-          europa_teams: toTeamData(europaTeamSlugs),
-          ucl_num_groups: uclNumGroups,
-          ucl_qualifiers_per_group: uclQualifiersPerGroup,
-          europa_num_groups: europaNumGroups,
-          europa_qualifiers_per_group: europaQualifiersPerGroup,
         }),
       })
       const data = await res.json()
@@ -479,7 +478,7 @@ function StartPhaseDialog({
     setStep((s) => s + 1)
   }
 
-  const STEP_LABELS = ['Phase Details', 'League Teams', 'Assign Managers', 'UCL & Europa', 'Confirm & Launch']
+  const STEP_LABELS = ['Phase Details', 'League Teams', 'Assign Managers', 'Confirm & Launch']
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-space-4 overflow-y-auto">
@@ -489,7 +488,7 @@ function StartPhaseDialog({
           <div>
             <h2 className="text-text-primary font-bold text-lg">Start New Phase</h2>
             <p className="text-text-muted text-xs mt-space-1">
-              Step {step} of 5: {STEP_LABELS[step - 1]}
+              Step {step} of 4: {STEP_LABELS[step - 1]}
             </p>
           </div>
           <Button variant="ghost" onClick={onClose}><X className="w-4 h-4" /></Button>
@@ -499,7 +498,7 @@ function StartPhaseDialog({
         <div className="h-space-1 bg-border-subtle">
           <div
             className="h-full bg-accent transition-all"
-            style={{ width: `${(step / 5) * 100}%` }}
+            style={{ width: `${(step / 4) * 100}%` }}
           />
         </div>
 
@@ -542,9 +541,8 @@ function StartPhaseDialog({
                 <p className="font-medium text-text-primary">What gets generated:</p>
                 <ul className="list-disc list-inside space-y-space-1 mt-space-1">
                   <li>Premier League fixtures for your selected teams</li>
-                  <li>UCL group stage with draw &amp; fixtures</li>
-                  <li>Europa group stage with draw &amp; fixtures</li>
                   <li>15 fixtures per weekday, 30 per weekend day</li>
+                  <li>UCL &amp; Europa start later — from the final league standings</li>
                 </ul>
               </Card>
             </div>
@@ -708,91 +706,8 @@ function StartPhaseDialog({
             </div>
           )}
 
-          {/* -- Step 4: UCL & Europa draw -- */}
-          {step === 4 && (
-            <div className="space-y-space-6">
-              <div className="bg-accent-muted border border-accent/20 rounded-lg p-space-3 text-xs text-accent">
-                Pick teams from the league to compete in UCL and Europa. A team can only be in one.
-              </div>
-
-              {/* UCL */}
-              <div>
-                <div className="flex items-center justify-between mb-space-3">
-                  <h3 className="text-text-primary font-semibold text-sm">Champions League</h3>
-                  <span className="text-xs font-bold text-accent">{uclTeamSlugs.length} team{uclTeamSlugs.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-space-2 max-h-40 overflow-y-auto pr-space-1 mb-space-3">
-                  {leagueTeamObjects.map((team) => {
-                    const sel = uclTeamSlugs.includes(team.logo_team_slug)
-                    const inEuropa = europaTeamSlugs.includes(team.logo_team_slug)
-                    return (
-                      <TeamPickerButton
-                        key={team.logo_team_slug}
-                        team={team}
-                        selected={sel}
-                        disabled={inEuropa}
-                        badgeText={inEuropa ? 'EL' : undefined}
-                        accentClass="bg-accent/10 border-accent/40"
-                        onClick={() => !inEuropa && toggleUcl(team.logo_team_slug)}
-                      />
-                    )
-                  })}
-                </div>
-                {uclTeamSlugs.length > 0 && (
-                  <div className="flex gap-space-3">
-                    <div className="flex-1">
-                      <label className="text-[10px] text-text-muted">Groups</label>
-                      <input type="number" min={1} max={Math.max(1, Math.floor(uclTeamSlugs.length / 2))} value={uclNumGroups} onChange={(e) => setUclNumGroups(Math.max(1, parseInt(e.target.value) || 1))} className="input-field text-xs" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-[10px] text-text-muted">Qualify per group</label>
-                      <input type="number" min={1} max={Math.max(1, Math.floor(uclTeamSlugs.length / uclNumGroups / 2))} value={uclQualifiersPerGroup} onChange={(e) => setUclQualifiersPerGroup(Math.max(1, parseInt(e.target.value) || 1))} className="input-field text-xs" />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Europa */}
-              <div>
-                <div className="flex items-center justify-between mb-space-3">
-                  <h3 className="text-text-primary font-semibold text-sm">Europa League</h3>
-                  <span className="text-xs font-bold text-feedback-warning">{europaTeamSlugs.length} team{europaTeamSlugs.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-space-2 max-h-40 overflow-y-auto pr-space-1 mb-space-3">
-                  {leagueTeamObjects.map((team) => {
-                    const sel = europaTeamSlugs.includes(team.logo_team_slug)
-                    const inUcl = uclTeamSlugs.includes(team.logo_team_slug)
-                    return (
-                      <TeamPickerButton
-                        key={team.logo_team_slug}
-                        team={team}
-                        selected={sel}
-                        disabled={inUcl}
-                        badgeText={inUcl ? 'UCL' : undefined}
-                        accentClass="bg-feedback-warning/10 border-feedback-warning/40"
-                        onClick={() => !inUcl && toggleEuropa(team.logo_team_slug)}
-                      />
-                    )
-                  })}
-                </div>
-                {europaTeamSlugs.length > 0 && (
-                  <div className="flex gap-space-3">
-                    <div className="flex-1">
-                      <label className="text-[10px] text-text-muted">Groups</label>
-                      <input type="number" min={1} max={Math.max(1, Math.floor(europaTeamSlugs.length / 2))} value={europaNumGroups} onChange={(e) => setEuropaNumGroups(Math.max(1, parseInt(e.target.value) || 1))} className="input-field text-xs" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-[10px] text-text-muted">Qualify per group</label>
-                      <input type="number" min={1} max={Math.max(1, Math.floor(europaTeamSlugs.length / europaNumGroups / 2))} value={europaQualifiersPerGroup} onChange={(e) => setEuropaQualifiersPerGroup(Math.max(1, parseInt(e.target.value) || 1))} className="input-field text-xs" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* -- Step 5: Confirm -- */}
-          {step === 5 && (() => {
+          {/* -- Step 4: Confirm -- */}
+          {step === 4 && (() => {
             const counts = computeFixtureCounts()
             return (
             <div className="space-y-space-4">
@@ -811,23 +726,15 @@ function StartPhaseDialog({
                     <span className="text-blue-500">League</span>
                     <span className="text-blue-500 font-medium">{leagueTeamSlugs.length} teams — {counts.league} fixtures</span>
                   </div>
-                  {uclTeamSlugs.length > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-accent">UCL</span>
-                      <span className="text-accent font-medium">{uclTeamSlugs.length} teams, {uclNumGroups} group{uclNumGroups > 1 ? 's' : ''} — {counts.ucl} fixtures</span>
-                    </div>
-                  )}
-                  {europaTeamSlugs.length > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-feedback-warning">Europa</span>
-                      <span className="text-feedback-warning font-medium">{europaTeamSlugs.length} teams, {europaNumGroups} group{europaNumGroups > 1 ? 's' : ''} — {counts.europa} fixtures</span>
-                    </div>
-                  )}
                 </div>
                 <div className="border-t border-border pt-space-3 flex justify-between font-semibold">
                   <span className="text-text-secondary">Total fixtures</span>
                   <span className="text-text-primary">{counts.total}</span>
                 </div>
+                <p className="text-[11px] text-text-muted">
+                  UCL &amp; Europa are not generated now. Once every league fixture is played, start them
+                  from this page — teams are picked automatically from the final standings.
+                </p>
               </Card>
             </div>
             )
@@ -847,9 +754,9 @@ function StartPhaseDialog({
             {step === 1 ? 'Cancel' : 'Back'}
           </Button>
 
-          {step < 5 ? (
+          {step < 4 ? (
             <Button variant="primary" onClick={nextStep} className="px-space-8">
-              {step === 3 ? 'Next (UCL & Europa)' : 'Next'}
+              Next
             </Button>
           ) : (
             <Button
@@ -1192,9 +1099,190 @@ function SuperCupDialog({
   )
 }
 
+// --- Start Cup Dialog ---------------------------------------------------------
+
+function StartCupDialog({
+  season,
+  cupType,
+  onClose,
+  onStarted,
+}: {
+  season: Season
+  cupType: 'tournament_club' | 'tournament_international'
+  onClose: () => void
+  onStarted: () => void
+}) {
+  const title = cupType === 'tournament_club' ? 'Champions League' : 'Europa League'
+  const otherBadge = cupType === 'tournament_club' ? 'EL' : 'UCL'
+
+  const standings = season.final_standings ?? []
+  const taken = season.cup_taken ?? {}
+  const available = standings.filter((row) => !taken[row.team_id])
+
+  const defaultCount = cupType === 'tournament_club' ? 12 : 8
+  const [teamCount, setTeamCount] = useState(Math.min(defaultCount, available.length))
+  const [numGroups, setNumGroups] = useState(2)
+  const [qualifiersPerGroup, setQualifiersPerGroup] = useState(2)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const selected = available.slice(0, teamCount)
+  const selectedIds = new Set(selected.map((s) => s.team_id))
+  const perGroup = numGroups > 0 ? Math.floor(selected.length / numGroups) : 0
+  const validSplit = numGroups >= 1 && selected.length >= numGroups * 2 && selected.length % numGroups === 0
+  const fixtureCount = validSplit ? numGroups * perGroup * (perGroup - 1) : 0
+
+  async function handleStart() {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/admin/start-tournament', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          season_id: season.id,
+          type: cupType,
+          team_ids: selected.map((s) => s.team_id),
+          num_groups: numGroups,
+          qualifiers_per_group: qualifiersPerGroup,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to start tournament')
+      onStarted()
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-space-4 overflow-y-auto" onClick={onClose}>
+      <div className="w-full max-w-xl bg-bg-surface border border-border rounded-2xl overflow-hidden my-space-8" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-space-6 py-space-4 border-b border-border flex items-center justify-between">
+          <h2 className="text-text-primary font-bold text-lg flex items-center gap-space-2">
+            <Trophy className="w-5 h-5 text-gold" /> Start {title}
+          </h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-space-6 space-y-space-5">
+          <div className="bg-accent-muted border border-accent/20 rounded-lg p-space-3 text-xs text-accent">
+            Teams are picked automatically from the final league standings of this phase.
+          </div>
+
+          {/* Config */}
+          <div className="grid grid-cols-3 gap-space-3">
+            <div>
+              <label className="text-[10px] text-text-muted">Teams</label>
+              <input
+                type="number"
+                min={2}
+                max={available.length}
+                value={teamCount}
+                onChange={(e) => setTeamCount(Math.min(available.length, Math.max(0, parseInt(e.target.value) || 0)))}
+                className="input-field text-xs"
+                disabled={available.length === 0}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-text-muted">Groups</label>
+              <input
+                type="number"
+                min={1}
+                value={numGroups}
+                onChange={(e) => setNumGroups(Math.max(1, parseInt(e.target.value) || 1))}
+                className="input-field text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-text-muted">Qualify per group</label>
+              <input
+                type="number"
+                min={1}
+                value={qualifiersPerGroup}
+                onChange={(e) => setQualifiersPerGroup(Math.max(1, parseInt(e.target.value) || 1))}
+                className="input-field text-xs"
+              />
+            </div>
+          </div>
+
+          <p className={`text-xs ${validSplit ? 'text-text-secondary' : 'text-feedback-error'}`}>
+            {available.length === 0
+              ? 'No teams left to pick from.'
+              : validSplit
+              ? `${selected.length} teams in ${numGroups} group${numGroups > 1 ? 's' : ''} of ${perGroup} — ${fixtureCount} fixtures`
+              : `Team count must divide evenly across groups (min 2 per group).`}
+          </p>
+
+          {/* Standings list */}
+          <div className="space-y-space-1.5 max-h-80 overflow-y-auto pr-space-1">
+            {standings.map((row) => {
+              const isSelected = selectedIds.has(row.team_id)
+              const isTaken = !!taken[row.team_id]
+              return (
+                <div
+                  key={row.team_id}
+                  className={`flex items-center gap-space-2.5 px-space-3 py-space-2 rounded-lg border ${
+                    isSelected
+                      ? 'bg-accent/10 border-accent/40'
+                      : isTaken
+                      ? 'bg-bg-elevated border-border opacity-50'
+                      : 'bg-bg-elevated border-border'
+                  }`}
+                >
+                  <span className="text-xs font-bold text-text-secondary w-6 shrink-0 tabular-nums">{row.position}</span>
+                  {row.logo_team_slug ? (
+                    <TeamLogo
+                      leagueFolder={row.logo_league_folder}
+                      teamSlug={row.logo_team_slug}
+                      context="standings_row"
+                      alt={row.name}
+                      className="w-5 h-5 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-5 h-5 rounded bg-bg-base shrink-0" />
+                  )}
+                  <span className="text-xs font-medium text-text-primary truncate flex-1 min-w-0">{row.name}</span>
+                  {isTaken && <span className="text-[9px] text-text-muted shrink-0">{otherBadge}</span>}
+                  {isSelected && <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-accent" />}
+                </div>
+              )
+            })}
+          </div>
+
+          {error && (
+            <div className="bg-feedback-error/10 border border-feedback-error/30 rounded-lg p-space-3 text-feedback-error text-sm">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-space-6 pb-space-6 flex gap-space-3">
+          <Button onClick={onClose} variant="secondary" className="flex-1">Cancel</Button>
+          <Button
+            onClick={handleStart}
+            isLoading={loading}
+            disabled={!validSplit || loading}
+            variant="primary"
+            className="flex-1"
+          >
+            Start &amp; Generate Fixtures
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // --- Main export --------------------------------------------------------------
 
-export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }: Props) {
+export default function SeasonManager({ seasons, allTeams }: Props) {
   const router = useRouter()
   const [showDialog, setShowDialog] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -1294,6 +1382,7 @@ export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }
               onEndSeason={handleEndSeason}
               onCancelSeason={handleCancelSeason}
               onGenerateKnockouts={handleGenerateKnockouts}
+              onRefresh={() => router.refresh()}
             />
           ))}
 
@@ -1319,7 +1408,6 @@ export default function SeasonManager({ seasons, allTeams, prevSeasonStandings }
       {showDialog && (
         <StartPhaseDialog
           allTeams={allTeams}
-          prevSeasonStandings={prevSeasonStandings}
           onClose={() => setShowDialog(false)}
         />
       )}

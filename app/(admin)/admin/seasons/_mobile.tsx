@@ -11,7 +11,6 @@ export default function Mobile({ data }: { data: any }) {
       <SeasonManager
         seasons={data.seasons}
         allTeams={data.allTeams}
-        prevSeasonStandings={data.prevSeasonStandings}
       />
     </div>
   )

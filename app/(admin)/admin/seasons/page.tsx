@@ -5,6 +5,7 @@ import path from 'path'
 import { createClient } from '@/lib/supabase/server'
 import { getLeagueFolders, slugToDisplayName } from '@/lib/logo-resolver'
 import { filterTeams } from '@/lib/allowed-teams'
+import { sortStandingsRows } from '@/lib/standings-core'
 import Shell from './_shell'
 
 export default async function SeasonsPage() {
@@ -67,6 +68,46 @@ export default async function SeasonsPage() {
       league_completed_fixtures: leagueT ? (doneMap[leagueT.id] ?? 0) : 0,
     }
   })
+
+  // For active seasons, load the finished league standings + which teams are
+  // already committed to a cup, so cups can be started after the league ends.
+  for (const s of seasons) {
+    if (s.status !== 'active') continue
+    const leagueT = s.tournaments.find((t: any) => t.type === 'league')
+    if (!leagueT || !leagueT.id) continue
+
+    const { data: rows } = await supabase
+      .from('standings')
+      .select('team_id, points, goals_for, goals_against, gd_penalty, teams(name, logo_league_folder, logo_team_slug)')
+      .eq('tournament_id', leagueT.id)
+
+    if (rows) {
+      s.final_standings = sortStandingsRows(rows as any[]).map((r: any, i: number) => ({
+        position: i + 1,
+        team_id: r.team_id,
+        name: r.teams?.name ?? '',
+        logo_league_folder: r.teams?.logo_league_folder ?? '',
+        logo_team_slug: r.teams?.logo_team_slug ?? '',
+      }))
+    }
+
+    const cupTs = s.tournaments.filter(
+      (t: any) => t.type === 'tournament_club' || t.type === 'tournament_international'
+    )
+    const cupTaken: Record<string, string> = {}
+    if (cupTs.length > 0) {
+      const { data: parts } = await supabase
+        .from('tournament_participants')
+        .select('team_id, tournament_id')
+        .in('tournament_id', cupTs.map((t: any) => t.id))
+
+      const typeById = new Map<string, string>(cupTs.map((t: any) => [t.id as string, t.type as string]))
+      for (const p of (parts ?? []) as any[]) {
+        cupTaken[p.team_id] = typeById.get(p.tournament_id) ?? ''
+      }
+    }
+    s.cup_taken = cupTaken
+  }
 
   const { data: rawTeams } = await supabase
     .from('teams')
@@ -131,34 +172,11 @@ export default async function SeasonsPage() {
 
   const allTeams = filterTeams(Array.from(clubMap.values())).sort((a, b) => a.name.localeCompare(b.name))
 
-  const completedSeason = (rawSeasons ?? []).find((s: any) => s.status === 'completed')
-  let prevSeasonStandings: { team_id: string; team_name: string }[] | null = null
-
-  if (completedSeason) {
-    const prevLeague = completedSeason.tournaments?.find((t: any) => t.type === 'league')
-    if (prevLeague) {
-      const { data: prevStandings } = await supabase
-        .from('standings')
-        .select('team_id, teams(name)')
-        .eq('tournament_id', prevLeague.id)
-        .order('points', { ascending: false })
-        .order('goal_difference', { ascending: false })
-
-      if (prevStandings) {
-        prevSeasonStandings = prevStandings.map((s: any) => ({
-          team_id: s.team_id,
-          team_name: s.teams?.name ?? '',
-        }))
-      }
-    }
-  }
-
   return (
     <Shell
       data={{
         seasons,
         allTeams,
-        prevSeasonStandings,
       }}
     />
   )
