@@ -62,6 +62,8 @@ Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-String -P
 - `migration-history/` — Supabase schema_migrations tracking / migration bookkeeping
 - `forfeit-balances/` — forfeit balance carry-over (website "Use" button, WhatsApp auto-apply)
 - `postgrest-embeds/` — PostgREST embed shape issues (unique constraints flipping embeds to one-to-one)
+- `knockout-generation/` — knockout bracket generation + progression wiring (advanceWinner, leg mirroring, tie-breaks)
+- `season-cup-flow/` — deferred cup creation after league end (start-tournament flow)
 
 ### Naming requirement
 Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's last-modified date. New files use the current date. When a file is substantially edited on a later day, rename it to the new date.
