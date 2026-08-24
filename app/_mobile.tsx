@@ -71,9 +71,9 @@ export default function Mobile({ data }: { data: any }) {
                     </div>
 
                     <div className="text-center shrink-0 min-w-[36px] sm:min-w-[60px]">
-                      {f.results?.[0] ? (
+                      {f.results ? (
                         <span className="text-text-primary font-bold text-xs sm:text-sm">
-                          {f.results[0].home_score}–{f.results[0].away_score}
+                          {f.results.home_score}–{f.results.away_score}
                         </span>
                       ) : (
                         <span className="text-[11px] sm:text-xs text-accent font-medium">vs</span>

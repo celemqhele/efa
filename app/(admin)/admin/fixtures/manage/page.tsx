@@ -51,7 +51,7 @@ export default async function FixturesManagePage({
 
   // Fetch sibling results for 2-leg knockout aggregate display
   const leg2Fixtures = (fixtures ?? []).filter(
-    (f: any) => f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f.result?.[0]
+    (f: any) => f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f.result
   )
   if (leg2Fixtures.length > 0) {
     const siblingMds = leg2Fixtures.map((f: any) => f.matchday - 10)
@@ -84,7 +84,7 @@ export default async function FixturesManagePage({
     }
 
     for (const f of fixtures ?? []) {
-      if (f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f.result?.[0]) {
+      if (f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f.result) {
         const leg1Key = `${f.tournament_id}_${f.matchday - 10}`
         const leg1Result = siblingResultsByKey[leg1Key]
         const leg2Result = Array.isArray(f.result) ? f.result[0] : f.result

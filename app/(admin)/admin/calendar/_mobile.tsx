@@ -102,7 +102,7 @@ export default function Mobile({ data }: { data: any }) {
                 <div className="space-y-0.5">
                   {dayFixtures.slice(0, 2).map((f: any) => {
                     const colors = TOURNAMENT_COLORS[f.tournament?.type] ?? TOURNAMENT_COLORS.league
-                    const result = f.results?.[0]
+                    const result = f.results
                     return (
                       <Link
                         key={f.id}
@@ -147,8 +147,8 @@ export default function Mobile({ data }: { data: any }) {
                     <span className="text-sm font-medium text-text-primary truncate">{f.home_team?.name}</span>
                   </div>
                   <div className="text-center px-2 shrink-0">
-                    {f.results?.[0]
-                      ? <span className="text-text-primary font-bold">{f.results[0].home_score}–{f.results[0].away_score}</span>
+                    {f.results
+                      ? <span className="text-text-primary font-bold">{f.results.home_score}–{f.results.away_score}</span>
                       : <span className="text-xs text-accent font-semibold">vs</span>
                     }
                   </div>

@@ -153,7 +153,7 @@ export default function Desktop({ data }: { data: any }) {
                     </thead>
                     <tbody>
                       {sectionFixtures.map((fx: any) => {
-                        const result = fx.result?.[0]
+                        const result = fx.result
                         const statusCls = STATUS_COLOURS[fx.status] ?? STATUS_COLOURS.scheduled
                         const homeTeam = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
                         const awayTeam = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
