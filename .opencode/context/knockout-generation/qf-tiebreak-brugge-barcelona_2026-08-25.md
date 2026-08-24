@@ -66,10 +66,25 @@ No notifications sent (advancement paths don't notify either; managers see slots
 - When diffing two query snapshots, re-check with a targeted `-c` query instead of eyeballing
   wide grids — a misread row index cost ten minutes of "someone changed the DB" panic here.
 
+## Follow-up (same day): incremental leg-2 mirroring
+
+Admin expected Newcastle to already show in BOTH UEL SF fixtures once its QF was done
+(md 202 leg-1 home ✓, but md 212 completely blank). Cause: `mirrorLeg2Teams` was
+all-or-nothing — it only copied the reversed pair after **both** leg-1 slots were full,
+so a half-decided SF left its whole leg-2 fixture blank even though one side was known.
+
+Fix in `lib/tournament-progression.ts`: mirror now copies each known side immediately
+(leg1 home → leg2 away, leg1 away → leg2 home), skipping nulls; empty-patch guarded.
+One-off data fix applied: UEL md 212 `away_team_id` = Newcastle United (reversed-pair side),
+so today's list reads `? vs Newcastle`. Remaining "?" cells all represent the single
+undecided Al Khaleej/Liverpool winner; when that result confirms, `advanceWinner` fills
+md 202 away and the mirror completes md 212 automatically.
+Verified: `npx tsc --noEmit` clean, `npm run lint` warning-only (pre-existing).
+
 ## Status
 
 Applied to prod. Away-goals rule NOT implemented in code — future level ties still fall back
-to leg-2 winner unless the admin overrides like this.
+to leg-2 winner unless the admin overrides like this. Leg-2 mirroring is now incremental.
 
 ## Restore File Section
 

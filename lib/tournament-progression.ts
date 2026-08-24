@@ -426,11 +426,15 @@ async function mirrorLeg2Teams(
     .eq('matchday', leg1Matchday)
     .maybeSingle()
 
-  if (!leg1?.home_team_id || !leg1?.away_team_id) return
+  if (!leg1 || (!leg1.home_team_id && !leg1.away_team_id)) return
+
+  const patch: Record<string, string> = {}
+  if (leg1.away_team_id) patch.home_team_id = leg1.away_team_id
+  if (leg1.home_team_id) patch.away_team_id = leg1.home_team_id
 
   await db
     .from('fixtures')
-    .update({ home_team_id: leg1.away_team_id, away_team_id: leg1.home_team_id })
+    .update(patch)
     .eq('tournament_id', tournamentId)
     .eq('matchday', leg1Matchday + 10)
 }
