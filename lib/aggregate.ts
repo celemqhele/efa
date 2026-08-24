@@ -73,6 +73,10 @@ export function computeAggregate(
   }
 }
 
+export function flipAggregate(agg: AggregateScore): AggregateScore {
+  return { home: agg.away, away: agg.home }
+}
+
 export function determineAggregateWinner(
   leg1Fixture: any,
   leg1Result: any,

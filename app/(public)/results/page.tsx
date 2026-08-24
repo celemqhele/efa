@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { getSiblingMatchday, computeAggregate } from '@/lib/aggregate'
+import { computeAggregate, flipAggregate } from '@/lib/aggregate'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
@@ -39,7 +39,7 @@ export default async function ResultsPage() {
       const { data: fixtures } = await supabase
         .from('fixtures')
         .select(`
-          id, matchday, scheduled_date, status, round_type, leg, tournament_id,
+          id, matchday, scheduled_date, status, round_type, leg, tournament_id, home_team_id, away_team_id,
           tournament:tournaments(id, name, type),
           home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
           away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
@@ -104,16 +104,16 @@ export default async function ResultsPage() {
           if (f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f._result) {
             const leg1Key = `${f.tournament_id}_${f.matchday - 10}`
             const leg1Result = siblingResultsByKey[leg1Key]
+            const isLeg2Home = teamIds.includes(f.home_team_id)
             if (leg1Result) {
               const agg = computeAggregate(leg1Result, f._result)
-              if (agg) (f as any)._aggregate = agg
+              if (agg) (f as any)._aggregate = isLeg2Home ? flipAggregate(agg) : agg
             }
             const penScore = penScores[f.id]
             if (penScore && penScore.pen_home_score != null) {
-              ;(f as any)._penScore = {
-                home: penScore.pen_home_score,
-                away: penScore.pen_away_score,
-              }
+              ;(f as any)._penScore = isLeg2Home
+                ? { home: penScore.pen_home_score, away: penScore.pen_away_score }
+                : { home: penScore.pen_away_score, away: penScore.pen_home_score }
             }
           }
         }

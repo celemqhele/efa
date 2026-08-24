@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAppTodayKey } from '@/lib/app-time'
-import { getSiblingMatchday, computeAggregate } from '@/lib/aggregate'
+import { computeAggregate, flipAggregate } from '@/lib/aggregate'
 import Shell from './_shell'
 
 export const revalidate = 0
@@ -90,7 +90,7 @@ export default async function FixturesManagePage({
         const leg2Result = Array.isArray(f.result) ? f.result[0] : f.result
         if (leg1Result && leg2Result) {
           const agg = computeAggregate(leg1Result, leg2Result)
-          if (agg) (f as any)._aggregate = agg
+          if (agg) (f as any)._aggregate = flipAggregate(agg)
         }
         const penScore = penScores[f.id]
         if (penScore && penScore.pen_home_score != null) {

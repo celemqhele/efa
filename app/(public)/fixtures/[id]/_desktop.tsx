@@ -119,25 +119,27 @@ export default function Desktop({ data }: { data: any }) {
                 <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
               </div>
             </Link>
-            <div className="flex items-center gap-5">
-              <span className="text-6xl font-black text-text-primary tabular-nums">{result.home_score}</span>
-              <span className="text-3xl font-bold text-text-muted">–</span>
-              <span className="text-6xl font-black text-text-primary tabular-nums">{result.away_score}</span>
-            </div>
-            {(data.aggregateScore || data.penScore) && (
-              <div className="text-center mt-2 space-y-0.5">
-                {data.aggregateScore && (
-                  <p className="text-sm text-text-muted font-semibold">
-                    AGG {data.aggregateScore.home} – {data.aggregateScore.away}
-                  </p>
-                )}
-                {data.penScore && (
-                  <p className="text-xs text-text-muted/70 font-medium">
-                    pens {data.penScore.home} – {data.penScore.away}
-                  </p>
-                )}
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-5">
+                <span className="text-6xl font-black text-text-primary tabular-nums">{result.home_score}</span>
+                <span className="text-3xl font-bold text-text-muted">–</span>
+                <span className="text-6xl font-black text-text-primary tabular-nums">{result.away_score}</span>
               </div>
-            )}
+              {(data.aggregateScore || data.penScore) && (
+                <div className="text-center mt-2 space-y-0.5">
+                  {data.aggregateScore && (
+                    <p className="text-sm text-text-muted font-semibold">
+                      AGG {data.aggregateScore.home} – {data.aggregateScore.away}
+                    </p>
+                  )}
+                  {data.penScore && (
+                    <p className="text-xs text-text-muted/70 font-medium">
+                      pens {data.penScore.home} – {data.penScore.away}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
             <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
               <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="match_detail_hero" alt={awayTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
               <div className="text-center">

@@ -1,4 +1,5 @@
 import { addDays, format, parseISO } from 'date-fns'
+import { determineAggregateWinner } from './aggregate'
 
 type KnockoutRound = 'r16' | 'qf' | 'sf' | 'final'
 
@@ -404,6 +405,36 @@ export async function generateTBCKnockouts(
   return {}
 }
 
+function firstResultRow(r: any): any {
+  if (Array.isArray(r)) return r[0] ?? null
+  return r ?? null
+}
+
+const NEXT_ROUND_LEG1_MDS = [101, 102, 103, 104, 201, 202]
+
+async function mirrorLeg2Teams(
+  db: any,
+  tournamentId: string,
+  leg1Matchday: number
+): Promise<void> {
+  if (!NEXT_ROUND_LEG1_MDS.includes(leg1Matchday)) return
+
+  const { data: leg1 } = await db
+    .from('fixtures')
+    .select('home_team_id, away_team_id')
+    .eq('tournament_id', tournamentId)
+    .eq('matchday', leg1Matchday)
+    .maybeSingle()
+
+  if (!leg1?.home_team_id || !leg1?.away_team_id) return
+
+  await db
+    .from('fixtures')
+    .update({ home_team_id: leg1.away_team_id, away_team_id: leg1.home_team_id })
+    .eq('tournament_id', tournamentId)
+    .eq('matchday', leg1Matchday + 10)
+}
+
 export async function advanceWinner(
   db: any,
   tournamentId: string,
@@ -429,90 +460,40 @@ export async function advanceWinner(
     return
   }
 
-  // For 2-leg: leg 1 → don't advance yet, wait for leg 2
-  if (curFx.leg === 1) {
-    const siblingMd = curFx.matchday + 10
-    const { data: leg2Fx } = await db
-      .from('fixtures')
-      .select('id')
-      .eq('tournament_id', tournamentId)
-      .eq('matchday', siblingMd)
-      .maybeSingle()
-    if (leg2Fx) return // 2-leg mode, wait for leg 2
-  }
-
   let winnerId: string | null = null
 
-  if (curFx.leg === 2) {
-    // 2-leg aggregate: find leg 1 result
-    const leg1Md = curFx.matchday - 10
-    const { data: leg1Fixtures } = await db
+  const siblingMd = curFx.leg === 1 ? curFx.matchday + 10 : curFx.matchday - 10
+  const { data: siblingFx } = await db
+    .from('fixtures')
+    .select('id')
+    .eq('tournament_id', tournamentId)
+    .eq('matchday', siblingMd)
+    .maybeSingle()
+
+  if (siblingFx) {
+    const leg1Md = curFx.leg === 1 ? curFx.matchday : siblingMd
+    const leg2Md = curFx.leg === 1 ? siblingMd : curFx.matchday
+
+    const { data: leg1Fix } = await db
       .from('fixtures')
       .select('*, results(*)')
       .eq('tournament_id', tournamentId)
       .eq('matchday', leg1Md)
       .maybeSingle()
+    const { data: leg2Fix } = await db
+      .from('fixtures')
+      .select('*, results(*)')
+      .eq('tournament_id', tournamentId)
+      .eq('matchday', leg2Md)
+      .maybeSingle()
 
-    if (leg1Fixtures) {
-      const leg1Result = Array.isArray(leg1Fixtures.results)
-        ? leg1Fixtures.results[0]
-        : leg1Fixtures.results
+    const leg1Result = firstResultRow(leg1Fix?.results)
+    const leg2Result = firstResultRow(leg2Fix?.results)
 
-      if (leg1Result) {
-        const leg1HS = leg1Result.home_score ?? 0
-        const leg1AS = leg1Result.away_score ?? 0
+    if (!leg1Fix || !leg2Fix || !leg1Result || !leg2Result) return
 
-        // leg 1: home=TeamA, away=TeamB; leg 2: home=TeamB, away=TeamA
-        const teamAGoals = leg1HS + awayScore
-        const teamBGoals = leg1AS + homeScore
-
-        if (teamAGoals > teamBGoals) {
-          winnerId = leg1Fixtures.home_team_id
-        } else if (teamBGoals > teamAGoals) {
-          winnerId = leg1Fixtures.away_team_id
-        } else {
-          // Aggregate level — check pen scores on leg 2 result
-          const penHome = (leg1Result as any).pen_home_score
-          const penAway = (leg1Result as any).pen_away_score
-
-          // pen scores are stored on leg 2's result, so we need to fetch leg 2's result for pen scores
-          const { data: leg2FixtureWithResult } = await db
-            .from('fixtures')
-            .select('*, results(*)')
-            .eq('tournament_id', tournamentId)
-            .eq('matchday', curFx.matchday)
-            .maybeSingle()
-
-          if (leg2FixtureWithResult) {
-            const leg2Result = Array.isArray(leg2FixtureWithResult.results)
-              ? leg2FixtureWithResult.results[0]
-              : leg2FixtureWithResult.results
-
-            if (leg2Result) {
-              const ph = (leg2Result as any).pen_home_score
-              const pa = (leg2Result as any).pen_away_score
-              if (ph != null && pa != null) {
-                if (ph > pa) winnerId = leg2FixtureWithResult.home_team_id
-                else if (pa > ph) winnerId = leg2FixtureWithResult.away_team_id
-              }
-            }
-          }
-
-          // Fallback: leg 2 result as tiebreaker
-          if (!winnerId) {
-            winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
-          }
-        }
-      } else {
-        // No leg 1 result — fallback to single result
-        winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
-      }
-    } else {
-      // No leg 1 fixture — fallback to single result
-      winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
-    }
+    winnerId = determineAggregateWinner(leg1Fix, leg1Result, leg2Fix, leg2Result)
   } else {
-    // Single-leg: use direct result
     winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
   }
 
@@ -530,6 +511,8 @@ export async function advanceWinner(
       .from('fixtures')
       .update({ [progression.slot]: winnerId })
       .eq('id', nextFx.id)
+
+    await mirrorLeg2Teams(db, tournamentId, progression.nextMd)
   }
 }
 

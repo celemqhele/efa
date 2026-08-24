@@ -163,23 +163,29 @@ export default function Mobile({ data }: { data: any }) {
                             {fx.status.replaceAll('_', ' ')}
                           </span>
                         </div>
-                        <p className="text-text-primary text-base font-semibold">
-                          {cleanTeamName(homeTeam?.name) ?? 'TBC'}
-                          <span className="text-text-muted font-normal mx-1.5">
-                            {result ? `${result.home_score}–${result.away_score}` : 'vs'}
-                          </span>
-                          {cleanTeamName(awayTeam?.name) ?? 'TBC'}
-                          {fx._aggregate && (
-                            <span className="text-[10px] text-text-muted font-semibold ml-2 px-1 py-0.5 rounded bg-bg-elevated">
-                              AGG {fx._aggregate.home}–{fx._aggregate.away}
+                        <div>
+                          <p className="text-text-primary text-base font-semibold">
+                            {cleanTeamName(homeTeam?.name) ?? 'TBC'}
+                            <span className="text-text-muted font-normal mx-1.5">
+                              {result ? `${result.home_score}–${result.away_score}` : 'vs'}
                             </span>
+                            {cleanTeamName(awayTeam?.name) ?? 'TBC'}
+                          </p>
+                          {(fx._aggregate || fx._penScore) && (
+                            <div className="flex items-center gap-1 mt-1">
+                              {fx._aggregate && (
+                                <span className="text-[10px] text-text-muted font-semibold px-1 py-0.5 rounded bg-bg-elevated">
+                                  AGG {fx._aggregate.home}–{fx._aggregate.away}
+                                </span>
+                              )}
+                              {fx._penScore && (
+                                <span className="text-[10px] text-text-muted/70 px-1 py-0.5 rounded bg-bg-elevated">
+                                  pens {fx._penScore.home}–{fx._penScore.away}
+                                </span>
+                              )}
+                            </div>
                           )}
-                          {fx._penScore && (
-                            <span className="text-[10px] text-text-muted/70 ml-1 px-1 py-0.5 rounded bg-bg-elevated">
-                              pens {fx._penScore.home}–{fx._penScore.away}
-                            </span>
-                          )}
-                        </p>
+                        </div>
                         <FixtureActions
                           fixtureId={fx.id}
                           currentDate={fx.scheduled_date}

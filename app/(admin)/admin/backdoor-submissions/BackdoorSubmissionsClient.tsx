@@ -81,65 +81,15 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
 
     try {
       if (action === 'approve') {
-        // Determine outcome based on number of submissions
-        const { data: submissionsData } = await supabase
-          .from('backdoor_submissions')
-          .select('id, side_claimed')
-          .in('id', submissionIds)
-
-        let homeScore = 0, awayScore = 0
-        if (submissionsData?.length === 2) {
-          homeScore = 0; awayScore = 0
-        } else if (submissionsData?.length === 1) {
-          // side_claimed is the non-responding team (the loss), so the 3-0
-          // backdoor win goes to the OPPOSITE side (the reporting manager).
-          if (submissionsData[0].side_claimed === 'home') {
-            homeScore = 0; awayScore = 3
-          } else {
-            homeScore = 3; awayScore = 0
-          }
-        }
-
-        // Get admin user ID
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) throw new Error('Not authenticated')
-
-        // Insert result confirmation
-        await supabase.from('result_confirmations').insert({
-          fixture_id: fixtureId,
-          home_score: homeScore,
-          away_score: awayScore,
-          submitted_by: user.id,
+        const res = await fetch('/api/admin/backdoor/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ submissionIds }),
         })
-
-        // Upsert result
-        await supabase.from('results').upsert({
-          fixture_id: fixtureId,
-          home_score: homeScore,
-          away_score: awayScore,
-          finalised_by: user.id,
-        }, { onConflict: 'fixture_id' })
-
-        // Update fixture status
-        await supabase.from('fixtures').update({ status: 'confirmed' }).eq('id', fixtureId)
-
-        // Update backdoor submissions
-        await supabase
-          .from('backdoor_submissions')
-          .update({ status: 'approved', reviewed_by: user.id, reviewed_at: new Date().toISOString() })
-          .in('id', submissionIds)
-
-        // Recalculate standings
-        const { data: fixData } = await supabase.from('fixtures').select('tournament_id').eq('id', fixtureId).single()
-        if (fixData?.tournament_id) {
-          try { await fetch('/api/admin/recalculate-standings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tournament_id: fixData.tournament_id })
-          }) } catch (e) {}
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || 'Approve failed')
         }
-
-        await notifyDecision('approved')
       } else {
         // Decline
         const { data: { user } } = await supabase.auth.getUser()

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { calculateProbability } from '@/lib/probability-engine'
 import { getTeamDNAFromDB } from '@/lib/dna-engine'
-import { getSiblingMatchday, computeAggregate } from '@/lib/aggregate'
+import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
 import Shell from './_shell'
 
 export const revalidate = 30
@@ -165,12 +165,11 @@ export default async function FixtureDetailPage({ params }: PageProps) {
         : siblingData.results
 
       if (result && siblingResult) {
-        // Determine which is leg 1 and which is leg 2
         const isLeg2 = [111, 112, 113, 114, 211, 212].includes(fixture.matchday)
-        const leg1Result = isLeg2 ? siblingResult : result
-        const leg2Result = isLeg2 ? result : siblingResult
-        const agg = computeAggregate(leg1Result, leg2Result)
-        if (agg) aggregateScore = agg
+        if (isLeg2) {
+          const agg = computeAggregate(siblingResult, result)
+          if (agg) aggregateScore = flipAggregate(agg)
+        }
       }
 
       // Penalty scores from this fixture's result

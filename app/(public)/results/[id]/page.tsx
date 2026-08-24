@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { getSiblingMatchday, computeAggregate } from '@/lib/aggregate'
+import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
@@ -62,10 +62,10 @@ export default async function ResultDetailPage({ params }: Props) {
 
       if (result && siblingResult) {
         const isLeg2 = [111, 112, 113, 114, 211, 212].includes(fixture.matchday)
-        const leg1Result = isLeg2 ? siblingResult : result
-        const leg2Result = isLeg2 ? result : siblingResult
-        const agg = computeAggregate(leg1Result, leg2Result)
-        if (agg) aggregateScore = agg
+        if (isLeg2) {
+          const agg = computeAggregate(siblingResult, result)
+          if (agg) aggregateScore = flipAggregate(agg)
+        }
       }
 
       if (result && (result as any).pen_home_score != null) {
