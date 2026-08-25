@@ -53,26 +53,6 @@ Verified after: md 201 PSG/Sporting · md 202 **Al Hilal vs Club Brugge** ·
 md 211 Sporting/PSG · md 212 **Club Brugge vs Al Hilal** — all `scheduled` Aug 25.
 No notifications sent (advancement paths don't notify either; managers see slots via app).
 
-## Correction (later same day): leg-1 score was falsified — Barcelona won the tie outright
-
-The Club Brugge manager misrepresented the first-leg score. True result:
-**Club Brugge 5–6 Barcelona** (recorded had been 6–5, and before that even a 5–4
-resubmission at 21:31 — notification trail confirms the fudging). With md 114 unchanged:
-
-- Leg 1: Brugge 5–6 Barca · Leg 2: Barca 7–6 Brugge → **aggregate Barcelona 13–11**.
-  No tie, no away-goals needed; the earlier ruling and override are moot.
-
-Data fixes applied (~10:12 UTC):
-1. `results` row for fixture `6763e997…` (md 104): home_score 6→5, away_score 5→6.
-2. Bracket revert to what `advanceWinner` would have produced with correct data:
-   md 202 away → Barcelona, md 212 mirror → Barcelona vs Al Hilal.
-3. `audit_log` action `result_correction` documenting the misreport + reverts.
-4. Notification cleanup: 3 stale "Club Brugge 6–5 Barcelona" `result_confirmed` bodies
-   corrected to "5–6"; Al Hilal manager's match reminder rewritten for Barcelona;
-   Club Brugge manager's stale SF reminder deleted; equivalent reminder inserted for
-   Barcelona's manager (they never got one while the slot was wrongly Brugge's).
-   The superseded "5–4" notifications were left as historical trail.
-
 ## Gotchas for next time
 
 - Aggregate ties are silently broken by "whoever won leg 2" — this favours the leg-2 HOME
@@ -104,8 +84,7 @@ Verified: `npx tsc --noEmit` clean, `npm run lint` warning-only (pre-existing).
 ## Status
 
 Applied to prod. Away-goals rule NOT implemented in code — future level ties still fall back
-to leg-2 winner unless the admin overrides. Leg-2 mirroring is now incremental.
-Final state of the tie: **Barcelona progress 13–11**; Club Brugge eliminated.
+to leg-2 winner unless the admin overrides like this. Leg-2 mirroring is now incremental.
 
 ## Restore File Section
 
