@@ -322,22 +322,22 @@ export async function POST(request: Request) {
 
   // ── Forfeit balance tracking ─────────────────────────────────────────────
   if (home_forfeit || away_forfeit) {
-    if (home_forfeit) {
+    if (home_forfeit && homeTeam?.manager_id) {
       const note = `Forfeit: ${homeTeam?.name ?? 'Home'} vs ${awayTeam?.name ?? 'Away'} — ${body.home_score ?? 0}-${body.away_score ?? 0} (HT)`
       await adminSupabase.from('forfeit_balances').insert({
         fixture_id,
-        forfeiting_team_id: fixture.home_team_id,
+        forfeiting_manager_id: homeTeam.manager_id,
         opponent_team_id: fixture.away_team_id,
         opponent_score: body.away_score ?? 0,
         forfeiting_score: body.home_score ?? 0,
         half_time_note: note,
       })
     }
-    if (away_forfeit) {
+    if (away_forfeit && awayTeam?.manager_id) {
       const note = `Forfeit: ${awayTeam?.name ?? 'Away'} vs ${homeTeam?.name ?? 'Home'} — ${body.away_score ?? 0}-${body.home_score ?? 0} (HT)`
       await adminSupabase.from('forfeit_balances').insert({
         fixture_id,
-        forfeiting_team_id: fixture.away_team_id,
+        forfeiting_manager_id: awayTeam.manager_id,
         opponent_team_id: fixture.home_team_id,
         opponent_score: body.home_score ?? 0,
         forfeiting_score: body.away_score ?? 0,
@@ -352,15 +352,15 @@ export async function POST(request: Request) {
   if (used_forfeit_balance_ids.length > 0) {
     const { data: usedBalances, error: usedFetchErr } = await adminSupabase
       .from('forfeit_balances')
-      .select('id, forfeiting_team_id, opponent_team_id')
+      .select('id, forfeiting_manager_id, opponent_team_id')
       .in('id', used_forfeit_balance_ids)
 
     if (usedFetchErr) {
       console.error('[finalise-result] used forfeit balances fetch failed:', usedFetchErr.message)
     } else {
+      const fixtureManagerIds = [homeTeam?.manager_id, awayTeam?.manager_id].filter(Boolean)
       const validIds = (usedBalances ?? []).filter((b: any) =>
-        (b.forfeiting_team_id === fixture.home_team_id && b.opponent_team_id === fixture.away_team_id) ||
-        (b.forfeiting_team_id === fixture.away_team_id && b.opponent_team_id === fixture.home_team_id)
+        fixtureManagerIds.includes(b.forfeiting_manager_id)
       ).map((b: any) => b.id)
 
       if (validIds.length > 0) {

@@ -9,20 +9,20 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const teamIdsParam = searchParams.get('teamIds')
-  if (!teamIdsParam) {
+  const managerIdsParam = searchParams.get('managerIds')
+  if (!managerIdsParam) {
     return Response.json({ balances: [] })
   }
 
-  const teamIds = teamIdsParam.split(',').filter(Boolean)
-  if (teamIds.length === 0) {
+  const managerIds = managerIdsParam.split(',').filter(Boolean)
+  if (managerIds.length === 0) {
     return Response.json({ balances: [] })
   }
 
   const { data, error } = await supabase
     .from('forfeit_balances')
-    .select('*, forfeiting_team:teams!forfeit_balances_forfeiting_team_id_fkey(name), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
-    .in('forfeiting_team_id', teamIds)
+    .select('*, forfeiting_manager:profiles!forfeit_balances_forfeiting_manager_id_fkey(username), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
+    .in('forfeiting_manager_id', managerIds)
     .gt('remaining', 0)
     .order('created_at', { ascending: false })
 

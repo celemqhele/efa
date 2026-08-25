@@ -4,24 +4,24 @@ import { useState, useRef, useEffect } from 'react'
 
 export interface ForfeitBalanceItem {
   id: string
-  forfeiting_team_id: string
+  forfeiting_manager_id: string
   half_time_note: string
   remaining: number
 }
 
 interface Props {
-  teamId: string
-  teamName: string
+  managerId: string
+  managerName: string
   balances: ForfeitBalanceItem[]
   onUse: (balanceId: string) => void
 }
 
-export default function ForfeitBalanceBadge({ teamId, balances, onUse }: Props) {
+export default function ForfeitBalanceBadge({ managerId, balances, onUse }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const teamBalances = balances.filter((b) => b.forfeiting_team_id === teamId)
-  const total = teamBalances.reduce((s, b) => s + b.remaining, 0)
+  const managerBalances = balances.filter((b) => b.forfeiting_manager_id === managerId)
+  const total = managerBalances.reduce((s, b) => s + b.remaining, 0)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -35,7 +35,7 @@ export default function ForfeitBalanceBadge({ teamId, balances, onUse }: Props) 
 
   return (
     <div ref={ref} className="relative inline-flex">
-      {teamBalances.length === 0 ? (
+      {managerBalances.length === 0 ? (
         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-navy-border text-text-muted opacity-60">
           <span>⚖</span>
           <span>0</span>
@@ -52,7 +52,7 @@ export default function ForfeitBalanceBadge({ teamId, balances, onUse }: Props) 
 
       {open && (
         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-72 p-3 rounded-lg bg-bg-elevated border border-border shadow-lg z-50 space-y-2">
-          {teamBalances.map((b) => (
+          {managerBalances.map((b) => (
             <div
               key={b.id}
               className="flex items-center justify-between gap-2 px-2 py-1.5 rounded bg-orange-500/5 border border-orange-500/10"

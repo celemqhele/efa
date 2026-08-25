@@ -3278,48 +3278,54 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   const adminUserId = await getAdminUserId(supabase)
   console.log('[webhook] admin user celemqhele id:', adminUserId || 'NOT FOUND')
 
-  // Look up fixture for team IDs
+  // Look up fixture for team IDs and managers
   const { data: fixture } = await supabase
     .from('fixtures')
-    .select('home_team_id, away_team_id, round_type, tournament_id')
+    .select('home_team_id, away_team_id, round_type, tournament_id, home_team:teams!fixtures_home_team_id_fkey(manager_id), away_team:teams!fixtures_away_team_id_fkey(manager_id)')
     .eq('id', session.matched_fixture_id)
     .single()
+
+  const fixtureHome = fixture ? (Array.isArray(fixture.home_team) ? fixture.home_team[0] : fixture.home_team) : null
+  const fixtureAway = fixture ? (Array.isArray(fixture.away_team) ? fixture.away_team[0] : fixture.away_team) : null
 
   let homeScore = session.home_score
   let awayScore = session.away_score
   let forfeitBalanceNote = ''
 
-  // Forfeit balance aggregate: check if either team has active forfeit balances against the current opponent.
+  // Forfeit balance aggregate: check if either team's manager has active forfeit balances.
   // The forfeit score always carries over to the next meeting between the same two teams (per the rules),
   // regardless of who is currently winning. Skip when this is a forfeit confirm — handleForfeitYes already applied the +3.
   if (!isForfeitConfirm && fixture?.home_team_id && fixture?.away_team_id) {
-    const { data: balances } = await supabase
-      .from('forfeit_balances')
-      .select('id, forfeiting_score, opponent_score, forfeiting_team_id, forfeiting_team:teams!forfeit_balances_forfeiting_team_id_fkey(name), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
-      .or(`and(forfeiting_team_id.eq.${fixture.home_team_id},opponent_team_id.eq.${fixture.away_team_id}),and(forfeiting_team_id.eq.${fixture.away_team_id},opponent_team_id.eq.${fixture.home_team_id})`)
-      .gt('remaining', 0)
+    const managerIds = [fixtureHome?.manager_id, fixtureAway?.manager_id].filter(Boolean)
+    if (managerIds.length > 0) {
+      const { data: balances } = await supabase
+        .from('forfeit_balances')
+        .select('id, forfeiting_score, opponent_score, forfeiting_manager_id, opponent_team_id, forfeiting_manager:profiles!forfeit_balances_forfeiting_manager_id_fkey(username), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
+        .in('forfeiting_manager_id', managerIds)
+        .gt('remaining', 0)
 
-    if (balances && balances.length > 0) {
-      let noteTeamNames = ''
-      for (const bal of balances) {
-        const forfeitingIsHome = bal.forfeiting_team_id === fixture.home_team_id
-        const forfeitingScore = bal.forfeiting_score ?? 0
-        const opponentScore = bal.opponent_score ?? 0
-        if (forfeitingIsHome) {
-          homeScore += forfeitingScore
-          awayScore += opponentScore
-        } else {
-          awayScore += forfeitingScore
-          homeScore += opponentScore
+      if (balances && balances.length > 0) {
+        let noteTeamNames = ''
+        for (const bal of balances) {
+          const forfeitingIsHome = bal.forfeiting_manager_id === fixtureHome?.manager_id
+          const forfeitingScore = bal.forfeiting_score ?? 0
+          const opponentScore = bal.opponent_score ?? 0
+          if (forfeitingIsHome) {
+            homeScore += forfeitingScore
+            awayScore += opponentScore
+          } else {
+            awayScore += forfeitingScore
+            homeScore += opponentScore
+          }
+          await supabase.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
+
+          const managerName = (Array.isArray(bal.forfeiting_manager) ? bal.forfeiting_manager[0]?.username : bal.forfeiting_manager?.username) || 'Manager'
+          const oppName = (Array.isArray(bal.opponent_team) ? bal.opponent_team[0]?.name : bal.opponent_team?.name) || 'Opponent'
+          noteTeamNames += `${noteTeamNames ? ', ' : ''}${managerName} (from ${oppName})`
         }
-        await supabase.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
-
-        const teamName = (Array.isArray(bal.forfeiting_team) ? bal.forfeiting_team[0]?.name : bal.forfeiting_team?.name) || 'Team'
-        const oppName = (Array.isArray(bal.opponent_team) ? bal.opponent_team[0]?.name : bal.opponent_team?.name) || 'Opponent'
-        noteTeamNames += `${noteTeamNames ? ', ' : ''}${teamName} (from ${oppName})`
+        forfeitBalanceNote = `\n\nForfeit balance applied: ${noteTeamNames}. Aggregate adjusted to ${homeScore}-${awayScore}.`
+        console.log('[webhook] forfeit balance applied:', noteTeamNames, 'aggregate:', homeScore, '-', awayScore)
       }
-      forfeitBalanceNote = `\n\nForfeit balance applied: ${noteTeamNames}. Aggregate adjusted to ${homeScore}-${awayScore}.`
-      console.log('[webhook] forfeit balance applied:', noteTeamNames, 'aggregate:', homeScore, '-', awayScore)
     }
   }
 
@@ -3365,16 +3371,18 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
         .update({ is_abandoned: true, abandoned_type: abandonedType })
         .eq('id', resultRow.id)
 
-      const forfTeamId = homeForfeit ? fixture.home_team_id : fixture.away_team_id
+      const forfManagerId = homeForfeit ? fixtureHome?.manager_id : fixtureAway?.manager_id
       const oppTeamId = homeForfeit ? fixture.away_team_id : fixture.home_team_id
-      await supabase.from('forfeit_balances').insert({
-        fixture_id: session.matched_fixture_id,
-        forfeiting_team_id: forfTeamId,
-        opponent_team_id: oppTeamId,
-        opponent_score: homeForfeit ? origAwayScore : origHomeScore,
-        forfeiting_score: homeForfeit ? origHomeScore : origAwayScore,
-        half_time_note: `Forfeit: ${homeScore}-${awayScore} (adjusted from ${origHomeScore}-${origAwayScore})`,
-      })
+      if (forfManagerId) {
+        await supabase.from('forfeit_balances').insert({
+          fixture_id: session.matched_fixture_id,
+          forfeiting_manager_id: forfManagerId,
+          opponent_team_id: oppTeamId,
+          opponent_score: homeForfeit ? origAwayScore : origHomeScore,
+          forfeiting_score: homeForfeit ? origHomeScore : origAwayScore,
+          half_time_note: `Forfeit: ${homeScore}-${awayScore} (adjusted from ${origHomeScore}-${origAwayScore})`,
+        })
+      }
 
       // Recalculate standings since trigger double-counts on UPDATE
       const { data: fixData } = await supabase.from('fixtures').select('tournament_id').eq('id', session.matched_fixture_id).single()

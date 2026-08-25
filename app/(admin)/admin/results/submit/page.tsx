@@ -14,8 +14,8 @@ export default async function ResultSubmitPage({
 
   const selectFixture = `
     id, matchday, round_type, leg, scheduled_date, status, tournament_id,
-    home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
-    away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
+    home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager_id),
+    away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager_id),
     tournament:tournaments!fixtures_tournament_id_fkey(id, name, type)
   `
 

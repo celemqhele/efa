@@ -13,6 +13,7 @@ interface Team {
   name: string
   logo_league_folder: string
   logo_team_slug: string
+  manager_id: string | null
 }
 
 interface Fixture {
@@ -156,7 +157,7 @@ export default function ResultSubmitClient({
     const balance = forfeitBalances.find((b: any) => b.id === balanceId)
     if (!balance || usedBalanceIds.includes(balanceId)) return
 
-    const forfeitingIsHome = balance.forfeiting_team_id === selectedFixture.home_team?.id
+    const forfeitingIsHome = balance.opponent_team_id === selectedFixture.away_team?.id
     const forfeitingScore = balance.forfeiting_score ?? 0
     const opponentScore = balance.opponent_score ?? 0
     const homeAdd = forfeitingIsHome ? forfeitingScore : opponentScore
@@ -269,8 +270,8 @@ export default function ResultSubmitClient({
     if (!fixture?.home_team && !fixture?.away_team) return
 
     setBalanceLoading(true)
-    const teamIds = [fixture.home_team?.id, fixture.away_team?.id].filter(Boolean)
-    fetch(`/api/admin/forfeit-balances?teamIds=${teamIds.join(',')}`)
+    const managerIds = [fixture.home_team?.manager_id, fixture.away_team?.manager_id].filter(Boolean)
+    fetch(`/api/admin/forfeit-balances?managerIds=${managerIds.join(',')}`)
       .then(r => r.json())
       .then(data => setForfeitBalances(data.balances ?? []))
       .catch(() => setForfeitBalances([]))
@@ -702,8 +703,8 @@ export default function ResultSubmitClient({
                         />
                       )}
                       <ForfeitBalanceBadge
-                        teamId={selectedFixture.home_team?.id ?? ''}
-                        teamName={selectedFixture.home_team?.name ?? ''}
+                        managerId={selectedFixture.home_team?.manager_id ?? ''}
+                        managerName={selectedFixture.home_team?.name ?? ''}
                         balances={forfeitBalances}
                         onUse={handleUseForfeitBalance}
                       />
@@ -727,8 +728,8 @@ export default function ResultSubmitClient({
                         />
                       )}
                       <ForfeitBalanceBadge
-                        teamId={selectedFixture.away_team?.id ?? ''}
-                        teamName={selectedFixture.away_team?.name ?? ''}
+                        managerId={selectedFixture.away_team?.manager_id ?? ''}
+                        managerName={selectedFixture.away_team?.name ?? ''}
                         balances={forfeitBalances}
                         onUse={handleUseForfeitBalance}
                       />
