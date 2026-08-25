@@ -45,6 +45,7 @@ interface Trophy {
   id: string
   trophy_type: string
   awarded_at: string
+  manager_id: string | null
   team: Team
   season: Season
   tournament: { id: string; name: string } | null
@@ -91,9 +92,10 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
         trophy_type: trophyType,
         tournament_id: tournamentId || null,
         awarded_at: awardedAt,
+        manager_id: teams.find((t) => t.id === teamId)?.manager_id ?? null,
       } as any)
       .select(`
-        id, trophy_type, awarded_at,
+        id, trophy_type, awarded_at, manager_id,
         team:teams(id, name, logo_league_folder, logo_team_slug),
         season:seasons(id, name),
         tournament:tournaments(id, name)

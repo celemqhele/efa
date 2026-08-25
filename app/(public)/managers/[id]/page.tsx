@@ -58,7 +58,19 @@ export default async function ManagerProfilePage({ params }: PageProps) {
   const currentTenure = (tenures ?? []).find((t: any) => !t.ended_at)
   const currentTeam = currentTenure?.team ?? null
 
-  const data = { profile, tenures, stats, winRate, currentTeam }
+  // Fetch trophies for this manager
+  const { data: trophies } = await supabase
+    .from('trophies' as any)
+    .select(`
+      id, trophy_type, awarded_at,
+      team:teams(id, name, logo_league_folder, logo_team_slug),
+      season:seasons(id, name),
+      tournament:tournaments(id, name)
+    `)
+    .eq('manager_id', id)
+    .order('awarded_at', { ascending: false }) as any
+
+  const data = { profile, tenures, stats, winRate, currentTeam, trophies: trophies ?? [] }
 
   return <Shell data={data} />
 }

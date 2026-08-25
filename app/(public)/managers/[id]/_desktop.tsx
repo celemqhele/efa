@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { Card } from '@/components/ui/Card'
-import { ClipboardList, BarChart3, Shirt, Binoculars, Shield, UserRound } from 'lucide-react'
+import { ClipboardList, BarChart3, Shirt, Binoculars, Shield, UserRound, Trophy } from 'lucide-react'
 
 function formatDate(dateStr: string, fmt: 'full' | 'short'): string {
   if (fmt === 'full') {
@@ -13,7 +13,14 @@ function formatDate(dateStr: string, fmt: 'full' | 'short'): string {
 }
 
 export default function Desktop({ data }: { data: any }) {
-  const { profile, tenures, stats, winRate, currentTeam } = data
+  const { profile, tenures, stats, winRate, currentTeam, trophies } = data
+
+  const TROPHY_LABEL: Record<string, string> = {
+    league: 'PL League',
+    tournament_club: 'Tournament (Clubs)',
+    tournament_international: 'Tournament (Intl)',
+    friendlies: 'Friendly',
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -106,6 +113,38 @@ export default function Desktop({ data }: { data: any }) {
               </div>
             </div>
           </Card>
+
+          {(trophies ?? []).length > 0 && (
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Trophy className="w-4 h-4 text-accent" />
+                <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Hall of Fame</h2>
+              </div>
+              <div className="space-y-2">
+                {trophies.map((trophy: any) => (
+                  <div key={trophy.id} className="flex items-center gap-3 py-2 border-b border-border/30 last:border-0">
+                    <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                      {trophy.team?.logo_team_slug ? (
+                        <Image
+                          src={`/logos/${trophy.team.logo_league_folder}/128x128/${trophy.team.logo_team_slug}.png`}
+                          alt={trophy.team.name}
+                          width={28} height={28}
+                          className="object-contain"
+                          onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3' }}
+                        />
+                      ) : (
+                        <Shield className="w-4 h-4 text-text-muted" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-text-primary truncate">{TROPHY_LABEL[trophy.trophy_type] ?? trophy.trophy_type}</p>
+                      <p className="text-[10px] text-text-muted">{trophy.team?.name} — {trophy.awarded_at?.slice(0, 10)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
 
         <div className="col-span-2">

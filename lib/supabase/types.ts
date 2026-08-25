@@ -656,6 +656,7 @@ export interface Database {
           season_id: string
           trophy_type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           awarded_at: string
+          manager_id: string | null
         }
         Insert: {
           id?: string
@@ -664,6 +665,7 @@ export interface Database {
           season_id: string
           trophy_type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           awarded_at?: string
+          manager_id?: string | null
         }
         Update: Partial<Database['public']['Tables']['trophies']['Insert']>
         Relationships: []

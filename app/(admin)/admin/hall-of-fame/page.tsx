@@ -17,7 +17,7 @@ export default async function AdminHallOfFamePage() {
       supabase
         .from('trophies')
         .select(
-          `id, trophy_type, awarded_at,
+          `id, trophy_type, awarded_at, manager_id,
           team:teams(id, name, logo_league_folder, logo_team_slug),
           season:seasons(id, name),
           tournament:tournaments(id, name)`

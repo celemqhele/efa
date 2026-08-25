@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import WhatsAppButton from '@/components/ui/WhatsAppButton'
 import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
-import { Briefcase, Circle } from 'lucide-react'
+import { Briefcase, Circle, ArrowLeftRight } from 'lucide-react'
 
 interface Team {
   id: string
@@ -49,6 +49,13 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
   const [waInput, setWaInput] = useState('')
   const [waSaving, setWaSaving] = useState(false)
   const [waError, setWaError] = useState('')
+
+  // Transfer manager data state
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferTargetId, setTransferTargetId] = useState('')
+  const [transferLoading, setTransferLoading] = useState(false)
+  const [transferError, setTransferError] = useState('')
+  const [transferResult, setTransferResult] = useState<any>(null)
 
   const managerProfile = selectedTeam?.manager_id
     ? localProfiles.find((p) => p.id === selectedTeam.manager_id) ?? null
@@ -152,6 +159,27 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
     setWaInput(currentNumber ?? '')
     setWaError('')
     setEditingWa(true)
+  }
+
+  async function handleTransfer() {
+    if (!selectedTeam?.manager_id || !transferTargetId) return
+    setTransferLoading(true)
+    setTransferError('')
+    setTransferResult(null)
+    try {
+      const res = await fetch('/api/admin/managers/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_user_id: selectedTeam.manager_id, to_user_id: transferTargetId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Transfer failed')
+      setTransferResult(data)
+    } catch (err: any) {
+      setTransferError(err.message)
+    } finally {
+      setTransferLoading(false)
+    }
   }
 
   const managedCount = localTeams.filter((t) => t.manager_id).length
@@ -372,6 +400,17 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
                       </span>
                     )}
                   </div>
+
+                  {/* Transfer data link */}
+                  <div className="pt-2">
+                    <button
+                      onClick={() => { setTransferOpen(true); setTransferTargetId(''); setTransferError(''); setTransferResult(null) }}
+                      className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-gold border border-dashed border-border hover:border-gold/50 rounded-lg px-3 py-1.5 transition-colors"
+                    >
+                      <ArrowLeftRight className="w-3 h-3" />
+                      Transfer Manager Data
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -448,6 +487,68 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
           }
         }}
       />
+
+      {/* Transfer Manager Data Dialog */}
+      {transferOpen && managerProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setTransferOpen(false)}>
+          <div className="bg-bg-surface border border-border rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-foreground-primary">Transfer Manager Data</h3>
+            <p className="text-sm text-text-muted">
+              Transfer <span className="font-semibold text-foreground-primary">@{managerProfile.username}</span>&apos;s forfeit balances, tenures, and hall of fame trophies to another account.
+            </p>
+
+            {transferResult ? (
+              <div className="space-y-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm">
+                  <p className="text-green-700 font-semibold">Transfer complete</p>
+                  <p className="text-green-600 text-xs mt-1">
+                    {transferResult.forfeits_transferred} forfeit(s), {transferResult.tenures_transferred} tenure(s), {transferResult.trophies_transferred} trophy(s) transferred from @{transferResult.from_username} to @{transferResult.to_username}.
+                  </p>
+                </div>
+                <button onClick={() => setTransferOpen(false)} className="btn-gold w-full text-sm">Done</button>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="text-xs text-text-muted font-medium">Transfer to</label>
+                  <select
+                    className="input-field text-sm mt-1 w-full"
+                    value={transferTargetId}
+                    onChange={(e) => setTransferTargetId(e.target.value)}
+                  >
+                    <option value="">Select a user…</option>
+                    {localProfiles
+                      .filter((p) => p.id !== managerProfile.id)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>{p.username}</option>
+                      ))}
+                  </select>
+                </div>
+
+                {transferError && (
+                  <p className="text-red-500 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">{transferError}</p>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleTransfer}
+                    disabled={transferLoading || !transferTargetId}
+                    className="btn-gold text-sm flex-1 disabled:opacity-50"
+                  >
+                    {transferLoading ? 'Transferring…' : 'Transfer Data'}
+                  </button>
+                  <button
+                    onClick={() => setTransferOpen(false)}
+                    className="btn-outline text-sm flex-1"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }
