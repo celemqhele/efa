@@ -1,5 +1,6 @@
 import { addDays, format, parseISO } from 'date-fns'
 import { determineAggregateWinner } from './aggregate'
+import { createAdminClient } from '@/lib/supabase/server'
 
 type KnockoutRound = 'r16' | 'qf' | 'sf' | 'final'
 
@@ -460,6 +461,7 @@ export async function advanceWinner(
   if (!progression) {
     if (curFx.round_type === 'final') {
       await awardTrophy(db, tournamentId, homeScore, awayScore, homeTeamId, awayTeamId)
+      await checkAndCreateSuperCup(db, tournamentId)
     }
     return
   }
@@ -531,6 +533,119 @@ export async function fillFinalSlot(
   awayTeamId: string | null
 ): Promise<void> {
   return advanceWinner(db, tournamentId, sfFixtureId, homeScore, awayScore, homeTeamId, awayTeamId)
+}
+
+async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string): Promise<void> {
+  const { data: tournament } = await db
+    .from('tournaments')
+    .select('season_id')
+    .eq('id', justCompletedTournamentId)
+    .single()
+
+  const seasonId = tournament?.season_id
+  if (!seasonId) return
+
+  const { data: clubTs } = await db
+    .from('tournaments')
+    .select('id, name')
+    .eq('season_id', seasonId)
+    .eq('type', 'tournament_club')
+
+  if (!clubTs || clubTs.length < 2) return
+
+  const uclT = clubTs[0]
+  const europaT = clubTs[1]
+
+  const { data: uclTrophy } = await db
+    .from('trophies')
+    .select('team_id')
+    .eq('tournament_id', uclT.id)
+    .limit(1)
+    .maybeSingle()
+
+  const { data: europaTrophy } = await db
+    .from('trophies')
+    .select('team_id')
+    .eq('tournament_id', europaT.id)
+    .limit(1)
+    .maybeSingle()
+
+  if (!uclTrophy || !europaTrophy) return
+
+  const { data: existing } = await db
+    .from('tournaments')
+    .select('id')
+    .eq('season_id', seasonId)
+    .eq('type', 'friendlies')
+    .contains('settings', { is_super_cup: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (existing) return
+
+  const uclWinnerId = uclTrophy.team_id
+  const europaWinnerId = europaTrophy.team_id
+
+  const { data: uclFinal } = await db
+    .from('fixtures')
+    .select('scheduled_date')
+    .eq('tournament_id', uclT.id)
+    .eq('round_type', 'final')
+    .limit(1)
+    .maybeSingle()
+
+  const { data: europaFinal } = await db
+    .from('fixtures')
+    .select('scheduled_date')
+    .eq('tournament_id', europaT.id)
+    .eq('round_type', 'final')
+    .limit(1)
+    .maybeSingle()
+
+  const uclDate = uclFinal?.scheduled_date ? new Date(uclFinal.scheduled_date) : new Date()
+  const europaDate = europaFinal?.scheduled_date ? new Date(europaFinal.scheduled_date) : new Date()
+  const laterDate = uclDate > europaDate ? uclDate : europaDate
+  const scheduledDate = format(addDays(laterDate, 1), 'yyyy-MM-dd')
+
+  const adminDb = await createAdminClient()
+
+  const { data: scTournament, error: tErr } = await adminDb
+    .from('tournaments')
+    .insert({
+      season_id: seasonId,
+      name: 'EFA Super Cup',
+      type: 'friendlies',
+      status: 'active',
+      settings: { is_super_cup: true },
+    })
+    .select('id')
+    .single()
+
+  if (tErr || !scTournament) return
+
+  await adminDb.from('tournament_participants').insert([
+    { tournament_id: scTournament.id, team_id: uclWinnerId },
+    { tournament_id: scTournament.id, team_id: europaWinnerId },
+  ])
+
+  await adminDb.from('fixtures').insert({
+    tournament_id: scTournament.id,
+    home_team_id: uclWinnerId,
+    away_team_id: europaWinnerId,
+    matchday: 1,
+    round_type: 'final',
+    status: 'scheduled',
+    scheduled_date: scheduledDate,
+    deadline: `${scheduledDate}T20:00:00Z`,
+  })
+
+  await adminDb.from('audit_log').insert({
+    admin_id: '00000000-0000-0000-0000-000000000000',
+    action: 'auto_generate_super_cup',
+    target_type: 'tournament',
+    target_id: scTournament.id,
+    details: { season_id: seasonId, ucl_winner_id: uclWinnerId, europa_winner_id: europaWinnerId },
+  })
 }
 
 export async function awardTrophy(
