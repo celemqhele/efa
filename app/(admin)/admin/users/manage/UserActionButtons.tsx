@@ -16,7 +16,8 @@ export default function UserActionButtons({ profileId, username, currentRole, te
   const [error, setError] = useState('')
   const [role, setRole] = useState(currentRole)
   const [hasTeam, setHasTeam] = useState(!!teamId)
-  const [dialog, setDialog] = useState<'sack' | 'role' | null>(null)
+  const [dialog, setDialog] = useState<'sack' | 'role' | 'reset-password' | null>(null)
+  const [resetSuccess, setResetSuccess] = useState(false)
 
   async function postAction(endpoint: string, body: object) {
     setError('')
@@ -57,6 +58,20 @@ export default function UserActionButtons({ profileId, username, currentRole, te
     }
   }
 
+  async function handleResetPassword() {
+    setDialog(null)
+    setLoading('reset-password')
+    setResetSuccess(false)
+    try {
+      await postAction('/api/admin/reset-password', { user_id: profileId })
+      setResetSuccess(true)
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setLoading(null)
+    }
+  }
+
   const newRole = role === 'admin' ? 'user' : 'admin'
 
   return (
@@ -83,6 +98,14 @@ export default function UserActionButtons({ profileId, username, currentRole, te
         onConfirm={handleRoleToggle}
         onCancel={() => setDialog(null)}
       />
+      <ConfirmDialog
+        open={dialog === 'reset-password'}
+        title="Reset Password"
+        message={`Reset "${username}"'s password to the default? They should change it after logging in.`}
+        confirmLabel="Reset"
+        onConfirm={handleResetPassword}
+        onCancel={() => setDialog(null)}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         {hasTeam && teamId && (
@@ -105,7 +128,17 @@ export default function UserActionButtons({ profileId, username, currentRole, te
         >
           {loading === 'role' ? '...' : role === 'admin' ? 'Remove Admin' : 'Make Admin'}
         </button>
+        <button
+          onClick={() => { setResetSuccess(false); setDialog('reset-password') }}
+          disabled={loading === 'reset-password'}
+          className="text-xs py-1 px-2.5 rounded-lg border font-medium transition-colors text-violet-400 border-violet-400/30 bg-violet-400/10 hover:bg-violet-400/20"
+        >
+          {loading === 'reset-password' ? '...' : 'Reset Password'}
+        </button>
         {error && <span className="text-red-400 text-xs">{error}</span>}
+        {resetSuccess && (
+          <span className="text-green-400 text-xs">Password reset — remind them to change it</span>
+        )}
       </div>
     </>
   )
