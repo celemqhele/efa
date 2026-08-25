@@ -1,6 +1,6 @@
 'use client'
 
-import TeamLogo from '@/components/ui/TeamLogo'
+import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
@@ -175,7 +175,7 @@ export default function Desktop({ data }: DesktopProps) {
                         href={`/fixtures/${f.id}`}
                         className={`flex items-center gap-4 px-6 py-4 border-l-4 ${borderAccent} hover:bg-accent/5 transition-colors`}
                       >
-                        {opponent?.logo_league_folder && (
+                        {opponent ? (
                           <TeamLogo
                             leagueFolder={opponent.logo_league_folder}
                             teamSlug={opponent.logo_team_slug}
@@ -183,6 +183,8 @@ export default function Desktop({ data }: DesktopProps) {
                             alt={opponent.name}
                             className="w-10 h-10 shrink-0"
                           />
+                        ) : (
+                          <TBCBadge className="w-10 h-10 shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">

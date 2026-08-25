@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import TeamLogo from '@/components/ui/TeamLogo'
+import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
 import FixtureActions from './FixtureActions'
 import DateNav from '@/components/ui/DateNav'
@@ -171,7 +171,7 @@ export default function Desktop({ data }: { data: any }) {
                             </td>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-2">
-                                {homeTeam?.logo_league_folder && (
+                                {homeTeam ? (
                                   <TeamLogo
                                     leagueFolder={homeTeam.logo_league_folder}
                                     teamSlug={homeTeam.logo_team_slug}
@@ -179,6 +179,8 @@ export default function Desktop({ data }: { data: any }) {
                                     alt={homeTeam.name}
                                     className="w-6 h-6 shrink-0"
                                   />
+                                ) : (
+                                  <TBCBadge className="w-6 h-6 shrink-0" />
                                 )}
                                 <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(homeTeam?.name) ?? 'TBC'}</span>
                               </div>
@@ -209,7 +211,7 @@ export default function Desktop({ data }: { data: any }) {
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-2 justify-end">
                                 <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(awayTeam?.name) ?? 'TBC'}</span>
-                                {awayTeam?.logo_league_folder && (
+                                {awayTeam ? (
                                   <TeamLogo
                                     leagueFolder={awayTeam.logo_league_folder}
                                     teamSlug={awayTeam.logo_team_slug}
@@ -217,6 +219,8 @@ export default function Desktop({ data }: { data: any }) {
                                     alt={awayTeam.name}
                                     className="w-6 h-6 shrink-0"
                                   />
+                                ) : (
+                                  <TBCBadge className="w-6 h-6 shrink-0" />
                                 )}
                               </div>
                             </td>

@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import TeamLogo from '@/components/ui/TeamLogo'
+import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
 import MatchroomCode from '@/components/ui/MatchroomCode'
@@ -179,19 +179,29 @@ export default function Mobile({ data }: { data: any }) {
 
         {hasResult ? (
           <div className="flex flex-col items-center gap-4">
-            <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
-              <TeamLogo
-                leagueFolder={homeTeam.logo_league_folder}
-                teamSlug={homeTeam.logo_team_slug}
-                context="match_detail_hero"
-                alt={homeTeam.name}
-                className="w-16 h-16"
-              />
-              <div className="text-center">
-                <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
-                <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
+            {homeTeam ? (
+              <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
+                <TeamLogo
+                  leagueFolder={homeTeam.logo_league_folder}
+                  teamSlug={homeTeam.logo_team_slug}
+                  context="match_detail_hero"
+                  alt={homeTeam.name}
+                  className="w-16 h-16"
+                />
+                <div className="text-center">
+                  <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
+                  <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center gap-2 min-h-[48px]">
+                <TBCBadge className="w-16 h-16" />
+                <div className="text-center">
+                  <p className="font-bold text-foreground-primary text-sm">TBC</p>
+                  <p className="text-xs text-text-muted">—</p>
+                </div>
               </div>
-            </Link>
+            )}
 
             <div className="flex items-center gap-4">
               <span className="text-5xl font-black text-foreground-primary tabular-nums">
@@ -217,53 +227,83 @@ export default function Mobile({ data }: { data: any }) {
               </div>
             )}
 
-            <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
-              <TeamLogo
-                leagueFolder={awayTeam.logo_league_folder}
-                teamSlug={awayTeam.logo_team_slug}
-                context="match_detail_hero"
-                alt={awayTeam.name}
-                className="w-16 h-16"
-              />
-              <div className="text-center">
-                <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
-                <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
+            {awayTeam ? (
+              <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
+                <TeamLogo
+                  leagueFolder={awayTeam.logo_league_folder}
+                  teamSlug={awayTeam.logo_team_slug}
+                  context="match_detail_hero"
+                  alt={awayTeam.name}
+                  className="w-16 h-16"
+                />
+                <div className="text-center">
+                  <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
+                  <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center gap-2 min-h-[48px]">
+                <TBCBadge className="w-16 h-16" />
+                <div className="text-center">
+                  <p className="font-bold text-foreground-primary text-sm">TBC</p>
+                  <p className="text-xs text-text-muted">—</p>
+                </div>
               </div>
-            </Link>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
-              <TeamLogo
-                leagueFolder={homeTeam.logo_league_folder}
-                teamSlug={homeTeam.logo_team_slug}
-                context="match_detail_hero"
-                alt={homeTeam.name}
-                className="w-16 h-16"
-              />
-              <div className="text-center">
-                <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
-                <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
+            {homeTeam ? (
+              <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
+                <TeamLogo
+                  leagueFolder={homeTeam.logo_league_folder}
+                  teamSlug={homeTeam.logo_team_slug}
+                  context="match_detail_hero"
+                  alt={homeTeam.name}
+                  className="w-16 h-16"
+                />
+                <div className="text-center">
+                  <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
+                  <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center gap-2 min-h-[48px]">
+                <TBCBadge className="w-16 h-16" />
+                <div className="text-center">
+                  <p className="font-bold text-foreground-primary text-sm">TBC</p>
+                  <p className="text-xs text-text-muted">—</p>
+                </div>
               </div>
-            </Link>
+            )}
 
             <div className="text-center">
               <span className="text-3xl font-black text-foreground-muted">VS</span>
             </div>
 
-            <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
-              <TeamLogo
-                leagueFolder={awayTeam.logo_league_folder}
-                teamSlug={awayTeam.logo_team_slug}
-                context="match_detail_hero"
-                alt={awayTeam.name}
-                className="w-16 h-16"
-              />
-              <div className="text-center">
-                <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
-                <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
+            {awayTeam ? (
+              <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
+                <TeamLogo
+                  leagueFolder={awayTeam.logo_league_folder}
+                  teamSlug={awayTeam.logo_team_slug}
+                  context="match_detail_hero"
+                  alt={awayTeam.name}
+                  className="w-16 h-16"
+                />
+                <div className="text-center">
+                  <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
+                  <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center gap-2 min-h-[48px]">
+                <TBCBadge className="w-16 h-16" />
+                <div className="text-center">
+                  <p className="font-bold text-foreground-primary text-sm">TBC</p>
+                  <p className="text-xs text-text-muted">—</p>
+                </div>
               </div>
-            </Link>
+            )}
           </div>
         )}
 
@@ -286,7 +326,7 @@ export default function Mobile({ data }: { data: any }) {
       </div>
 
       {/* ── PRE-MATCH SECTIONS ───────────────────────────────────────────── */}
-      {!hasResult && (
+      {!hasResult && homeTeam && awayTeam && (
         <>
           {/* Coach's Analysis — only visible to the relevant managers */}
           {isManager && (homeCoachNote || awayCoachNote) && (
@@ -610,7 +650,7 @@ export default function Mobile({ data }: { data: any }) {
       )}
 
       {/* ── POST-MATCH SECTIONS ───────────────────────────────────────────── */}
-      {hasResult && (
+      {hasResult && homeTeam && awayTeam && (
         <>
           {/* Match Stats — horizontal snap scroll */}
           {matchStats && (
@@ -656,7 +696,7 @@ export default function Mobile({ data }: { data: any }) {
       )}
 
       {/* ── RESULT CONFIRMATION STATUS ───────────────────────────────────── */}
-      {!hasResult && (
+      {!hasResult && homeTeam && awayTeam && (
         <div className="bg-bg-surface border border-border rounded-xl p-5">
           <h2 className="section-header">
             <CheckCircle className="w-5 h-5 text-gold" /> Score Submission

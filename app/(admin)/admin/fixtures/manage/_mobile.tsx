@@ -6,6 +6,7 @@ import FixtureActions from './FixtureActions'
 import DateNav from '@/components/ui/DateNav'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import ScheduleRoundPanel from './ScheduleRoundPanel'
+import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import { CalendarDays } from 'lucide-react'
 import { cleanTeamName } from '@/lib/clean-team-name'
 
@@ -164,12 +165,22 @@ export default function Mobile({ data }: { data: any }) {
                           </span>
                         </div>
                         <div>
-                          <p className="text-text-primary text-base font-semibold">
+                          <p className="text-text-primary text-base font-semibold flex items-center gap-1.5">
+                            {homeTeam ? (
+                              <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="standings_row" alt={homeTeam.name} className="w-5 h-5 shrink-0" />
+                            ) : (
+                              <TBCBadge className="w-5 h-5 shrink-0" />
+                            )}
                             {cleanTeamName(homeTeam?.name) ?? 'TBC'}
                             <span className="text-text-muted font-normal mx-1.5">
                               {result ? `${result.home_score}–${result.away_score}` : 'vs'}
                             </span>
                             {cleanTeamName(awayTeam?.name) ?? 'TBC'}
+                            {awayTeam ? (
+                              <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="standings_row" alt={awayTeam.name} className="w-5 h-5 shrink-0" />
+                            ) : (
+                              <TBCBadge className="w-5 h-5 shrink-0" />
+                            )}
                           </p>
                           {(fx._aggregate || fx._penScore) && (
                             <div className="flex items-center gap-1 mt-1">

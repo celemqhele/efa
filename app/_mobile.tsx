@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import TeamLogo from '@/components/ui/TeamLogo'
+import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import { Trophy, ClipboardList, CalendarDays, Flame, Vote } from 'lucide-react'
 
 export default function Mobile({ data }: { data: any }) {
@@ -58,7 +58,7 @@ export default function Mobile({ data }: { data: any }) {
                 {upcomingFixtures.map((f: any) => (
                   <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-space-2 sm:py-space-3 gap-space-1 sm:gap-space-3 hover:bg-bg-base/50 transition-colors rounded-lg">
                     <div className="flex-1 flex items-center gap-space-1 sm:gap-space-2 min-w-0">
-                      {f.home_team?.logo_league_folder && (
+                      {f.home_team ? (
                         <TeamLogo
                           leagueFolder={f.home_team.logo_league_folder}
                           teamSlug={f.home_team.logo_team_slug}
@@ -66,8 +66,10 @@ export default function Mobile({ data }: { data: any }) {
                           alt={f.home_team.name}
                           className="w-5 h-5 sm:w-7 sm:h-7 shrink-0"
                         />
+                      ) : (
+                        <TBCBadge className="w-5 h-5 sm:w-7 sm:h-7 shrink-0" />
                       )}
-                      <span className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.home_team?.name}</span>
+                      <span className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.home_team?.name ?? 'TBC'}</span>
                     </div>
 
                     <div className="text-center shrink-0 min-w-[36px] sm:min-w-[60px]">
@@ -89,8 +91,8 @@ export default function Mobile({ data }: { data: any }) {
                     </div>
 
                     <div className="flex-1 flex items-center justify-end gap-space-1 sm:gap-space-2 min-w-0">
-                      <span className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.away_team?.name}</span>
-                      {f.away_team?.logo_league_folder && (
+                      <span className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.away_team?.name ?? 'TBC'}</span>
+                      {f.away_team ? (
                         <TeamLogo
                           leagueFolder={f.away_team.logo_league_folder}
                           teamSlug={f.away_team.logo_team_slug}
@@ -98,6 +100,8 @@ export default function Mobile({ data }: { data: any }) {
                           alt={f.away_team.name}
                           className="w-5 h-5 sm:w-7 sm:h-7 shrink-0"
                         />
+                      ) : (
+                        <TBCBadge className="w-5 h-5 sm:w-7 sm:h-7 shrink-0" />
                       )}
                     </div>
                   </Link>
@@ -122,18 +126,22 @@ export default function Mobile({ data }: { data: any }) {
                   return (
                     <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-space-1.5 sm:py-space-2 px-0 rounded-lg hover:bg-bg-base transition-colors border border-transparent hover:border-border">
                       <div className="flex items-center gap-space-1 sm:gap-space-2 flex-1 min-w-0">
-                        {f.home_team?.logo_league_folder && (
+                        {f.home_team ? (
                           <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt={f.home_team.name} className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" />
+                        ) : (
+                          <TBCBadge className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" />
                         )}
-                        <span className="text-xs sm:text-sm text-text-primary font-medium truncate">{f.home_team?.name}</span>
+                        <span className="text-xs sm:text-sm text-text-primary font-medium truncate">{f.home_team?.name ?? 'TBC'}</span>
                       </div>
                       <div className="mx-space-1 sm:mx-space-3 text-center shrink-0">
                         <span className="text-text-primary font-bold text-xs sm:text-sm">{r.home_score}–{r.away_score}</span>
                       </div>
                       <div className="flex items-center gap-space-1 sm:gap-space-2 flex-1 justify-end min-w-0">
-                        <span className="text-xs sm:text-sm text-text-primary font-medium truncate">{f.away_team?.name}</span>
-                        {f.away_team?.logo_league_folder && (
+                        <span className="text-xs sm:text-sm text-text-primary font-medium truncate">{f.away_team?.name ?? 'TBC'}</span>
+                        {f.away_team ? (
                           <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt={f.away_team.name} className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" />
+                        ) : (
+                          <TBCBadge className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" />
                         )}
                       </div>
                     </Link>

@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import TeamLogo from '@/components/ui/TeamLogo'
+import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import { FormStrip } from '@/components/ui/FormBadge'
 import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
 import MatchroomCode from '@/components/ui/MatchroomCode'
@@ -112,13 +112,23 @@ export default function Desktop({ data }: { data: any }) {
 
         {hasResult ? (
           <div className="flex items-center justify-center gap-10">
-            <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="match_detail_hero" alt={homeTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
-              <div className="text-center">
-                <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
-                <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
+            {homeTeam ? (
+              <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
+                <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="match_detail_hero" alt={homeTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
+                <div className="text-center">
+                  <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
+                  <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center gap-3 flex-1 max-w-xs">
+                <TBCBadge className="w-16 h-16" />
+                <div className="text-center">
+                  <p className="font-bold text-text-primary text-lg">TBC</p>
+                  <p className="text-sm text-text-muted">—</p>
+                </div>
               </div>
-            </Link>
+            )}
             <div className="flex flex-col items-center">
               <div className="flex items-center gap-5">
                 <span className="text-6xl font-black text-text-primary tabular-nums">{result.home_score}</span>
@@ -140,33 +150,63 @@ export default function Desktop({ data }: { data: any }) {
                 </div>
               )}
             </div>
-            <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="match_detail_hero" alt={awayTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
-              <div className="text-center">
-                <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
-                <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
+            {awayTeam ? (
+              <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
+                <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="match_detail_hero" alt={awayTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
+                <div className="text-center">
+                  <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
+                  <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center gap-3 flex-1 max-w-xs">
+                <TBCBadge className="w-16 h-16" />
+                <div className="text-center">
+                  <p className="font-bold text-text-primary text-lg">TBC</p>
+                  <p className="text-sm text-text-muted">—</p>
+                </div>
               </div>
-            </Link>
+            )}
           </div>
         ) : (
           <div className="flex items-center justify-center gap-10">
-            <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="match_detail_hero" alt={homeTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
-              <div className="text-center">
-                <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
-                <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
+            {homeTeam ? (
+              <Link href={`/teams/${homeTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
+                <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="match_detail_hero" alt={homeTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
+                <div className="text-center">
+                  <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
+                  <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center gap-3 flex-1 max-w-xs">
+                <TBCBadge className="w-16 h-16" />
+                <div className="text-center">
+                  <p className="font-bold text-text-primary text-lg">TBC</p>
+                  <p className="text-sm text-text-muted">—</p>
+                </div>
               </div>
-            </Link>
+            )}
             <div className="text-center">
               <span className="text-5xl font-black text-text-muted tracking-widest">VS</span>
             </div>
-            <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
-              <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="match_detail_hero" alt={awayTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
-              <div className="text-center">
-                <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
-                <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
+            {awayTeam ? (
+              <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">
+                <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="match_detail_hero" alt={awayTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
+                <div className="text-center">
+                  <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
+                  <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center gap-3 flex-1 max-w-xs">
+                <TBCBadge className="w-16 h-16" />
+                <div className="text-center">
+                  <p className="font-bold text-text-primary text-lg">TBC</p>
+                  <p className="text-sm text-text-muted">—</p>
+                </div>
               </div>
-            </Link>
+            )}
           </div>
         )}
 
@@ -183,7 +223,7 @@ export default function Desktop({ data }: { data: any }) {
         )}
       </div>
 
-      {!hasResult && (
+      {!hasResult && homeTeam && awayTeam && (
         <>
           {isManager && (homeCoachNote || awayCoachNote) && (
             <div className="bg-bg-surface border border-accent/20 rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
@@ -389,7 +429,7 @@ export default function Desktop({ data }: { data: any }) {
         </>
       )}
 
-      {hasResult && (
+      {hasResult && homeTeam && awayTeam && (
         <>
           {matchStats && (
             <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
@@ -419,7 +459,7 @@ export default function Desktop({ data }: { data: any }) {
         </>
       )}
 
-      {!hasResult && (
+      {!hasResult && homeTeam && awayTeam && (
         <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-2 mb-4">
             <CheckCircle className="w-4 h-4 text-accent" />

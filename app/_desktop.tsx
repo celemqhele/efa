@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { Card } from '@/components/ui/Card'
-import TeamLogo from '@/components/ui/TeamLogo'
+import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import CalendarGrid from './(public)/calendar/CalendarGrid'
 import { Flame, ArrowRight } from 'lucide-react'
 
@@ -36,7 +36,7 @@ export default function Desktop({ data }: { data: any }) {
                 {upcomingFixtures.map((f: any) => (
                   <Link key={f.id} href={`/fixtures/${f.id}`} className="flex items-center py-3 gap-3 hover:bg-bg-base/50 -mx-6 px-6 transition-colors first:pt-0 last:pb-0">
                     <div className="flex-1 flex items-center gap-2.5 min-w-0">
-                      {f.home_team?.logo_league_folder && (
+                      {f.home_team ? (
                         <TeamLogo
                           leagueFolder={f.home_team.logo_league_folder}
                           teamSlug={f.home_team.logo_team_slug}
@@ -44,8 +44,10 @@ export default function Desktop({ data }: { data: any }) {
                           alt={f.home_team.name}
                           className="w-6 h-6 shrink-0"
                         />
+                      ) : (
+                        <TBCBadge className="w-6 h-6 shrink-0" />
                       )}
-                      <span className="text-sm font-medium text-text-primary truncate">{f.home_team?.name}</span>
+                      <span className="text-sm font-medium text-text-primary truncate">{f.home_team?.name ?? 'TBC'}</span>
                     </div>
 
                     <div className="text-center min-w-[48px]">
@@ -67,8 +69,8 @@ export default function Desktop({ data }: { data: any }) {
                     </div>
 
                     <div className="flex-1 flex items-center justify-end gap-2.5 min-w-0">
-                      <span className="text-sm font-medium text-text-primary truncate text-right">{f.away_team?.name}</span>
-                      {f.away_team?.logo_league_folder && (
+                      <span className="text-sm font-medium text-text-primary truncate text-right">{f.away_team?.name ?? 'TBC'}</span>
+                      {f.away_team ? (
                         <TeamLogo
                           leagueFolder={f.away_team.logo_league_folder}
                           teamSlug={f.away_team.logo_team_slug}
@@ -76,6 +78,8 @@ export default function Desktop({ data }: { data: any }) {
                           alt={f.away_team.name}
                           className="w-6 h-6 shrink-0"
                         />
+                      ) : (
+                        <TBCBadge className="w-6 h-6 shrink-0" />
                       )}
                     </div>
                   </Link>
@@ -102,18 +106,22 @@ export default function Desktop({ data }: { data: any }) {
                   return (
                     <Link key={r.id} href={`/results/${r.id}`} className="flex items-center justify-between py-2.5 px-3.5 rounded-xl hover:bg-bg-base transition-colors border border-transparent hover:border-border/60">
                       <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                        {f.home_team?.logo_league_folder && (
+                        {f.home_team ? (
                           <TeamLogo leagueFolder={f.home_team.logo_league_folder} teamSlug={f.home_team.logo_team_slug} context="standings_row" alt={f.home_team.name} className="w-5 h-5 shrink-0" />
+                        ) : (
+                          <TBCBadge className="w-5 h-5 shrink-0" />
                         )}
-                        <span className="text-sm text-text-primary font-medium truncate">{f.home_team?.name}</span>
+                        <span className="text-sm text-text-primary font-medium truncate">{f.home_team?.name ?? 'TBC'}</span>
                       </div>
                       <div className="mx-3 text-center">
                         <span className="text-text-primary font-bold text-sm tabular-nums">{r.home_score}–{r.away_score}</span>
                       </div>
                       <div className="flex items-center gap-2.5 flex-1 justify-end min-w-0">
-                        <span className="text-sm text-text-primary font-medium truncate text-right">{f.away_team?.name}</span>
-                        {f.away_team?.logo_league_folder && (
+                        <span className="text-sm text-text-primary font-medium truncate text-right">{f.away_team?.name ?? 'TBC'}</span>
+                        {f.away_team ? (
                           <TeamLogo leagueFolder={f.away_team.logo_league_folder} teamSlug={f.away_team.logo_team_slug} context="standings_row" alt={f.away_team.name} className="w-5 h-5 shrink-0" />
+                        ) : (
+                          <TBCBadge className="w-5 h-5 shrink-0" />
                         )}
                       </div>
                     </Link>

@@ -1,6 +1,6 @@
 'use client'
 
-import TeamLogo from '@/components/ui/TeamLogo'
+import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import Link from 'next/link'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
@@ -74,7 +74,7 @@ function FixtureCard({ f, teamIds }: { f: any; teamIds: string[] }) {
       href={`/fixtures/${f.id}`}
       className={`flex items-center gap-3 px-4 py-3.5 min-h-[60px] bg-bg-surface border border-border rounded-xl border-l-4 ${borderAccent} active:bg-accent/5 transition-colors`}
     >
-      {opponent?.logo_league_folder && (
+      {opponent ? (
         <TeamLogo
           leagueFolder={opponent.logo_league_folder}
           teamSlug={opponent.logo_team_slug}
@@ -82,6 +82,8 @@ function FixtureCard({ f, teamIds }: { f: any; teamIds: string[] }) {
           alt={opponent.name}
           className="w-10 h-10 shrink-0"
         />
+      ) : (
+        <TBCBadge className="w-10 h-10 shrink-0" />
       )}
 
       <div className="flex-1 min-w-0">
