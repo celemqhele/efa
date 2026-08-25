@@ -3281,16 +3281,27 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   // Look up fixture for team IDs and managers
   const { data: fixture } = await supabase
     .from('fixtures')
-    .select('home_team_id, away_team_id, round_type, tournament_id, home_team:teams!fixtures_home_team_id_fkey(manager_id), away_team:teams!fixtures_away_team_id_fkey(manager_id)')
+    .select('home_team_id, away_team_id, round_type, tournament_id, home_team:teams!fixtures_home_team_id_fkey(manager_id, manager:profiles!teams_manager_id_fkey(phone)), away_team:teams!fixtures_away_team_id_fkey(manager_id, manager:profiles!teams_manager_id_fkey(phone))')
     .eq('id', session.matched_fixture_id)
     .single()
 
   const fixtureHome = fixture ? (Array.isArray(fixture.home_team) ? fixture.home_team[0] : fixture.home_team) : null
   const fixtureAway = fixture ? (Array.isArray(fixture.away_team) ? fixture.away_team[0] : fixture.away_team) : null
 
+  const hName = fixture ? fixtureTeamName(fixture, 'home') : 'Home'
+  const aName = fixture ? fixtureTeamName(fixture, 'away') : 'Away'
+
   let homeScore = session.home_score
   let awayScore = session.away_score
   let forfeitBalanceNote = ''
+
+  // Determine which manager is texting (recipient) for personalized forfeit messages
+  const recipientManagerId = [fixtureHome, fixtureAway].find(m =>
+    m?.manager_id && phoneNumbersMatch(
+      (Array.isArray(m.manager) ? m.manager[0]?.phone : (m as any)?.manager?.phone) ?? null,
+      from
+    )
+  )?.manager_id ?? null
 
   // Forfeit balance aggregate: check if either team's manager has active forfeit balances.
   // The forfeit score always carries over to the next meeting between the same two teams (per the rules),
@@ -3305,7 +3316,17 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
         .gt('remaining', 0)
 
       if (balances && balances.length > 0) {
-        let noteTeamNames = ''
+        // Pre-fetch team names for both fixture managers
+        const teamNames: Record<string, string> = {}
+        const { data: teamRows } = await supabase
+          .from('teams')
+          .select('name, manager_id')
+          .in('manager_id', managerIds)
+        for (const t of teamRows ?? []) {
+          if (t.manager_id) teamNames[t.manager_id] = t.name
+        }
+
+        const forfeitNoteParts: string[] = []
         for (const bal of balances) {
           const forfeitingIsHome = bal.forfeiting_manager_id === fixtureHome?.manager_id
           const forfeitingScore = bal.forfeiting_score ?? 0
@@ -3319,12 +3340,17 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
           }
           await supabase.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
 
-          const managerName = (Array.isArray(bal.forfeiting_manager) ? bal.forfeiting_manager[0]?.username : bal.forfeiting_manager?.username) || 'Manager'
+          const forfeitTeamName = teamNames[bal.forfeiting_manager_id] || 'Team'
           const oppName = (Array.isArray(bal.opponent_team) ? bal.opponent_team[0]?.name : bal.opponent_team?.name) || 'Opponent'
-          noteTeamNames += `${noteTeamNames ? ', ' : ''}${managerName} (from ${oppName})`
+          if (bal.forfeiting_manager_id === recipientManagerId) {
+            forfeitNoteParts.push(`You forfeited your last game against ${oppName}`)
+          } else {
+            forfeitNoteParts.push(`Your opponent (${forfeitTeamName}) forfeited their last game against ${oppName}`)
+          }
         }
-        forfeitBalanceNote = `\n\nForfeit balance applied: ${noteTeamNames}. Aggregate adjusted to ${homeScore}-${awayScore}.`
-        console.log('[webhook] forfeit balance applied:', noteTeamNames, 'aggregate:', homeScore, '-', awayScore)
+        const reasonText = forfeitNoteParts.join('; ')
+        forfeitBalanceNote = `\n\n${reasonText}.\nScore: ${hName} ${homeScore}-${awayScore} ${aName}.`
+        console.log('[webhook] forfeit balance applied:', reasonText, 'score:', homeScore, '-', awayScore)
       }
     }
   }
