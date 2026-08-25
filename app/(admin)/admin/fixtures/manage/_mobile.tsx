@@ -171,11 +171,11 @@ export default function Mobile({ data }: { data: any }) {
                             ) : (
                               <TBCBadge className="w-5 h-5 shrink-0" />
                             )}
-                            {cleanTeamName(homeTeam?.name) ?? 'TBC'}
+                            {cleanTeamName(homeTeam?.name) || 'TBC'}
                             <span className="text-text-muted font-normal mx-1.5">
                               {result ? `${result.home_score}–${result.away_score}` : 'vs'}
                             </span>
-                            {cleanTeamName(awayTeam?.name) ?? 'TBC'}
+                            {cleanTeamName(awayTeam?.name) || 'TBC'}
                             {awayTeam ? (
                               <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="standings_row" alt={awayTeam.name} className="w-5 h-5 shrink-0" />
                             ) : (

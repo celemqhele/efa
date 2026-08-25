@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { ShieldQuestion, Club } from 'lucide-react'
+import { ShieldQuestion, Shield } from 'lucide-react'
 import { getTeamLogo, type LogoContext } from '@/lib/logo-resolver'
 
 interface TeamLogoProps {
@@ -35,7 +35,7 @@ function getPlaceholderIcon(leagueFolder: string, teamSlug: string) {
 export function TBCBadge({ className = '' }: { className?: string }) {
   return (
     <div className={`inline-flex items-center justify-center gap-1 ${className}`}>
-      <Club className="w-full h-full text-text-muted" strokeWidth={1.5} aria-label="TBC" />
+      <Shield className="w-full h-full text-text-muted" strokeWidth={1.5} aria-label="TBC" />
     </div>
   )
 }

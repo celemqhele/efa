@@ -182,7 +182,7 @@ export default function Desktop({ data }: { data: any }) {
                                 ) : (
                                   <TBCBadge className="w-6 h-6 shrink-0" />
                                 )}
-                                <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(homeTeam?.name) ?? 'TBC'}</span>
+                                <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(homeTeam?.name) || 'TBC'}</span>
                               </div>
                             </td>
                             <td className="px-5 py-4 text-center">
@@ -210,7 +210,7 @@ export default function Desktop({ data }: { data: any }) {
                             </td>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-2 justify-end">
-                                <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(awayTeam?.name) ?? 'TBC'}</span>
+                                <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(awayTeam?.name) || 'TBC'}</span>
                                 {awayTeam ? (
                                   <TeamLogo
                                     leagueFolder={awayTeam.logo_league_folder}
