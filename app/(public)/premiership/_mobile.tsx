@@ -33,7 +33,7 @@ export default function Mobile({ teams }: { teams: Team[] }) {
                 <TeamLogo
                   leagueFolder={team.logo_league_folder}
                   teamSlug={team.logo_team_slug}
-                  context="fixture_card"
+                  context="news_thumb"
                   alt={team.name}
                   className="w-full h-full"
                 />
