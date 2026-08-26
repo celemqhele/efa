@@ -8,6 +8,7 @@ Added the South African Premiership (Betway Premiership) as a new selectable lea
 - Formats in source: webp (2), svg (3), png (9), jpeg (1), jpg (1)
 - All converted to PNG, backgrounds removed, resized to 5 standard sizes (64x64, 128x128, 256x256, 512x512, 700x700)
 - Converted to palette mode (P) with transparency to match existing league logos
+- Normalized fill ratios to ~65% (matching AmaZulu/Golden Arrows benchmark) so all logos appear consistent size
 - Output: `public/logos/south-african-premiership-2026-2027.football-logos.cc/`
 - Processing script: `.recycle/process-sa-logos.py` (one-off, moved to recycle)
 
@@ -48,6 +49,7 @@ Added the South African Premiership (Betway Premiership) as a new selectable lea
 - Route: `/premiership`
 - Shows "Betway Premiership — Now Available for Selection"
 - Displays all 16 teams with logos in a responsive grid
+- Uses `news_thumb` (256x256) context for crisp logo rendering
 
 ## Key config values
 - League folder: `south-african-premiership-2026-2027.football-logos.cc`
