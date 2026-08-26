@@ -43,6 +43,7 @@ export function getLeagueFolders(): string[] {
     'ucl-champions-league-2025-2026.football-logos.cc',
     'uefa-conference-league-2025-2026.football-logos.cc',
     'uefa-europa-league-2025-2026.football-logos.cc',
+    'south-african-premiership-2026-2027.football-logos.cc',
     // New 2026-27 folders
     'moroccan-league-2026-2027.football-logos.cc',
     'thai-league-2026-2027.football-logos.cc',
@@ -100,6 +101,7 @@ export function getLeagueDisplayName(folder: string): string {
     'ucl-champions-league-2025-2026.football-logos.cc': 'UEFA Champions League',
     'uefa-conference-league-2025-2026.football-logos.cc': 'UEFA Conference League',
     'uefa-europa-league-2025-2026.football-logos.cc': 'UEFA Europa League',
+    'south-african-premiership-2026-2027.football-logos.cc': 'Betway Premiership',
   }
   return map[folder] ?? folder
 }

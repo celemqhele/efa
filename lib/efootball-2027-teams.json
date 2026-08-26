@@ -33,6 +33,12 @@
       "inter", "ac-milan", "juventus", "roma", "napoli", "lazio", "atalanta",
       "fiorentina", "torino", "bologna", "udinese", "genoa", "monza", "verona", "lecci",
       "cagliari", "como", "parma", "venezia", "empoli"
+    ],
+    "south-african-premiership-2026-2027.football-logos.cc": [
+      "amazulu", "chippa-united", "durban-city", "kaizer-chiefs",
+      "kruger-united", "lamontville-golden-arrows", "mamelodi-sundowns",
+      "marumo-gallants", "milford", "orlando-pirates", "polokwane-city",
+      "richards-bay", "sekhukhune-united", "siwelele", "stellenbosch", "ts-galaxy"
     ]
   }
 }
