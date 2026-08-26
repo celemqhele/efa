@@ -110,7 +110,7 @@ export default function Desktop({ data }: { data: any }) {
                               Standings
                             </Link>
                             <DeleteTournamentButton tournamentId={t.id} tournamentName={t.name} className={CARD_ACTION_BTN_DANGER} />
-                            <GenerateFixturesButton tournamentId={t.id} tournamentName={t.name} type={t.type} className={CARD_ACTION_BTN} />
+                            <GenerateFixturesButton tournamentId={t.id} tournamentName={t.name} type={t.type} hasFixtures={fc > 0} className={CARD_ACTION_BTN} />
                             <RunTournamentDrawButton tournamentId={t.id} tournamentName={t.name} type={t.type} className={CARD_ACTION_BTN} />
                             <GenerateKnockoutsButton tournamentId={t.id} tournamentName={t.name} type={t.type} className={CARD_ACTION_BTN} />
                           </div>

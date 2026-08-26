@@ -440,6 +440,33 @@ async function mirrorLeg2Teams(
     .eq('matchday', leg1Matchday + 10)
 }
 
+async function checkTournamentCompletion(db: any, tournamentId: string): Promise<void> {
+  const { data: tournament } = await db
+    .from('tournaments')
+    .select('type, status')
+    .eq('id', tournamentId)
+    .single()
+
+  if (!tournament || tournament.status !== 'active' || tournament.type === 'league') return
+
+  const { count: total } = await db
+    .from('fixtures')
+    .select('*', { count: 'exact', head: true })
+    .eq('tournament_id', tournamentId)
+
+  if (!total || total === 0) return
+
+  const { count: pending } = await db
+    .from('fixtures')
+    .select('*', { count: 'exact', head: true })
+    .eq('tournament_id', tournamentId)
+    .not('status', 'in', '("confirmed","abandoned_home","abandoned_away","abandoned_both")')
+
+  if ((pending ?? 0) === 0) {
+    await db.from('tournaments').update({ status: 'completed' }).eq('id', tournamentId)
+  }
+}
+
 export async function advanceWinner(
   db: any,
   tournamentId: string,
@@ -463,6 +490,7 @@ export async function advanceWinner(
       await awardTrophy(db, tournamentId, homeScore, awayScore, homeTeamId, awayTeamId)
       await checkAndCreateSuperCup(db, tournamentId)
     }
+    await checkTournamentCompletion(db, tournamentId)
     return
   }
 
@@ -520,6 +548,8 @@ export async function advanceWinner(
 
     await mirrorLeg2Teams(db, tournamentId, progression.nextMd)
   }
+
+  await checkTournamentCompletion(db, tournamentId)
 }
 
 /** @deprecated use advanceWinner */

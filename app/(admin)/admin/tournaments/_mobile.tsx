@@ -82,7 +82,7 @@ function TournamentCard({ tournament, participantCount, fixtureCount, completedC
           <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={MOBILE_ACTION_BTN_DANGER} />
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
+          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} hasFixtures={fixtureCount > 0} className={MOBILE_ACTION_BTN} />
           <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
           <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
         </div>

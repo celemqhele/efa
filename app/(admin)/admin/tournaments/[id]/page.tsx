@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation'
 import DeleteTournamentButton from '../DeleteTournamentButton'
 import RunTournamentDrawButton from '../RunTournamentDrawButton'
 import GenerateKnockoutsButton from '../GenerateKnockoutsButton'
+import GenerateFixturesButton from '../GenerateFixturesButton'
 import GenerateFriendliesButton from '../GenerateFriendliesButton'
 import { Trophy, ArrowLeft } from 'lucide-react'
 
@@ -127,6 +128,8 @@ export default async function TournamentDetailPage({ params }: PageProps) {
             <Trophy className="w-4 h-4" />
             Manage Fixtures
           </Link>
+
+          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} hasFixtures={fixtureCount > 0} className={DETAIL_ACTION_BTN} />
 
           <div className="grid grid-cols-2 gap-2">
             <Link

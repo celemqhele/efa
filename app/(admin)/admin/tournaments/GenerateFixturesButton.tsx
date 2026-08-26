@@ -11,12 +11,13 @@ interface Props {
   tournamentId: string
   tournamentName: string
   type?: string
+  hasFixtures?: boolean
   className?: string
 }
 
 const MATCHES_PER_WEEK = 30
 
-export default function GenerateFixturesButton({ tournamentId, tournamentName, type, className = CARD_ACTION_BTN }: Props) {
+export default function GenerateFixturesButton({ tournamentId, tournamentName, type, hasFixtures = false, className = CARD_ACTION_BTN }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -46,6 +47,17 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName, t
   }, [startDate, settings, teamCount])
 
   if (type === 'friendlies') return null
+
+  if (hasFixtures) {
+    return (
+      <span
+        className={`${className} pointer-events-none border-green-500/40 bg-green-500/10 text-green-400`}
+        title={`Fixtures already generated for ${tournamentName}`}
+      >
+        Fixtures Generated ✓
+      </span>
+    )
+  }
 
   async function openDialog() {
     setDialogOpen(true)

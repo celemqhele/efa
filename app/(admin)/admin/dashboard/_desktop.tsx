@@ -150,6 +150,7 @@ function TournamentCard({
           tournamentId={tournament.id}
           tournamentName={tournament.name}
           type={tournament.type}
+          hasFixtures={fixtureCount > 0}
           className={CARD_ACTION_BTN}
         />
         <RescheduleFixturesButton
