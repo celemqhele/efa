@@ -41,8 +41,8 @@ function LoginForm() {
       return
     }
 
-    // Hard navigation so the browser sends the fresh session cookies with the new request
-    window.location.href = redirect
+    // Soft navigation — Safari drops cookies on window.location.href hard reloads
+    router.push(redirect)
   }
 
   return (
