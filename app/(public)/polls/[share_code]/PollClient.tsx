@@ -162,7 +162,7 @@ export default function PollClient({ poll, leagues, user }: Props) {
         {!user && (
           <Card className="p-space-4 text-center">
             <p className="text-sm text-text-muted">
-              <a href="/login" className="text-accent underline">Log in</a> to apply for teams.
+              <a href={`/login?redirect=${encodeURIComponent(`/polls/${poll.share_code}`)}`} className="text-accent underline">Log in</a> to apply for teams.
             </p>
           </Card>
         )}

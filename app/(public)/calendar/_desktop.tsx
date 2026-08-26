@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
 import CalendarGrid from './CalendarGrid'
@@ -49,6 +50,7 @@ function nextMonth(year: number, month: number): { year: number; month: number }
 
 export default function Desktop({ data }: DesktopProps) {
   const { year, month, fixtures, breaks, user, userTeams, nextFixture, daysUntilNext, scope } = data
+  const pathname = usePathname()
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -270,7 +272,7 @@ export default function Desktop({ data }: DesktopProps) {
               Sign in to filter the calendar to your team&apos;s schedule.
             </p>
           </div>
-          <Link href="/login" className="text-sm font-bold px-4 py-2 rounded-xl bg-accent text-bg-base hover:bg-accent/90 transition-colors shadow-sm">
+          <Link href={`/login?redirect=${encodeURIComponent(pathname)}`} className="text-sm font-bold px-4 py-2 rounded-xl bg-accent text-bg-base hover:bg-accent/90 transition-colors shadow-sm">
             Sign In
           </Link>
         </Card>

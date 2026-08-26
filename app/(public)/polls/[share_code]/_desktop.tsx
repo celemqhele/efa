@@ -155,7 +155,7 @@ export default function Desktop({ data }: { data: any }) {
       {!user && (
         <Card className="p-4 text-center">
           <p className="text-sm text-text-muted">
-            <a href="/login" className="text-accent underline">Log in</a> to apply for teams.
+            <a href={`/login?redirect=${encodeURIComponent(`/polls/${poll.share_code}`)}`} className="text-accent underline">Log in</a> to apply for teams.
           </p>
         </Card>
       )}

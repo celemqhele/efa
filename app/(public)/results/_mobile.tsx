@@ -2,6 +2,7 @@
 
 import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import { Trophy, Crosshair, CalendarDays } from 'lucide-react'
@@ -138,6 +139,7 @@ interface MobileProps {
 
 export default function Mobile({ data }: MobileProps) {
   const { user, teamIds, fixturesWithResults, grouped, sortedKeys, primaryTeam, wins, draws, losses } = data
+  const pathname = usePathname()
 
   if (!user) {
     return (
@@ -146,7 +148,7 @@ export default function Mobile({ data }: MobileProps) {
         <div className="bg-bg-surface border border-border rounded-xl p-10 text-center space-y-3">
           <Trophy className="w-8 h-8 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">Log in to see your team&apos;s past results.</p>
-          <Link href="/login" className="btn-gold inline-block text-sm">Log in</Link>
+          <Link href={`/login?redirect=${encodeURIComponent(pathname)}`} className="btn-gold inline-block text-sm">Log in</Link>
         </div>
       </div>
     )

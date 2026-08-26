@@ -2,6 +2,7 @@
 
 import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import { Trophy, Crosshair, CalendarDays, ChevronRight } from 'lucide-react'
@@ -85,6 +86,7 @@ interface DesktopProps {
 
 export default function Desktop({ data }: DesktopProps) {
   const { user, teamIds, upcoming, grouped, sortedKeys, primaryTeam } = data
+  const pathname = usePathname()
 
   if (!user) {
     return (
@@ -93,7 +95,7 @@ export default function Desktop({ data }: DesktopProps) {
         <div className="bg-bg-surface border border-border rounded-2xl p-12 text-center space-y-4">
           <Trophy className="w-10 h-10 text-text-muted mx-auto" />
           <p className="text-text-muted text-sm">Log in to see your team&apos;s fixtures.</p>
-          <Link href="/login" className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)]">
+          <Link href={`/login?redirect=${encodeURIComponent(pathname)}`} className="inline-flex items-center gap-1.5 text-sm font-semibold bg-accent text-bg-base rounded-xl px-5 py-2.5 hover:bg-accent/90 transition-colors shadow-[0_1px_0.375px_rgba(0,0,0,0.05),0_0.25px_0.375px_rgba(0,0,0,0.15)]">
             Log in
           </Link>
         </div>

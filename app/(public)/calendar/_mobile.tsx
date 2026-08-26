@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { format, parseISO, isSameDay } from 'date-fns'
 import CalendarGrid from './CalendarGrid'
@@ -34,6 +35,7 @@ function monthParam(year: number, month: number): string {
 
 export default function Mobile({ data }: MobileProps) {
   const { year, month, fixtures, breaks, user, userTeams, nextFixture, daysUntilNext, prev, next } = data
+  const pathname = usePathname()
 
   const todayFixtures = useMemo(() => {
     const today = new Date()
@@ -175,7 +177,7 @@ export default function Mobile({ data }: MobileProps) {
             <p className="text-sm font-semibold text-text-primary">See your team&apos;s fixtures</p>
             <p className="text-xs text-text-muted">Sign in to filter the calendar to your team&apos;s schedule.</p>
           </div>
-          <Button as={Link} href="/login" variant="primary" className="min-h-[48px] w-full">
+          <Button as={Link} href={`/login?redirect=${encodeURIComponent(pathname)}`} variant="primary" className="min-h-[48px] w-full">
             Sign In
           </Button>
         </Card>
