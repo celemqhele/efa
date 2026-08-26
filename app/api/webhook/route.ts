@@ -656,28 +656,34 @@ function normalizePhone(n: string | null | undefined): string | null {
   return digits || null
 }
 
-// Compares a stored profile number against a WhatsApp `from` number. Handles the
-// SA local format ("0694021679") vs international ("27694021679") difference.
+// Compares a stored profile number against a WhatsApp `from` number. Handles SA
+// local vs international ("0694021679" ↔ "27694021679") as well as generic
+// international numbers from any country code.
 function phoneNumbersMatch(stored: string | null | undefined, from: string): boolean {
   const a = normalizePhone(stored)
   const b = normalizePhone(from)
   if (!a || !b) return false
   if (a === b) return true
+  // SA local ↔ international
   if (a.startsWith('0') && b.startsWith('27') && `27${a.slice(1)}` === b) return true
   if (b.startsWith('0') && a.startsWith('27') && `27${b.slice(1)}` === a) return true
+  // Generic: local format (starts with 0) vs any international code
+  if (a.startsWith('0') && !b.startsWith('0') && b.length > a.length && b.endsWith(a.slice(1))) return true
+  if (b.startsWith('0') && !a.startsWith('0') && a.length > b.length && a.endsWith(b.slice(1))) return true
   return false
 }
 
 // Normalizes a stored number to international E.164 digits for the WhatsApp
 // contacts API. Numbers that already carry a country code ("+27 65 261 8652",
-// "+233591519713") pass through unchanged; local SA numbers ("0795932223") get
-// the country code prepended. The WhatsApp API rejects contact cards whose
-// phone is not international format (error 131009).
+// "+233591519713", "+38971670793") pass through unchanged; local SA numbers
+// ("0795932223") get the SA country code prepended. The WhatsApp API rejects
+// contact cards whose phone is not international format (error 131009).
 function toInternationalPhone(n: string | null | undefined): string | null {
   let digits = normalizePhone(n)
   if (!digits) return null
   if (digits.startsWith('00')) digits = digits.slice(2)
-  if (digits.startsWith('0')) return `27${digits.slice(1)}`
+  // Only treat as SA local if it's exactly 10 digits starting with 0
+  if (digits.startsWith('0') && digits.length === 10) return `27${digits.slice(1)}`
   return digits
 }
 

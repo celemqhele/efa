@@ -151,7 +151,7 @@ export default function Mobile({ data }: { data: any }) {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+27 12 345 6789"
+              placeholder="+1 234 567 8901"
               className="flex-1 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
             />
             {phone !== (profile?.phone ?? '') && (
