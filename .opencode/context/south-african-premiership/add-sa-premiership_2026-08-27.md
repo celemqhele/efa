@@ -7,6 +7,7 @@ Added the South African Premiership (Betway Premiership) as a new selectable lea
 - Source: `C:\Users\mqhel\Downloads\South African Premiership` (16 files)
 - Formats in source: webp (2), svg (3), png (9), jpeg (1), jpg (1)
 - All converted to PNG, backgrounds removed, resized to 5 standard sizes (64x64, 128x128, 256x256, 512x512, 700x700)
+- Converted to palette mode (P) with transparency to match existing league logos
 - Output: `public/logos/south-african-premiership-2026-2027.football-logos.cc/`
 - Processing script: `.recycle/process-sa-logos.py` (one-off, moved to recycle)
 
@@ -52,3 +53,9 @@ Added the South African Premiership (Betway Premiership) as a new selectable lea
 - League folder: `south-african-premiership-2026-2027.football-logos.cc`
 - Display name: `Betway Premiership`
 - Allowed teams key in `efootball-2027-teams.json`
+
+## Restore File Section
+| Original Path | Purpose | New Path |
+|---|---|---|
+| `scripts/process-sa-logos.py` | One-off logo processing script | `.recycle/process-sa-logos.py` |
+| `scripts/insert-sa-premiership-teams.sql` | One-off DB insert script | `.recycle/insert-sa-premiership-teams.sql` |
