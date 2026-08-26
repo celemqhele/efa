@@ -536,7 +536,9 @@ export async function fillFinalSlot(
 }
 
 async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string): Promise<void> {
-  const { data: tournament } = await db
+  const adminDb = await createAdminClient()
+
+  const { data: tournament } = await adminDb
     .from('tournaments')
     .select('season_id')
     .eq('id', justCompletedTournamentId)
@@ -545,7 +547,7 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
   const seasonId = tournament?.season_id
   if (!seasonId) return
 
-  const { data: clubTs } = await db
+  const { data: clubTs } = await adminDb
     .from('tournaments')
     .select('id, name')
     .eq('season_id', seasonId)
@@ -556,14 +558,14 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
   const uclT = clubTs[0]
   const europaT = clubTs[1]
 
-  const { data: uclTrophy } = await db
+  const { data: uclTrophy } = await adminDb
     .from('trophies')
     .select('team_id')
     .eq('tournament_id', uclT.id)
     .limit(1)
     .maybeSingle()
 
-  const { data: europaTrophy } = await db
+  const { data: europaTrophy } = await adminDb
     .from('trophies')
     .select('team_id')
     .eq('tournament_id', europaT.id)
@@ -572,7 +574,7 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
 
   if (!uclTrophy || !europaTrophy) return
 
-  const { data: existing } = await db
+  const { data: existing } = await adminDb
     .from('tournaments')
     .select('id')
     .eq('season_id', seasonId)
@@ -586,7 +588,7 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
   const uclWinnerId = uclTrophy.team_id
   const europaWinnerId = europaTrophy.team_id
 
-  const { data: uclFinal } = await db
+  const { data: uclFinal } = await adminDb
     .from('fixtures')
     .select('scheduled_date')
     .eq('tournament_id', uclT.id)
@@ -594,7 +596,7 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
     .limit(1)
     .maybeSingle()
 
-  const { data: europaFinal } = await db
+  const { data: europaFinal } = await adminDb
     .from('fixtures')
     .select('scheduled_date')
     .eq('tournament_id', europaT.id)
@@ -606,8 +608,6 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
   const europaDate = europaFinal?.scheduled_date ? new Date(europaFinal.scheduled_date) : new Date()
   const laterDate = uclDate > europaDate ? uclDate : europaDate
   const scheduledDate = format(addDays(laterDate, 1), 'yyyy-MM-dd')
-
-  const adminDb = await createAdminClient()
 
   const { data: scTournament, error: tErr } = await adminDb
     .from('tournaments')
@@ -639,8 +639,15 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
     deadline: `${scheduledDate}T20:00:00Z`,
   })
 
+  const { data: adminUser } = await adminDb
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+    .limit(1)
+    .maybeSingle()
+
   await adminDb.from('audit_log').insert({
-    admin_id: '00000000-0000-0000-0000-000000000000',
+    admin_id: adminUser?.id ?? justCompletedTournamentId,
     action: 'auto_generate_super_cup',
     target_type: 'tournament',
     target_id: scTournament.id,
