@@ -1,10 +1,8 @@
 export const dynamic = 'force-dynamic'
 
-import fs from 'fs'
-import path from 'path'
 import { createClient } from '@/lib/supabase/server'
-import { getLeagueFolders, slugToDisplayName } from '@/lib/logo-resolver'
-import { filterTeams } from '@/lib/allowed-teams'
+import eFootballTeams from '@/lib/efootball-2027-teams.json'
+import { slugToDisplayName } from '@/lib/logo-resolver'
 import { sortStandingsRows } from '@/lib/standings-core'
 import Shell from './_shell'
 
@@ -114,63 +112,61 @@ export default async function SeasonsPage() {
     .select('id, name, logo_league_folder, logo_team_slug, manager_id')
     .order('name', { ascending: true })
 
-  const dbBySlug = new Map<string, { id: string; name: string; logo_league_folder: string; manager_id: string | null }>()
-  for (const t of (rawTeams ?? []) as any[]) {
-    if (!t.logo_team_slug) continue
-    const existing = dbBySlug.get(t.logo_team_slug)
-    if (!existing || (!existing.manager_id && t.manager_id)) {
-      dbBySlug.set(t.logo_team_slug, {
-        id: t.id,
-        name: t.name,
-        logo_league_folder: t.logo_league_folder ?? '',
-        manager_id: t.manager_id,
-      })
-    }
-  }
-
-  const logosRoot = path.join(process.cwd(), 'public', 'logos')
-  const clubMap = new Map<string, {
-    id: string | null
+  // teams already present in the DB (have ids / manager assignments)
+  const dbByKey = new Map<string, {
+    id: string
     name: string
     logo_league_folder: string
     logo_team_slug: string
     manager_id: string | null
   }>()
+  for (const t of (rawTeams ?? []) as any[]) {
+    if (!t.logo_team_slug || !t.logo_league_folder) continue
+    const key = `${t.logo_league_folder}::${t.logo_team_slug}`
+    const existing = dbByKey.get(key)
+    if (!existing || (!existing.manager_id && t.manager_id)) {
+      dbByKey.set(key, {
+        id: t.id,
+        name: t.name,
+        logo_league_folder: t.logo_league_folder,
+        logo_team_slug: t.logo_team_slug,
+        manager_id: t.manager_id,
+      })
+    }
+  }
 
-  for (const folder of getLeagueFolders()) {
-    const folderPath = path.join(logosRoot, folder, '128x128')
-    let files: string[]
-    try { files = fs.readdirSync(folderPath) } catch { continue }
-
-    for (const file of files) {
-      if (!file.endsWith('.png')) continue
-      const slug = file.replace('.png', '')
-      if (clubMap.has(slug)) continue
-
-      const db = dbBySlug.get(slug)
-      clubMap.set(slug, {
-        id: db?.id ?? null,
+  // Build the full allowed team set from config (no filesystem access), enriched
+  // with DB ids / manager assignments where they exist.
+  const clubMap = new Map<string, {
+    id: string
+    name: string
+    logo_league_folder: string
+    logo_team_slug: string
+    manager_id: string | null
+  }>()
+  const leagues = eFootballTeams.leagues as Record<string, string[]>
+  for (const [folder, slugs] of Object.entries(leagues)) {
+    for (const slug of slugs) {
+      const key = `${folder}::${slug}`
+      const db = dbByKey.get(key)
+      clubMap.set(key, {
+        id: db?.id ?? '',
         name: db?.name ?? slugToDisplayName(slug),
-        logo_league_folder: db?.logo_league_folder ?? folder,
+        logo_league_folder: folder,
         logo_team_slug: slug,
         manager_id: db?.manager_id ?? null,
       })
     }
   }
 
-  for (const [slug, db] of Array.from(dbBySlug.entries())) {
-    if (!clubMap.has(slug)) {
-      clubMap.set(slug, {
-        id: db.id,
-        name: db.name,
-        logo_league_folder: db.logo_league_folder,
-        logo_team_slug: slug,
-        manager_id: db.manager_id,
-      })
-    }
+  // Preserve any DB teams not covered by the current season config (legacy /
+  // custom league teams that were previously surfaced from the teams table).
+  for (const db of dbByKey.values()) {
+    const key = `${db.logo_league_folder}::${db.logo_team_slug}`
+    if (!clubMap.has(key)) clubMap.set(key, db)
   }
 
-  const allTeams = filterTeams(Array.from(clubMap.values())).sort((a, b) => a.name.localeCompare(b.name))
+  const allTeams = Array.from(clubMap.values()).sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <Shell

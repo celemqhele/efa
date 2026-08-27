@@ -1,7 +1,6 @@
-import fs from 'fs'
-import path from 'path'
 import { createClient } from '@/lib/supabase/server'
-import { getLeagueFolders, slugToDisplayName } from '@/lib/logo-resolver'
+import eFootballTeams from '@/lib/efootball-2027-teams.json'
+import { slugToDisplayName } from '@/lib/logo-resolver'
 import Shell from './_shell'
 
 export const revalidate = 0
@@ -21,65 +20,51 @@ export default async function CreateTournamentPage() {
     .select('id, name, logo_league_folder, logo_team_slug, manager_id')
     .order('name', { ascending: true })
 
-  // Build lookup: logo_team_slug ? best DB row
-  const dbBySlug = new Map<string, { id: string; name: string; logo_league_folder: string; manager_id: string | null }>()
+  // Build lookup keyed by folder::slug -> best DB row
+  const dbByKey = new Map<string, { id: string; name: string; logo_league_folder: string; logo_team_slug: string; manager_id: string | null }>()
   for (const t of (rawTeams ?? []) as any[]) {
-    if (!t.logo_team_slug) continue
-    // If multiple rows exist for a slug, prefer the one with a manager for status display, 
-    // or just keep the first one found.
-    const existing = dbBySlug.get(t.logo_team_slug)
+    if (!t.logo_team_slug || !t.logo_league_folder) continue
+    const key = `${t.logo_league_folder}::${t.logo_team_slug}`
+    const existing = dbByKey.get(key)
     if (!existing || (!existing.manager_id && t.manager_id)) {
-      dbBySlug.set(t.logo_team_slug, {
+      dbByKey.set(key, {
         id: t.id,
         name: t.name,
-        logo_league_folder: t.logo_league_folder ?? '',
+        logo_league_folder: t.logo_league_folder,
+        logo_team_slug: t.logo_team_slug,
         manager_id: t.manager_id,
       })
     }
   }
 
-  // 2. Build full club list from logos directory
-  const logosRoot = path.join(process.cwd(), 'public', 'logos')
+  // 2. Build full club list from the season config (no filesystem access),
+  //    enriched with DB ids / manager assignments where they exist.
   const clubMap = new Map<string, {
-    id: string | null
+    id: string
     name: string
     logo_league_folder: string
     logo_team_slug: string
     manager_id: string | null
   }>()
-
-  for (const folder of getLeagueFolders()) {
-    const folderPath = path.join(logosRoot, folder, '128x128')
-    let files: string[]
-    try { files = fs.readdirSync(folderPath) } catch { continue }
-
-    for (const file of files) {
-      if (!file.endsWith('.png')) continue
-      const slug = file.replace('.png', '')
-      if (clubMap.has(slug)) continue
-
-      const db = dbBySlug.get(slug)
-      clubMap.set(slug, {
-        id: db?.id ?? null,
+  const leagues = eFootballTeams.leagues as Record<string, string[]>
+  for (const [folder, slugs] of Object.entries(leagues)) {
+    for (const slug of slugs) {
+      const key = `${folder}::${slug}`
+      const db = dbByKey.get(key)
+      clubMap.set(key, {
+        id: db?.id ?? '',
         name: db?.name ?? slugToDisplayName(slug),
-        logo_league_folder: db?.logo_league_folder ?? folder,
+        logo_league_folder: folder,
         logo_team_slug: slug,
         manager_id: db?.manager_id ?? null,
       })
     }
   }
 
-  // Also include any DB teams whose logos aren't in the folder scan
-  for (const [slug, db] of Array.from(dbBySlug.entries())) {
-    if (!clubMap.has(slug)) {
-      clubMap.set(slug, {
-        id: db.id,
-        name: db.name,
-        logo_league_folder: db.logo_league_folder,
-        logo_team_slug: slug,
-        manager_id: db.manager_id,
-      })
-    }
+  // Also include any DB teams not covered by the season config (legacy/custom)
+  for (const db of dbByKey.values()) {
+    const key = `${db.logo_league_folder}::${db.logo_team_slug}`
+    if (!clubMap.has(key)) clubMap.set(key, db)
   }
 
   const allClubs = Array.from(clubMap.values()).sort((a, b) => a.name.localeCompare(b.name))
