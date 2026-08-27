@@ -34,7 +34,7 @@ Whenever a file needs to be removed:
 
 ## Context Files — organization rules
 
-Context files live in `.opencode/context/`, grouped into category folders. Each category is a **string of related incidents**: a feature/topic plus every later problem that relates to it (e.g. a flow, then follow-up bugs on that flow).
+Context files live in `.opencode/context/`, grouped into category folders. Each folder groups a related feature/topic. **Each change or modification gets its own new context file — never update an existing context file with new info**, because editing an existing file erases the old content that may still be useful. New files are added per change so history is preserved.
 
 ### IMPORTANT: finding context files
 The Glob/Grep file tools SKIP hidden/dot-directories, so `.opencode/` is invisible to
@@ -65,11 +65,12 @@ Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-String -P
 - `knockout-generation/` — knockout bracket generation + progression wiring (advanceWinner, leg mirroring, tie-breaks)
 - `season-cup-flow/` — deferred cup creation after league end (start-tournament flow)
 - `south-african-premiership/` — South African Premiership (Betway Premiership) league addition
+- `deploy-performance/` — Vercel deployment performance / middleware timeout fixes
 
 ### Naming requirement
-Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's last-modified date. New files use the current date. When a file is substantially edited on a later day, rename it to the new date.
+Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's creation date (a new file always uses the current date). A context file is written once and never updated; a later change or fix on the same topic gets a brand-new file with the new date.
 
 ### Placement rule
-When creating a new context file, decide whether it is part of an existing string of related incidents or a brand-new string:
-- **Part of an existing chain** (a follow-up problem/change on something already documented) → place it in that chain's category folder.
-- **Brand-new string** → create a new category folder (kebab-case theme name, e.g. `auth/`) and add it to the list above. This is only allowed when the file is unrelated to every existing category — never create a folder just to isolate a single file that could join an existing chain.
+When creating a new context file for a change, decide whether it relates to an existing category or is brand-new:
+- **Related to an existing category** (a follow-up problem/change on something already documented) → create a brand-new file (new date) in that existing category folder. Never append to the existing file.
+- **Brand-new topic** → create a new category folder (kebab-case theme name, e.g. `auth/`) and add it to the list above. This is only allowed when the file is unrelated to every existing category — never create a folder just to isolate a single file that could join an existing chain.
