@@ -27,7 +27,7 @@ function TeamLogoInline({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/logos/${folder}/128x128/${slug}.png`}
+      src={`/logos/${folder}/1280x1280/${slug}.png`}
       alt=""
       width={size}
       height={size}

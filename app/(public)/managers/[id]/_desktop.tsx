@@ -126,7 +126,7 @@ export default function Desktop({ data }: { data: any }) {
                     <div className="w-8 h-8 flex items-center justify-center shrink-0">
                       {trophy.team?.logo_team_slug ? (
                         <Image
-                          src={`/logos/${trophy.team.logo_league_folder}/128x128/${trophy.team.logo_team_slug}.png`}
+                          src={`/logos/${trophy.team.logo_league_folder}/1280x1280/${trophy.team.logo_team_slug}.png`}
                           alt={trophy.team.name}
                           width={28} height={28}
                           className="object-contain"
