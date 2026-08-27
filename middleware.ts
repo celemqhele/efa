@@ -1,50 +1,36 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+
+const SESSION_COOKIE_PREFIX = 'sb-'
+const SESSION_COOKIE_SUFFIX = '-auth-token'
+
+function hasSession(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(({ name }) => name.startsWith(SESSION_COOKIE_PREFIX) && name.endsWith(SESSION_COOKIE_SUFFIX))
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Build a mutable response so Supabase can write refreshed session cookies
-  let supabaseResponse = NextResponse.next({ request })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  // Refresh the session — this rotates the token and writes updated cookies.
-  // Do NOT use getSession() here; getUser() validates with the Supabase server.
-  const { data: { user } } = await supabase.auth.getUser()
-
+  // Local-only guard: no network calls here (Supabase auth validation happens
+  // server-side in the protected layouts/pages). Presence of the session cookie
+  // is enough to let the request through — pages re-validate with getUser().
   const isProtected = ['/profile', '/notifications'].some((p) => pathname.startsWith(p))
   const isAdmin = pathname.startsWith('/admin')
+  const loggedIn = hasSession(request)
 
-  if (!user && (isProtected || isAdmin)) {
+  if (!loggedIn && (isProtected || isAdmin)) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', pathname)
     return NextResponse.redirect(url)
   }
 
-  if (user && (pathname === '/login' || pathname === '/register')) {
+  if (loggedIn && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  return supabaseResponse
+  return NextResponse.next()
 }
 
 export const config = {

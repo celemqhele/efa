@@ -1,51 +1,28 @@
-import { createClient } from '@/lib/supabase/server'
-import Nav from './Nav'
-import BottomTabBar from './BottomTabBar'
+import { Suspense } from 'react'
 import MobileGestures from './MobileGestures'
+import NavShell from './NavShell'
 
 interface PageWrapperProps {
   children: React.ReactNode
   fullWidth?: boolean
 }
 
-export default async function PageWrapper({ children, fullWidth = false }: PageWrapperProps) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  let profile = null
-  let unreadCount = 0
-
-  if (user) {
-    const [{ data: p }, { count }] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('notifications').select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id).eq('read', false),
-    ])
-    unreadCount = count ?? 0
-
-    // If the profile row doesn't exist yet (DB trigger timing / pre-team-selection),
-    // synthesize a minimal stub from session metadata so the nav shows logged-in state.
-    profile = p ?? {
-      id: user.id,
-      username: (user.user_metadata?.username as string | undefined)
-        ?? user.email?.split('@')[0]
-        ?? 'user',
-      role: 'user' as const,
-      avatar_url: null,
-      playstyle: null,
-      created_at: user.created_at ?? new Date().toISOString(),
-    }
-  }
-
+function NavSkeleton() {
   return (
-    <div className="min-h-screen bg-navy">
-      <MobileGestures />
-      <Nav profile={profile} unreadCount={unreadCount} />
-      <main className={fullWidth ? '' : 'max-w-[1440px] mx-auto px-6 pt-12 pb-space-8 lg:pt-0'}>
-        {children}
-      </main>
-      <BottomTabBar profile={profile} unreadCount={unreadCount} />
-    </div>
+    <div aria-hidden className="h-16 border-b border-white/5 bg-transparent" />
   )
 }
 
+export default function PageWrapper({ children, fullWidth = false }: PageWrapperProps) {
+  return (
+    <div className="min-h-screen bg-navy">
+      <MobileGestures />
+      <Suspense fallback={<NavSkeleton />}>
+        <NavShell />
+      </Suspense>
+      <main className={fullWidth ? '' : 'max-w-[1440px] mx-auto px-6 pt-12 pb-space-8 lg:pt-0'}>
+        {children}
+      </main>
+    </div>
+  )
+}
