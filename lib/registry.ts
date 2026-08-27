@@ -1,5 +1,4 @@
-import { promises as fs } from 'fs'
-import path from 'path'
+import registryData from './registry-data.json'
 
 // ─── Metadata for every logo folder ──────────────────────────────────────────
 
@@ -280,24 +279,14 @@ export interface RegistryEntry extends LeagueMeta {
 }
 
 export async function buildRegistry(): Promise<RegistryEntry[]> {
-  const logosDir = path.join(process.cwd(), 'public', 'logos')
+  const folderTeams = (registryData as { folder_teams: Record<string, string[]> }).folder_teams
   const entries: RegistryEntry[] = []
 
   for (const [folder, meta] of Object.entries(LEAGUE_META)) {
-    const folderPath = path.join(logosDir, folder, '128x128')
-    let teams: TeamEntry[] = []
-    try {
-      const files = await fs.readdir(folderPath)
-      teams = files
-        .filter((f) => f.endsWith('.png'))
-        .map((f) => {
-          const slug = f.replace('.png', '')
-          return { slug, name: slugToName(slug, meta.isNational) }
-        })
-        .sort((a, b) => a.name.localeCompare(b.name))
-    } catch {
-      // folder missing — skip silently
-    }
+    const slugs = folderTeams[folder] ?? []
+    const teams = slugs
+      .map((slug) => ({ slug, name: slugToName(slug, meta.isNational) }))
+      .sort((a, b) => a.name.localeCompare(b.name))
     if (teams.length > 0) {
       entries.push({ folder, ...meta, teams })
     }
