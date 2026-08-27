@@ -1,9 +1,9 @@
 const SIZE_MAP = {
-  standings_row: '640x640',
-  group_table: '640x640',
-  fixture_card: '1280x1280',
-  profile_avatar: '1280x1280',
-  news_thumb: '2560x2560',
+  standings_row: '64x64',
+  group_table: '64x64',
+  fixture_card: '128x128',
+  profile_avatar: '128x128',
+  news_thumb: '256x256',
   match_detail_hero: '512x512',
   broadcast_download: '700x700',
 } as const

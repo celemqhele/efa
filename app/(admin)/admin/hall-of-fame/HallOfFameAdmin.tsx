@@ -245,7 +245,7 @@ export default function HallOfFameAdmin({ teams, seasons, tournaments, trophies:
                     >
                       {trophy.team?.logo_league_folder && (
                         <Image
-                          src={`/logos/${trophy.team.logo_league_folder}/1280x1280/${trophy.team.logo_team_slug}.png`}
+                          src={`/logos/${trophy.team.logo_league_folder}/128x128/${trophy.team.logo_team_slug}.png`}
                           alt={trophy.team.name}
                           width={36}
                           height={36}

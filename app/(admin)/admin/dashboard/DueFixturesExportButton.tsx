@@ -87,7 +87,7 @@ function FixtureRow({ f, i }: { f: FixtureRow; i: number }) {
         {f.home_team_folder && f.home_team_slug && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/logos/${f.home_team_folder}/1280x1280/${f.home_team_slug}.png`}
+            src={`/logos/${f.home_team_folder}/128x128/${f.home_team_slug}.png`}
             alt=""
             width={28} height={28}
             style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }}
@@ -105,7 +105,7 @@ function FixtureRow({ f, i }: { f: FixtureRow; i: number }) {
         {f.away_team_folder && f.away_team_slug && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/logos/${f.away_team_folder}/1280x1280/${f.away_team_slug}.png`}
+            src={`/logos/${f.away_team_folder}/128x128/${f.away_team_slug}.png`}
             alt=""
             width={28} height={28}
             style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }}

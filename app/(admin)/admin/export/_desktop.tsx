@@ -32,7 +32,7 @@ function TeamLogoInline({ folder, slug, size = 38 }: { folder?: string | null; s
     )
   }
   return (
-    <img src={`/logos/${folder}/1280x1280/${slug}.png`} alt="" width={size} height={size} style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+    <img src={`/logos/${folder}/128x128/${slug}.png`} alt="" width={size} height={size} style={{ objectFit: 'contain', display: 'block', flexShrink: 0 }} />
   )
 }
 

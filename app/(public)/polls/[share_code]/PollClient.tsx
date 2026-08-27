@@ -34,7 +34,7 @@ interface Props {
 }
 
 function logoSrc(folder: string, slug: string) {
-  return `/logos/${folder}/1280x1280/${slug}.png`
+  return `/logos/${folder}/128x128/${slug}.png`
 }
 
 export default function PollClient({ poll, leagues, user }: Props) {
