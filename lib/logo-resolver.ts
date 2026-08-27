@@ -44,6 +44,8 @@ export function getLeagueFolders(): string[] {
     'uefa-conference-league-2025-2026.football-logos.cc',
     'uefa-europa-league-2025-2026.football-logos.cc',
     'south-african-premiership-2026-2027.football-logos.cc',
+    'motsepe-foundation-championship-2026-2027.football-logos.cc',
+    'abc-motsepe-league-2026-2027.football-logos.cc',
     // New 2026-27 folders
     'moroccan-league-2026-2027.football-logos.cc',
     'thai-league-2026-2027.football-logos.cc',
@@ -102,6 +104,8 @@ export function getLeagueDisplayName(folder: string): string {
     'uefa-conference-league-2025-2026.football-logos.cc': 'UEFA Conference League',
     'uefa-europa-league-2025-2026.football-logos.cc': 'UEFA Europa League',
     'south-african-premiership-2026-2027.football-logos.cc': 'Betway Premiership',
+    'motsepe-foundation-championship-2026-2027.football-logos.cc': 'Motsepe Foundation Championship',
+    'abc-motsepe-league-2026-2027.football-logos.cc': 'ABC Motsepe League',
   }
   return map[folder] ?? folder
 }

@@ -3,17 +3,17 @@
 import { ViewportSwitch } from '@/components/ui/ViewportSwitch'
 import Mobile from './_mobile'
 import Desktop from './_desktop'
-import type { Team } from './_desktop'
+import type { League } from './_desktop'
 
 interface Props {
-  teams: Team[]
+  leagues: League[]
 }
 
-export default function Shell({ teams }: Props) {
+export default function Shell({ leagues }: Props) {
   return (
     <ViewportSwitch
-      mobile={<Mobile teams={teams} />}
-      desktop={<Desktop teams={teams} />}
+      mobile={<Mobile leagues={leagues} />}
+      desktop={<Desktop leagues={leagues} />}
     />
   )
 }
