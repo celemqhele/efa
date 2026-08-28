@@ -389,7 +389,7 @@ function StartPhaseDialog({
   const [localManagers, setLocalManagers] = useState<Record<string, string>>({})
   const [assigningTeamId, setAssigningTeamId] = useState<string | null>(null)
   const [assignErrors, setAssignErrors] = useState<Record<string, string>>({})
-  const [cooldown, setCooldown] = useState<{ username: string; cooldownEndsAt: string } | null>(null)
+  const [cooldown, setCooldown] = useState<{ username: string; cooldownEndsAt: string; teamId?: string | null } | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
   const [seasonName, setSeasonName] = useState('')
@@ -679,7 +679,11 @@ function StartPhaseDialog({
                                   if (!res.ok) {
                                     if (data?.code === 'SACK_COOLDOWN') {
                                       const profile = users.find((u) => u.id === userId)
-                                      setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
+                                      setCooldown({
+                                        username: profile?.username ?? 'this manager',
+                                        cooldownEndsAt: data.cooldown_ends_at,
+                                        teamId: team.id,
+                                      })
                                     }
                                     throw new Error(data.error ?? 'Failed to assign')
                                   }
@@ -776,9 +780,9 @@ function StartPhaseDialog({
         cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
         onClose={() => setCooldown(null)}
         onOverride={() => {
-          if (cooldown && assigningTeamId) {
+          if (cooldown) {
             const user = users.find(u => u.username === cooldown.username)
-            const team = allTeams.find(t => t.logo_team_slug === assigningTeamId)
+            const team = cooldown.teamId ? allTeams.find(t => t.id === cooldown.teamId) : undefined
             if (user && team) {
               setCooldown(null)
               fetch('/api/admin/managers/assign', {
