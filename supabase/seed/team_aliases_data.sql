@@ -21,11 +21,11 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   -- Al Nassr
   ((SELECT id FROM teams WHERE name = 'Al Nassr'), 'nas'),
   
-  -- Algeria National Team
-  ((SELECT id FROM teams WHERE name = 'Algeria National Team'), 'alg'),
+  -- Algeria
+  ((SELECT id FROM teams WHERE name = 'Algeria'), 'alg'),
   
-  -- Argentina National Team
-  ((SELECT id FROM teams WHERE name = 'Argentina National Team'), 'arg'),
+  -- Argentina
+  ((SELECT id FROM teams WHERE name = 'Argentina'), 'arg'),
   
   -- Arsenal
   ((SELECT id FROM teams WHERE name = 'Arsenal'), 'ars'),
@@ -55,8 +55,8 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   ((SELECT id FROM teams WHERE name = 'Bayern Munich'), 'bayern'),
   ((SELECT id FROM teams WHERE name = 'Bayern Munich'), 'fcb'),
   
-  -- Belgium National Team
-  ((SELECT id FROM teams WHERE name = 'Belgium National Team'), 'bel'),
+  -- Belgium
+  ((SELECT id FROM teams WHERE name = 'Belgium'), 'bel'),
   
   -- Borussia Dortmund
   ((SELECT id FROM teams WHERE name = 'Borussia Dortmund'), 'bvb'),
@@ -65,8 +65,8 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   -- Bournemouth
   ((SELECT id FROM teams WHERE name = 'Bournemouth'), 'bou'),
   
-  -- Brazil National Team
-  ((SELECT id FROM teams WHERE name = 'Brazil National Team'), 'bra'),
+  -- Brazil
+  ((SELECT id FROM teams WHERE name = 'Brazil'), 'bra'),
   
   -- Brentford
   ((SELECT id FROM teams WHERE name = 'Brentford'), 'bre'),
@@ -91,8 +91,8 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   -- Como 1907
   ((SELECT id FROM teams WHERE name = 'Como 1907'), 'com'),
   
-  -- Croatia National Team
-  ((SELECT id FROM teams WHERE name = 'Croatia National Team'), 'cro'),
+  -- Croatia
+  ((SELECT id FROM teams WHERE name = 'Croatia'), 'cro'),
   
   -- Crystal Palace
   ((SELECT id FROM teams WHERE name = 'Crystal Palace'), 'cry'),
@@ -101,29 +101,29 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   -- Dundee United
   ((SELECT id FROM teams WHERE name = 'Dundee United'), 'dun'),
   
-  -- Egypt National Team
-  ((SELECT id FROM teams WHERE name = 'Egypt National Team'), 'egy'),
+  -- Egypt
+  ((SELECT id FROM teams WHERE name = 'Egypt'), 'egy'),
   
-  -- England National Team
-  ((SELECT id FROM teams WHERE name = 'England National Team'), 'eng'),
+  -- England
+  ((SELECT id FROM teams WHERE name = 'England'), 'eng'),
   
   -- Everton
   ((SELECT id FROM teams WHERE name = 'Everton'), 'eve'),
   
-  -- France National Team
-  ((SELECT id FROM teams WHERE name = 'France National Team'), 'fra'),
+  -- France
+  ((SELECT id FROM teams WHERE name = 'France'), 'fra'),
   
   -- Fulham
   ((SELECT id FROM teams WHERE name = 'Fulham'), 'ful'),
   
-  -- Germany National Team
-  ((SELECT id FROM teams WHERE name = 'Germany National Team'), 'ger'),
+  -- Germany
+  ((SELECT id FROM teams WHERE name = 'Germany'), 'ger'),
   
-  -- Ghana National Team
-  ((SELECT id FROM teams WHERE name = 'Ghana National Team'), 'gha'),
+  -- Ghana
+  ((SELECT id FROM teams WHERE name = 'Ghana'), 'gha'),
   
-  -- Haiti National Team
-  ((SELECT id FROM teams WHERE name = 'Haiti National Team'), 'hai'),
+  -- Haiti
+  ((SELECT id FROM teams WHERE name = 'Haiti'), 'hai'),
   
   -- Inter Milan
   ((SELECT id FROM teams WHERE name = 'Inter Milan'), 'int'),
@@ -132,11 +132,11 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   -- Ipswich
   ((SELECT id FROM teams WHERE name = 'Ipswich'), 'ips'),
   
-  -- Iran National Team
-  ((SELECT id FROM teams WHERE name = 'Iran National Team'), 'irn'),
+  -- Iran
+  ((SELECT id FROM teams WHERE name = 'Iran'), 'irn'),
   
-  -- Japan National Team
-  ((SELECT id FROM teams WHERE name = 'Japan National Team'), 'jpn'),
+  -- Japan
+  ((SELECT id FROM teams WHERE name = 'Japan'), 'jpn'),
   
   -- Juventus
   ((SELECT id FROM teams WHERE name = 'Juventus'), 'juv'),
@@ -155,12 +155,12 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   ((SELECT id FROM teams WHERE name = 'Manchester United'), 'mun'),
   ((SELECT id FROM teams WHERE name = 'Manchester United'), 'manu'),
   
-  -- Mexico National Team
-  ((SELECT id FROM teams WHERE name = 'Mexico National Team'), 'mex'),
+  -- Mexico
+  ((SELECT id FROM teams WHERE name = 'Mexico'), 'mex'),
   
-  -- Morocco National Team
-  ((SELECT id FROM teams WHERE name = 'Morocco National Team'), 'mar'),
-  ((SELECT id FROM teams WHERE name = 'Morocco National Team'), 'mor'),
+  -- Morocco
+  ((SELECT id FROM teams WHERE name = 'Morocco'), 'mar'),
+  ((SELECT id FROM teams WHERE name = 'Morocco'), 'mor'),
   
   -- Nantes
   ((SELECT id FROM teams WHERE name = 'Nantes'), 'nan'),
@@ -169,19 +169,19 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   -- Napoli
   ((SELECT id FROM teams WHERE name = 'Napoli'), 'nap'),
   
-  -- Netherlands National Team
-  ((SELECT id FROM teams WHERE name = 'Netherlands National Team'), 'ned'),
-  ((SELECT id FROM teams WHERE name = 'Netherlands National Team'), 'hol'),
+  -- Netherlands
+  ((SELECT id FROM teams WHERE name = 'Netherlands'), 'ned'),
+  ((SELECT id FROM teams WHERE name = 'Netherlands'), 'hol'),
   
-  -- New Zealand National Team
-  ((SELECT id FROM teams WHERE name = 'New Zealand National Team'), 'nzl'),
+  -- New Zealand
+  ((SELECT id FROM teams WHERE name = 'New Zealand'), 'nzl'),
   
   -- Newcastle United
   ((SELECT id FROM teams WHERE name = 'Newcastle United'), 'new'),
   ((SELECT id FROM teams WHERE name = 'Newcastle United'), 'nufc'),
   
-  -- Norway National Team
-  ((SELECT id FROM teams WHERE name = 'Norway National Team'), 'nor'),
+  -- Norway
+  ((SELECT id FROM teams WHERE name = 'Norway'), 'nor'),
   
   -- Nottingham Forest
   ((SELECT id FROM teams WHERE name = 'Nottingham Forest'), 'nfo'),
@@ -206,20 +206,20 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   -- Santos
   ((SELECT id FROM teams WHERE name = 'Santos'), 'san'),
   
-  -- Saudi Arabia National Team
-  ((SELECT id FROM teams WHERE name = 'Saudi Arabia National Team'), 'ksa'),
-  ((SELECT id FROM teams WHERE name = 'Saudi Arabia National Team'), 'sau'),
-  ((SELECT id FROM teams WHERE name = 'Saudi Arabia National Team'), 'sa'),
+  -- Saudi Arabia
+  ((SELECT id FROM teams WHERE name = 'Saudi Arabia'), 'ksa'),
+  ((SELECT id FROM teams WHERE name = 'Saudi Arabia'), 'sau'),
+  ((SELECT id FROM teams WHERE name = 'Saudi Arabia'), 'sa'),
   
-  -- South Africa National Team
-  ((SELECT id FROM teams WHERE name = 'South Africa National Team'), 'rsa'),
-  ((SELECT id FROM teams WHERE name = 'South Africa National Team'), 'sa'),
+  -- South Africa
+  ((SELECT id FROM teams WHERE name = 'South Africa'), 'rsa'),
+  ((SELECT id FROM teams WHERE name = 'South Africa'), 'sa'),
   
-  -- South Korea National Team
-  ((SELECT id FROM teams WHERE name = 'South Korea National Team'), 'kor'),
+  -- South Korea
+  ((SELECT id FROM teams WHERE name = 'South Korea'), 'kor'),
   
-  -- Spain National Team
-  ((SELECT id FROM teams WHERE name = 'Spain National Team'), 'esp'),
+  -- Spain
+  ((SELECT id FROM teams WHERE name = 'Spain'), 'esp'),
   
   -- Sporting CP
   ((SELECT id FROM teams WHERE name = 'Sporting CP'), 'scp'),
@@ -228,24 +228,24 @@ INSERT INTO team_aliases (team_id, alias) VALUES
   -- Sunderland
   ((SELECT id FROM teams WHERE name = 'Sunderland'), 'sun'),
   
-  -- Switzerland National Team
-  ((SELECT id FROM teams WHERE name = 'Switzerland National Team'), 'sui'),
+  -- Switzerland
+  ((SELECT id FROM teams WHERE name = 'Switzerland'), 'sui'),
   
   -- Tottenham Hotspur
   ((SELECT id FROM teams WHERE name = 'Tottenham Hotspur'), 'tot'),
   ((SELECT id FROM teams WHERE name = 'Tottenham Hotspur'), 'spurs'),
   
-  -- Turkey National Team
-  ((SELECT id FROM teams WHERE name = 'Turkey National Team'), 'tur'),
+  -- Turkey
+  ((SELECT id FROM teams WHERE name = 'Turkey'), 'tur'),
   
-  -- Uruguay National Team
-  ((SELECT id FROM teams WHERE name = 'Uruguay National Team'), 'uru'),
+  -- Uruguay
+  ((SELECT id FROM teams WHERE name = 'Uruguay'), 'uru'),
   
-  -- USA National Team
-  ((SELECT id FROM teams WHERE name = 'USA National Team'), 'usa'),
+  -- USA
+  ((SELECT id FROM teams WHERE name = 'USA'), 'usa'),
   
-  -- Uzbekistan National Team
-  ((SELECT id FROM teams WHERE name = 'Uzbekistan National Team'), 'uzb'),
+  -- Uzbekistan
+  ((SELECT id FROM teams WHERE name = 'Uzbekistan'), 'uzb'),
   
   -- West Ham United
   ((SELECT id FROM teams WHERE name = 'West Ham United'), 'whu'),

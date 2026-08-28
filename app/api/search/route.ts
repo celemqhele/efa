@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getLeagueFolders, getLeagueDisplayName } from '@/lib/logo-resolver'
+import { slugToName } from '@/lib/registry'
 import fs from 'fs'
 import path from 'path'
 
@@ -63,10 +64,7 @@ export async function GET(request: Request) {
     for (const file of files) {
       if (!file.endsWith('.png')) continue
       const slug = file.replace('.png', '')
-      const displayName = slug
-        .split('-')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ')
+      const displayName = slugToName(slug, true)
       if (displayName.toLowerCase().includes(q) || slug.toLowerCase().includes(q)) {
         countryResults.push({
           id: slug,

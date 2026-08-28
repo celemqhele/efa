@@ -57,7 +57,10 @@ export function getLeagueFolders(): string[] {
 }
 
 function slugToName(slug: string): string {
-  return slug
+  const base = slug
+    .replace(/-national-team$/, '')
+    .replace(/-football-federation$/, '')
+  return base
     .split('-')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
@@ -73,6 +76,8 @@ const SLUG_OVERRIDES: Record<string, string> = {
   'argentina-national-team': 'Argentina',
   'england-national-team': 'England',
   'brazil-national-team': 'Brazil',
+  'usa-national-team': 'USA',
+  'portuguese-football-federation': 'Portugal',
 }
 
 export function slugToDisplayName(slug: string, fallback?: string): string {

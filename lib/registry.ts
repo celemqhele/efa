@@ -246,7 +246,7 @@ const CLUB_NAMES: Record<string, string> = {
 
 const UPPERCASE_WORDS = new Set(['fc', 'ac', 'as', 'rb', 'sc', 'cf', 'cd', 'vfl', 'rc', 'nac', 'nec', 'pec', 'psv', 'fk', 'bk', 'aek', 'usa', 'fcsb', 'uta', 'paok'])
 
-function slugToName(slug: string, isNational = false): string {
+export function slugToName(slug: string, isNational = false): string {
   if (isNational) {
     if (NATIONAL_NAMES[slug]) return NATIONAL_NAMES[slug]
     return slug
