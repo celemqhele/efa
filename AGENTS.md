@@ -66,6 +66,8 @@ Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-String -P
 - `season-cup-flow/` — deferred cup creation after league end (start-tournament flow)
 - `south-african-premiership/` — South African Premiership (Betway Premiership) league addition
 - `deploy-performance/` — Vercel deployment performance / middleware timeout fixes
+- `context-file-conventions/` — rules on how context files themselves are written (opening intro, cross-references by path)
+- `whatsapp-ux/` — WhatsApp bot UX (welcome menu, input/keyword cleanup, plain-English prompts)
 
 ### Naming requirement
 Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's creation date (a new file always uses the current date). A context file is written once and never updated; a later change or fix on the same topic gets a brand-new file with the new date.
@@ -74,3 +76,21 @@ Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is th
 When creating a new context file for a change, decide whether it relates to an existing category or is brand-new:
 - **Related to an existing category** (a follow-up problem/change on something already documented) → create a brand-new file (new date) in that existing category folder. Never append to the existing file.
 - **Brand-new topic** → create a new category folder (kebab-case theme name, e.g. `auth/`) and add it to the list above. This is only allowed when the file is unrelated to every existing category — never create a folder just to isolate a single file that could join an existing chain.
+
+### Opening intro (summary paragraph)
+Every context file starts with a short intro paragraph right under the title, before
+any `## Problem` / `## Fix` sections:
+- First sentence: what was done — the change/fix at a glance.
+- For a follow-up file in a topic chain, add one sentence noting what the user
+  reported *after* the earlier change (a regression or a newly-surfaced issue), so
+  a reader sees how this file connects to the chain.
+
+### Cross-references (by path)
+When a point, issue, or action relates to another context file, reference it by its
+**full path** (e.g. `.opencode/context/backdoor/backdoor-betis-win_2026-08-16.md`)
+rather than only describing it in prose. Apply this anywhere it's relevant, not just
+the overview — the intro, the `## Problem`, and especially the **`## Fix` / actions**
+(e.g. "undid what was done in `xyzpath` by doing xyz, then reinstated the previous
+version created in `xyz2path`"). Because Glob/Grep silently skip `.opencode/`, a
+by-path reference is the only reliable way to keep a related file discoverable and
+solidifies the context chain.

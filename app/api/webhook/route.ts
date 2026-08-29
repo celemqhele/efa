@@ -57,6 +57,109 @@ function isAdminPhone(phone: string): boolean {
   return ADMIN_PHONES.some(p => p.replace(/\D/g, '') === norm)
 }
 
+// ─── Input normalization helpers ─────────────────────────────────────────────
+// Users type everything: "1", "option 1", "1 please", ""backdoor"", "i want to
+// submit a backdoor". These helpers strip quotes/punctuation/filler so flows
+// don't choke on extra words or characters.
+
+function normalizeText(input: string): string {
+  return input
+    .trim()
+    // strip any kind of quote anywhere in the message
+    .replace(/["'\u201C\u201D\u2018\u2019`]/g, '')
+    // drop trailing punctuation (keeps interior punctuation for team names)
+    .replace(/[.,;:!?]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extractNumber(text: string): number | null {
+  const m = normalizeText(text).match(/\d+/)
+  return m ? parseInt(m[0], 10) : null
+}
+
+function includesWord(text: string, word: string): boolean {
+  return new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`, 'i').test(normalizeText(text))
+}
+
+function isCancel(text: string): boolean {
+  return includesWord(text, 'cancel')
+}
+
+const YES_WORDS = [
+  'yes', 'yeah', 'yep', 'y', 'ja', 'ok', 'okay', 'sure', 'confirm', 'correct',
+  'right', 'go ahead', 'update', 'fine', 'good', 'submit', 'looks good',
+]
+const NO_WORDS = ['no', 'nah', 'nope', 'skip']
+
+function isYes(text: string): boolean {
+  const t = normalizeText(text)
+  return YES_WORDS.some(w => (w.includes(' ') ? includesWord(t, w) : includesWord(t, w)))
+}
+
+function isNo(text: string): boolean {
+  const t = normalizeText(text)
+  return NO_WORDS.some(w => includesWord(t, w)) || includesWord(t, 'cancel')
+}
+
+// Cleans a team-name answer: strips quotes/filler so quotes or trailing
+// "please"/"i want" don't break the "Team A vs Team B" split.
+function cleanTeamInput(input: string): string {
+  let out = normalizeText(input)
+    .replace(/\s+vs\.?\s+/gi, ' vs ')
+    .trim()
+  // Drop lead-in filler ("i want...", "please", "the match is", "between")
+  out = out.replace(/^(i want( to (submit|report|check|send))?|please|pls|the match( is)?|between)\s+/i, '')
+  // Drop trailing filler
+  out = out.replace(/\s+(please|pls|thanks|thank you|thank you very much|thx|a lot|for me)$/i, '')
+  return out.trim()
+}
+
+// Known commands. Ordered from most specific to most generic so multi-word
+// admin commands match before the generic "backdoor" keyword.
+const COMMAND_PHRASES: [string, 'manager_applications' | 'backdoor_submissions' | 'backdoor_admin' | 'backdoor' | 'check_fixtures' | 'apply' | 'submit_result'][] = [
+  ['manager applications', 'manager_applications'],
+  ['manager apps', 'manager_applications'],
+  ['backdoor submissions', 'backdoor_submissions'],
+  ['backdoor admin', 'backdoor_admin'],
+  ['check backdoor', 'backdoor'],
+  ['check my backdoors', 'backdoor'],
+  ['backdoor applications', 'backdoor'],
+  ['backdoor apps', 'backdoor'],
+  ['my backdoors', 'backdoor'],
+  ['submit backdoor', 'backdoor'],
+  ['submit a backdoor', 'backdoor'],
+  ['backdoor', 'backdoor'],
+  ['check fixtures', 'check_fixtures'],
+  ['check my fixtures', 'check_fixtures'],
+  ['my fixtures', 'check_fixtures'],
+  ['fixtures', 'check_fixtures'],
+  ['submit a result', 'submit_result'],
+  ['submit result', 'submit_result'],
+  ['send result', 'submit_result'],
+  ['send a result', 'submit_result'],
+  ['report a result', 'submit_result'],
+  ['report result', 'submit_result'],
+  ['apply to join', 'apply'],
+  ['join efa', 'apply'],
+  ['join the efa', 'apply'],
+  ['i want to join', 'apply'],
+  ['i want to apply', 'apply'],
+  ['create an efa account', 'apply'],
+  ['create an account', 'apply'],
+  ['register', 'apply'],
+  ['apply', 'apply'],
+]
+
+function findCommandHandler(text: string): string | null {
+  const t = normalizeText(text).toLowerCase()
+  for (const [phrase, handler] of COMMAND_PHRASES) {
+    const p = phrase.toLowerCase()
+    if (new RegExp(`(^|[^a-z0-9])${p}([^a-z0-9]|$)`, 'i').test(t)) return handler
+  }
+  return null
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const mode = searchParams.get('hub.mode')
@@ -214,7 +317,7 @@ const msg = messages[0]
           menu: 'Reply 1 or 2. Type CANCEL to exit.',
           fixture_search: 'Screenshot received. Which fixture? Type team names (e.g., "Arsenal vs Chelsea").',
           fixture_select: 'Screenshot received. Reply with the number of your match.',
-          side: 'Screenshot received. Type the team that is not responding. Type CANCEL to abort.',
+          side: 'Screenshot received. Type the team that is not responding. Type CANCEL to stop.',
           check: 'Reply 1 or 2. Type CANCEL to exit.',
         }
         const prompt = backdoorPrompts[session.backdoor_menu_step || ''] || 'Type team names or type CANCEL to exit.'
@@ -243,7 +346,7 @@ const msg = messages[0]
       if (winner) {
         await handleImage(from, winner, phoneNumberId)
       } else {
-        await sendTextMessage(from, "I couldn't analyse the image. Send to the group.", phoneNumberId)
+        await sendTextMessage(from, "Sorry, I could not read the screenshot. Please send it again.", phoneNumberId)
       }
     } else if (msg.type === 'image') {
       // No useful caption, proceed to OCR
@@ -329,16 +432,67 @@ async function isBackdoorWindowEnabled(supabase: any): Promise<boolean> {
 }
 
 const BACKDOOR_DISABLED_MESSAGE =
-  'Backdoor submissions are currently disabled because it is too early to be submitting backdoor. Submit again on Thursday when it opens'
+  'Opponent-not-responding reports (backdoor) are closed right now. They open on Thursday. Please try again then.'
+
+const WELCOME_MENU =
+  'Hi 👋 You are speaking to the EFA bot.\n\n' +
+  'What do you need help with? Reply with a number:\n\n' +
+  '1. Send a match result\n' +
+  '2. Opponent did not respond, or gave you the win\n' +
+  '3. Create an EFA account\n' +
+  '4. Check my backdoor applications'
+
+// Shown only on initial contact (no active flow). Every mid-flow state is
+// handled earlier in handleText, so this never re-triggers while the user is
+// choosing options inside an existing flow.
+async function handleWelcomeMenu(from: string, text: string, phoneNumberId: string) {
+  const num = extractNumber(text)
+  if (num === 1) {
+    await sendTextMessage(from, 'Send a screenshot of your result screen and I will take it from there.', phoneNumberId)
+    return
+  }
+  if (num === 2) {
+    const supabase = await createAdminClient()
+    if (!(await isBackdoorWindowEnabled(supabase))) {
+      await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
+      return
+    }
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot' })
+    await sendTextMessage(from, 'Send a screenshot showing that the opponent did not respond.', phoneNumberId)
+    return
+  }
+  if (num === 3) {
+    await handleOnboardingStart(from, phoneNumberId)
+    return
+  }
+  if (num === 4) {
+    await showUserBackdoorApplications(from, phoneNumberId)
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
+    return
+  }
+  await sendTextMessage(from, WELCOME_MENU, phoneNumberId)
+}
+
+// Deterministic re-prompt for when a user mid-flow (scores loaded) sends an
+// off-topic message, instead of the vague "I only help with..." fallback.
+function resultFlowReprompt(session: SessionData): string {
+  if (session.state === 'awaiting_override_confirm') {
+    return 'This match already has a result. Reply YES to override it, or NO to cancel.'
+  }
+  if (session.state === 'awaiting_forfeit' || session.state === 'awaiting_forfeit_confirm') {
+    return 'Reply YES or NO.'
+  }
+  return 'Reply YES to submit, SWAP to change the score side, EDIT SCORE to change the score, or CANCEL to stop.'
+}
 
 async function handleBackdoorSearch(from: string, text: string, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, "Cancelled.", phoneNumberId)
     return
   }
   const supabase = await createAdminClient()
-  const searchInput = text.trim()
+  const searchInput = cleanTeamInput(text)
   const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
 
   const { data: fixtures } = await supabase
@@ -360,14 +514,14 @@ async function handleBackdoorSearch(from: string, text: string, phoneNumberId: s
   teamSearches = teamSearches.filter((s: string) => s.length >= 2)
 
   if (teamSearches.length === 0) {
-    await sendTextMessage(from, 'Please type at least one team name. Type CANCEL to start over.', phoneNumberId)
+    await sendTextMessage(from, 'Please type at least one team name. Type CANCEL to stop.', phoneNumberId)
     return
   }
 
   const resolvedTeams = await Promise.all(teamSearches.map((s: string) => resolveTeamName(s)))
 
   if (resolvedTeams.some((r: string | null) => r === null)) {
-    await sendTextMessage(from, `Could not find teams matching your input. Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+    await sendTextMessage(from, `Sorry, I could not find those teams. Please type both full team names, e.g. "Paris Saint-Germain vs Arsenal".`, phoneNumberId)
     return
   }
 
@@ -379,7 +533,7 @@ async function handleBackdoorSearch(from: string, text: string, phoneNumberId: s
   })
 
   if (matchedFixtures.length === 0) {
-    await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
+    await sendTextMessage(from, `No match found for that. Please check the team names and try again, or type CANCEL.`, phoneNumberId)
     await clearSession(from)
     return
   }
@@ -392,11 +546,11 @@ async function handleBackdoorSearch(from: string, text: string, phoneNumberId: s
   })
 
   const lines = formatFixtureListWithHeadings(sortedForDisplay)
-  await sendTextMessage(from, `Found ${sortedForDisplay.length} match${sortedForDisplay.length === 1 ? '' : 'es'}:\n\n${lines}\n\nReply with the number. Type CANCEL to abort.`, phoneNumberId)
+  await sendTextMessage(from, `Found ${sortedForDisplay.length} match${sortedForDisplay.length === 1 ? '' : 'es'}:\n\n${lines}\n\nReply with the number. Type CANCEL to stop.`, phoneNumberId)
 }
 
 async function handleBackdoorFixture(from: string, text: string, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, "Cancelled.", phoneNumberId)
     return
@@ -404,11 +558,11 @@ async function handleBackdoorFixture(from: string, text: string, phoneNumberId: 
   const session = await getSession(from)
   if (!session?.displayed_fixtures) {
     await clearSession(from)
-    await sendTextMessage(from, "Something went wrong. Start over.", phoneNumberId)
+    await sendTextMessage(from, "Something went wrong. Please start again.", phoneNumberId)
     return
   }
-  const num = parseInt(text.trim(), 10)
-  if (isNaN(num) || num < 1 || num > session.displayed_fixtures.length) {
+  const num = extractNumber(text)
+  if (num === null || num < 1 || num > session.displayed_fixtures.length) {
     await sendTextMessage(from, `Pick a number between 1 and ${session.displayed_fixtures.length}.`, phoneNumberId)
     return
   }
@@ -441,11 +595,11 @@ async function handleBackdoorFixture(from: string, text: string, phoneNumberId: 
     matched_fixture_id: fixtureId,
   })
 
-  await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Type the team name (e.g. ${h} or ${a}). Type CANCEL to abort.`, phoneNumberId)
+  await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Type the team name (e.g. ${h} or ${a}). Type CANCEL to stop.`, phoneNumberId)
 }
 
 async function handleBackdoorOverrideConfirm(from: string, text: string, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, "Cancelled.", phoneNumberId)
     return
@@ -453,11 +607,10 @@ async function handleBackdoorOverrideConfirm(from: string, text: string, phoneNu
   const session = await getSession(from)
   if (!session?.matched_fixture_id) {
     await clearSession(from)
-    await sendTextMessage(from, "Something went wrong. Start over.", phoneNumberId)
+    await sendTextMessage(from, "Something went wrong. Please start again.", phoneNumberId)
     return
   }
-  const lower = text.trim().toLowerCase()
-  if (/^yes$/i.test(lower)) {
+  if (isYes(text)) {
     await upsertSession({
       phone_number: from,
       state: 'awaiting_backdoor_side',
@@ -471,19 +624,19 @@ async function handleBackdoorOverrideConfirm(from: string, text: string, phoneNu
       .single()
     const h = fixtureTeamName(data, 'home')
     const a = fixtureTeamName(data, 'away')
-    await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Type the team name (e.g. ${h} or ${a}). Type CANCEL to abort.`, phoneNumberId)
+    await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Type the team name (e.g. ${h} or ${a}). Type CANCEL to stop.`, phoneNumberId)
     return
   }
-  if (/^no$/i.test(lower)) {
+  if (isNo(text)) {
     await clearSession(from)
     await sendTextMessage(from, "OK. No changes made.", phoneNumberId)
     return
   }
-  await sendTextMessage(from, 'Reply YES or NO.', phoneNumberId)
+  await sendTextMessage(from, 'Reply YES or NO. Type CANCEL to stop.', phoneNumberId)
 }
 
 async function handleBackdoorSide(from: string, text: string, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, "Cancelled.", phoneNumberId)
     return
@@ -491,7 +644,7 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
   const session = await getSession(from)
   if (!session?.matched_fixture_id) {
     await clearSession(from)
-    await sendTextMessage(from, "Something went wrong. Start over.", phoneNumberId)
+    await sendTextMessage(from, "Something went wrong. Please start again.", phoneNumberId)
     return
   }
   const supabase = await createAdminClient()
@@ -594,18 +747,18 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
 
 async function handleSubmissionType(from: string, text: string, session: SessionData, phoneNumberId: string) {
   const step = session.submission_menu_step
-  const lower = text.trim().toLowerCase()
 
   console.log('[handleSubmissionType] session:', JSON.stringify(session))
 
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
 
   if (step === 'menu') {
-    if (lower === '1') {
+    const option = extractNumber(text)
+    if (option === 1) {
       // Submitting scheduled fixture - filter by scheduled status
       await upsertSession({ 
         phone_number: from, 
@@ -618,11 +771,10 @@ async function handleSubmissionType(from: string, text: string, session: Session
         match_stats: session.match_stats,
         screenshot_media_id: session.screenshot_media_id,
       })
-      const { start, end } = getWeekRange()
-      await sendTextMessage(from, `First-time submission (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
+      await sendTextMessage(from, `This is a new score.\n\nWhat match is it for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to stop.`, phoneNumberId)
       return
     }
-    if (lower === '2') {
+    if (option === 2) {
       // Fixing already submitted fixture - filter by confirmed/awaiting_confirmation
       await upsertSession({ 
         phone_number: from, 
@@ -635,11 +787,10 @@ async function handleSubmissionType(from: string, text: string, session: Session
         match_stats: session.match_stats,
         screenshot_media_id: session.screenshot_media_id,
       })
-      const { start, end } = getWeekRange()
-      await sendTextMessage(from, `Changing an already-submitted score (last 7 days to next 7 days).\n\nWhat match is this for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to start over.`, phoneNumberId)
+      await sendTextMessage(from, `This changes a score that was already submitted.\n\nWhat match is it for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to stop.`, phoneNumberId)
       return
     }
-    await sendTextMessage(from, 'Reply 1 or 2.', phoneNumberId)
+    await sendTextMessage(from, 'Reply 1 or 2. Type CANCEL to stop.', phoneNumberId)
     return
   }
 }
@@ -741,10 +892,9 @@ async function getPhoneUpdatePrompt(from: string, session: SessionData, supabase
 }
 
 async function handlePhoneUpdate(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  const lower = text.trim().toLowerCase()
   const supabase = await createAdminClient()
 
-  if (/^(yes|yeah|yep|y|ja|ok|okay|sure|update|confirm)$/i.test(lower)) {
+  if (isYes(text)) {
     if (!session.phone_update_profile_id) {
       await clearSession(from)
       await sendTextMessage(from, 'Something went wrong. Try again later.', phoneNumberId)
@@ -756,7 +906,7 @@ async function handlePhoneUpdate(from: string, text: string, session: SessionDat
     return
   }
 
-  if (/^(no|nah|nope|n|cancel)$/i.test(lower)) {
+  if (isNo(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'No problem. Your number stays as it is.', phoneNumberId)
     return
@@ -766,10 +916,9 @@ async function handlePhoneUpdate(from: string, text: string, session: SessionDat
 }
 
 async function handlePhoneTeamConfirm(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  const lower = text.trim().toLowerCase()
   const supabase = await createAdminClient()
 
-  if (/^cancel$/i.test(lower)) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'No problem. Your number stays as it is.', phoneNumberId)
     return
@@ -782,6 +931,7 @@ async function handlePhoneTeamConfirm(from: string, text: string, session: Sessi
     return
   }
 
+  const lower = cleanTeamInput(text)
   const match = candidates.find(c =>
     c.teamName.toLowerCase() === lower ||
     lower.includes(c.teamName.toLowerCase()) ||
@@ -914,16 +1064,17 @@ async function handleCheckFixturesCommand(from: string, phoneNumberId: string) {
 }
 
 async function handleFixturesTeam(from: string, text: string, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
 
   const supabase = await createAdminClient()
-  const teamName = await resolveTeamName(text.trim())
+  const cleaned = cleanTeamInput(text)
+  const teamName = await resolveTeamName(cleaned)
   if (!teamName) {
-    await sendTextMessage(from, `Could not find a team matching "${text.trim()}". Please write the full team name. Type CANCEL to exit.`, phoneNumberId)
+    await sendTextMessage(from, `Sorry, I could not find a team matching that. Please type the full team name. Type CANCEL to stop.`, phoneNumberId)
     return
   }
 
@@ -933,7 +1084,7 @@ async function handleFixturesTeam(from: string, text: string, phoneNumberId: str
     .eq('name', teamName)
     .maybeSingle()
   if (!team) {
-    await sendTextMessage(from, `Could not find a team matching "${text.trim()}". Please write the full team name. Type CANCEL to exit.`, phoneNumberId)
+    await sendTextMessage(from, `Sorry, I could not find a team matching that. Please type the full team name. Type CANCEL to stop.`, phoneNumberId)
     return
   }
 
@@ -967,11 +1118,10 @@ async function handleFixturesTeam(from: string, text: string, phoneNumberId: str
 }
 
 async function handleFixturesPhoneConfirm(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  const lower = text.trim().toLowerCase()
   const supabase = await createAdminClient()
 
-  const affirm = /^(yes|yeah|yep|y|ja|ok|okay|sure|update|confirm)$/i.test(lower)
-  const decline = /^(later|no|nah|nope|n|skip)$/i.test(lower)
+  const decline = isNo(text) || /^later$/i.test(normalizeText(text))
+  const affirm = !decline && isYes(text)
 
   if (affirm) {
     if (session.phone_update_profile_id) {
@@ -1046,29 +1196,15 @@ async function sendOpponentContact(from: string, fixtureId: string, myTeamIds: s
 }
 
 async function handleFixturesAction(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
 
-  const trimmed = text.trim()
-  const isPureNumber = /^\d+$/.test(trimmed)
-
-  if (isPureNumber) {
-    const num = parseInt(trimmed, 10)
-    if (session.displayed_fixtures && num >= 1 && num <= session.displayed_fixtures.length) {
-      if (!session.fixtures_team_ids || session.fixtures_team_ids.length === 0) {
-        await clearSession(from)
-        await sendTextMessage(from, 'Something went wrong. Type "check fixtures" to start again.', phoneNumberId)
-        return
-      }
-      await sendOpponentContact(from, session.displayed_fixtures[num - 1], session.fixtures_team_ids, phoneNumberId)
-      return
-    }
-  }
-
-  const parsed = parseUserDate(trimmed)
+  // A date (e.g. "15 Aug" or "tomorrow") must be checked BEFORE number
+  // extraction, otherwise "15 Aug" would be treated as fixture number 15.
+  const parsed = parseUserDate(text)
   if (parsed) {
     if (!session.fixtures_team_ids || session.fixtures_team_ids.length === 0) {
       await clearSession(from)
@@ -1079,38 +1215,49 @@ async function handleFixturesAction(from: string, text: string, session: Session
     return
   }
 
-  await sendTextMessage(from, `Reply with a number from the list to get your opponent's contact, or type a date (e.g. 15 Aug) to check fixtures for another day. Type CANCEL to exit.`, phoneNumberId)
+  const num = extractNumber(text)
+  if (num !== null && session.displayed_fixtures && num >= 1 && num <= session.displayed_fixtures.length) {
+    if (!session.fixtures_team_ids || session.fixtures_team_ids.length === 0) {
+      await clearSession(from)
+      await sendTextMessage(from, 'Something went wrong. Type "check fixtures" to start again.', phoneNumberId)
+      return
+    }
+    await sendOpponentContact(from, session.displayed_fixtures[num - 1], session.fixtures_team_ids, phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(from, `Reply with a number from the list to get your opponent's contact, or type a date (e.g. 15 Aug) to check fixtures for another day. Type CANCEL to stop.`, phoneNumberId)
 }
 
 // ─── Backdoor User Flow ──────────────────────────────────────────────────────────
 
 async function handleBackdoorFlow(from: string, text: string, session: SessionData, phoneNumberId: string) {
   const step = session.backdoor_menu_step
-  const lower = text.trim().toLowerCase()
 
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
 
   if (step === 'menu') {
-    if (lower === '1') {
+    const option = extractNumber(text)
+    if (option === 1) {
       const supabase = await createAdminClient()
       if (!(await isBackdoorWindowEnabled(supabase))) {
         await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
         return
       }
       await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot' })
-      await sendTextMessage(from, 'Send a screenshot showing the opponent not responding.', phoneNumberId)
+      await sendTextMessage(from, 'Send a screenshot showing that the opponent did not respond.', phoneNumberId)
       return
     }
-    if (lower === '2') {
+    if (option === 2) {
       await showUserBackdoorApplications(from, phoneNumberId)
       await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
       return
     }
-    await sendTextMessage(from, 'Reply 1 or 2.', phoneNumberId)
+    await sendTextMessage(from, 'Reply 1 or 2. Type CANCEL to stop.', phoneNumberId)
     return
   }
 
@@ -1142,8 +1289,13 @@ async function handleBackdoorFlow(from: string, text: string, session: SessionDa
 }
 
 async function handleBackdoorFixtureSearch(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
   const supabase = await createAdminClient()
-  const searchInput = text.trim()
+  const searchInput = cleanTeamInput(text)
 
   // Strip score patterns
   const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
@@ -1172,7 +1324,7 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
   teamSearches = teamSearches.filter((s: string) => s.length >= 2)
 
 if (teamSearches.length === 0) {
-    await sendTextMessage(from, 'Please type at least one team name. Type CANCEL to start over.', phoneNumberId)
+    await sendTextMessage(from, 'Please type at least one team name. Type CANCEL to stop.', phoneNumberId)
     return
   }
 
@@ -1182,7 +1334,7 @@ if (teamSearches.length === 0) {
   )
   
   if (resolvedTeams.some(r => r === null)) {
-    await sendTextMessage(from, `Could not find teams matching your input. Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+    await sendTextMessage(from, `Sorry, I could not find those teams. Please type both full team names, e.g. "Paris Saint-Germain vs Arsenal".`, phoneNumberId)
     return
   }
 
@@ -1203,12 +1355,7 @@ if (teamSearches.length === 0) {
   const matchedFixtures = sortFixturesForDisplay(matched)
 
   if (matchedFixtures.length === 0) {
-    await sendTextMessage(from, `No fixtures found matching "${searchInput}". Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
-    return
-  }
-
-  if (matchedFixtures.length === 0) {
-    await sendTextMessage(from, `No fixtures found matching "${searchInput}". Try different team names or type CANCEL.`, phoneNumberId)
+    await sendTextMessage(from, `No match found for that. Please type both full team names, e.g. "Arsenal vs Everton", or type CANCEL to stop.`, phoneNumberId)
     return
   }
 
@@ -1225,7 +1372,7 @@ if (teamSearches.length === 0) {
       backdoor_side: null,
     })
 
-    await sendTextMessage(from, `${hName} vs ${aName}\n\nWho is not responding? Type the team name (e.g. ${hName} or ${aName}). Type CANCEL to abort.`, phoneNumberId)
+    await sendTextMessage(from, `${hName} vs ${aName}\n\nWho is not responding? Type the team name (e.g. ${hName} or ${aName}). Type CANCEL to stop.`, phoneNumberId)
     return
   }
 
@@ -1237,7 +1384,7 @@ if (teamSearches.length === 0) {
     backdoor_fixture_ids: matchedFixtures.map((f: any) => f.id),
   })
 
-  await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+  await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to stop.`, phoneNumberId)
 }
 
 // Sort fixtures the same way formatFixtureListWithHeadings displays them so the
@@ -1295,13 +1442,13 @@ function formatFixtureListWithHeadings(fixtures: any[]): string {
 }
 
 async function handleBackdoorFixtureSelect(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
-  const num = parseInt(text.trim(), 10)
-  if (isNaN(num) || num < 1 || num > (session.backdoor_fixture_ids?.length || 0)) {
+  const num = extractNumber(text)
+  if (num === null || num < 1 || num > (session.backdoor_fixture_ids?.length || 0)) {
     await sendTextMessage(from, `Pick a number between 1 and ${session.backdoor_fixture_ids?.length || 0}.`, phoneNumberId)
     return
   }
@@ -1322,7 +1469,7 @@ async function handleBackdoorFixtureSelect(from: string, text: string, session: 
     matched_fixture_id: fixtureId,
   })
 
-  await sendTextMessage(from, `${h} vs ${a}\n\nWho is not responding? Type the team name (e.g. ${h} or ${a}). Type CANCEL to abort.`, phoneNumberId)
+  await sendTextMessage(from, `${h} vs ${a}\n\nWho is not responding? Type the team name (e.g. ${h} or ${a}). Type CANCEL to stop.`, phoneNumberId)
 }
 
 // Resolve the team the manager typed into a home/away side for the given
@@ -1333,9 +1480,9 @@ async function resolveBackdoorSide(
   fixtureId: string | null,
   text: string
 ): Promise<'home' | 'away' | null> {
-  const lower = text.trim().toLowerCase()
-  if (lower === 'home') return 'home'
-  if (lower === 'away') return 'away'
+  const input = cleanTeamInput(text)
+  if (input === 'home') return 'home'
+  if (input === 'away') return 'away'
   if (!fixtureId) return null
 
   const { data: f } = await supabase
@@ -1346,10 +1493,10 @@ async function resolveBackdoorSide(
 
   const homeName = fixtureTeamName(f, 'home').toLowerCase()
   const awayName = fixtureTeamName(f, 'away').toLowerCase()
-  if (homeName && lower === homeName) return 'home'
-  if (awayName && lower === awayName) return 'away'
+  if (homeName && input === homeName) return 'home'
+  if (awayName && input === awayName) return 'away'
 
-  const resolved = await resolveTeamName(text.trim())
+  const resolved = await resolveTeamName(input)
   if (resolved) {
     const r = resolved.toLowerCase()
     if (r === homeName) return 'home'
@@ -1359,6 +1506,11 @@ async function resolveBackdoorSide(
 }
 
 async function handleBackdoorSideSelect(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
   const supabase = await createAdminClient()
   const side = await resolveBackdoorSide(supabase, session.matched_fixture_id, text)
   if (!side) {
@@ -1586,13 +1738,13 @@ async function showBackdoorSubmissionsForReview(from: string, phoneNumberId: str
 }
 
 async function handleBackdoorAdminReview(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
-  const num = parseInt(text.trim(), 10)
-  if (isNaN(num) || num < 1 || num > (session.displayed_fixtures?.length || 0)) {
+  const num = extractNumber(text)
+  if (num === null || num < 1 || num > (session.displayed_fixtures?.length || 0)) {
     await sendTextMessage(from, `Pick a number between 1 and ${session.displayed_fixtures?.length || 0}.`, phoneNumberId)
     return
   }
@@ -1629,8 +1781,8 @@ async function handleBackdoorAdminReview(from: string, text: string, session: Se
 }
 
 async function handleBackdoorAdminDecision(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  const lower = text.trim().toLowerCase()
-  if (!/^(approve|decline)$/i.test(lower)) {
+  const approve = includesWord(text, 'approve')
+  if (!approve && !includesWord(text, 'decline')) {
     await sendTextMessage(from, 'Reply "approve" or "decline".', phoneNumberId)
     return
   }
@@ -1639,7 +1791,7 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
   const submissionIds = session.backdoor_fixture_ids || []
   const fixtureId = session.matched_fixture_id
 
-  if (lower === 'approve') {
+  if (approve) {
     // Determine outcome based on number of submissions
     const { data: submissions } = await supabase
       .from('backdoor_submissions')
@@ -1966,15 +2118,15 @@ async function getTeamsForAssignment(supabase: any): Promise<{ id: string; name:
 }
 
 async function handleManagerApplicationsApplicant(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
 
   const applicants = session.admin_assign_applicants ?? []
-  const num = parseInt(text.trim(), 10)
-  if (isNaN(num) || num < 1 || num > applicants.length) {
+  const num = extractNumber(text)
+  if (num === null || num < 1 || num > applicants.length) {
     await sendTextMessage(from, `Pick a number between 1 and ${applicants.length}. Type CANCEL.`, phoneNumberId)
     return
   }
@@ -2004,15 +2156,15 @@ async function handleManagerApplicationsApplicant(from: string, text: string, se
 }
 
 async function handleManagerApplicationsTeam(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
 
   const teams = session.admin_assign_team_list ?? []
-  const num = parseInt(text.trim(), 10)
-  if (isNaN(num) || num < 1 || num > teams.length) {
+  const num = extractNumber(text)
+  if (num === null || num < 1 || num > teams.length) {
     await sendTextMessage(from, `Pick a number between 1 and ${teams.length}. Type CANCEL.`, phoneNumberId)
     return
   }
@@ -2034,20 +2186,18 @@ async function handleManagerApplicationsTeam(from: string, text: string, session
 }
 
 async function handleManagerApplicationsConfirm(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  const lower = text.trim().toLowerCase()
-
-  if (/^cancel$/i.test(lower)) {
+  if (isCancel(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
-  if (!/^(yes|y|no|n)$/i.test(lower)) {
-    await sendTextMessage(from, 'Reply yes or no. Type CANCEL to exit.', phoneNumberId)
-    return
-  }
-  if (/^(no|n)$/i.test(lower)) {
+  if (isNo(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'Cancelled. No changes made.', phoneNumberId)
+    return
+  }
+  if (!isYes(text)) {
+    await sendTextMessage(from, 'Reply yes or no. Type CANCEL to stop.', phoneNumberId)
     return
   }
 
@@ -2281,7 +2431,7 @@ async function handleForfeitYes(from: string, session: SessionData, supabase: an
     pending_date: `${hScore}:${aScore}`,
   })
 
-  await sendTextMessage(from, `Forfeit applied. Confirm result: ${hName} ${newHomeScore}-${newAwayScore} ${aName} (forfeited)?\n\nReply YES to submit. Type CANCEL to abort.`, phoneNumberId)
+  await sendTextMessage(from, `Forfeit applied. Confirm result: ${hName} ${newHomeScore}-${newAwayScore} ${aName} (forfeited)?\n\nReply YES to submit. Type CANCEL to stop.`, phoneNumberId)
 }
 
 // ─── Text handler ⸺ only handles confirm/correct responses to ongoing result flow ──
@@ -2494,34 +2644,14 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     await handleFixturesAction(from, text, session, phoneNumberId)
     return
   }
-  if (/^(check\s*)?(my\s*)?fixtures?$/i.test(text.trim())) {
+  // ─── Commands (keyword-tolerant: quotes, extra words and punctuation are stripped) ──
+  // Ordered most-specific first so multi-word admin commands win over "backdoor".
+  const command = findCommandHandler(text)
+  if (command === 'check_fixtures') {
     await handleCheckFixturesCommand(from, phoneNumberId)
     return
   }
-  // User types "backdoor" -> show menu (also accept common variants)
-  if (/^(backdoor|backdoor applications|backdoor apps|check backdoor|my backdoors)$/i.test(text.trim())) {
-    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
-    await sendTextMessage(from,
-      'Backdoor Applications\n\n' +
-      '1. Submit new backdoor\n' +
-      '2. Check my applications\n\n' +
-      'Reply with 1 or 2. Type CANCEL to exit.',
-      phoneNumberId
-    )
-    return
-  }
-  // Admin types "backdoor admin" -> direct backdoor (admin only)
-  if (/^backdoor admin$/i.test(text.trim())) {
-    if (!isAdminPhone(from)) {
-      await sendTextMessage(from, 'Admin only.', phoneNumberId)
-      return
-    }
-    await upsertSession({ phone_number: from, state: 'awaiting_backdoor_search' })
-    await sendTextMessage(from, 'Enter the fixture (team names, e.g. "Arsenal vs Chelsea").', phoneNumberId)
-    return
-  }
-  // Admin types "backdoor submissions" -> review flow (admin only)
-  if (/^backdoor submissions$/i.test(text.trim())) {
+  if (command === 'backdoor_submissions') {
     if (!isAdminPhone(from)) {
       await sendTextMessage(from, 'Admin only.', phoneNumberId)
       return
@@ -2529,14 +2659,38 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     await showBackdoorSubmissionsForReview(from, phoneNumberId)
     return
   }
+  if (command === 'backdoor_admin') {
+    if (!isAdminPhone(from)) {
+      await sendTextMessage(from, 'Admin only.', phoneNumberId)
+      return
+    }
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor_search' })
+    await sendTextMessage(from, 'Type the fixture, e.g. "Arsenal vs Chelsea".', phoneNumberId)
+    return
+  }
+  if (command === 'backdoor') {
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
+    await sendTextMessage(from,
+      'Opponent not responding (backdoor win)\n\n' +
+      '1. Report an opponent who did not respond\n' +
+      '2. Check my reports\n\n' +
+      'Reply 1 or 2. Type CANCEL to stop.',
+      phoneNumberId
+    )
+    return
+  }
   // ─── Onboarding command (new players) ───────────────────────────────────────
-  if (/^(apply|apply to join|join efa|join the efa|i want to join|i want to apply)$/i.test(text.trim())) {
+  if (command === 'apply') {
     await handleOnboardingStart(from, phoneNumberId)
     return
   }
   // ─── Admin: manager applications command ────────────────────────────────────
-  if (/^(manager applications|manager apps)$/i.test(text.trim())) {
+  if (command === 'manager_applications') {
     await handleManagerApplicationsStart(from, phoneNumberId)
+    return
+  }
+  if (command === 'submit_result') {
+    await sendTextMessage(from, 'Send a screenshot of your result screen and I will take it from there.', phoneNumberId)
     return
   }
   // ─── Submission type selection (after screenshot OCR) ────────────────────────
@@ -2546,13 +2700,13 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   }
   // ─── Match name search (after screenshot) ────────────────────────────────
   if (session?.state === 'awaiting_match_name') {
-    if (/^cancel$/i.test(text.trim())) {
+    if (isCancel(text)) {
       await clearSession(from)
-      await sendTextMessage(from, "No stress. Send a new screenshot when you're ready.", phoneNumberId)
+      await sendTextMessage(from, "OK. Send a new screenshot when you're ready.", phoneNumberId)
       return
     }
     const supabase = await createAdminClient()
-    const searchInput = text.trim()
+    const searchInput = cleanTeamInput(text)
 
     // Strip any score patterns (e.g. "3-2", "3:2", "3 2") so users can type
     // "inter milan 3-2 liverpool" and we only match on team names
@@ -2588,7 +2742,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     )
 
     if (resolvedTeams.some(r => r === null)) {
-      await sendTextMessage(from, `Could not find teams matching your input. Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+      await sendTextMessage(from, `Sorry, I could not find those teams. Please type both full team names, e.g. "Paris Saint-Germain vs Arsenal".`, phoneNumberId)
       return
     }
 
@@ -2604,7 +2758,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     const id2 = idByName.get(resolved2.toLowerCase())
 
     if (!id1 || !id2) {
-      await sendTextMessage(from, `Could not find teams matching your input. Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+      await sendTextMessage(from, `Sorry, I could not find those teams. Please type both full team names, e.g. "Paris Saint-Germain vs Arsenal".`, phoneNumberId)
       return
     }
 
@@ -2650,7 +2804,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
 
     if (matchedFixtures.length === 0) {
-      await sendTextMessage(from, `No fixtures found matching "${searchInput}". Please write the full team names.\nFor example: instead of 'psg vs arsenal' write 'Paris Saint Germain vs Arsenal'`, phoneNumberId)
+      await sendTextMessage(from, `No match found for that. Please type both full team names, e.g. "Arsenal vs Everton", or type CANCEL to stop.`, phoneNumberId)
       return
     }
 
@@ -2676,7 +2830,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       const tournamentLine = fixtureTournamentName(f) ? ` - ${fixtureTournamentName(f)}` : ''
       const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
       const statsBlock = formatStatsBlock(session.match_stats)
-      await sendTextMessage(from, `Found: ${hName} vs ${aName}${dateLine}${tournamentLine}${resultLine}\n\nConfirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.`, phoneNumberId)
+      await sendTextMessage(from, `Found: ${hName} vs ${aName}${dateLine}${tournamentLine}${resultLine}\n\nConfirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if the stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.`, phoneNumberId)
       return
     }
 
@@ -2687,33 +2841,35 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       displayed_fixtures: matchedFixtures.map((f: any) => f.id),
     })
 
-    await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to start over.`, phoneNumberId)
+    await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to stop.`, phoneNumberId)
     return
   }
 
   // ─── Already-submitted match (user chose "first time" but fixture is confirmed) ─
   if (session?.state === 'awaiting_already_submitted') {
-    const lower = text.trim().toLowerCase()
-    if (/^(yes|yeah|yep|y|ja|ok|okay|sure|correct|edit|fix)$/i.test(lower)) {
+    const lower = normalizeText(text)
+    if (isYes(lower) || includesWord(lower, 'edit')) {
       await clearSession(from)
-      await sendTextMessage(from, "Got it. Send a new screenshot and choose option 2 (Changing a score that was already submitted).", phoneNumberId)
-    } else if (/^(no|nah|nope|n)$/i.test(lower)) {
+      await sendTextMessage(from, "OK. Send a new screenshot, and choose option 2 (change a score that was already submitted).", phoneNumberId)
+    } else if (isNo(lower)) {
       await clearSession(from)
       await sendTextMessage(from, "If you need to submit a new match, send a new screenshot and let me know.", phoneNumberId)
-    } else if (/^cancel$/i.test(text.trim())) {
+    } else if (isCancel(text)) {
       await clearSession(from)
-      await sendTextMessage(from, "No stress. Send a new screenshot when you're ready.", phoneNumberId)
+      await sendTextMessage(from, "OK. Send a new screenshot when you're ready.", phoneNumberId)
     } else {
       await sendTextMessage(from, "Would you like to edit the submitted result? Reply YES or NO.", phoneNumberId)
     }
     return
   }
 
-  // Only reject users who have no active session at all (never sent a screenshot)
-  // Exclude backdoor flow states which don't use scores
+  // No active flow: this is initial contact. Show the welcome menu so the user
+  // can pick what they want to do. Every mid-flow state is handled earlier, and
+  // score-based flows always have scores set, so this never re-triggers while a
+  // flow is waiting for input.
   const isBackdoorState = session?.state?.startsWith('awaiting_backdoor') === true
   if (!session || (!isBackdoorState && session.home_score === null && session.away_score === null)) {
-    await sendTextMessage(from, "I only help with submitting match results. Send a screenshot of your result screen and I'll take it from there.", phoneNumberId)
+    await handleWelcomeMenu(from, text, phoneNumberId)
     return
   }
 
@@ -2721,12 +2877,12 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
   // Forfeit question: did the losing team forfeit?
   if (session?.state === 'awaiting_forfeit') {
-    const lower = text.trim().toLowerCase()
-    if (/^(yes|yeah|yep|y|ja)$/i.test(lower)) {
+    const lower = normalizeText(text)
+    if (isYes(lower) || lower.includes('forfeit')) {
       await handleForfeitYes(from, session, supabase, phoneNumberId)
       return
     }
-    if (/^(no|nah|nope|n)$/i.test(lower)) {
+    if (isNo(lower)) {
       await upsertSession({ phone_number: from, state: 'idle' })
       console.log('[webhook] user declined forfeit, writing to DB')
       const { data: fixCheck } = await supabase
@@ -2741,23 +2897,23 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       }
       return
     }
-    await sendTextMessage(from, "Reply yes or no.", phoneNumberId)
+    await sendTextMessage(from, "Did the losing team forfeit before the game finished? Reply YES or NO.", phoneNumberId)
     return
   }
 
   // CANCEL — always works regardless of flow state
-  if (/^cancel$/i.test(text.trim())) {
+  if (isCancel(text)) {
     console.log('[webhook] user CANCEL')
     await clearSession(from)
-    await sendTextMessage(from, "No stress. Send a new screenshot when you're ready.", phoneNumberId)
+    await sendTextMessage(from, "OK. Send a new screenshot when you're ready.", phoneNumberId)
     return
   }
 
   // Direct bypass: if session has matched_fixture_id and user says anything affirmative, write to DB
   if (session.matched_fixture_id && session.home_score !== null && session.away_score !== null) {
-    const lower = text.toLowerCase()
-    const affirmative = /^(yes|yeah|yep|y|ok|okay|sure|confirm|correct|right|go ahead|submit|looks good|good|fine|ja)$/i
-    if (affirmative.test(lower) || lower.includes('yes') || lower.includes('confirm') || lower.includes('submit')) {
+    const lower = normalizeText(text)
+    const affirmative = isYes(text) || lower.includes('yes') || lower.includes('confirm') || lower.includes('submit')
+    if (affirmative) {
       // Override flow: ask about forfeit first, then reset + re-submit
       if (session.state === 'awaiting_override_confirm') {
         await upsertSession({ phone_number: from, state: 'awaiting_forfeit' })
@@ -2791,7 +2947,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       return
     }
     // SWAP — flip scores and stats to match DB orientation (team names stay from DB)
-    if (/^swap$/i.test(lower)) {
+    if (includesWord(text, 'swap')) {
       console.log('[webhook] user SWAP scores+stats:', session.home_team, 'vs', session.away_team)
       const newHomeScore = session.away_score
       const newAwayScore = session.home_score
@@ -2809,11 +2965,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         match_stats: newStats,
       })
       const statsBlock = formatStatsBlock(newStats)
-      await sendTextMessage(from, `Scores swapped!\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if still wrong. Type EDIT SCORE to override. Type CANCEL to start again.`, phoneNumberId)
+      await sendTextMessage(from, `Scores swapped.\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if still wrong. Type EDIT SCORE to change the score. Type CANCEL to stop.`, phoneNumberId)
       return
     }
     // EDIT SCORE — override the score for aggregate/replay situations
-    if (/^(edit\s*score|score)$/i.test(lower)) {
+    if (includesWord(text, 'edit score') || includesWord(text, 'score')) {
       await upsertSession({ phone_number: from, state: 'awaiting_edit_score' })
       await sendTextMessage(from, "What is the correct aggregate score? Type it as: 3-2", phoneNumberId)
       return
@@ -2846,12 +3002,12 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const statsBlock = formatStatsBlock(session.match_stats)
     const overrideWarning = wasOverride ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
-    await sendTextMessage(from, `Score updated!\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.`, phoneNumberId)
+    await sendTextMessage(from, `Score updated.\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if the stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.`, phoneNumberId)
     return
   }
 
   // "check other date" — restart fixture matching with a different date
-  if (/^check other date$/i.test(text.trim())) {
+  if (includesWord(text, 'check other date') || includesWord(text, 'different date')) {
     if (!session || session.home_score === null) {
       await sendTextMessage(from, "Send a screenshot first, then I can help you check a different date.", phoneNumberId)
       return
@@ -2891,14 +3047,19 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const lines = fixtures.map((f: any, i: number) => formatFixtureLine(f, i))
     const dateLabel = parsed.date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
-    await sendTextMessage(from, `Fixtures for ${dateLabel}:\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to start over.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
+    await sendTextMessage(from, `Fixtures for ${dateLabel}:\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to stop.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
     return
   }
 
   // Past-date fixture selection: user picks a number from a past date's fixtures
   if (session.state === 'awaiting_fixture_from_past') {
-    const num = parseInt(text.trim(), 10)
-    if (!isNaN(num) && num > 0 && session.displayed_fixtures && num <= session.displayed_fixtures.length) {
+    if (isCancel(text)) {
+      await clearSession(from)
+      await sendTextMessage(from, "OK. Send a new screenshot when you're ready.", phoneNumberId)
+      return
+    }
+    const num = extractNumber(text)
+    if (num !== null && num > 0 && session.displayed_fixtures && num <= session.displayed_fixtures.length) {
       const chosenId = session.displayed_fixtures[num - 1]
       const { data: chosenFixture } = await supabase
         .from('fixtures')
@@ -2925,7 +3086,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
         })
 
-        await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
+        await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
         return
       }
     }
@@ -2979,7 +3140,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           const statsBlock = formatStatsBlock(session.match_stats)
           const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
           const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
-          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.${hint}`, phoneNumberId)
+          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.${hint}`, phoneNumberId)
           return
         }
       }
@@ -3053,7 +3214,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             const statsBlock = formatStatsBlock(session.match_stats)
             const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
             const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
-            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to override the score. Type CANCEL to start over.${hint}`, phoneNumberId)
+            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.${hint}`, phoneNumberId)
             return
           } else if (finalMatches.length > 1) {
             const lines = finalMatches.map((f: any, i: number) => formatFixtureLine(f, i))
@@ -3077,18 +3238,21 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
   switch (intent.intent) {
     case 'confirm': {
-      if (!session) { await sendTextMessage(from, intent.reply, phoneNumberId); return }
+      if (!session) { await handleWelcomeMenu(from, text, phoneNumberId); return }
       if (session.matched_fixture_id && session.home_score !== null && session.away_score !== null) {
         if (session.state === 'awaiting_override_confirm') {
           await resetAndResubmit(from, session, supabase, phoneNumberId); return
         }
         await writeResultToDb(from, session, supabase, phoneNumberId); return
       }
-      await sendTextMessage(from, intent.reply, phoneNumberId)
+      await sendTextMessage(from, resultFlowReprompt(session), phoneNumberId)
       return
     }
     case 'correct': {
-      if (!session || !intent.corrections) { await sendTextMessage(from, intent.reply, phoneNumberId); return }
+      if (!session || !intent.corrections) {
+        await sendTextMessage(from, session ? resultFlowReprompt(session) : WELCOME_MENU, phoneNumberId)
+        return
+      }
       const c = intent.corrections
       await upsertSession({
         phone_number: from,
@@ -3100,7 +3264,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await sendTextMessage(from, intent.reply, phoneNumberId)
       return
     }
-    default: { await sendTextMessage(from, intent.reply, phoneNumberId); return }
+    default: { await sendTextMessage(from, session ? resultFlowReprompt(session) : WELCOME_MENU, phoneNumberId); return }
   }
 }
 
@@ -3185,7 +3349,7 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
 // ─── Image handler ───────────────────────────────────────────────────────────────
 
 async function handleImage(from: string, msg: { image: { id: string; mime_type: string } }, phoneNumberId: string) {
-  await sendTextMessage(from, "Shot, let me take a look... \uD83D\uDC40", phoneNumberId)
+  await sendTextMessage(from, "OK, checking your screenshot... \uD83D\uDC40", phoneNumberId)
 
   const imageId = msg.image.id
   const mediaUrl = await getMediaUrl(imageId)
@@ -3203,8 +3367,8 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
 
   console.log('[webhook] final - team:', homeTeam, awayTeam, 'score:', homeScore, awayScore, 'statsKeys:', matchStats ? Object.keys(matchStats).join(',') : 'none')
 
-  if (invalidReason) { await sendTextMessage(from, "I couldn't analyse the image. Send to the group.", phoneNumberId); return }
-  if (homeScore === null || awayScore === null) { await sendTextMessage(from, "I couldn't analyse the image. Send to the group.", phoneNumberId); return }
+  if (invalidReason) { await sendTextMessage(from, "Sorry, I could not read the screenshot. Please send it again.", phoneNumberId); return }
+  if (homeScore === null || awayScore === null) { await sendTextMessage(from, "Sorry, I could not read the screenshot. Please send it again.", phoneNumberId); return }
 
   await upsertSession({
     phone_number: from,
@@ -3215,7 +3379,7 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
     submission_menu_step: 'menu'
   })
 
-  await sendTextMessage(from, `Score extracted: ${homeTeam || '?'} ${homeScore}-${awayScore} ${awayTeam || '?'}\n\nWhat are we doing?\n1. Submitting this match's score for the first time\n2. Changing a score that was already submitted\n\nReply 1 or 2. Type CANCEL to start over.`, phoneNumberId)
+  await sendTextMessage(from, `Score extracted: ${homeTeam || '?'} ${homeScore}-${awayScore} ${awayTeam || '?'}\n\nWhat do you want to do?\n1. Submit this match's score for the first time\n2. Change a score that was already submitted\n\nReply 1 or 2. Type CANCEL to stop.`, phoneNumberId)
 }
 
 // ─── DB write ────────────────────────────────────────────────────────────────────

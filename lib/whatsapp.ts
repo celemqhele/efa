@@ -487,7 +487,7 @@ export async function conversationalReply(
   }
 
   return {
-    reply: "Sorry bru, I'm having a brain freeze right now. Can you try again?",
+    reply: "Sorry, something went wrong on my side. Please try again.",
     intent: 'unknown',
   }
 }
@@ -535,7 +535,7 @@ function parseIntent(text: string): ConversationIntent {
   try {
     const parsed = JSON.parse(text)
     return {
-      reply: parsed.reply || "I only help with submitting match results. Send a screenshot of your result screen.",
+      reply: parsed.reply || "I can help with match results. Send a screenshot of your result screen.",
       intent: parsed.intent || 'unknown',
       corrections: parsed.corrections || null,
       fixtureChoice: typeof parsed.fixtureChoice === 'number' ? parsed.fixtureChoice : null,
@@ -543,7 +543,7 @@ function parseIntent(text: string): ConversationIntent {
   } catch {
     console.error('[conversationalReply] failed to parse LLM output:', text)
     return {
-      reply: "I only help with submitting match results. Send a screenshot of your result screen.",
+      reply: "I can help with match results. Send a screenshot of your result screen.",
       intent: 'unknown',
     }
   }
