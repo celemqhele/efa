@@ -50,6 +50,59 @@ function getWeekRange(): { start: string; end: string } {
   }
 }
 
+// ─── Result submission window: today down to 7 days ago (inclusive) ────────────
+// Non-admin players may only submit results for games due today or within the
+// last 7 days. Admins can submit any fixture regardless of date. `scheduled_date`
+// is compared as YYYY-MM-DD strings (same pattern as getWeekRange above).
+function getSubmissionWindow(): { start: string; end: string } {
+  const today = new Date()
+  const start = new Date(today)
+  start.setDate(today.getDate() - 7)
+  const end = new Date(today)
+  return {
+    start: start.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0]
+  }
+}
+
+// Normalise a fixture's scheduled_date (may be a full timestamp or YYYY-MM-DD)
+// into a YYYY-MM-DD date key for window comparisons.
+function fixtureDateKey(f: any): string {
+  const raw = f?.scheduled_date
+  if (!raw) return ''
+  const s = String(raw)
+  if (s.length >= 10 && s[4] === '-' && s[7] === '-') return s.slice(0, 10)
+  try {
+    const d = new Date(raw)
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toISOString().split('T')[0]
+  } catch {
+    return ''
+  }
+}
+
+// Is a date key (YYYY-MM-DD) inside the result-submission window (today-7..today)?
+function isInSubmissionWindow(dateKey: string): boolean {
+  if (!dateKey) return false
+  const { start, end } = getSubmissionWindow()
+  return dateKey >= start && dateKey <= end
+}
+
+// Whether a non-admin is currently allowed to submit the given fixture's result.
+// null = allowed; otherwise a human-readable rejection reason relative to `now`.
+function submissionBlockReason(f: any, now = new Date()): string | null {
+  const dateKey = fixtureDateKey(f)
+  if (!dateKey) return null
+  if (isInSubmissionWindow(dateKey)) return null
+  const todayKey = now.toISOString().split('T')[0]
+  if (dateKey > todayKey) {
+    const d = new Date(`${dateKey}T00:00:00.000Z`)
+    const label = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+    return `This game has not been released yet. Please submit the screenshot at ${label}.`
+  }
+  return `This match is older than 7 days, so it can't be submitted here. Please send the screenshot on the match day.`
+}
+
 // ─── Admin phone numbers ──────────────────────────────────────────────────────────
 const ADMIN_PHONES = ['+27678721810', '+27732509506', '+27734776081']
 function isAdminPhone(phone: string): boolean {
@@ -482,7 +535,7 @@ function resultFlowReprompt(session: SessionData): string {
   if (session.state === 'awaiting_forfeit' || session.state === 'awaiting_forfeit_confirm') {
     return 'Reply YES or NO.'
   }
-  return 'Reply YES to submit, SWAP to change the score side, EDIT SCORE to change the score, or CANCEL to stop.'
+  return '1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel'
 }
 
 async function handleBackdoorSearch(from: string, text: string, phoneNumberId: string) {
@@ -2431,7 +2484,7 @@ async function handleForfeitYes(from: string, session: SessionData, supabase: an
     pending_date: `${hScore}:${aScore}`,
   })
 
-  await sendTextMessage(from, `Forfeit applied. Confirm result: ${hName} ${newHomeScore}-${newAwayScore} ${aName} (forfeited)?\n\nReply YES to submit. Type CANCEL to stop.`, phoneNumberId)
+  await sendTextMessage(from, `Forfeit applied. Confirm result: ${hName} ${newHomeScore}-${newAwayScore} ${aName} (forfeited)?\n\n1. Submit result\n4. Cancel`, phoneNumberId)
 }
 
 // ─── Text handler ⸺ only handles confirm/correct responses to ongoing result flow ──
@@ -2762,29 +2815,41 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       return
     }
 
-    // Search ALL fixtures for this exact team pair (no date window) so a result
-    // can be submitted even if the fixture fell outside the current ±7 day range.
-    // If the pair has fixtures in multiple tournaments/dates, the numbered list
-    // below lets the submitter pick the correct one.
-    const { data: fixtures } = await supabase
+    // Search all fixtures for this exact team pair. Non-admin players are limited
+    // to games due today or within the last 7 days (submission window); admins may
+    // submit fixtures on any date. If the pair has fixtures in multiple
+    // tournaments/dates, the numbered list below lets the submitter pick the
+    // correct one.
+    const isAdmin = isAdminPhone(from)
+    const { start: windowStart, end: windowEnd } = getSubmissionWindow()
+    let query = supabase
       .from('fixtures')
       .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
       .in('status', statusFilter)
       .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
+    if (!isAdmin) {
+      query = query.gte('scheduled_date', windowStart).lte('scheduled_date', windowEnd)
+    }
+    const { data: fixtures } = await query
       .order('scheduled_date', { ascending: false })
       .order('matchday')
 
     const matchedFixtures = sortFixturesForDisplay((fixtures as any[]) || [])
 
-    // If the user chose "first-time submission" and no scheduled fixture matches,
-    // the match may already be submitted/confirmed. Surface the existing result
-    // instead of a confusing "no fixture found" and offer to edit it.
+    // If the user chose "first-time submission" and no scheduled fixture matches
+    // within the window, the match may already be submitted/confirmed (or exist
+    // outside the window). Surface the existing result or a clear block message
+    // instead of a confusing "no fixture found".
     if (matchedFixtures.length === 0 && session.submission_type === 'new') {
-      const { data: alreadyFixtures } = await supabase
+      let alreadyQuery = supabase
         .from('fixtures')
         .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score, match_stats:match_stats(*))')
         .in('status', ['confirmed', 'awaiting_confirmation', 'completed', 'abandoned'])
         .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
+      if (!isAdmin) {
+        alreadyQuery = alreadyQuery.gte('scheduled_date', windowStart).lte('scheduled_date', windowEnd)
+      }
+      const { data: alreadyFixtures } = await alreadyQuery
         .order('scheduled_date', { ascending: false })
         .order('matchday')
 
@@ -2804,6 +2869,29 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
 
     if (matchedFixtures.length === 0) {
+      // For non-admins, the window-gated search found nothing. Check whether the
+      // pair exists outside the window so we can show a clear "not released yet" /
+      // "older than 7 days" message instead of "no match found".
+      if (!isAdmin) {
+        const { data: anyFixtures } = await supabase
+          .from('fixtures')
+          .select('id, scheduled_date')
+          .in('status', ['scheduled', 'confirmed', 'awaiting_confirmation', 'completed', 'abandoned'])
+          .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
+          .order('scheduled_date', { ascending: false })
+          .order('matchday')
+        const outOfWindow = ((anyFixtures as any[]) || []).find(
+          (fx) => isInSubmissionWindow(fixtureDateKey(fx)) === false
+        )
+        if (outOfWindow) {
+          const reason = submissionBlockReason(outOfWindow)
+          if (reason) {
+            await clearSession(from)
+            await sendTextMessage(from, reason, phoneNumberId)
+            return
+          }
+        }
+      }
       await sendTextMessage(from, `No match found for that. Please type both full team names, e.g. "Arsenal vs Everton", or type CANCEL to stop.`, phoneNumberId)
       return
     }
@@ -2814,6 +2902,16 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       const aName = fixtureTeamName(f, 'away')
       const result = Array.isArray(f.results) ? f.results[0] : f.results
       const isAlreadyConfirmed = isFixtureConfirmed(f)
+
+      // Non-admins cannot submit out-of-window results — block with a clear message.
+      if (!isAdmin) {
+        const reason = submissionBlockReason(f)
+        if (reason) {
+          await clearSession(from)
+          await sendTextMessage(from, reason, phoneNumberId)
+          return
+        }
+      }
 
       await upsertSession({
         phone_number: from,
@@ -2830,7 +2928,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       const tournamentLine = fixtureTournamentName(f) ? ` - ${fixtureTournamentName(f)}` : ''
       const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
       const statsBlock = formatStatsBlock(session.match_stats)
-      await sendTextMessage(from, `Found: ${hName} vs ${aName}${dateLine}${tournamentLine}${resultLine}\n\nConfirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if the stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.`, phoneNumberId)
+      await sendTextMessage(from, `Found: ${hName} vs ${aName}${dateLine}${tournamentLine}${resultLine}\n\nConfirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\n1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel`, phoneNumberId)
       return
     }
 
@@ -2912,7 +3010,14 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   // Direct bypass: if session has matched_fixture_id and user says anything affirmative, write to DB
   if (session.matched_fixture_id && session.home_score !== null && session.away_score !== null) {
     const lower = normalizeText(text)
-    const affirmative = isYes(text) || lower.includes('yes') || lower.includes('confirm') || lower.includes('submit')
+    const num = extractNumber(text)
+
+    // Numbered action menu: 1 = submit, 2 = edit score, 3 = swap, 4 = cancel.
+    // A fixture is already matched at this point, so a number maps to an action
+    // (not a fixture pick — the pick happens before matching).
+    const actionByNumber = num === 1 ? 'submit' : num === 2 ? 'edit_score' : num === 3 ? 'swap' : num === 4 ? 'cancel' : null
+
+    const affirmative = isYes(text) || lower.includes('yes') || lower.includes('confirm') || lower.includes('submit') || actionByNumber === 'submit'
     if (affirmative) {
       // Override flow: ask about forfeit first, then reset + re-submit
       if (session.state === 'awaiting_override_confirm') {
@@ -2946,8 +3051,15 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await writeResultToDb(from, session, supabase, phoneNumberId)
       return
     }
+    // Cancel via the numbered menu
+    if (actionByNumber === 'cancel') {
+      console.log('[webhook] user CANCEL (menu)')
+      await clearSession(from)
+      await sendTextMessage(from, "OK. Send a new screenshot when you're ready.", phoneNumberId)
+      return
+    }
     // SWAP — flip scores and stats to match DB orientation (team names stay from DB)
-    if (includesWord(text, 'swap')) {
+    if (actionByNumber === 'swap' || includesWord(text, 'swap')) {
       console.log('[webhook] user SWAP scores+stats:', session.home_team, 'vs', session.away_team)
       const newHomeScore = session.away_score
       const newAwayScore = session.home_score
@@ -2965,11 +3077,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         match_stats: newStats,
       })
       const statsBlock = formatStatsBlock(newStats)
-      await sendTextMessage(from, `Scores swapped.\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}\n\nType SWAP if still wrong. Type EDIT SCORE to change the score. Type CANCEL to stop.`, phoneNumberId)
+      await sendTextMessage(from, `Scores swapped.\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}\n\n1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel`, phoneNumberId)
       return
     }
     // EDIT SCORE — override the score for aggregate/replay situations
-    if (includesWord(text, 'edit score') || includesWord(text, 'score')) {
+    if (actionByNumber === 'edit_score' || includesWord(text, 'edit score') || includesWord(text, 'score')) {
       await upsertSession({ phone_number: from, state: 'awaiting_edit_score' })
       await sendTextMessage(from, "What is the correct aggregate score? Type it as: 3-2", phoneNumberId)
       return
@@ -3002,7 +3114,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const statsBlock = formatStatsBlock(session.match_stats)
     const overrideWarning = wasOverride ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
-    await sendTextMessage(from, `Score updated.\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if the stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.`, phoneNumberId)
+    await sendTextMessage(from, `Score updated.\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\n1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel`, phoneNumberId)
     return
   }
 
@@ -3025,6 +3137,18 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       return
     }
     const { dateKey } = parsed
+
+    // Non-admins can only submit games due today or within the last 7 days.
+    if (!isAdminPhone(from) && !isInSubmissionWindow(dateKey)) {
+      const fake = { scheduled_date: dateKey }
+      const reason = submissionBlockReason(fake)
+      if (reason) {
+        await clearSession(from)
+        await sendTextMessage(from, reason, phoneNumberId)
+        return
+      }
+    }
+
     const { data: dateFixtures } = await supabase
       .from('fixtures')
       .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
@@ -3075,6 +3199,16 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         const statsBlock = formatStatsBlock(session.match_stats)
         const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
 
+        // Non-admins cannot submit out-of-window results — block with a clear message.
+        if (!isAdminPhone(from)) {
+          const reason = submissionBlockReason(cf)
+          if (reason) {
+            await clearSession(from)
+            await sendTextMessage(from, reason, phoneNumberId)
+            return
+          }
+        }
+
         await upsertSession({
           phone_number: from,
           matched_fixture_id: chosenId,
@@ -3086,7 +3220,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
         })
 
-        await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
+        await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\n1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel`, phoneNumberId)
         return
       }
     }
@@ -3140,7 +3274,17 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           const statsBlock = formatStatsBlock(session.match_stats)
           const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
           const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
-          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.${hint}`, phoneNumberId)
+
+          if (!isAdminPhone(from)) {
+            const reason = submissionBlockReason(cf)
+            if (reason) {
+              await clearSession(from)
+              await sendTextMessage(from, reason, phoneNumberId)
+              return
+            }
+          }
+
+          await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\n1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel${hint}`, phoneNumberId)
           return
         }
       }
@@ -3214,7 +3358,17 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             const statsBlock = formatStatsBlock(session.match_stats)
             const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
             const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
-            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\nReply YES to submit. Type SWAP if stats are on the wrong side. Type EDIT SCORE to change the score. Type CANCEL to stop.${hint}`, phoneNumberId)
+
+            if (!isAdminPhone(from)) {
+              const reason = submissionBlockReason(chosen)
+              if (reason) {
+                await clearSession(from)
+                await sendTextMessage(from, reason, phoneNumberId)
+                return
+              }
+            }
+
+            await sendTextMessage(from, `Confirm result: ${hName} ${session.home_score}-${session.away_score} ${aName}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\n1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel${hint}`, phoneNumberId)
             return
           } else if (finalMatches.length > 1) {
             const lines = finalMatches.map((f: any, i: number) => formatFixtureLine(f, i))
@@ -3442,6 +3596,25 @@ async function getAdminUserId(supabase: any): Promise<string | null> {
 async function writeResultToDb(from: string, session: SessionData, supabase: any, phoneNumberId: string) {
   if (!session.matched_fixture_id || session.home_score === null || session.away_score === null) {
     await clearSession(from); await sendTextMessage(from, 'Something went wrong.', phoneNumberId); return
+  }
+
+  // Final safety gate: non-admins may only submit results for games due today or
+  // within the last 7 days. This prevents any bypass through the direct-bypass or
+  // LLM-confirm paths.
+  if (!isAdminPhone(from)) {
+    const { data: gateFix } = await supabase
+      .from('fixtures')
+      .select('id, scheduled_date')
+      .eq('id', session.matched_fixture_id)
+      .single()
+    if (gateFix) {
+      const reason = submissionBlockReason(gateFix)
+      if (reason) {
+        await clearSession(from)
+        await sendTextMessage(from, reason, phoneNumberId)
+        return
+      }
+    }
   }
 
   const isForfeitConfirm = session.state === 'awaiting_forfeit_confirm'
@@ -3683,6 +3856,24 @@ async function resetAndResubmit(from: string, session: SessionData, supabase: an
     await clearSession(from)
     await sendTextMessage(from, 'Something went wrong.', phoneNumberId)
     return
+  }
+
+  // Final safety gate: non-admins may only submit results for games due today or
+  // within the last 7 days.
+  if (!isAdminPhone(from)) {
+    const { data: RgateFix } = await supabase
+      .from('fixtures')
+      .select('id, scheduled_date')
+      .eq('id', session.matched_fixture_id)
+      .single()
+    if (RgateFix) {
+      const reason = submissionBlockReason(RgateFix)
+      if (reason) {
+        await clearSession(from)
+        await sendTextMessage(from, reason, phoneNumberId)
+        return
+      }
+    }
   }
 
   // Check reset limit
