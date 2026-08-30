@@ -3898,6 +3898,18 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
       .eq('id', session.matched_fixture_id)
   }
 
+  // Void any pending backdoor submissions for this fixture now that the real
+  // result is recorded (on-time / backdated games only). Mirrors
+  // finalise-result/route.ts — the WhatsApp result path previously left them
+  // stale as 'pending', which could then be wrongly approved.
+  if (!isPending) {
+    await supabase
+      .from('backdoor_submissions')
+      .update({ status: 'void_game_played' })
+      .eq('fixture_id', session.matched_fixture_id)
+      .eq('status', 'pending')
+  }
+
   // Knockout progression only happens once the game is confirmed — a
   // future-dated (pending) result must NOT advance the winner until its due date.
   if (!isPending && ['r16', 'qf', 'sf', 'final'].includes(fixture?.round_type ?? '')) {

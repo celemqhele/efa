@@ -87,6 +87,16 @@ export async function POST(request: Request) {
     .update({ status: 'approved', reviewed_by: user.id, reviewed_at: new Date().toISOString() })
     .in('id', submissionIds)
 
+  // Void any OTHER pending submissions for the same fixture — approving one
+  // writes a result that confirms the fixture, so a counterpart submission
+  // must not be left reviewable/approvable afterwards.
+  await db
+    .from('backdoor_submissions')
+    .update({ status: 'void_game_played' })
+    .eq('fixture_id', fixtureId)
+    .eq('status', 'pending')
+    .not('id', 'in', `(${submissionIds.join(',')})`)
+
   if (fixture.tournament_id) {
     try { await recalculateStandings(fixture.tournament_id) } catch (e) {}
   }
