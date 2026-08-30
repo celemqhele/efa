@@ -1,6 +1,7 @@
 import { addDays, format, parseISO } from 'date-fns'
 import { determineAggregateWinner } from './aggregate'
 import { createAdminClient } from '@/lib/supabase/server'
+import { stampFixtureParticipants } from '@/lib/slot-utils'
 
 type KnockoutRound = 'r16' | 'qf' | 'sf' | 'final'
 
@@ -401,7 +402,8 @@ export async function generateTBCKnockouts(
     status: 'scheduled',
   }))
 
-  const { error } = await db.from('fixtures').insert(insertFixtures)
+  const stamped = await stampFixtureParticipants(db, tournamentId, insertFixtures)
+  const { error } = await db.from('fixtures').insert(stamped)
   if (error) return { error: error.message }
   return {}
 }
@@ -653,15 +655,22 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
 
   if (tErr || !scTournament) return
 
-  await adminDb.from('tournament_participants').insert([
+  const { data: scParticipants } = await adminDb.from('tournament_participants').insert([
     { tournament_id: scTournament.id, team_id: uclWinnerId },
     { tournament_id: scTournament.id, team_id: europaWinnerId },
-  ])
+  ]).select('id, team_id')
+
+  const scParticipantByTeam = new Map<string, string>()
+  for (const row of scParticipants ?? []) {
+    if (row.team_id) scParticipantByTeam.set(row.team_id, row.id)
+  }
 
   await adminDb.from('fixtures').insert({
     tournament_id: scTournament.id,
     home_team_id: uclWinnerId,
     away_team_id: europaWinnerId,
+    home_participant_id: scParticipantByTeam.get(uclWinnerId) ?? null,
+    away_participant_id: scParticipantByTeam.get(europaWinnerId) ?? null,
     matchday: 1,
     round_type: 'final',
     status: 'scheduled',

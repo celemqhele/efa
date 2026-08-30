@@ -182,6 +182,45 @@ export interface Database {
         }
         Relationships: []
       }
+      tournament_applications: {
+        Row: {
+          id: string
+          season_id: string
+          applicant_id: string
+          team_id: string | null
+          status: 'pending' | 'approved' | 'denied' | 'expired'
+          review_note: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          expires_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          season_id: string
+          applicant_id: string
+          team_id?: string | null
+          status?: 'pending' | 'approved' | 'denied' | 'expired'
+          review_note?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          expires_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          season_id?: string
+          applicant_id?: string
+          team_id?: string | null
+          status?: 'pending' | 'approved' | 'denied' | 'expired'
+          review_note?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          expires_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       tournament_participants: {
         Row: {
           id: string
@@ -189,6 +228,7 @@ export interface Database {
           team_id: string
           group_name: string | null
           seed_pot: number | null
+          user_id: string | null
         }
         Insert: {
           id?: string
@@ -196,6 +236,7 @@ export interface Database {
           team_id: string
           group_name?: string | null
           seed_pot?: number | null
+          user_id?: string | null
         }
         Update: {
           id?: string
@@ -203,6 +244,7 @@ export interface Database {
           team_id?: string
           group_name?: string | null
           seed_pot?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -236,6 +278,8 @@ export interface Database {
           tournament_id: string
           home_team_id: string
           away_team_id: string
+          home_participant_id: string | null
+          away_participant_id: string | null
           matchday: number
           round_type: 'league' | 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
           leg: number
@@ -255,6 +299,8 @@ export interface Database {
           tournament_id: string
           home_team_id: string
           away_team_id: string
+          home_participant_id?: string | null
+          away_participant_id?: string | null
           matchday: number
           round_type?: 'league' | 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
           leg?: number
@@ -274,6 +320,8 @@ export interface Database {
           tournament_id?: string
           home_team_id?: string
           away_team_id?: string
+          home_participant_id?: string | null
+          away_participant_id?: string | null
           matchday?: number
           round_type?: 'league' | 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
           leg?: number
@@ -430,6 +478,7 @@ export interface Database {
         Row: {
           id: string
           tournament_id: string
+          participant_id: string | null
           team_id: string
           played: number
           wins: number
@@ -451,6 +500,7 @@ export interface Database {
         Insert: {
           id?: string
           tournament_id: string
+          participant_id?: string | null
           team_id: string
           played?: number
           wins?: number
@@ -476,6 +526,7 @@ export interface Database {
           id: string
           tournament_id: string
           group_name: string
+          participant_id: string | null
           team_id: string
           played: number
           wins: number
@@ -493,6 +544,7 @@ export interface Database {
           id?: string
           tournament_id: string
           group_name: string
+          participant_id?: string | null
           team_id: string
           played?: number
           wins?: number

@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { generateLeagueFixtures } from '@/lib/fixture-generator'
+import { resolveUserClubId, stampFixtureParticipants } from '@/lib/slot-utils'
 import { addDays, format } from 'date-fns'
 
 interface TeamInput {
@@ -70,29 +71,44 @@ export async function POST(request: Request) {
   let body: {
     season_name: string
     start_date: string
-    league_teams: TeamInput[]
+    league_teams?: TeamInput[]
+    league_users?: string[]
   }
 
   try { body = await request.json() } catch {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { season_name, start_date, league_teams } = body
+  const { season_name, start_date, league_teams, league_users } = body
 
   if (!season_name?.trim() || !start_date) {
     return Response.json({ error: 'season_name and start_date are required' }, { status: 400 })
-  }
-  if (!league_teams || league_teams.length < 2) {
-    return Response.json({ error: 'At least 2 league teams required' }, { status: 400 })
-  }
-  if (league_teams.length % 2 !== 0) {
-    return Response.json({ error: 'League must have an even number of teams' }, { status: 400 })
   }
 
   const adminSupabase = await createAdminClient()
   const db = (table: string) => adminSupabase.from(table) as any
 
-  const leagueIds = await resolveTeams(adminSupabase, league_teams)
+  // Resolve slots: user-driven (each user's current club) or legacy bare teams
+  let slotEntries: { user_id: string | null; team_id: string }[] = []
+  if (league_users && league_users.length > 0) {
+    for (const uid of league_users) {
+      const team_id = await resolveUserClubId(adminSupabase, uid)
+      if (!team_id) return Response.json({ error: 'Every user must currently manage a team' }, { status: 400 })
+      slotEntries.push({ user_id: uid, team_id })
+    }
+  } else {
+    const leagueIds = await resolveTeams(adminSupabase, league_teams ?? [])
+    slotEntries = leagueIds.map((team_id) => ({ user_id: null, team_id }))
+  }
+
+  if (slotEntries.length < 2) {
+    return Response.json({ error: 'At least 2 league participants required' }, { status: 400 })
+  }
+  if (slotEntries.length % 2 !== 0) {
+    return Response.json({ error: 'League must have an even number of participants' }, { status: 400 })
+  }
+
+  const leagueIds = slotEntries.map((s) => s.team_id)
 
   const numRounds = 2
   const leagueFixtureCount = leagueIds.length * (leagueIds.length - 1) * numRounds / 2
@@ -132,13 +148,19 @@ export async function POST(request: Request) {
 
   const leagueTId = leagueTournament.id
 
-  await db('tournament_participants').insert(
-    leagueIds.map((team_id) => ({ tournament_id: leagueTId, team_id }))
-  )
+  const { data: insertedParticipants } = await db('tournament_participants').insert(
+    slotEntries.map((s) => ({ tournament_id: leagueTId, team_id: s.team_id, user_id: s.user_id }))
+  ).select('id, team_id')
+
+  const participantByTeamId = new Map<string, string>()
+  for (const row of insertedParticipants ?? []) {
+    if (row.team_id) participantByTeamId.set(row.team_id, row.id)
+  }
 
   await db('standings').insert(
     leagueIds.map((team_id) => ({
       tournament_id: leagueTId, team_id,
+      participant_id: participantByTeamId.get(team_id) ?? null,
       played: 0, wins: 0, draws: 0, losses: 0,
       goals_for: 0, goals_against: 0, points: 0,
       form: '', unbeaten_run: 0, clean_sheets: 0,
@@ -148,9 +170,11 @@ export async function POST(request: Request) {
   const leagueFixtures = await generateLeagueFixtures(adminSupabase, leagueIds, leagueTId, numRounds, start_date)
 
   if (leagueFixtures.length > 0) {
+    const stamped = await stampFixtureParticipants(adminSupabase, leagueTId, leagueFixtures)
     await db('fixtures').insert(
-      leagueFixtures.map((f) => ({
+      stamped.map((f) => ({
         tournament_id: leagueTId, home_team_id: f.home_team_id, away_team_id: f.away_team_id,
+        home_participant_id: f.home_participant_id, away_participant_id: f.away_participant_id,
         matchday: f.matchday, scheduled_date: f.scheduled_date, deadline: f.deadline,
         round_type: f.round_type, leg: f.leg, status: 'scheduled', is_postponed: false,
       }))

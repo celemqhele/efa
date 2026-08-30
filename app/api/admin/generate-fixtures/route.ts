@@ -1,5 +1,10 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { generateLeagueFixtures, generateGroupFixtures, type GeneratedFixture } from '@/lib/fixture-generator'
+import {
+  generateLeagueFixtures,
+  generateGroupFixtures,
+  type GeneratedFixture,
+} from '@/lib/fixture-generator'
+import { stampFixtureParticipants } from '@/lib/slot-utils'
 import type { Database } from '@/lib/supabase/types'
 import { insertNotificationsAndPush } from '@/lib/notify'
 
@@ -122,6 +127,7 @@ export async function POST(request: Request) {
       return {
         tournament_id,
         team_id: tid,
+        participant_id: u.id,
         group_name: u.group_name,
         played: 0, wins: 0, draws: 0, losses: 0,
         goals_for: 0, goals_against: 0, points: 0,
@@ -143,10 +149,13 @@ export async function POST(request: Request) {
     )
   }
 
-  const fixtureRows: FixtureInsert[] = generated.map((f) => ({
+  const stamped = await stampFixtureParticipants(adminSupabase, tournament_id, generated)
+  const fixtureRows = stamped.map((f) => ({
     tournament_id,
     home_team_id: f.home_team_id,
     away_team_id: f.away_team_id,
+    home_participant_id: f.home_participant_id,
+    away_participant_id: f.away_participant_id,
     matchday: f.matchday,
     scheduled_date: f.scheduled_date,
     deadline: f.deadline,

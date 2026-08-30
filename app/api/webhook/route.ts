@@ -19,6 +19,7 @@ import { sendPushToUsers } from '@/lib/push'
 import { notifyBackdoorSubmitted, notifyBackdoorDecision } from '@/lib/backdoor-notify'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { parseUserDate } from '@/lib/date-parser'
+import { listOpenSeasons, getSeasonPickableTeams, userInSeason } from '@/lib/season-applications'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
 
@@ -174,9 +175,10 @@ function cleanTeamInput(input: string): string {
 
 // Known commands. Ordered from most specific to most generic so multi-word
 // admin commands match before the generic "backdoor" keyword.
-const COMMAND_PHRASES: [string, 'manager_applications' | 'backdoor_submissions' | 'backdoor_admin' | 'backdoor' | 'check_fixtures' | 'apply' | 'submit_result'][] = [
+const COMMAND_PHRASES: [string, 'manager_applications' | 'backdoor_submissions' | 'backdoor_admin' | 'backdoor' | 'check_fixtures' | 'apply' | 'submit_result' | 'tournament_applications'][] = [
   ['manager applications', 'manager_applications'],
   ['manager apps', 'manager_applications'],
+
   ['backdoor submissions', 'backdoor_submissions'],
   ['backdoor admin', 'backdoor_admin'],
   ['check backdoor', 'backdoor'],
@@ -202,6 +204,12 @@ const COMMAND_PHRASES: [string, 'manager_applications' | 'backdoor_submissions' 
   ['join the efa', 'apply'],
   ['i want to join', 'apply'],
   ['i want to apply', 'apply'],
+  ['tournament applications', 'tournament_applications'],
+  ['tournament apps', 'tournament_applications'],
+  ['apply to a tournament', 'tournament_applications'],
+  ['apply for a seat', 'tournament_applications'],
+  ['apply for a tournament', 'tournament_applications'],
+  ['open seats', 'tournament_applications'],
   ['create an efa account', 'apply'],
   ['create an account', 'apply'],
   ['register', 'apply'],
@@ -449,6 +457,14 @@ type SessionData = {
   submission_menu_step: 'menu' | null
   // Onboarding flow (apply command)
   onboarding_username: string | null
+  // Tournament-application flow
+  tourney_apply_step: 'pick_season' | 'pick_team' | 'confirm' | null
+  tourney_seasons: { season_id: string; season_name: string; vacant_seats: number }[] | null
+  tourney_pickable: { id: string; name: string }[] | null
+  tourney_season_id: string | null
+  tourney_season_name: string | null
+  tourney_team_id: string | null
+  tourney_team_name: string | null
   // Admin manager-assignment flow
   admin_assign_applicants: { id: string; username: string; team_name: string | null; expires_at: string | null }[] | null
   admin_assign_team_list: { id: string; name: string }[] | null
@@ -497,7 +513,8 @@ const WELCOME_MENU =
   '1. Send a match result\n' +
   '2. Opponent did not respond, or gave you the win\n' +
   '3. Create an EFA account\n' +
-  '4. Check my backdoor applications'
+  '4. Check my backdoor applications\n' +
+  '5. Tournament applications'
 
 // Footer appended to free-text "info-request" prompts (score, team names, date,
 // forfeit, etc.) so a mid-flow user always has an explicit way out. Not used on
@@ -590,6 +607,10 @@ async function handleWelcomeMenu(from: string, text: string, phoneNumberId: stri
   if (num === 4) {
     await showUserBackdoorApplications(from, phoneNumberId)
     await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
+    return
+  }
+  if (num === 5) {
+    await handleTourneyApplyStart(from, phoneNumberId)
     return
   }
   await sendTextMessage(from, WELCOME_MENU, phoneNumberId)
@@ -2130,6 +2151,268 @@ async function handleOnboardingUsername(from: string, text: string, phoneNumberI
   )
 }
 
+// ─── WhatsApp: tournament (season) applications ─────────────────────────────
+
+async function resolveProfileByPhone(from: string): Promise<{ id: string; username: string; sacked_at: string | null } | null> {
+  const supabase = await createAdminClient()
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, username, whatsapp_number, phone, sacked_at')
+  const profile = (profiles ?? []).find(
+    (p: any) => phoneNumbersMatch(p.whatsapp_number, from) || phoneNumbersMatch(p.phone, from)
+  )
+  if (!profile) return null
+  return { id: profile.id as string, username: (profile.username ?? 'player') as string, sacked_at: profile.sacked_at ?? null }
+}
+
+async function handleTourneyApplyStart(from: string, phoneNumberId: string) {
+  const profile = await resolveProfileByPhone(from)
+  if (!profile) {
+    await sendTextMessage(
+      from,
+      'You need an EFA account to apply for a tournament. Reply 3 to create one from the menu, or login at https://efa-fxyk.vercel.app/login',
+      phoneNumberId
+    )
+    return
+  }
+
+  const supabase = await createAdminClient()
+
+  // Show any pending applications first
+  const { data: pending } = await supabase
+    .from('tournament_applications')
+    .select('id, season_id, status, season:season_id(name), created_at')
+    .eq('applicant_id', profile.id)
+    .in('status', ['pending', 'approved'])
+    .order('created_at', { ascending: false })
+
+  if ((pending ?? []).length > 0) {
+    const lines = (pending ?? []).map((a: any) => {
+      const season = Array.isArray(a.season) ? a.season[0] : a.season
+      return a.status === 'pending'
+        ? `⏳ ${season?.name ?? 'Season'} — pending review`
+        : `✅ ${season?.name ?? 'Season'} — approved`
+    })
+    await sendTextMessage(
+      from,
+      `Your tournament applications:\n\n${lines.join('\n')}`,
+      phoneNumberId
+    )
+  }
+
+  const open = await listOpenSeasons(supabase)
+
+  if (open.length === 0) {
+    await sendTextMessage(
+      from,
+      'There are no open seats in any season right now. Seats open automatically when a manager leaves or transfers.',
+      phoneNumberId
+    )
+    await clearSession(from)
+    return
+  }
+
+  const lines = open.map((s, i) => `${i + 1}. ${s.season_name} (${s.vacant_seats} seat${s.vacant_seats === 1 ? '' : 's'} open)`)
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_tourney_apply',
+    tourney_apply_step: 'pick_season',
+    tourney_seasons: open.map((s) => ({ season_id: s.season_id, season_name: s.season_name, vacant_seats: s.vacant_seats })),
+    tourney_pickable: null,
+    tourney_team_name: null,
+  })
+  await sendTextMessage(
+    from,
+    `Which tournament do you want to join?\n\n${lines.join('\n')}\n\nReply with a number, or type CANCEL.`,
+    phoneNumberId
+  )
+}
+
+async function handleTourneyApplyReply(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const profile = await resolveProfileByPhone(from)
+  if (!profile) {
+    await clearSession(from)
+    await sendTextMessage(from, 'You need an EFA account for that.', phoneNumberId)
+    return
+  }
+
+  const step = session.tourney_apply_step
+
+  if (step === 'pick_season') {
+    const num = extractNumber(text)
+    const seasons = session.tourney_seasons ?? []
+    if (num === null || num < 1 || num > seasons.length) {
+      await sendTextMessage(from, 'Reply with a valid number from the list, or type CANCEL.', phoneNumberId)
+      return
+    }
+    const picked = seasons[num - 1]
+
+    const pickable = await getSeasonPickableTeams(supabase, picked.season_id)
+    if (pickable.length === 0) {
+      await sendTextMessage(from, 'That season has no unmanaged clubs available right now. Pick another season or type CANCEL.', phoneNumberId)
+      return
+    }
+
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_tourney_apply',
+      tourney_apply_step: 'pick_team',
+      tourney_seasons: seasons,
+      tourney_season_id: picked.season_id,
+      tourney_season_name: picked.season_name,
+      tourney_pickable: pickable.map((t) => ({ id: t.id, name: t.name })),
+      tourney_team_name: null,
+    })
+
+    const lines = pickable.map((t, i) => `${i + 1}. ${t.name}`)
+    await sendTextMessage(
+      from,
+      `Which club do you want to manage in ${picked.season_name}?\n\n${lines.join('\n')}\n\nReply with a number, or type CANCEL.`,
+      phoneNumberId
+    )
+    return
+  }
+
+  if (step === 'pick_team') {
+    const num = extractNumber(text)
+    const pickable = session.tourney_pickable ?? []
+    if (num === null || num < 1 || num > pickable.length) {
+      await sendTextMessage(from, 'Reply with a valid number from the list, or type CANCEL.', phoneNumberId)
+      return
+    }
+    const picked = pickable[num - 1]
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_tourney_apply',
+      tourney_apply_step: 'confirm',
+      tourney_pickable: pickable,
+      tourney_team_id: picked.id,
+      tourney_team_name: picked.name,
+    })
+    await sendTextMessage(
+      from,
+      `You are applying to join ${session.tourney_season_name ?? 'the season'} as manager of ${picked.name}.\n\nReply 1 to confirm, 2 to pick another club, or CANCEL to stop.${FLOW_HINT}`,
+      phoneNumberId
+    )
+    return
+  }
+
+  if (step === 'confirm') {
+    const num = extractNumber(text)
+    if (num === 2) {
+      const pickable = session.tourney_pickable ?? []
+      const lines = pickable.map((t, i) => `${i + 1}. ${t.name}`)
+      await upsertSession({
+        phone_number: from,
+        state: 'awaiting_tourney_apply',
+        tourney_apply_step: 'pick_team',
+        tourney_pickable: pickable,
+      })
+      await sendTextMessage(from, `Pick a club:\n\n${lines.join('\n')}\n\nReply with a number, or type CANCEL.`, phoneNumberId)
+      return
+    }
+    if (num !== 1) {
+      await sendTextMessage(from, `Reply 1 to confirm, 2 to pick another club, or CANCEL to stop.${FLOW_HINT}`, phoneNumberId)
+      return
+    }
+
+    const seasonId = session.tourney_season_id
+    const teamId = session.tourney_team_id
+    if (!seasonId || !teamId) {
+      await clearSession(from)
+      await sendTextMessage(from, 'Something went wrong. Start again from the menu.', phoneNumberId)
+      return
+    }
+
+    // Guard: season still open, user not already in, no duplicate application
+    const open = await listOpenSeasons(supabase)
+    if (!open.some((s) => s.season_id === seasonId)) {
+      await clearSession(from)
+      await sendTextMessage(from, 'That season is no longer accepting applications. Try again later.', phoneNumberId)
+      return
+    }
+    const inSeason = await userInSeason(supabase, seasonId, profile.id)
+    if (inSeason) {
+      await clearSession(from)
+      await sendTextMessage(from, 'You are already in that season.', phoneNumberId)
+      return
+    }
+    const { data: dup } = await supabase
+      .from('tournament_applications')
+      .select('id')
+      .eq('applicant_id', profile.id)
+      .eq('season_id', seasonId)
+      .eq('status', 'pending')
+    if ((dup ?? []).length > 0) {
+      await clearSession(from)
+      await sendTextMessage(from, 'You already have a pending application for that season.', phoneNumberId)
+      return
+    }
+    const { data: teamRow } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('id', teamId)
+      .is('manager_id', null)
+      .maybeSingle()
+    if (!teamRow) {
+      await clearSession(from)
+      await sendTextMessage(from, 'That club is no longer available. Pick another one — start again from the menu.', phoneNumberId)
+      return
+    }
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
+    const { error: insertErr } = await supabase.from('tournament_applications').insert({
+      season_id: seasonId,
+      applicant_id: profile.id,
+      team_id: teamId,
+      status: 'pending',
+      expires_at: expiresAt,
+    })
+    if (insertErr) {
+      console.error('[webhook] tournament_application insert failed:', insertErr.message)
+      await clearSession(from)
+      await sendTextMessage(from, 'Sorry, something went wrong submitting your application. Try again later.', phoneNumberId)
+      return
+    }
+
+    // Notify admins of the new application
+    try {
+      const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin')
+      const { insertNotificationsAndPush } = await import('@/lib/notify')
+      await insertNotificationsAndPush(
+        supabase,
+        (admins ?? []).map((a: any) => ({
+          user_id: a.id,
+          type: 'tournament_application',
+          title: 'New tournament application',
+          body: `@${profile.username} applied for ${session.tourney_team_name} in ${session.tourney_season_name}.`,
+          data: { season_id: seasonId, applicant_id: profile.id, team_name: session.tourney_team_name },
+        }))
+      )
+    } catch (e) {
+      console.error('[webhook] notify admins of tournament application failed:', e)
+    }
+
+    await clearSession(from)
+    await sendTextMessage(
+      from,
+      `Application submitted ✅\n\n@${profile.username} → ${session.tourney_team_name} in ${session.tourney_season_name}.\n\nThe admins will review it. You will get a notification when a decision is made.`,
+      phoneNumberId
+    )
+    return
+  }
+
+  await sendTextMessage(from, 'Reply with a number from the list, or type CANCEL.', phoneNumberId)
+}
+
 // ─── Admin: manager applications assignment flow ────────────────────────────
 
 async function handleManagerApplicationsStart(from: string, phoneNumberId: string) {
@@ -2716,6 +2999,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     await handleOnboardingUsername(from, text, phoneNumberId)
     return
   }
+  // ─── Tournament-application flow ───────────────────────────────────────────
+  if (session?.state === 'awaiting_tourney_apply') {
+    await handleTourneyApplyReply(from, text, session, phoneNumberId)
+    return
+  }
   // ─── Admin: manager assignment flow ───────────────────────────────────────
   if (session?.state === 'awaiting_admin_assign_applicant') {
     await handleManagerApplicationsApplicant(from, text, session, phoneNumberId)
@@ -2819,6 +3107,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   // ─── Onboarding command (new players) ───────────────────────────────────────
   if (command === 'apply') {
     await handleOnboardingStart(from, phoneNumberId)
+    return
+  }
+  // ─── Tournament (season) applications command ───────────────────────────────
+  if (command === 'tournament_applications') {
+    await handleTourneyApplyStart(from, phoneNumberId)
     return
   }
   // ─── Admin: manager applications command ────────────────────────────────────

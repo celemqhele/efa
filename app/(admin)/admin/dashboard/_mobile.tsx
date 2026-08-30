@@ -33,6 +33,7 @@ const ACTIONS = [
   { href: '/admin/results/submit', label: 'Submit Result', variant: 'gold' as const },
   { href: '/admin/fixtures/manage', label: 'Fixtures', variant: 'outline' as const },
   { href: '/admin/seasons', label: 'Seasons', variant: 'outline' as const },
+  { href: '/admin/tournament-applications', label: 'Applications', variant: 'outline' as const },
   { href: '/admin/managers', label: 'Managers', variant: 'outline' as const },
   { href: '/admin/polls', label: 'Polls', variant: 'outline' as const },
   { href: '/admin/hall-of-fame', label: 'Hall of Fame', variant: 'outline' as const },

@@ -2,6 +2,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { generateGroupFixtures } from '@/lib/fixture-generator'
 import { drawGroups } from '@/lib/tournament-draw'
 import { goalDifference } from '@/lib/standings-core'
+import { stampFixtureParticipants } from '@/lib/slot-utils'
 
 const CUP_TYPES = ['tournament_club', 'tournament_international'] as const
 
@@ -98,9 +99,9 @@ export async function POST(request: Request) {
     return Response.json({ error: `A ${CUP_NAMES[type]} already exists for this season` }, { status: 409 })
   }
 
-  // Teams must come from this season's league
+  // Teams must come from this season's league (slot owners carry over)
   const { data: leagueParticipants } = await db('tournament_participants')
-    .select('team_id')
+    .select('team_id, user_id')
     .eq('tournament_id', leagueTournament.id)
 
   const leagueIds = new Set((leagueParticipants ?? []).map((p: any) => p.team_id))
@@ -179,9 +180,19 @@ export async function POST(request: Request) {
 
   const tId = tournament.id
 
-  await db('tournament_participants').insert(
-    team_ids.map((team_id) => ({ tournament_id: tId, team_id }))
-  )
+  const userByTeam = new Map<string, string | null>()
+  for (const p of leagueParticipants ?? []) {
+    if (p.team_id) userByTeam.set(p.team_id, p.user_id ?? null)
+  }
+
+  const { data: insertedParticipants } = await db('tournament_participants').insert(
+    team_ids.map((team_id) => ({ tournament_id: tId, team_id, user_id: userByTeam.get(team_id) ?? null }))
+  ).select('id, team_id')
+
+  const participantByTeamId = new Map<string, string>()
+  for (const row of insertedParticipants ?? []) {
+    if (row.team_id) participantByTeamId.set(row.team_id, row.id)
+  }
 
   // Seeded draw — league position determines pot (higher finishers spread across groups)
   const teamsPayload = team_ids.map((team_id) => ({
@@ -218,18 +229,21 @@ export async function POST(request: Request) {
     for (const teamId of groupTeamIds) {
       await (db('group_standings') as any).upsert({
         tournament_id: tId, group_name: groupName, team_id: teamId,
+        participant_id: participantByTeamId.get(teamId) ?? null,
         played: 0, wins: 0, draws: 0, losses: 0,
         goals_for: 0, goals_against: 0, points: 0,
-      }, { onConflict: 'tournament_id,group_name,team_id' })
+      }, { onConflict: 'tournament_id,group_name,participant_id' })
     }
   }
 
   const groupFixtures = await generateGroupFixtures(adminSupabase, allGroupTeams, 2, scheduleStart, tId)
 
   if (groupFixtures.length > 0) {
+    const stamped = await stampFixtureParticipants(adminSupabase, tId, groupFixtures)
     await db('fixtures').insert(
-      groupFixtures.map((f) => ({
+      stamped.map((f) => ({
         tournament_id: tId, home_team_id: f.home_team_id, away_team_id: f.away_team_id,
+        home_participant_id: f.home_participant_id, away_participant_id: f.away_participant_id,
         matchday: f.matchday, scheduled_date: f.scheduled_date, deadline: f.deadline,
         round_type: f.round_type, leg: f.leg, status: 'scheduled', is_postponed: false,
       }))

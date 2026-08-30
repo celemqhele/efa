@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/server'
 
 type FixtureRow = {
   id: string
+  home_participant_id: string | null
+  away_participant_id: string | null
   home_team_id: string | null
   away_team_id: string | null
   round_type: string | null
@@ -17,15 +19,22 @@ type ResultRow = {
   abandoned_type?: string | null
 }
 
+type ParticipantRow = {
+  id: string
+  team_id: string | null
+  group_name: string | null
+}
+
 function cleanGroupName(value: unknown): string | null {
   const raw = String(value ?? '').trim()
   if (!raw) return null
   return raw.replace(/^group\s+/i, '').trim() || null
 }
 
-function emptyStandingRow(tournamentId: string, teamId: string) {
+function emptyStandingRow(tournamentId: string, participantId: string, teamId: string) {
   return {
     tournament_id: tournamentId,
+    participant_id: participantId,
     team_id: teamId,
     played: 0,
     wins: 0,
@@ -42,10 +51,11 @@ function emptyStandingRow(tournamentId: string, teamId: string) {
   }
 }
 
-function emptyGroupStandingRow(tournamentId: string, groupName: string, teamId: string) {
+function emptyGroupStandingRow(tournamentId: string, groupName: string, participantId: string, teamId: string) {
   return {
     tournament_id: tournamentId,
     group_name: groupName,
+    participant_id: participantId,
     team_id: teamId,
     played: 0,
     wins: 0,
@@ -186,16 +196,16 @@ function applyResult(
 }
 
 function inferGroups(
-  teamIds: string[],
+  participantIds: string[],
   groupFixtures: FixtureRow[],
-  participantGroupByTeam: Record<string, string>,
+  participantGroupByParticipant: Record<string, string>,
 ) {
   const parent: Record<string, string> = {}
 
-  const find = (teamId: string): string => {
-    if (!parent[teamId]) parent[teamId] = teamId
-    if (parent[teamId] !== teamId) parent[teamId] = find(parent[teamId])
-    return parent[teamId]
+  const find = (participantId: string): string => {
+    if (!parent[participantId]) parent[participantId] = participantId
+    if (parent[participantId] !== participantId) parent[participantId] = find(parent[participantId])
+    return parent[participantId]
   }
 
   const union = (a: string, b: string) => {
@@ -204,29 +214,31 @@ function inferGroups(
     if (rootA !== rootB) parent[rootB] = rootA
   }
 
-  for (const teamId of teamIds) find(teamId)
+  for (const participantId of participantIds) find(participantId)
 
   for (const fixture of groupFixtures) {
-    if (fixture.home_team_id && fixture.away_team_id) {
-      union(fixture.home_team_id, fixture.away_team_id)
+    const home = fixture.home_participant_id
+    const away = fixture.away_participant_id
+    if (home && away) {
+      union(home, away)
     }
   }
 
-  const teamsByRoot: Record<string, string[]> = {}
-  for (const teamId of teamIds) {
-    const root = find(teamId)
-    if (!teamsByRoot[root]) teamsByRoot[root] = []
-    teamsByRoot[root].push(teamId)
+  const participantsByRoot: Record<string, string[]> = {}
+  for (const participantId of participantIds) {
+    const root = find(participantId)
+    if (!participantsByRoot[root]) participantsByRoot[root] = []
+    participantsByRoot[root].push(participantId)
   }
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
-  const usedNames = new Set(Object.values(participantGroupByTeam))
+  const usedNames = new Set(Object.values(participantGroupByParticipant))
   let nextAutoIndex = 0
-  const groupByTeam: Record<string, string> = {}
+  const groupByParticipant: Record<string, string> = {}
 
-  for (const teamIdsInComponent of Object.values(teamsByRoot)) {
-    const knownGroupName = teamIdsInComponent
-      .map((teamId) => participantGroupByTeam[teamId])
+  for (const participantIdsInComponent of Object.values(participantsByRoot)) {
+    const knownGroupName = participantIdsInComponent
+      .map((participantId) => participantGroupByParticipant[participantId])
       .filter(Boolean)
       .sort()[0]
 
@@ -240,12 +252,12 @@ function inferGroups(
       nextAutoIndex++
     }
 
-    for (const teamId of teamIdsInComponent) {
-      groupByTeam[teamId] = groupName
+    for (const participantId of participantIdsInComponent) {
+      groupByParticipant[participantId] = groupName
     }
   }
 
-  return groupByTeam
+  return groupByParticipant
 }
 
 export async function recalculateStandings(tournamentId: string) {
@@ -265,14 +277,14 @@ export async function recalculateStandings(tournamentId: string) {
 
   const { data: participants, error: participantsErr } = await db
     .from('tournament_participants')
-    .select('team_id, group_name')
+    .select('id, team_id, group_name')
     .eq('tournament_id', tournamentId)
 
   if (participantsErr) throw new Error(participantsErr.message)
 
   const { data: fixtures, error: fixturesErr } = await db
     .from('fixtures')
-    .select('id, home_team_id, away_team_id, round_type, status')
+    .select('id, home_participant_id, away_participant_id, home_team_id, away_team_id, round_type, status')
     .eq('tournament_id', tournamentId)
 
   if (fixturesErr) throw new Error(fixturesErr.message)
@@ -298,28 +310,49 @@ export async function recalculateStandings(tournamentId: string) {
     resultsByFixture[(result as any).fixture_id] = result as ResultRow
   }
 
+  const participantRows = (participants ?? []) as ParticipantRow[]
+  // team -> participant (unique per tournament post-slot-model)
+  const participantByTeam: Record<string, string> = {}
+  for (const p of participantRows) {
+    if (p.team_id) participantByTeam[p.team_id] = p.id
+  }
+  const teamByParticipant: Record<string, string> = {}
+  for (const p of participantRows) {
+    if (p.id) teamByParticipant[p.id] = p.team_id ?? ''
+  }
+
+  const resolveHome = (f: FixtureRow): string | null => {
+    if (f.home_participant_id) return f.home_participant_id
+    if (f.home_team_id && participantByTeam[f.home_team_id]) return participantByTeam[f.home_team_id]
+    return null
+  }
+
+  const resolveAway = (f: FixtureRow): string | null => {
+    if (f.away_participant_id) return f.away_participant_id
+    if (f.away_team_id && participantByTeam[f.away_team_id]) return participantByTeam[f.away_team_id]
+    return null
+  }
+
   let standingsRowsWritten = 0
   let groupRowsWritten = 0
 
   if (!isGroupBased) {
     // League logic (Standard League or Custom without groups)
     const leagueFixtures = allFixtures.filter(f => f.round_type === 'league' || !f.round_type)
-    const teamIds = Array.from(new Set([
-      ...(participants ?? []).map((p: any) => p.team_id).filter(Boolean),
-      ...leagueFixtures.flatMap((fixture) => [fixture.home_team_id, fixture.away_team_id]).filter(Boolean),
-    ])) as string[]
 
-    const standingsByTeam: Record<string, any> = {}
-    const getRow = (teamId: string) => {
-      if (!standingsByTeam[teamId]) standingsByTeam[teamId] = emptyStandingRow(tournamentId, teamId)
-      return standingsByTeam[teamId]
+    const standingsByParticipant: Record<string, any> = {}
+    const getRow = (participantId: string) => {
+      if (!standingsByParticipant[participantId]) {
+        standingsByParticipant[participantId] = emptyStandingRow(tournamentId, participantId, teamByParticipant[participantId])
+      }
+      return standingsByParticipant[participantId]
     }
-
-    for (const teamId of teamIds) getRow(teamId)
 
     for (const fixture of leagueFixtures) {
       if (fixture.status !== 'confirmed') continue
-      if (!fixture.home_team_id || !fixture.away_team_id) continue
+      const home = resolveHome(fixture)
+      const away = resolveAway(fixture)
+      if (!home || !away) continue
 
       const result = resultsByFixture[fixture.id]
       if (!result) continue
@@ -341,13 +374,13 @@ export async function recalculateStandings(tournamentId: string) {
       const effectiveHomeScore = bothForfeit ? 0 : homeScore
       const effectiveAwayScore = bothForfeit ? 0 : awayScore
 
-      applyResult(getRow(fixture.home_team_id), getRow(fixture.away_team_id), effectiveHomeScore, effectiveAwayScore, isDoubleForfeit, homeAbsent, awayAbsent, homeForfeit, awayForfeit || bothForfeit)
+      applyResult(getRow(home), getRow(away), effectiveHomeScore, effectiveAwayScore, isDoubleForfeit, homeAbsent, awayAbsent, homeForfeit, awayForfeit || bothForfeit)
     }
 
     const { error: deleteErr } = await db.from('standings').delete().eq('tournament_id', tournamentId)
     if (deleteErr) throw new Error(deleteErr.message)
 
-    const rows = Object.values(standingsByTeam)
+    const rows = Object.values(standingsByParticipant)
     if (rows.length > 0) {
       const { error: insertErr } = await db.from('standings').insert(rows)
       if (insertErr) throw new Error(insertErr.message)
@@ -357,35 +390,37 @@ export async function recalculateStandings(tournamentId: string) {
     // Group logic (UCL, Europa, or Custom with groups)
     const groupFixtures = allFixtures.filter((fixture) => fixture.round_type === 'group')
 
-    const participantGroupByTeam: Record<string, string> = {}
-    for (const participant of participants ?? []) {
-      const teamId = (participant as any).team_id
-      const groupName = cleanGroupName((participant as any).group_name)
-      if (teamId && groupName) participantGroupByTeam[teamId] = groupName
+    const participantGroupByParticipant: Record<string, string> = {}
+    for (const participant of participantRows) {
+      const groupName = cleanGroupName(participant.group_name)
+      if (participant.id && groupName) participantGroupByParticipant[participant.id] = groupName
     }
 
-    const teamIds = Array.from(new Set([
-      ...(participants ?? []).map((p: any) => p.team_id).filter(Boolean),
-      ...groupFixtures.flatMap((fixture) => [fixture.home_team_id, fixture.away_team_id]).filter(Boolean),
-    ])) as string[]
+    const participantIds = Array.from(new Set([
+      ...participantRows.map((p) => p.id).filter(Boolean),
+      ...groupFixtures.map(resolveHome).filter((x): x is string => !!x),
+      ...groupFixtures.map(resolveAway).filter((x): x is string => !!x),
+    ]))
 
-    const groupByTeam = inferGroups(teamIds, groupFixtures, participantGroupByTeam)
+    const groupByParticipant = inferGroups(participantIds, groupFixtures, participantGroupByParticipant)
     const groupStandingsByKey: Record<string, any> = {}
 
-    const getGroupRow = (teamId: string, fallbackGroupName?: string | null) => {
-      const groupName = groupByTeam[teamId] ?? participantGroupByTeam[teamId] ?? fallbackGroupName ?? 'A'
-      const key = `${groupName}:${teamId}`
+    const getGroupRow = (participantId: string, fallbackGroupName?: string | null) => {
+      const groupName = groupByParticipant[participantId] ?? participantGroupByParticipant[participantId] ?? fallbackGroupName ?? 'A'
+      const key = `${groupName}:${participantId}`
       if (!groupStandingsByKey[key]) {
-        groupStandingsByKey[key] = emptyGroupStandingRow(tournamentId, groupName, teamId)
+        groupStandingsByKey[key] = emptyGroupStandingRow(tournamentId, groupName, participantId, teamByParticipant[participantId])
       }
       return groupStandingsByKey[key]
     }
 
-    for (const teamId of teamIds) getGroupRow(teamId)
+    for (const participantId of participantIds) getGroupRow(participantId)
 
     for (const fixture of groupFixtures) {
       if (fixture.status !== 'confirmed') continue
-      if (!fixture.home_team_id || !fixture.away_team_id) continue
+      const home = resolveHome(fixture)
+      const away = resolveAway(fixture)
+      if (!home || !away) continue
 
       const result = resultsByFixture[fixture.id]
       if (!result) continue
@@ -407,12 +442,12 @@ export async function recalculateStandings(tournamentId: string) {
       const effectiveHomeScore = bothForfeit ? 0 : homeScore
       const effectiveAwayScore = bothForfeit ? 0 : awayScore
 
-      const homeGroup = groupByTeam[fixture.home_team_id] ?? participantGroupByTeam[fixture.home_team_id]
-      const awayGroup = groupByTeam[fixture.away_team_id] ?? participantGroupByTeam[fixture.away_team_id] ?? homeGroup
+      const homeGroup = groupByParticipant[home] ?? participantGroupByParticipant[home]
+      const awayGroup = groupByParticipant[away] ?? participantGroupByParticipant[away] ?? homeGroup
 
       applyResult(
-        getGroupRow(fixture.home_team_id, homeGroup),
-        getGroupRow(fixture.away_team_id, awayGroup),
+        getGroupRow(home, homeGroup),
+        getGroupRow(away, awayGroup),
         effectiveHomeScore,
         effectiveAwayScore,
         isDoubleForfeit,
@@ -439,6 +474,6 @@ export async function recalculateStandings(tournamentId: string) {
     standingsRowsWritten,
     groupRowsWritten,
     fixturesProcessed: allFixtures.length,
-    participantsProcessed: (participants ?? []).length,
+    participantsProcessed: participantRows.length,
   }
 }

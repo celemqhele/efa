@@ -111,15 +111,23 @@ async function handleGroupDraw(adminSupabase: any, tournament: any, teams: any[]
   }
 
   // Create group standings rows
+  const { data: participantRows } = await db('tournament_participants')
+    .select('id, team_id')
+    .eq('tournament_id', tournament.id)
+  const participantByTeamId = new Map<string, string>()
+  for (const p of participantRows ?? []) {
+    if (p.team_id) participantByTeamId.set(p.team_id, p.id)
+  }
   for (const { group_name, teams: groupTeamIds } of assignments) {
     const standingRows = groupTeamIds.map((teamId: string) => ({
       tournament_id: tournament.id,
       group_name,
       team_id: teamId,
+      participant_id: participantByTeamId.get(teamId) ?? null,
       played: 0, wins: 0, draws: 0, losses: 0,
       goals_for: 0, goals_against: 0, points: 0,
     }))
-    await db('group_standings').upsert(standingRows, { onConflict: 'tournament_id,group_name,team_id' })
+    await db('group_standings').upsert(standingRows, { onConflict: 'tournament_id,group_name,participant_id' })
   }
 
   await db('audit_log').insert({

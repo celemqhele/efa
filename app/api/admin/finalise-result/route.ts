@@ -4,6 +4,7 @@ import {
   awardTrophy,
 } from '@/lib/tournament-progression'
 import { recalculateStandings } from '@/lib/standings-engine'
+import { vacateUserSlots } from '@/lib/slot-utils'
 import type { Database } from '@/lib/supabase/types'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { notifyAdminsOfResult } from '@/lib/backdoor-notify'
@@ -72,6 +73,9 @@ async function checkAndAutoSack(
   // Record sack time for the 1-week reassignment cooldown
   await db.from('profiles').update({ sacked_at: new Date().toISOString() }).eq('id', sackUserId)
 
+  // Their tournament seats become Vacant slots (standings continuity preserved)
+  const vacatedCount = await vacateUserSlots(db, sackUserId)
+
   await db
     .from('manager_tenures' as any)
     .update({ ended_at: new Date().toISOString() })
@@ -95,6 +99,7 @@ async function checkAndAutoSack(
       team_name: team.name,
       sacked_user_id: sackUserId,
       reason: `${threshold} consecutive absences`,
+      slots_vacated: vacatedCount,
     },
   })
 }

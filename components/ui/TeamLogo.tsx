@@ -24,11 +24,12 @@ const SIZE_PX: Record<LogoContext, number> = {
 
 const PLACEHOLDER_FOLDER = 'custom'
 
-// Placeholder clubs (e.g. the UEL "No Name" replacement) render a lucide icon
-// instead of a logo image.
+// Placeholder clubs (e.g. the UEL "No Name" replacement, vacant tournament
+// seats) render a lucide icon instead of a logo image.
 function getPlaceholderIcon(leagueFolder: string, teamSlug: string) {
   if (leagueFolder !== PLACEHOLDER_FOLDER) return null
   if (teamSlug === 'noname') return ShieldQuestion
+  if (teamSlug === 'vacant') return ShieldQuestion
   return null
 }
 

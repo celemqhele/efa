@@ -1,8 +1,13 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Shell from './_shell'
+import {
+  listOpenSeasons,
+  getSeasonPickableTeams,
+  userInSeason,
+} from '@/lib/season-applications'
 
 export const revalidate = 0
 
@@ -75,6 +80,24 @@ export default async function ProfilePage() {
 
   const next3 = (upcomingFixtures ?? []).slice(0, 3) as any[]
 
+  // -- Season applications (open seats + pickable clubs) --------------------
+  const adminSupabase = await createAdminClient()
+  const openSeasons = await listOpenSeasons(adminSupabase)
+
+  const seasonPickable: Record<string, unknown[]> = {}
+  const inSeasonIds: string[] = []
+  for (const s of openSeasons) {
+    seasonPickable[s.season_id] = await getSeasonPickableTeams(adminSupabase, s.season_id)
+    if (await userInSeason(adminSupabase, s.season_id, user.id)) inSeasonIds.push(s.season_id)
+  }
+
+  const { data: pendingRows } = await adminSupabase
+    .from('tournament_applications')
+    .select('season_id')
+    .eq('applicant_id', user.id)
+    .eq('status', 'pending')
+  const pendingSeasonIds = [...new Set((pendingRows ?? []).map((r: any) => r.season_id as string))]
+
   const data = {
     user,
     profile,
@@ -84,6 +107,10 @@ export default async function ProfilePage() {
     stats,
     winRate,
     next3,
+    openSeasons,
+    seasonPickable,
+    pendingSeasonIds,
+    inSeasonIds,
   }
 
   return <Shell data={data} />

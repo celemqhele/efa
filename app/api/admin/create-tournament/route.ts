@@ -1,7 +1,18 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/types'
+import { resolveUserClubId } from '@/lib/slot-utils'
 
 type TournamentType = Database['public']['Tables']['tournaments']['Insert']['type']
+
+async function resolveUsersToClubs(db: any, userIds: string[]): Promise<{ user_id: string; team_id: string }[]> {
+  const resolved: { user_id: string; team_id: string }[] = []
+  for (const uid of userIds) {
+    const team_id = await resolveUserClubId(db, uid)
+    if (!team_id) throw new Error('User has no managed team')
+    resolved.push({ user_id: uid, team_id })
+  }
+  return resolved
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -35,7 +46,8 @@ export async function POST(request: Request) {
     type: TournamentType
     start_date?: string
     end_date?: string
-    teams: {
+    users?: string[]
+    teams?: {
       id: string | null
       name: string
       logo_league_folder: string
@@ -58,57 +70,65 @@ export async function POST(request: Request) {
     type,
     start_date,
     end_date,
+    users,
     teams,
     settings: customSettings,
   } = body
 
-  if (!name || !type || !teams || teams.length === 0) {
+  if (!name || !type || (!teams || teams.length === 0) && (!users || users.length === 0)) {
     return Response.json(
-      { error: 'name, type, and teams are required' },
+      { error: 'name, type, and a list of teams or users are required' },
       { status: 400 }
     )
   }
 
   const adminSupabase = await createAdminClient()
-
-  // 1. Resolve all team IDs (create them if they don't exist)
   const db = (table: string) => adminSupabase.from(table) as any
 
+  // 1. Resolve slot entries: either (user_id, current club) pairs, or legacy bare teams
+  const userSlots: { user_id: string; team_id: string }[] = []
   const resolvedTeamIds: string[] = []
-  for (const team of teams) {
-    if (team.id) {
-      resolvedTeamIds.push(team.id)
-      if (team.manager_id) {
-        await db('teams').update({ manager_id: team.manager_id }).eq('id', team.id).is('manager_id', null)
-      }
-    } else {
-      const { data: existing } = await db('teams')
-        .select('id')
-        .eq('logo_team_slug', team.logo_team_slug)
-        .eq('logo_league_folder', team.logo_league_folder)
-        .maybeSingle()
 
-      if (existing) {
-        resolvedTeamIds.push(existing.id)
+  if (users && users.length > 0) {
+    const clubs = await resolveUsersToClubs(adminSupabase, users)
+    userSlots.push(...clubs)
+    resolvedTeamIds.push(...clubs.map((c) => c.team_id))
+  } else {
+    for (const team of teams ?? []) {
+      if (team.id) {
+        resolvedTeamIds.push(team.id)
         if (team.manager_id) {
-          await db('teams').update({ manager_id: team.manager_id }).eq('id', existing.id).is('manager_id', null)
+          await db('teams').update({ manager_id: team.manager_id }).eq('id', team.id).is('manager_id', null)
         }
       } else {
-        const { data: newTeam, error: createErr } = await db('teams')
-          .insert({
-            name: team.name,
-            logo_league_folder: team.logo_league_folder,
-            logo_team_slug: team.logo_team_slug,
-            manager_id: team.manager_id,
-            abandon_count: 0
-          })
+        const { data: existing } = await db('teams')
           .select('id')
-          .single()
+          .eq('logo_team_slug', team.logo_team_slug)
+          .eq('logo_league_folder', team.logo_league_folder)
+          .maybeSingle()
 
-        if (createErr || !newTeam) {
-          return Response.json({ error: `Failed to create team ${team.name}: ${createErr?.message}` }, { status: 500 })
+        if (existing) {
+          resolvedTeamIds.push(existing.id)
+          if (team.manager_id) {
+            await db('teams').update({ manager_id: team.manager_id }).eq('id', existing.id).is('manager_id', null)
+          }
+        } else {
+          const { data: newTeam, error: createErr } = await db('teams')
+            .insert({
+              name: team.name,
+              logo_league_folder: team.logo_league_folder,
+              logo_team_slug: team.logo_team_slug,
+              manager_id: team.manager_id,
+              abandon_count: 0
+            })
+            .select('id')
+            .single()
+
+          if (createErr || !newTeam) {
+            return Response.json({ error: `Failed to create team ${team.name}: ${createErr?.message}` }, { status: 500 })
+          }
+          resolvedTeamIds.push(newTeam.id)
         }
-        resolvedTeamIds.push(newTeam.id)
       }
     }
   }
@@ -161,27 +181,38 @@ export async function POST(request: Request) {
 
   const tournament_id = tournament.id
 
-  const participantRows = resolvedTeamIds.map((team_id) => ({
-    tournament_id,
-    team_id,
-  }))
+  const participantRows = resolvedTeamIds
+    .map((team_id) => {
+      const slot = userSlots.find((s) => s.team_id === team_id)
+      return slot
+        ? { tournament_id, team_id, user_id: slot.user_id }
+        : { tournament_id, team_id }
+    })
 
-  const { error: participantsError } = await db('tournament_participants')
+  const { data: insertedParticipants, error: participantsError } = await db('tournament_participants')
     .insert(participantRows)
+    .select('id, team_id')
 
   if (participantsError) {
     return Response.json({ error: participantsError.message }, { status: 500 })
   }
 
+  const participantByTeamId = new Map<string, string>()
+  for (const row of insertedParticipants ?? []) {
+    if (row.team_id) participantByTeamId.set(row.team_id, row.id)
+  }
+
   if (type === 'league') {
-    const standingRows = resolvedTeamIds.map((team_id) => ({
-      tournament_id,
-      team_id,
-      played: 0,
-      wins: 0,
-      draws: 0,
-      losses: 0,
-      goals_for: 0,
+    const standingRows = resolvedTeamIds
+      .map((team_id) => ({
+        tournament_id,
+        team_id,
+        participant_id: participantByTeamId.get(team_id) ?? null,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goals_for: 0,
       goals_against: 0,
       points: 0,
       form: '',

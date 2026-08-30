@@ -7,6 +7,7 @@ import ProfileActions from './ProfileActions'
 import { Card } from '@/components/ui/Card'
 import AvatarUpload from '@/components/ui/AvatarUpload'
 import ThemeSettings from '@/components/ui/ThemeSettings'
+import ApplyToSeason from './ApplyToSeason'
 import { Star, Shirt, Shield, Calendar, Phone } from 'lucide-react'
 import { useState } from 'react'
 
@@ -26,6 +27,10 @@ export default function Desktop({ data }: { data: any }) {
     stats,
     winRate,
     next3,
+    openSeasons,
+    seasonPickable,
+    pendingSeasonIds,
+    inSeasonIds,
   } = data
 
   const [phone, setPhone] = useState(profile?.phone ?? '')
@@ -83,7 +88,7 @@ export default function Desktop({ data }: { data: any }) {
                   className="w-6 h-6"
                 />
               )}
-              <span className="text-sm font-semibold group-hover:underline">{team.name}</span>
+<span className="text-sm font-semibold group-hover:underline">{team.name}</span>
               <span className="text-text-muted text-xs">→</span>
             </Link>
           ) : (
@@ -91,8 +96,6 @@ export default function Desktop({ data }: { data: any }) {
           )}
 
           <p className="text-xs text-text-muted">{user.email}</p>
-
-          {/* Phone number */}
           <div className="flex items-center gap-2 pt-space-1">
             <Phone className="w-4 h-4 text-accent shrink-0" />
             <input
@@ -126,6 +129,14 @@ export default function Desktop({ data }: { data: any }) {
           </div>
         </div>
       </Card>
+
+      {/* -- Apply to a Tournament ------------------------------------------- */}
+      <ApplyToSeason
+        openSeasons={openSeasons ?? []}
+        seasonPickable={seasonPickable ?? {}}
+        pendingSeasonIds={pendingSeasonIds ?? []}
+        inSeasonIds={inSeasonIds ?? []}
+      />
 
       {/* -- Career History Section ------------------------------------------ */}
       <Card className="p-space-5 space-y-space-4">

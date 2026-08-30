@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { insertNotificationsAndPush } from '@/lib/notify'
+import { vacateUserSlots } from '@/lib/slot-utils'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -50,6 +51,9 @@ export async function POST(request: Request) {
 
   if (updateErr) return Response.json({ error: updateErr.message }, { status: 500 })
 
+  // Their tournament seats become Vacant slots (standings continuity preserved)
+  const vacatedCount = await vacateUserSlots(adminSupabase, sackUserId)
+
   // Close open tenures
   await adminSupabase
     .from('manager_tenures' as any)
@@ -75,7 +79,7 @@ export async function POST(request: Request) {
     action: 'sack_manager',
     target_type: 'team',
     target_id: team_id,
-    details: { team_name: team.name, sacked_user_id: sackUserId },
+    details: { team_name: team.name, sacked_user_id: sackUserId, slots_vacated: vacatedCount },
   })
 
   return Response.json({ success: true })
