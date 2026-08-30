@@ -125,7 +125,12 @@ export async function resolveUserClubId(db: SupabaseClientLike, userId: string):
 
 // ─── Slot (tournament seat) management ────────────────────────────────────────
 // Vacate every slot a user holds: ownership cleared, seat shown as Vacant.
-// Slot record / standings continuity is untouched by design.
+// Standings continuity is preserved (the seat keeps its points, now under the
+// Vacant name); already-played fixtures keep the club that actually played so
+// historical matchups stay intact. The seat's remaining fixtures forfeit
+// immediately: a vacant side loses 3-0 to its opponent (0-0 void when both
+// sides vacant), captured as confirmed-pending results that confirm on the
+// fixture's scheduled date (see flip-pending cron).
 export async function vacateUserSlots(
   db: SupabaseClientLike,
   userId: string,
@@ -136,16 +141,103 @@ export async function vacateUserSlots(
 
   const { data: slots } = await db
     .from('tournament_participants')
-    .select('id')
+    .select('id, tournament_id')
     .eq('user_id', userId)
 
-  const slotIds = (slots ?? []).map((s: any) => s.id as string)
-  if (slotIds.length === 0) return 0
+  const slotRows = (slots ?? []) as { id: string; tournament_id: string }[]
+  if (slotRows.length === 0) return 0
+
+  const slotIds = slotRows.map((s) => s.id)
 
   await db
     .from('tournament_participants')
     .update({ user_id: null, team_id: vacantTeamId })
     .in('id', slotIds)
+
+  // Restamp the seat's live references so the vacancy displays as "Vacant":
+  // standings/group standings rows and not-yet-played fixtures.
+  for (const slot of slotRows) {
+    await db
+      .from('standings')
+      .update({ team_id: vacantTeamId })
+      .eq('tournament_id', slot.tournament_id)
+      .eq('participant_id', slot.id)
+    await db
+      .from('group_standings')
+      .update({ team_id: vacantTeamId })
+      .eq('tournament_id', slot.tournament_id)
+      .eq('participant_id', slot.id)
+  }
+
+  const pendingStatuses = ['scheduled', 'awaiting_confirmation', 'confirmed_pending']
+  await db
+    .from('fixtures')
+    .update({ home_team_id: vacantTeamId })
+    .in('home_participant_id', slotIds)
+    .in('status', pendingStatuses)
+  await db
+    .from('fixtures')
+    .update({ away_team_id: vacantTeamId })
+    .in('away_participant_id', slotIds)
+    .in('status', pendingStatuses)
+
+  // Auto-decide the seat's remaining league/group fixtures: a vacant side
+  // forfeits 3-0 to its opponent; both seats vacant voids 0-0. Future-dated
+  // results land as 'confirmed_pending' (trigger defers standings), so on
+  // fixture day the flip-pending cron confirms and applies them. Human-entered
+  // results (finalised_by set) are never overwritten.
+  const autoStatuses = ['scheduled', 'confirmed_pending']
+  for (const slot of slotRows) {
+    const { data: fixtures } = await db
+      .from('fixtures')
+      .select('id, home_participant_id, away_participant_id, home_team_id, away_team_id, results(finalised_by)')
+      .or(`home_participant_id.eq.${slot.id},away_participant_id.eq.${slot.id}`)
+      .in('status', autoStatuses)
+      .not('scheduled_date', 'is', null)
+      .in('round_type', ['league', 'group'])
+
+    for (const fx of (fixtures ?? []) as any[]) {
+      const res = Array.isArray(fx.results) ? fx.results[0] : fx.results
+      if (res && res.finalised_by) continue
+
+      const homeVacant = fx.home_team_id === vacantTeamId
+      const awayVacant = fx.away_team_id === vacantTeamId
+      let homeScore: number
+      let awayScore: number
+      let reason: string
+      if (homeVacant && awayVacant) {
+        homeScore = 0
+        awayScore = 0
+        reason = 'Both slots vacant and absent — void (0-0)'
+      } else if (homeVacant) {
+        homeScore = 0
+        awayScore = 3
+        reason = 'Vacant slot absent — automatic 0-3'
+      } else {
+        homeScore = 3
+        awayScore = 0
+        reason = 'Vacant slot absent — automatic 3-0'
+      }
+
+      await db
+        .from('results')
+        .upsert(
+          {
+            fixture_id: fx.id,
+            home_score: homeScore,
+            away_score: awayScore,
+            finalised_by: null,
+            screenshot_url: null,
+            override_reason: reason,
+            is_abandoned: false,
+            abandoned_type: null,
+            pen_home_score: null,
+            pen_away_score: null,
+          },
+          { onConflict: 'fixture_id' }
+        )
+    }
+  }
 
   return slotIds.length
 }
@@ -254,17 +346,22 @@ export async function fillVacantSlot(
     .update({ user_id: userId, team_id: displayTeamId })
     .eq('id', participantId)
 
-  // Update display references for this slot so the new club shows everywhere.
+  // Update display references for this slot so the new club shows for what's
+  // still to be played; already-played fixtures keep the club that actually
+  // played. Standings/group standings follow the slot's current club.
+  const pendingStatuses = ['scheduled', 'awaiting_confirmation', 'confirmed_pending']
   await db
     .from('fixtures')
     .update({ home_team_id: displayTeamId })
     .eq('tournament_id', tournamentId)
     .eq('home_participant_id', participantId)
+    .in('status', pendingStatuses)
   await db
     .from('fixtures')
     .update({ away_team_id: displayTeamId })
     .eq('tournament_id', tournamentId)
     .eq('away_participant_id', participantId)
+    .in('status', pendingStatuses)
 
   await db
     .from('standings')
