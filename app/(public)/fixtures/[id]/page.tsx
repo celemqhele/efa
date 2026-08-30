@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { calculateProbability } from '@/lib/probability-engine'
 import { getTeamDNAFromDB } from '@/lib/dna-engine'
 import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
+import { parseForfeitAdjusted } from '@/lib/forfeit-note'
 import Shell from './_shell'
 
 export const revalidate = 30
@@ -45,6 +46,21 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const result = _result as any
 
   const matchStats = result?.match_stats ?? null
+
+  // Pre-adjustment (pre-penalty) score for forfeit matches, where stored
+  let adjustedScore: { home: number; away: number } | null = null
+  if (result?.is_abandoned) {
+    const { data: forfeitRows } = await supabase
+      .from('forfeit_balances')
+      .select('half_time_note')
+      .eq('fixture_id', id)
+    if (forfeitRows) {
+      for (const row of forfeitRows) {
+        const parsed = parseForfeitAdjusted(row?.half_time_note)
+        if (parsed) { adjustedScore = parsed; break }
+      }
+    }
+  }
 
   // Standings for both teams in this tournament
   const [homeStandingRaw, awayStandingRaw] = await Promise.all([
@@ -214,6 +230,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     fixture,
     result,
     matchStats,
+    adjustedScore,
     homeTeam,
     awayTeam,
     tournament,

@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { AlertTriangle, BarChart3, Camera, ArrowLeft, ChevronRight } from 'lucide-react'
 
 export default function Desktop({ data }: { data: any }) {
-  const { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore } = data
+  const { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore, adjustedScore } = data
 
   const statDefs = [
     { key: 'possession', label: 'Possession %', h: stats?.home_possession, a: stats?.away_possession, unit: '%' },
@@ -88,7 +88,7 @@ export default function Desktop({ data }: { data: any }) {
               <div className="px-3 py-1.5 bg-feedback-error/10 border border-feedback-error/30 rounded-xl text-feedback-error text-xs font-medium inline-flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5" /> Abandoned ({result.abandoned_type === 'both' ? 'Mutual' : `${result.abandoned_type} team`})
               </div>
-              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? home?.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? away?.name : ''} forfeited. Score at time: ${result.home_score}-${result.away_score}. This penalty was applied to the aggregate.`} />
+              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? home?.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? away?.name : ''} forfeited. Score at time: ${adjustedScore ? `${adjustedScore.home}-${adjustedScore.away}` : `${result.home_score}-${result.away_score}`}. This penalty was applied to the aggregate.`} />
             </div>
           )}
         </div>

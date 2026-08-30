@@ -114,6 +114,7 @@ export default function Mobile({ data }: { data: any }) {
     fixture,
     result,
     matchStats,
+    adjustedScore,
     homeTeam,
     awayTeam,
     tournament,
@@ -319,7 +320,7 @@ export default function Mobile({ data }: { data: any }) {
                   : 'Both teams'}{' '}
                 left
               </span>
-              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? homeTeam.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? awayTeam.name : ''} forfeited. Score at time: ${result.home_score}-${result.away_score}. This penalty was applied to the aggregate.`} />
+              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? homeTeam.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? awayTeam.name : ''} forfeited. Score at time: ${adjustedScore ? `${adjustedScore.home}-${adjustedScore.away}` : `${result.home_score}-${result.away_score}`}. This penalty was applied to the aggregate.`} />
             </div>
           </div>
         )}

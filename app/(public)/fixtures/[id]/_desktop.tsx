@@ -72,7 +72,7 @@ function ProbabilityBar({ home, draw, away, homeName, awayName }: { home: number
 
 export default function Desktop({ data }: { data: any }) {
   const {
-    id, fixture, result, matchStats, homeTeam, awayTeam, tournament,
+    id, fixture, result, matchStats, adjustedScore, homeTeam, awayTeam, tournament,
     homeManager, awayManager, user, isHomeManager, isAwayManager, isManager,
     probability, h2hList, homeDNA, awayDNA, homeStanding, awayStanding,
     confirmationStatus, conf1, conf2, hasResult, waitingReports,
@@ -217,7 +217,7 @@ export default function Desktop({ data }: { data: any }) {
                 Abandoned —{' '}
                 {result.abandoned_type === 'home' ? homeTeam.name : result.abandoned_type === 'away' ? awayTeam.name : 'Both teams'} left
               </span>
-              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? homeTeam.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? awayTeam.name : ''} forfeited. Score at time: ${result.home_score}-${result.away_score}. This penalty was applied to the aggregate.`} />
+              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? homeTeam.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? awayTeam.name : ''} forfeited. Score at time: ${adjustedScore ? `${adjustedScore.home}-${adjustedScore.away}` : `${result.home_score}-${result.away_score}`}. This penalty was applied to the aggregate.`} />
             </div>
           </div>
         )}

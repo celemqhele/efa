@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
+import { parseForfeitAdjusted } from '@/lib/forfeit-note'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
@@ -39,6 +40,22 @@ export default async function ResultDetailPage({ params }: Props) {
 
   const fixture = result.fixtures as any
   const stats = result.match_stats as any
+
+  // Pre-adjustment (pre-penalty) score for forfeit matches, where stored
+  let adjustedScore: { home: number; away: number } | null = null
+  if (result?.is_abandoned && fixture?.id) {
+    const { data: forfeitRows } = await supabase
+      .from('forfeit_balances')
+      .select('half_time_note')
+      .eq('fixture_id', fixture.id)
+    if (forfeitRows) {
+      for (const row of forfeitRows) {
+        const parsed = parseForfeitAdjusted(row?.half_time_note)
+        if (parsed) { adjustedScore = parsed; break }
+      }
+    }
+  }
+
   const home = fixture?.home_team
   const away = fixture?.away_team
   const tournament = fixture?.tournament
@@ -83,7 +100,7 @@ export default async function ResultDetailPage({ params }: Props) {
     tournament?.type === 'tournament_international' ? 'text-green-400' :
     'text-text-muted'
 
-  const data = { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore }
+  const data = { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore, adjustedScore }
 
   return <Shell data={data} />
 }

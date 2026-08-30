@@ -29,7 +29,7 @@ function StatRow({ label, homeVal, awayVal }: { label: string; homeVal: number; 
 }
 
 export default function Mobile({ data }: { data: any }) {
-  const { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore } = data
+  const { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore, adjustedScore } = data
 
   return (
     <div className="px-4 pb-8 space-y-5">
@@ -48,7 +48,7 @@ export default function Mobile({ data }: { data: any }) {
               <div className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-[10px] font-medium inline-flex items-center gap-1.5">
                 <AlertTriangle className="w-3 h-3" /> Abandoned ({result.abandoned_type === 'both' ? 'Mutual' : `${result.abandoned_type} team`})
               </div>
-              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? home?.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? away?.name : ''} forfeited. Score at time: ${result.home_score}-${result.away_score}. This penalty was applied to the aggregate.`} />
+              <ForfeitBadge note={`Forfeit: ${result.abandoned_type === 'home' || result.abandoned_type === 'both' ? home?.name : ''}${result.abandoned_type === 'both' ? ' & ' : ''}${result.abandoned_type === 'away' || result.abandoned_type === 'both' ? away?.name : ''} forfeited. Score at time: ${adjustedScore ? `${adjustedScore.home}-${adjustedScore.away}` : `${result.home_score}-${result.away_score}`}. This penalty was applied to the aggregate.`} />
             </div>
           )}
 
