@@ -501,6 +501,11 @@ const WELCOME_MENU =
 // are already taken by real actions.
 const FLOW_HINT = '\n\n1. Cancel\n2. Start again'
 
+// Footer for numbered match-selection menus, where the numbers 1..N are already
+// taken by the listed matches. Cancel / start-again therefore use words instead
+// of colliding numbers.
+const MATCH_LIST_HINT = '\n\nReply CANCEL to stop, or START to start again.'
+
 // Free-text info-request states where the user types a word/phrase (not a
 // selection number). In these states "1" = cancel and "2" = restart are safe to
 // intercept; the confirm menu (1-4) and pick-list states are deliberately absent.
@@ -531,6 +536,27 @@ async function handleFlowHint(from: string, text: string, phoneNumberId: string)
   } else {
     await sendTextMessage(from, WELCOME_MENU, phoneNumberId)
   }
+  return true
+}
+
+// True when the user is asking to restart the flow on a numbered match-selection
+// menu ("start", "start again", "restart", "begin", "again").
+function isStartAgain(text: string): boolean {
+  return (
+    includesWord(text, 'start') ||
+    includesWord(text, 'restart') ||
+    includesWord(text, 'begin') ||
+    includesWord(text, 'again')
+  )
+}
+
+// For numbered match-selection menus (MATCH_LIST_HINT). Consumes a word-based
+// "start again" request by clearing the session and showing the welcome menu.
+// Cancel is already handled in each menu's own handler via isCancel().
+async function handleStartAgain(from: string, text: string, phoneNumberId: string): Promise<boolean> {
+  if (!isStartAgain(text)) return false
+  await clearSession(from)
+  await sendTextMessage(from, WELCOME_MENU, phoneNumberId)
   return true
 }
 
@@ -638,7 +664,7 @@ if (isCancel(text)) {
   })
 
   const lines = formatFixtureListWithHeadings(sortedForDisplay)
-  await sendTextMessage(from, `Found ${sortedForDisplay.length} match${sortedForDisplay.length === 1 ? '' : 'es'}:\n\n${lines}\n\nReply with the number. Type CANCEL to stop.`, phoneNumberId)
+  await sendTextMessage(from, `Found ${sortedForDisplay.length} match${sortedForDisplay.length === 1 ? '' : 'es'}:\n\n${lines}\n\nReply with the number.${MATCH_LIST_HINT}`, phoneNumberId)
 }
 
 async function handleBackdoorFixture(from: string, text: string, phoneNumberId: string) {
@@ -647,6 +673,7 @@ async function handleBackdoorFixture(from: string, text: string, phoneNumberId: 
     await sendTextMessage(from, "Cancelled.", phoneNumberId)
     return
   }
+  if (await handleStartAgain(from, text, phoneNumberId)) return
   const session = await getSession(from)
   if (!session?.displayed_fixtures) {
     await clearSession(from)
@@ -1010,9 +1037,14 @@ async function handlePhoneUpdate(from: string, text: string, session: SessionDat
 async function handlePhoneTeamConfirm(from: string, text: string, session: SessionData, phoneNumberId: string) {
   const supabase = await createAdminClient()
 
-  if (isCancel(text)) {
+  if (isCancel(text) || isNo(text)) {
     await clearSession(from)
     await sendTextMessage(from, 'No problem. Your number stays as it is.', phoneNumberId)
+    return
+  }
+
+  if (isYes(text)) {
+    await sendTextMessage(from, `Which team do you manage? Reply ${(session.phone_update_candidates || []).map(c => c.teamName).join(' or ')}. Type CANCEL to skip.${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -1099,7 +1131,7 @@ async function sendFixturesForTeams(from: string, teamIds: string[], teamNames: 
     lines.push('')
   }
 
-  await sendTextMessage(from, `Fixtures for ${label} on ${formatDateLabel(useDate)}:\n\n${lines.join('\n')}\n\nReply with a number to get your opponent's contact, or type a date (e.g. 15 Aug) to check fixtures for another day. Type CANCEL to exit.`, phoneNumberId)
+  await sendTextMessage(from, `Fixtures for ${label} on ${formatDateLabel(useDate)}:\n\n${lines.join('\n')}\n\nReply with a number to get your opponent's contact, or type a date (e.g. 15 Aug) to check fixtures for another day.${MATCH_LIST_HINT}`, phoneNumberId)
 }
 
 async function handleCheckFixturesCommand(from: string, phoneNumberId: string) {
@@ -1293,6 +1325,7 @@ async function handleFixturesAction(from: string, text: string, session: Session
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
+  if (await handleStartAgain(from, text, phoneNumberId)) return
 
   // A date (e.g. "15 Aug" or "tomorrow") must be checked BEFORE number
   // extraction, otherwise "15 Aug" would be treated as fixture number 15.
@@ -1318,7 +1351,7 @@ async function handleFixturesAction(from: string, text: string, session: Session
     return
   }
 
-  await sendTextMessage(from, `Reply with a number from the list to get your opponent's contact, or type a date (e.g. 15 Aug) to check fixtures for another day. Type CANCEL to stop.`, phoneNumberId)
+  await sendTextMessage(from, `Reply with a number from the list to get your opponent's contact, or type a date (e.g. 15 Aug) to check fixtures for another day.${MATCH_LIST_HINT}`, phoneNumberId)
 }
 
 // ─── Backdoor User Flow ──────────────────────────────────────────────────────────
@@ -1476,7 +1509,7 @@ if (teamSearches.length === 0) {
     backdoor_fixture_ids: matchedFixtures.map((f: any) => f.id),
   })
 
-  await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to stop.`, phoneNumberId)
+  await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match.${MATCH_LIST_HINT}`, phoneNumberId)
 }
 
 // Sort fixtures the same way formatFixtureListWithHeadings displays them so the
@@ -1539,6 +1572,7 @@ async function handleBackdoorFixtureSelect(from: string, text: string, session: 
     await sendTextMessage(from, 'Cancelled.', phoneNumberId)
     return
   }
+  if (await handleStartAgain(from, text, phoneNumberId)) return
   const num = extractNumber(text)
   if (num === null || num < 1 || num > (session.backdoor_fixture_ids?.length || 0)) {
     await sendTextMessage(from, `Pick a number between 1 and ${session.backdoor_fixture_ids?.length || 0}.`, phoneNumberId)
@@ -2985,7 +3019,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       displayed_fixtures: matchedFixtures.map((f: any) => f.id),
     })
 
-    await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match. Type CANCEL to stop.`, phoneNumberId)
+    await sendTextMessage(from, `Found ${matchedFixtures.length} matches:\n\n${formatFixtureListWithHeadings(matchedFixtures)}\n\nReply with the number of your match.${MATCH_LIST_HINT}`, phoneNumberId)
     return
   }
 
@@ -3220,7 +3254,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const lines = fixtures.map((f: any, i: number) => formatFixtureLine(f, i))
     const dateLabel = parsed.date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
-    await sendTextMessage(from, `Fixtures for ${dateLabel}:\n\n${lines.join('\n')}\n\nReply with the number of your match. Type CANCEL to stop.\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
+    await sendTextMessage(from, `Fixtures for ${dateLabel}:\n\n${lines.join('\n')}\n\nReply with the number of your match.${MATCH_LIST_HINT}\n\nYour fixture isn't here? Type "check other date".`, phoneNumberId)
     return
   }
 
@@ -3231,6 +3265,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await sendTextMessage(from, "OK. Send a new screenshot when you're ready.", phoneNumberId)
       return
     }
+    if (await handleStartAgain(from, text, phoneNumberId)) return
     const num = extractNumber(text)
     if (num !== null && num > 0 && session.displayed_fixtures && num <= session.displayed_fixtures.length) {
       const chosenId = session.displayed_fixtures[num - 1]
