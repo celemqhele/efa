@@ -495,6 +495,45 @@ const WELCOME_MENU =
   '3. Create an EFA account\n' +
   '4. Check my backdoor applications'
 
+// Footer appended to free-text "info-request" prompts (score, team names, date,
+// forfeit, etc.) so a mid-flow user always has an explicit way out. Not used on
+// numbered-selection menus (confirm menu, multi-match list) where the numbers
+// are already taken by real actions.
+const FLOW_HINT = '\n\n1. Cancel\n2. Start again'
+
+// Free-text info-request states where the user types a word/phrase (not a
+// selection number). In these states "1" = cancel and "2" = restart are safe to
+// intercept; the confirm menu (1-4) and pick-list states are deliberately absent.
+const FLOW_HINT_STATES = new Set([
+  'awaiting_match_name',
+  'awaiting_date',
+  'awaiting_edit_score',
+  'awaiting_forfeit',
+  'awaiting_already_submitted',
+  'awaiting_backdoor_search',
+  'awaiting_backdoor_side',
+  'awaiting_backdoor_override_confirm',
+  'awaiting_onboarding_username',
+  'awaiting_fixtures_team',
+  'awaiting_phone_update',
+  'awaiting_phone_team_confirm',
+])
+
+// Handles the numbered "1. Cancel / 2. Start again" hint if the current session is
+// in a free-text info state. Returns true if the message was consumed, false if
+// the bot should continue normal processing.
+async function handleFlowHint(from: string, text: string, phoneNumberId: string): Promise<boolean> {
+  const trimmed = text.trim()
+  if (trimmed !== '1' && trimmed !== '2') return false
+  await clearSession(from)
+  if (trimmed === '1') {
+    await sendTextMessage(from, 'Cancelled. Send a new screenshot when you\'re ready.', phoneNumberId)
+  } else {
+    await sendTextMessage(from, WELCOME_MENU, phoneNumberId)
+  }
+  return true
+}
+
 // Shown only on initial contact (no active flow). Every mid-flow state is
 // handled earlier in handleText, so this never re-triggers while the user is
 // choosing options inside an existing flow.
@@ -638,7 +677,7 @@ async function handleBackdoorFixture(from: string, text: string, phoneNumberId: 
       state: 'awaiting_backdoor_override_confirm',
       matched_fixture_id: fixtureId,
     })
-    await sendTextMessage(from, `This match has already been applied backdoor (Result: ${h} ${result?.home_score}-${result?.away_score} ${a}). Would you like to override and correct? Reply YES or NO.`, phoneNumberId)
+    await sendTextMessage(from, `This match has already been applied backdoor (Result: ${h} ${result?.home_score}-${result?.away_score} ${a}). Would you like to override and correct? Reply YES or NO.${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -677,7 +716,7 @@ async function handleBackdoorOverrideConfirm(from: string, text: string, phoneNu
       .single()
     const h = fixtureTeamName(data, 'home')
     const a = fixtureTeamName(data, 'away')
-    await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Type the team name (e.g. ${h} or ${a}). Type CANCEL to stop.`, phoneNumberId)
+    await sendTextMessage(from, `${h} vs ${a}\n\nWho gets the 3-0 win? Type the team name (e.g. ${h} or ${a}).${FLOW_HINT}`, phoneNumberId)
     return
   }
   if (isNo(text)) {
@@ -713,7 +752,7 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
       .single()
     const h = fixtureTeamName(fx, 'home')
     const a = fixtureTeamName(fx, 'away')
-    await sendTextMessage(from, `Type the team that gets the 3-0 win (e.g. ${h} or ${a}).`, phoneNumberId)
+    await sendTextMessage(from, `Type the team that gets the 3-0 win (e.g. ${h} or ${a}).${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -824,7 +863,7 @@ async function handleSubmissionType(from: string, text: string, session: Session
         match_stats: session.match_stats,
         screenshot_media_id: session.screenshot_media_id,
       })
-      await sendTextMessage(from, `This is a new score.\n\nWhat match is it for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to stop.`, phoneNumberId)
+      await sendTextMessage(from, `This is a new score.\n\nWhat match is it for? Type the team names, e.g. "Arsenal vs Everton".${FLOW_HINT}`, phoneNumberId)
       return
     }
     if (option === 2) {
@@ -840,7 +879,7 @@ async function handleSubmissionType(from: string, text: string, session: Session
         match_stats: session.match_stats,
         screenshot_media_id: session.screenshot_media_id,
       })
-      await sendTextMessage(from, `This changes a score that was already submitted.\n\nWhat match is it for? Type the team names, e.g. "Arsenal vs Everton". Type CANCEL to stop.`, phoneNumberId)
+      await sendTextMessage(from, `This changes a score that was already submitted.\n\nWhat match is it for? Type the team names, e.g. "Arsenal vs Everton".${FLOW_HINT}`, phoneNumberId)
       return
     }
     await sendTextMessage(from, 'Reply 1 or 2. Type CANCEL to stop.', phoneNumberId)
@@ -965,7 +1004,7 @@ async function handlePhoneUpdate(from: string, text: string, session: SessionDat
     return
   }
 
-  await sendTextMessage(from, `Update your number to ${from}? Reply YES or NO.`, phoneNumberId)
+  await sendTextMessage(from, `Update your number to ${from}? Reply YES or NO.${FLOW_HINT}`, phoneNumberId)
 }
 
 async function handlePhoneTeamConfirm(from: string, text: string, session: SessionData, phoneNumberId: string) {
@@ -992,7 +1031,7 @@ async function handlePhoneTeamConfirm(from: string, text: string, session: Sessi
   )
 
   if (!match) {
-    await sendTextMessage(from, `Which team do you manage? Reply ${candidates.map(c => c.teamName).join(' or ')}. Type CANCEL to skip.`, phoneNumberId)
+    await sendTextMessage(from, `Which team do you manage? Reply ${candidates.map(c => c.teamName).join(' or ')}. Type CANCEL to skip.${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -1113,7 +1152,7 @@ async function handleCheckFixturesCommand(from: string, phoneNumberId: string) {
     phone_update_profile_id: null,
     phone_update_candidates: null,
   })
-  await sendTextMessage(from, 'What is your team name? Type CANCEL to exit.', phoneNumberId)
+  await sendTextMessage(from, `What is your team name? Type CANCEL to exit.${FLOW_HINT}`, phoneNumberId)
 }
 
 async function handleFixturesTeam(from: string, text: string, phoneNumberId: string) {
@@ -1127,7 +1166,7 @@ async function handleFixturesTeam(from: string, text: string, phoneNumberId: str
   const cleaned = cleanTeamInput(text)
   const teamName = await resolveTeamName(cleaned)
   if (!teamName) {
-    await sendTextMessage(from, `Sorry, I could not find a team matching that. Please type the full team name. Type CANCEL to stop.`, phoneNumberId)
+    await sendTextMessage(from, `Sorry, I could not find a team matching that. Please type the full team name. Type CANCEL to stop.${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -1137,7 +1176,7 @@ async function handleFixturesTeam(from: string, text: string, phoneNumberId: str
     .eq('name', teamName)
     .maybeSingle()
   if (!team) {
-    await sendTextMessage(from, `Sorry, I could not find a team matching that. Please type the full team name. Type CANCEL to stop.`, phoneNumberId)
+    await sendTextMessage(from, `Sorry, I could not find a team matching that. Please type the full team name. Type CANCEL to stop.${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -1983,13 +2022,13 @@ async function handleOnboardingUsername(from: string, text: string, phoneNumberI
     return
   }
   if (/^(apply|apply to join|join efa|i want to join|join the efa)$/i.test(text.trim())) {
-    await sendTextMessage(from, 'Reply with the username you want (letters, numbers and underscores only). Type CANCEL to exit.', phoneNumberId)
+    await sendTextMessage(from, `Reply with the username you want (letters, numbers and underscores only). Type CANCEL to exit.${FLOW_HINT}`, phoneNumberId)
     return
   }
 
   const username = text.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
   if (username.length < 3 || username.length > 30) {
-    await sendTextMessage(from, 'Username must be between 3 and 30 characters (letters, numbers, underscores). Try again or type CANCEL.', phoneNumberId)
+    await sendTextMessage(from, `Username must be between 3 and 30 characters (letters, numbers, underscores). Try again or type CANCEL.${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -2002,7 +2041,7 @@ async function handleOnboardingUsername(from: string, text: string, phoneNumberI
     .maybeSingle()
 
   if (existing) {
-    await sendTextMessage(from, `The username "@${username}" is already taken. Pick another one or type CANCEL.`, phoneNumberId)
+    await sendTextMessage(from, `The username "@${username}" is already taken. Pick another one or type CANCEL.${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -2627,6 +2666,13 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   const session = await getSession(from)
   console.log('[handleText] session:', JSON.stringify(session))
 
+  // ─── Numbered "1. Cancel / 2. Start again" hint (free-text info states) ──
+  if (session && FLOW_HINT_STATES.has(session.state)) {
+    if (await handleFlowHint(from, text, phoneNumberId)) {
+      return
+    }
+  }
+
   // ─── Onboarding flow ──────────────────────────────────────────────────────
   if (session?.state === 'awaiting_onboarding_username') {
     await handleOnboardingUsername(from, text, phoneNumberId)
@@ -2718,7 +2764,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       return
     }
     await upsertSession({ phone_number: from, state: 'awaiting_backdoor_search' })
-    await sendTextMessage(from, 'Type the fixture, e.g. "Arsenal vs Chelsea".', phoneNumberId)
+    await sendTextMessage(from, `Type the fixture, e.g. "Arsenal vs Chelsea".${FLOW_HINT}`, phoneNumberId)
     return
   }
   if (command === 'backdoor') {
@@ -2863,7 +2909,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         const statsBlock = formatStatsBlock(statsRow ? dbStatsToSessionFormat(statsRow) : null)
         const dateLine = formatFixtureWhen(f) ? ` - ${formatFixtureWhen(f)}` : ''
         await upsertSession({ phone_number: from, state: 'awaiting_already_submitted' })
-        await sendTextMessage(from, `This match has already been submitted. Here are the results and stats:\n\n${hName} ${result?.home_score ?? '?'}-${result?.away_score ?? '?'} ${aName}${dateLine}${statsBlock ? '\n\n' + statsBlock : ''}\n\nWould you like to edit it? Reply YES or NO.`, phoneNumberId)
+        await sendTextMessage(from, `This match has already been submitted. Here are the results and stats:\n\n${hName} ${result?.home_score ?? '?'}-${result?.away_score ?? '?'} ${aName}${dateLine}${statsBlock ? '\n\n' + statsBlock : ''}\n\nWould you like to edit it? Reply YES or NO.${FLOW_HINT}`, phoneNumberId)
         return
       }
     }
@@ -2956,7 +3002,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await clearSession(from)
       await sendTextMessage(from, "OK. Send a new screenshot when you're ready.", phoneNumberId)
     } else {
-      await sendTextMessage(from, "Would you like to edit the submitted result? Reply YES or NO.", phoneNumberId)
+      await sendTextMessage(from, `Would you like to edit the submitted result? Reply YES or NO.${FLOW_HINT}`, phoneNumberId)
     }
     return
   }
@@ -2995,7 +3041,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       }
       return
     }
-    await sendTextMessage(from, "Did the losing team forfeit before the game finished? Reply YES or NO.", phoneNumberId)
+    await sendTextMessage(from, `Did the losing team forfeit before the game finished? Reply YES or NO.${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -3006,7 +3052,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   if (session?.state === 'awaiting_edit_score') {
     const match = text.trim().match(/^(\d+)\s*[-:]\s*(\d+)$/)
     if (!match) {
-      await sendTextMessage(from, "Please type the score as: 3-2", phoneNumberId)
+      await sendTextMessage(from, `Please type the score as: 3-2${FLOW_HINT}`, phoneNumberId)
       return
     }
     const newHomeScore = parseInt(match[1], 10)
@@ -3055,7 +3101,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       // Override flow: ask about forfeit first, then reset + re-submit
       if (session.state === 'awaiting_override_confirm') {
         await upsertSession({ phone_number: from, state: 'awaiting_forfeit' })
-        await sendTextMessage(from, "Did the losing team forfeit before the game finished? Reply yes or no.", phoneNumberId)
+        await sendTextMessage(from, `Did the losing team forfeit before the game finished? Reply yes or no.${FLOW_HINT}`, phoneNumberId)
         return
       }
       // Forfeit confirm: user confirmed the forfeit-adjusted score
@@ -3077,7 +3123,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       // First confirmation: ask about forfeit before writing to DB
       if (!session.displayed_fixtures || session.displayed_fixtures.length === 0) {
         await upsertSession({ phone_number: from, state: 'awaiting_forfeit' })
-        await sendTextMessage(from, "Did the losing team forfeit before the game finished? Reply yes or no.", phoneNumberId)
+        await sendTextMessage(from, `Did the losing team forfeit before the game finished? Reply yes or no.${FLOW_HINT}`, phoneNumberId)
         return
       }
       console.log('[webhook] direct bypass: user affirmed, writing to DB')
@@ -3116,7 +3162,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     // EDIT SCORE — override the score for aggregate/replay situations
     if (actionByNumber === 'edit_score' || includesWord(text, 'edit score') || includesWord(text, 'score')) {
       await upsertSession({ phone_number: from, state: 'awaiting_edit_score' })
-      await sendTextMessage(from, "What is the correct aggregate score? Type it as: 3-2", phoneNumberId)
+      await sendTextMessage(from, `What is the correct aggregate score? Type it as: 3-2${FLOW_HINT}`, phoneNumberId)
       return
     }
   }
@@ -3128,7 +3174,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       return
     }
     await upsertSession({ phone_number: from, state: 'awaiting_date', matched_fixture_id: null, displayed_fixtures: null })
-    await sendTextMessage(from, "What date? Type it like \"12 Jul\", \"July 12\", or \"2026-07-12\".", phoneNumberId)
+    await sendTextMessage(from, `What date? Type it like "12 Jul", "July 12", or "2026-07-12".${FLOW_HINT}`, phoneNumberId)
     return
   }
 
@@ -3136,7 +3182,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   if (session.state === 'awaiting_date') {
     const parsed = parseUserDate(text)
     if (!parsed) {
-      await sendTextMessage(from, "Sorry, I didn't catch that. Try something like \"12 Jul\", \"July 12\", or \"2026-07-12\".", phoneNumberId)
+      await sendTextMessage(from, `Sorry, I didn't catch that. Try something like "12 Jul", "July 12", or "2026-07-12".${FLOW_HINT}`, phoneNumberId)
       return
     }
     const { dateKey } = parsed
