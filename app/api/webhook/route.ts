@@ -2999,6 +2999,39 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     return
   }
 
+  // ─── Edit score: user types new score ──────────────────────────────────
+  // Handled BEFORE the direct-bypass block so a raw score like "2-3" isn't
+  // intercepted by the numbered-action menu (extractNumber("2-3") === 2 → would
+  // re-trigger the edit-score prompt forever).
+  if (session?.state === 'awaiting_edit_score') {
+    const match = text.trim().match(/^(\d+)\s*[-:]\s*(\d+)$/)
+    if (!match) {
+      await sendTextMessage(from, "Please type the score as: 3-2", phoneNumberId)
+      return
+    }
+    const newHomeScore = parseInt(match[1], 10)
+    const newAwayScore = parseInt(match[2], 10)
+
+    const { data: fixCheck } = await supabase
+      .from('fixtures')
+      .select('status')
+      .eq('id', session.matched_fixture_id)
+      .single()
+    const wasOverride = fixCheck && (fixCheck.status === 'confirmed' || fixCheck.status === 'awaiting_confirmation')
+
+    await upsertSession({
+      phone_number: from,
+      home_score: newHomeScore,
+      away_score: newAwayScore,
+      state: wasOverride ? 'awaiting_override_confirm' : 'idle',
+    })
+
+    const statsBlock = formatStatsBlock(session.match_stats)
+    const overrideWarning = wasOverride ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
+    await sendTextMessage(from, `Score updated.\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\n1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel`, phoneNumberId)
+    return
+  }
+
   // CANCEL — always works regardless of flow state
   if (isCancel(text)) {
     console.log('[webhook] user CANCEL')
@@ -3086,36 +3119,6 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await sendTextMessage(from, "What is the correct aggregate score? Type it as: 3-2", phoneNumberId)
       return
     }
-  }
-
-  // ─── Edit score: user types new score ──────────────────────────────────────
-  if (session?.state === 'awaiting_edit_score') {
-    const match = text.trim().match(/^(\d+)\s*[-:]\s*(\d+)$/)
-    if (!match) {
-      await sendTextMessage(from, "Please type the score as: 3-2", phoneNumberId)
-      return
-    }
-    const newHomeScore = parseInt(match[1], 10)
-    const newAwayScore = parseInt(match[2], 10)
-
-    const { data: fixCheck } = await supabase
-      .from('fixtures')
-      .select('status')
-      .eq('id', session.matched_fixture_id)
-      .single()
-    const wasOverride = fixCheck && (fixCheck.status === 'confirmed' || fixCheck.status === 'awaiting_confirmation')
-
-    await upsertSession({
-      phone_number: from,
-      home_score: newHomeScore,
-      away_score: newAwayScore,
-      state: wasOverride ? 'awaiting_override_confirm' : 'idle',
-    })
-
-    const statsBlock = formatStatsBlock(session.match_stats)
-    const overrideWarning = wasOverride ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
-    await sendTextMessage(from, `Score updated.\n\nConfirm result: ${session.home_team} ${newHomeScore}-${newAwayScore} ${session.away_team}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\n1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel`, phoneNumberId)
-    return
   }
 
   // "check other date" — restart fixture matching with a different date
