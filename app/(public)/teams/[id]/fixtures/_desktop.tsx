@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   scheduled: { label: 'Scheduled', pill: 'bg-text-muted/20 text-text-muted border-text-muted/30' },
   awaiting_confirmation: { label: 'Awaiting', pill: 'bg-feedback-warning/20 text-feedback-warning border-feedback-warning/30' },
+  confirmed_pending: { label: 'Pending', pill: 'bg-feedback-warning/20 text-feedback-warning border-feedback-warning/30' },
   confirmed: { label: 'FT', pill: 'bg-feedback-success/20 text-feedback-success border-feedback-success/30' },
   completed: { label: 'FT', pill: 'bg-feedback-success/20 text-feedback-success border-feedback-success/30' },
   abandoned: { label: 'Abandoned', pill: 'bg-feedback-error/20 text-feedback-error border-feedback-error/30' },

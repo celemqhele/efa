@@ -70,6 +70,7 @@ function isInBreak(date: Date, breaks: SeasonBreak[]): SeasonBreak | null {
 const STATUS_PILL: Record<string, string> = {
   confirmed: 'bg-feedback-success/20 text-feedback-success',
   awaiting_confirmation: 'bg-feedback-warning/20 text-feedback-warning',
+  confirmed_pending: 'bg-feedback-warning/20 text-feedback-warning',
   abandoned: 'bg-feedback-error/20 text-feedback-error',
   scheduled: 'bg-text-muted/20 text-text-muted',
 }
@@ -255,7 +256,7 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                           STATUS_PILL[f.status] ?? 'bg-border/20 text-text-muted'
                         }`}
                       >
-                        {f.status === 'confirmed' ? 'FT' : f.status === 'awaiting_confirmation' ? 'Awaiting' : f.status === 'abandoned' ? 'Abandoned' : 'Scheduled'}
+                        {f.status === 'confirmed' ? 'FT' : (f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') ? 'Awaiting' : f.status === 'abandoned' ? 'Abandoned' : 'Scheduled'}
                       </div>
                     </div>
 

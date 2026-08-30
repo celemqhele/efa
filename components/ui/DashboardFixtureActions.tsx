@@ -38,7 +38,7 @@ export default function DashboardFixtureActions({
   const actionsRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
-  const isFinished = ['confirmed', 'completed', 'abandoned'].includes(status)
+  const isFinished = ['confirmed', 'confirmed_pending', 'completed', 'abandoned'].includes(status)
   const isAwaiting = status === 'awaiting_confirmation'
 
   useEffect(() => {

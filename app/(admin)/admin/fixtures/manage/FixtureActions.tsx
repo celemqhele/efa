@@ -43,7 +43,7 @@ export default function FixtureActions({
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
 
-  const isFinished = ['completed', 'confirmed', 'abandoned'].includes(status)
+  const isFinished = ['completed', 'confirmed', 'confirmed_pending', 'abandoned'].includes(status)
 
   // ── Single postpone handler ────────────────────────────────────────────────
   async function handlePostpone(e: React.FormEvent) {

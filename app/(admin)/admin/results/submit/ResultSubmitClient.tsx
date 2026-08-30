@@ -200,7 +200,7 @@ export default function ResultSubmitClient({
   const selectedFixture = pendingFixtures.find((f) => f.id === selectedFixtureId) ?? null
   const existingConfs = selectedFixtureId ? (confirmationsByFixture[selectedFixtureId] ?? []) : []
 
-  const isFinished = selectedFixture ? ['completed', 'confirmed', 'abandoned'].includes(selectedFixture.status) : false
+  const isFinished = selectedFixture ? ['completed', 'confirmed', 'confirmed_pending', 'abandoned'].includes(selectedFixture.status) : false
 
   // Auto-select fixture from URL on mount and when fixtures load
   useEffect(() => {

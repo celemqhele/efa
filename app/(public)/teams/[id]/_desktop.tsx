@@ -309,7 +309,7 @@ export default function Desktop({ data }: { data: any }) {
                       <td className="py-3 pr-4 text-text-secondary">{f.tournament?.name}</td>
                       <td className="py-3 pr-4 text-text-primary font-medium">{dateStr}</td>
                       <td className="py-3">
-                        {f.status === 'awaiting_confirmation' ? (
+                        {f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending' ? (
                           <span className="text-xs text-feedback-warning font-semibold">Pending</span>
                         ) : (
                           <span className="text-xs text-text-muted">Scheduled</span>

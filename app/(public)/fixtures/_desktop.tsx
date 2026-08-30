@@ -10,6 +10,7 @@ import { Trophy, Crosshair, CalendarDays, ChevronRight } from 'lucide-react'
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   scheduled: { label: 'Scheduled', pill: 'bg-slate-500/20 text-text-muted border-slate-500/30' },
   awaiting_confirmation: { label: 'Awaiting', pill: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' },
+  confirmed_pending: { label: 'Pending', pill: 'bg-amber-500/20 text-amber-600 border-amber-500/30' },
   confirmed: { label: 'FT', pill: 'bg-green-500/20 text-green-600 border-green-500/30' },
   completed: { label: 'FT', pill: 'bg-green-500/20 text-green-600 border-green-500/30' },
   abandoned: { label: 'Abandoned', pill: 'bg-red-500/20 text-red-500 border-red-500/30' },

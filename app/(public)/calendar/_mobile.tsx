@@ -116,7 +116,7 @@ export default function Mobile({ data }: MobileProps) {
           <p className="text-[10px] text-text-muted">Confirmed</p>
         </div>
         <div className="bg-bg-elevated border border-border rounded-xl p-3 text-center min-h-[48px] flex flex-col items-center justify-center">
-          <p className="text-lg font-black text-feedback-warning">{fixtures.filter((f: any) => f.status === 'awaiting_result' || f.status === 'pending').length}</p>
+          <p className="text-lg font-black text-feedback-warning">{fixtures.filter((f: any) => f.status === 'awaiting_result' || f.status === 'pending' || f.status === 'confirmed_pending').length}</p>
           <p className="text-[10px] text-text-muted">Pending</p>
         </div>
         <div className="bg-bg-elevated border border-border rounded-xl p-3 text-center min-h-[48px] flex flex-col items-center justify-center">

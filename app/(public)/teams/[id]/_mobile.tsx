@@ -307,7 +307,7 @@ export default function Mobile({ data }: { data: any }) {
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-text-muted truncate">{f.tournament?.name}</span>
-                      {f.status === 'awaiting_confirmation' && (
+                      {(f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') && (
                         <span className="text-[10px] text-feedback-warning font-semibold px-1.5 py-0.5 rounded-full bg-feedback-warning/10">Pending</span>
                       )}
                     </div>

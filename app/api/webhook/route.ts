@@ -50,15 +50,17 @@ function getWeekRange(): { start: string; end: string } {
   }
 }
 
-// ─── Result submission window: today down to 7 days ago (inclusive) ────────────
-// Non-admin players may only submit results for games due today or within the
-// last 7 days. Admins can submit any fixture regardless of date. `scheduled_date`
+// ─── Result submission window: 7 days ago .. 7 days ahead (inclusive) ──────────
+// Non-admin players may submit results for games due up to 7 days in the FUTURE
+// (captured as 'confirmed_pending' until the fixture date) or within the last
+// 7 days. Admins can submit any fixture regardless of date. `scheduled_date`
 // is compared as YYYY-MM-DD strings (same pattern as getWeekRange above).
 function getSubmissionWindow(): { start: string; end: string } {
   const today = new Date()
   const start = new Date(today)
   start.setDate(today.getDate() - 7)
   const end = new Date(today)
+  end.setDate(today.getDate() + 7)
   return {
     start: start.toISOString().split('T')[0],
     end: end.toISOString().split('T')[0]
@@ -90,6 +92,8 @@ function isInSubmissionWindow(dateKey: string): boolean {
 
 // Whether a non-admin is currently allowed to submit the given fixture's result.
 // null = allowed; otherwise a human-readable rejection reason relative to `now`.
+// The window is today-7 .. today+7, so a game up to 7 days ahead is allowed
+// (it will be captured as 'confirmed_pending' until the fixture date).
 function submissionBlockReason(f: any, now = new Date()): string | null {
   const dateKey = fixtureDateKey(f)
   if (!dateKey) return null
@@ -98,7 +102,7 @@ function submissionBlockReason(f: any, now = new Date()): string | null {
   if (dateKey > todayKey) {
     const d = new Date(`${dateKey}T00:00:00.000Z`)
     const label = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
-    return `This game has not been released yet. Please submit the screenshot at ${label}.`
+    return `This game is more than 7 days away, so it can't be submitted yet. Please submit the screenshot once the match is within 7 days or on the match day (${label}).`
   }
   return `This match is older than 7 days, so it can't be submitted here. Please send the screenshot on the match day.`
 }
@@ -616,7 +620,7 @@ if (isCancel(text)) {
   const { data: fixtures } = await supabase
     .from('fixtures')
     .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
-    .in('status', ['scheduled', 'confirmed', 'awaiting_confirmation', 'completed', 'abandoned'])
+    .in('status', ['scheduled', 'confirmed', 'confirmed_pending', 'awaiting_confirmation', 'completed', 'abandoned'])
     .order('scheduled_date', { ascending: true })
     .order('matchday', { ascending: true })
 
@@ -696,7 +700,7 @@ async function handleBackdoorFixture(from: string, text: string, phoneNumberId: 
   const h = fixtureTeamName(data, 'home')
   const a = fixtureTeamName(data, 'away')
   const result = data ? (Array.isArray(data.results) ? data.results[0] : data.results) : null
-  const alreadyApplied = !!data && !!result && (data.status === 'confirmed' || data.status === 'awaiting_confirmation' || data.status === 'completed')
+  const alreadyApplied = !!data && !!result && (data.status === 'confirmed' || data.status === 'confirmed_pending' || data.status === 'awaiting_confirmation' || data.status === 'completed')
 
   if (alreadyApplied) {
     await upsertSession({
@@ -792,7 +796,7 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
     .eq('id', session.matched_fixture_id)
     .single()
   const existingResult = existingFix ? (Array.isArray(existingFix.results) ? existingFix.results[0] : existingFix.results) : null
-  const isOverride = !!existingFix && !!existingResult && (existingFix.status === 'confirmed' || existingFix.status === 'awaiting_confirmation' || existingFix.status === 'completed')
+  const isOverride = !!existingFix && !!existingResult && (existingFix.status === 'confirmed' || existingFix.status === 'confirmed_pending' || existingFix.status === 'awaiting_confirmation' || existingFix.status === 'completed')
 
   await supabase.from('result_confirmations').insert({
     fixture_id: session.matched_fixture_id,
@@ -1097,13 +1101,13 @@ async function sendFixturesForTeams(from: string, teamIds: string[], teamNames: 
     .from('fixtures')
     .select('id, status, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
     .or(orParts)
-    .in('status', ['scheduled', 'confirmed'])
+    .in('status', ['scheduled', 'confirmed', 'confirmed_pending'])
     .order('matchday', { ascending: true })
     .order('scheduled_date', { ascending: true })
 
   const allFixtures = (fixtures as any[]) || []
   const scheduled = allFixtures.filter(f => f.status === 'scheduled')
-  const confirmed = allFixtures.filter(f => f.status === 'confirmed')
+  const confirmed = allFixtures.filter(f => f.status === 'confirmed' || f.status === 'confirmed_pending')
 
   if (allFixtures.length === 0) {
     await upsertSession({ phone_number: from, pending_date: useDate })
@@ -1544,7 +1548,7 @@ function formatFixtureListWithHeadings(fixtures: any[]): string {
     const tournament = fixtureTournamentName(f)
 
     let status: string
-    if (f.status === 'confirmed') {
+    if (f.status === 'confirmed' || f.status === 'confirmed_pending') {
       const result = Array.isArray(f.results) ? f.results[0] : f.results
       status = result ? `Submitted, ${result.home_score}-${result.away_score}` : 'Submitted'
     } else if (f.status === 'awaiting_confirmation') {
@@ -2603,16 +2607,16 @@ function formatFixtureLine(f: any, index: number): string {
   const tournament = fixtureTournamentName(f)
   const result = Array.isArray(f.results) ? f.results[0] : f.results
   let line: string
-  if (result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation')) {
+  if (result && (f.status === 'confirmed' || f.status === 'confirmed_pending' || f.status === 'awaiting_confirmation')) {
     line = `${index + 1}. ${hN} ${result.home_score} - ${result.away_score} ${aN}`
   } else {
     line = `${index + 1}. ${hN} vs ${aN}`
   }
-  return `${line}${date ? ` - ${date}` : ''}${tournament ? ` - ${tournament}` : ''}${result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation') ? ' (SUBMITTED)' : ''}`
+  return `${line}${date ? ` - ${date}` : ''}${tournament ? ` - ${tournament}` : ''}${result && (f.status === 'confirmed' || f.status === 'confirmed_pending' || f.status === 'awaiting_confirmation') ? ' (SUBMITTED)' : ''}`
 }
 
 function isFixtureConfirmed(f: any): boolean {
-  return f.status === 'confirmed' || f.status === 'awaiting_confirmation'
+  return f.status === 'confirmed' || f.status === 'confirmed_pending' || f.status === 'awaiting_confirmation'
 }
 
 // ─── Team name resolution (LLM + database fallback) ──────────────────────────────
@@ -2848,7 +2852,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     // Determine status filter based on submission type
     let statusFilter: string[]
     if (session.submission_type === 'fix') {
-      statusFilter = ['confirmed', 'awaiting_confirmation']
+      statusFilter = ['confirmed', 'confirmed_pending', 'awaiting_confirmation']
     } else {
       statusFilter = ['scheduled']
     }
@@ -2924,7 +2928,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       let alreadyQuery = supabase
         .from('fixtures')
         .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score, match_stats:match_stats(*))')
-        .in('status', ['confirmed', 'awaiting_confirmation', 'completed', 'abandoned'])
+        .in('status', ['confirmed', 'confirmed_pending', 'awaiting_confirmation', 'completed', 'abandoned'])
         .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
       if (!isAdmin) {
         alreadyQuery = alreadyQuery.gte('scheduled_date', windowStart).lte('scheduled_date', windowEnd)
@@ -2956,7 +2960,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         const { data: anyFixtures } = await supabase
           .from('fixtures')
           .select('id, scheduled_date')
-          .in('status', ['scheduled', 'confirmed', 'awaiting_confirmation', 'completed', 'abandoned'])
+          .in('status', ['scheduled', 'confirmed', 'confirmed_pending', 'awaiting_confirmation', 'completed', 'abandoned'])
           .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
           .order('scheduled_date', { ascending: false })
           .order('matchday')
@@ -3001,7 +3005,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         displayed_fixtures: null,
       })
 
-      const resultLine = result && (f.status === 'confirmed' || f.status === 'awaiting_confirmation')
+      const resultLine = result && (f.status === 'confirmed' || f.status === 'confirmed_pending' || f.status === 'awaiting_confirmation')
         ? ` (already submitted: ${result.home_score}-${result.away_score})`
         : ''
       const dateLine = formatFixtureWhen(f) ? ` - ${formatFixtureWhen(f)}` : ''
@@ -3068,7 +3072,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         .select('status')
         .eq('id', session.matched_fixture_id)
         .single()
-      if (fixCheck && (fixCheck.status === 'confirmed' || fixCheck.status === 'awaiting_confirmation')) {
+      if (fixCheck && (fixCheck.status === 'confirmed' || fixCheck.status === 'confirmed_pending' || fixCheck.status === 'awaiting_confirmation')) {
         await resetAndResubmit(from, session, supabase, phoneNumberId)
       } else {
         await writeResultToDb(from, session, supabase, phoneNumberId)
@@ -3097,7 +3101,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       .select('status')
       .eq('id', session.matched_fixture_id)
       .single()
-    const wasOverride = fixCheck && (fixCheck.status === 'confirmed' || fixCheck.status === 'awaiting_confirmation')
+    const wasOverride = fixCheck && (fixCheck.status === 'confirmed' || fixCheck.status === 'confirmed_pending' || fixCheck.status === 'awaiting_confirmation')
 
     await upsertSession({
       phone_number: from,
@@ -3147,7 +3151,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           .select('status')
           .eq('id', session.matched_fixture_id)
           .single()
-        if (fixCheck2 && (fixCheck2.status === 'confirmed' || fixCheck2.status === 'awaiting_confirmation')) {
+        if (fixCheck2 && (fixCheck2.status === 'confirmed' || fixCheck2.status === 'confirmed_pending' || fixCheck2.status === 'awaiting_confirmation')) {
           await resetAndResubmit(from, session, supabase, phoneNumberId)
         } else {
           await writeResultToDb(from, session, supabase, phoneNumberId)
@@ -3236,7 +3240,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       .from('fixtures')
       .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
       .eq('scheduled_date', dateKey)
-      .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
+      .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed', 'confirmed_pending'])
       .order('matchday', { ascending: true })
 
     const fixtures = (dateFixtures as any[]) || []
@@ -3323,7 +3327,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           .from('fixtures')
           .select('id, status')
           .eq('scheduled_date', today)
-          .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
+          .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed', 'confirmed_pending'])
           .order('matchday', { ascending: true })
         fixtureIds = (todayFixtures as any[])?.map((f) => f.id) || null
       }
@@ -3388,7 +3392,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             .from('fixtures')
             .select('id, status')
             .eq('scheduled_date', today)
-            .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed'])
+            .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed', 'confirmed_pending'])
             .order('matchday', { ascending: true })
           fixtureIds = (todayFixtures as any[])?.map((f: any) => f.id) || null
         }
@@ -3705,15 +3709,20 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   const adminUserId = await getAdminUserId(supabase)
   console.log('[webhook] admin user celemqhele id:', adminUserId || 'NOT FOUND')
 
-  // Look up fixture for team IDs and managers
+  // Look up fixture for team IDs, managers and scheduled date
   const { data: fixture } = await supabase
     .from('fixtures')
-    .select('home_team_id, away_team_id, round_type, tournament_id, home_team:teams!fixtures_home_team_id_fkey(manager_id, manager:profiles!teams_manager_id_fkey(phone)), away_team:teams!fixtures_away_team_id_fkey(manager_id, manager:profiles!teams_manager_id_fkey(phone))')
+    .select('home_team_id, away_team_id, round_type, tournament_id, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(manager_id, manager:profiles!teams_manager_id_fkey(phone)), away_team:teams!fixtures_away_team_id_fkey(manager_id, manager:profiles!teams_manager_id_fkey(phone))')
     .eq('id', session.matched_fixture_id)
     .single()
 
   const fixtureHome = fixture ? (Array.isArray(fixture.home_team) ? fixture.home_team[0] : fixture.home_team) : null
   const fixtureAway = fixture ? (Array.isArray(fixture.away_team) ? fixture.away_team[0] : fixture.away_team) : null
+
+  // A fixture due in the FUTURE is captured as 'confirmed_pending' (deferred
+  // standings/knockout until its due date) rather than immediately confirmed.
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const isPending = !!(fixture?.scheduled_date && fixtureDateKey(fixture) > todayKey)
 
   const hName = fixture ? fixtureTeamName(fixture, 'home') : 'Home'
   const aName = fixture ? fixtureTeamName(fixture, 'away') : 'Away'
@@ -3837,10 +3846,13 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
         })
       }
 
-      // Recalculate standings since trigger double-counts on UPDATE
-      const { data: fixData } = await supabase.from('fixtures').select('tournament_id').eq('id', session.matched_fixture_id).single()
-      if (fixData?.tournament_id) {
-        try { await recalculateStandings(fixData.tournament_id) } catch (e) { console.error('[webhook] standings recalc after forfeit failed:', e) }
+      // Recalculate standings since trigger double-counts on UPDATE. Skipped for
+      // future-dated (confirmed_pending) forfeits — standings apply at the flip.
+      if (!isPending) {
+        const { data: fixData } = await supabase.from('fixtures').select('tournament_id').eq('id', session.matched_fixture_id).single()
+        if (fixData?.tournament_id) {
+          try { await recalculateStandings(fixData.tournament_id) } catch (e) { console.error('[webhook] standings recalc after forfeit failed:', e) }
+        }
       }
       console.log('[webhook] forfeit recorded:', abandonedType, 'for fixture:', session.matched_fixture_id)
     }
@@ -3856,14 +3868,18 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     else console.log('[webhook] match_stats written for result:', resultRow.id)
   }
 
-  // Verify fixture was confirmed by the on_result_insert trigger (migration 003)
+  // Verify fixture status after the on_result_insert trigger (migration 003).
+  // For on-time / backdated games the trigger sets status = 'confirmed'; if that
+  // didn't happen, force it here. For FUTURE-dated (pending) games the trigger
+  // sets status = 'confirmed_pending' — we leave it so standings/knockout stay
+  // deferred until the flip to 'confirmed' on the fixture date.
   const { data: verifyFixture } = await supabase
     .from('fixtures')
     .select('status')
     .eq('id', session.matched_fixture_id)
     .single()
 
-  if (verifyFixture?.status !== 'confirmed') {
+  if (!isPending && verifyFixture?.status !== 'confirmed') {
     const { error: fixtureErr } = await supabase
       .from('fixtures')
       .update({ status: 'confirmed' })
@@ -3874,9 +3890,17 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
       await sendTextMessage(from, 'Result was saved but failed to confirm the fixture. Please ask the admin to re-submit.', phoneNumberId)
       return
     }
+  } else if (isPending && verifyFixture?.status !== 'confirmed_pending') {
+    // Safety: ensure a future-dated game is held as pending.
+    await supabase
+      .from('fixtures')
+      .update({ status: 'confirmed_pending' })
+      .eq('id', session.matched_fixture_id)
   }
 
-  if (['r16', 'qf', 'sf', 'final'].includes(fixture?.round_type ?? '')) {
+  // Knockout progression only happens once the game is confirmed — a
+  // future-dated (pending) result must NOT advance the winner until its due date.
+  if (!isPending && ['r16', 'qf', 'sf', 'final'].includes(fixture?.round_type ?? '')) {
     try {
       await advanceWinner(
         supabase,
@@ -3892,9 +3916,15 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     }
   }
 
-  console.log('[webhook] result written:', { fixture_id: session.matched_fixture_id, home_score: homeScore, away_score: awayScore, submitted_by: adminUserId })
+  console.log('[webhook] result written:', { fixture_id: session.matched_fixture_id, home_score: homeScore, away_score: awayScore, submitted_by: adminUserId, isPending })
 
-  const submittedMessage = `Result submitted!${forfeitBalanceNote}\n\nCheck your standings here: https://efa-fxyk.vercel.app/standings`
+  let submittedMessage: string
+  if (isPending) {
+    const releaseLabel = String(fixture?.scheduled_date ?? '').slice(0, 10)
+    submittedMessage = `Result submitted ✓ (score: ${hName} ${homeScore}-${awayScore} ${aName}).\n\nThis result has been saved but won't be applied to the standings yet — the match fixture is not released until ${releaseLabel}. The result will be confirmed automatically at 00:00 on ${releaseLabel}.`
+  } else {
+    submittedMessage = `Result submitted!${forfeitBalanceNote}\n\nCheck your standings here: https://efa-fxyk.vercel.app/standings`
+  }
 
   // If the number the manager is texting from no longer matches their stored
   // profile phone, append an offer to update it (session stays live for the
@@ -3919,7 +3949,7 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
         const hName = ((Array.isArray(fixturePush.home_team) ? fixturePush.home_team[0]?.name : fixturePush.home_team?.name) || 'Home')
         const aName = ((Array.isArray(fixturePush.away_team) ? fixturePush.away_team[0]?.name : fixturePush.away_team?.name) || 'Away')
         await sendPushToUsers(supabase, [adminUserId], {
-          title: 'Result Confirmed',
+          title: isPending ? 'Result Received (Pending Release)' : 'Result Confirmed',
           body: `${hName} ${homeScore}–${awayScore} ${aName}`,
           url: `/fixtures/${session.matched_fixture_id}`,
           tag: `result-${session.matched_fixture_id}`,

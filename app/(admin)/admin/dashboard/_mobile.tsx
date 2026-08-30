@@ -12,6 +12,7 @@ import { cleanTeamName } from '@/lib/clean-team-name'
 const STATUS_CLASSES: Record<string, string> = {
   scheduled: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
   awaiting_confirmation: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+  confirmed_pending: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
   confirmed: 'text-green-400 bg-green-500/10 border-green-500/20',
   completed: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
   postponed: 'text-orange-400 bg-orange-500/10 border-orange-500/20',

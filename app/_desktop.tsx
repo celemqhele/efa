@@ -60,11 +60,11 @@ export default function Desktop({ data }: { data: any }) {
                       )}
                       <div className={`text-[10px] mt-0.5 font-medium ${
                         f.status === 'confirmed' ? 'text-feedback-success' :
-                        f.status === 'awaiting_confirmation' ? 'text-feedback-warning' :
+                        (f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') ? 'text-feedback-warning' :
                         'text-text-muted'
                       }`}>
                         {f.status === 'confirmed' ? 'FT' :
-                         f.status === 'awaiting_confirmation' ? 'Pending' : ''}
+                         (f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') ? 'Pending' : ''}
                       </div>
                     </div>
 
