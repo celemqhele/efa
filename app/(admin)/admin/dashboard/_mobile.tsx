@@ -119,9 +119,9 @@ function FixtureDueCard({ fx }: { fx: any }) {
           homeTeamName={cleanTeamName(fx.home_team?.name) ?? ''}
           awayTeamName={cleanTeamName(fx.away_team?.name) ?? ''}
           homeManagerName={fx.home_team?.manager?.username}
-          homeManagerPhone={fx.home_team?.manager?.whatsapp_number}
+          homeManagerPhone={fx.home_team?.manager?.phone}
           awayManagerName={fx.away_team?.manager?.username}
-          awayManagerPhone={fx.away_team?.manager?.whatsapp_number}
+          awayManagerPhone={fx.away_team?.manager?.phone}
         />
       </div>
     </div>

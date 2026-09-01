@@ -57,8 +57,8 @@ export default async function AdminDashboardPage() {
     .from('fixtures')
     .select(`
       id, matchday, status, scheduled_date,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, whatsapp_number)),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, whatsapp_number))
+      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone)),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone))
     `)
     .in('status', ['scheduled', 'awaiting_confirmation'])
     .lte('scheduled_date', todayEnd)

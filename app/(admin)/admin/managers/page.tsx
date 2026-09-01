@@ -14,7 +14,7 @@ export default async function ManageManagersPage() {
       .order('name', { ascending: true }),
     (supabase as any)
       .from('profiles')
-      .select('id, username, avatar_url, role, whatsapp_number')
+      .select('id, username, avatar_url, role, phone')
       .order('username', { ascending: true }),
   ])
 

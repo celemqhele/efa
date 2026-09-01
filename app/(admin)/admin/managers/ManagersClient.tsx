@@ -19,7 +19,7 @@ interface Profile {
   username: string
   avatar_url: string | null
   role: string
-  whatsapp_number?: string | null
+  phone?: string | null
 }
 
 interface Props {
@@ -134,17 +134,17 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
     setWaSaving(true)
     setWaError('')
     try {
-      const res = await fetch('/api/admin/managers/set-whatsapp', {
+      const res = await fetch('/api/admin/managers/set-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, whatsapp_number: waInput }),
+        body: JSON.stringify({ user_id: userId, phone: waInput }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to save')
 
       // Update local profile so WA button appears immediately
       setLocalProfiles((prev) =>
-        prev.map((p) => p.id === userId ? { ...p, whatsapp_number: data.whatsapp_number } : p)
+        prev.map((p) => p.id === userId ? { ...p, phone: data.phone } : p)
       )
       setEditingWa(false)
       setWaInput('')
@@ -207,7 +207,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
           {localTeams.map((team) => {
             const isSelected = selectedTeam?.id === team.id
             const manager = team.manager_id ? localProfiles.find((p) => p.id === team.manager_id) : null
-            const hasWa = !!manager?.whatsapp_number
+            const hasWa = !!manager?.phone
             return (
               <button
                 key={team.id}
@@ -331,7 +331,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
                     {editingWa ? (
                       <div className="space-y-2">
                         <label className="text-xs text-text-muted font-medium">
-                          WhatsApp number (international, digits only)
+                          Phone number (international, digits only)
                         </label>
                         <input
                           type="tel"
@@ -360,15 +360,15 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        {managerProfile.whatsapp_number ? (
+                        {managerProfile.phone ? (
                           <>
                             <WhatsAppButton
-                              phone={managerProfile.whatsapp_number}
+                              phone={managerProfile.phone}
                               message={`Hi ${managerProfile.username}! This is the EFA League Admin. `}
                               label={`Message ${managerProfile.username}`}
                             />
                             <button
-                              onClick={() => openEditWa(managerProfile.whatsapp_number)}
+                              onClick={() => openEditWa(managerProfile.phone)}
                               className="text-xs text-text-muted hover:text-foreground-secondary underline"
                             >
                               Edit
@@ -379,7 +379,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
                             onClick={() => openEditWa(null)}
                             className="text-xs text-text-muted hover:text-[#25D366] border border-dashed border-border hover:border-[#25D366]/50 rounded-lg px-3 py-1.5 transition-colors"
                           >
-                            + Add WhatsApp number
+                            + Add phone number
                           </button>
                         )}
                       </div>

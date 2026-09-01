@@ -1306,7 +1306,7 @@ async function sendOpponentContact(from: string, fixtureId: string, myTeamIds: s
   const supabase = await createAdminClient()
   const { data: fixture } = await supabase
     .from('fixtures')
-    .select('home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name, manager:profiles!teams_manager_id_fkey(id, username, phone, whatsapp_number)), away_team:teams!fixtures_away_team_id_fkey(id, name, manager:profiles!teams_manager_id_fkey(id, username, phone, whatsapp_number))')
+    .select('home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name, manager:profiles!teams_manager_id_fkey(id, username, phone)), away_team:teams!fixtures_away_team_id_fkey(id, name, manager:profiles!teams_manager_id_fkey(id, username, phone))')
     .eq('id', fixtureId)
     .single()
 
@@ -1328,7 +1328,7 @@ async function sendOpponentContact(from: string, fixtureId: string, myTeamIds: s
   }
 
   const manager = Array.isArray(opponent.manager) ? opponent.manager[0] : opponent.manager
-  const phoneRaw = manager?.phone || manager?.whatsapp_number || null
+  const phoneRaw = manager?.phone || null
   const phone = toInternationalPhone(phoneRaw)
 
   if (!phone) {
@@ -2052,9 +2052,9 @@ async function handleOnboardingStart(from: string, phoneNumberId: string) {
   // If this phone already belongs to a profile, tell them they're registered.
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('username, whatsapp_number, phone')
+    .select('username, phone')
   const alreadyRegistered = (profiles ?? []).some((p: any) =>
-    phoneNumbersMatch(p.whatsapp_number, from) || phoneNumbersMatch(p.phone, from)
+    phoneNumbersMatch(p.phone, from)
   )
 
   if (alreadyRegistered) {
@@ -2129,9 +2129,9 @@ async function handleOnboardingUsername(from: string, text: string, phoneNumberI
     .maybeSingle()
 
   if (!profile) {
-    await supabase.from('profiles').insert({ id: profileId, username, whatsapp_number: from })
+    await supabase.from('profiles').insert({ id: profileId, username, phone: from })
   } else {
-    await supabase.from('profiles').update({ whatsapp_number: from }).eq('id', profileId)
+    await supabase.from('profiles').update({ phone: from }).eq('id', profileId)
   }
 
   // Record the onboarding application (expires in 7 days, no team yet)
@@ -2157,9 +2157,9 @@ async function resolveProfileByPhone(from: string): Promise<{ id: string; userna
   const supabase = await createAdminClient()
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, username, whatsapp_number, phone, sacked_at')
+    .select('id, username, phone, sacked_at')
   const profile = (profiles ?? []).find(
-    (p: any) => phoneNumbersMatch(p.whatsapp_number, from) || phoneNumbersMatch(p.phone, from)
+    (p: any) => phoneNumbersMatch(p.phone, from)
   )
   if (!profile) return null
   return { id: profile.id as string, username: (profile.username ?? 'player') as string, sacked_at: profile.sacked_at ?? null }
@@ -2640,11 +2640,11 @@ async function handleManagerApplicationsConfirm(from: string, text: string, sess
 async function getAdminProfileIdByPhone(supabase: any, from: string): Promise<string | null> {
   const { data: admins } = await supabase
     .from('profiles')
-    .select('id, whatsapp_number, phone')
+    .select('id, phone')
     .eq('role', 'admin')
 
   const match = (admins ?? []).find((a: any) =>
-    phoneNumbersMatch(a.whatsapp_number, from) || phoneNumbersMatch(a.phone, from)
+    phoneNumbersMatch(a.phone, from)
   )
   return match?.id ?? null
 }
