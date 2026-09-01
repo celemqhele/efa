@@ -1,0 +1,20 @@
+# Country code dropdown + manager phone backfill
+
+Added a country-code dropdown next to the phone number input on the profile page (and the admin managers phone editor), and backfilled all locally-formatted SA numbers (10 digits starting with 0) with the `27` country code, so WhatsApp buttons always produce working wa.me links. Follows the phone/whatsapp merge in `.opencode/context/international-phone/merge-phone-whatsapp_2026-09-01.md` — after that merge, the admin dashboard WhatsApp button worked for `skoozz420` (`+389 71 670 793`) but failed for managers like `goat_2` (`0674008857`) and `tildedot` (`0685705806`) because their stored numbers had no country code.
+
+## Problem
+- `wa.me/` links are built from the raw stored digits; a local SA number like `0674008857` produced `wa.me/0674008857`, which is invalid without a country code (`+27...`).
+- 11 of 29 managers had 10-digit `0`-prefixed numbers with no country code (the user confirmed each is South African): `anele_arh 0601110760`, `dot 0784831815`, `ghost 0796732499`, `goat_2 0674008857`, `khumoshxta 0795932223`, `parmalat_ 0774258559`, `phiwayinkosi 0694021679`, `siyambonga23 0739325002`, `siyethemba_ 0813435890`, `Terrence 0816807571`, `tildedot 0685705806`.
+- The profile phone inputs (`app/(protected)/profile/_mobile.tsx`, `_desktop.tsx`) were free-text with no country-code enforcement, so the problem could recur.
+
+## Fix
+1. **Data backfill** — new migration `supabase/migrations/069_add_phone_country_codes.sql` prepends `27` to every profile whose digits are exactly `0[0-9]{9}` (`concat('27', regexp_replace(phone, '\D','','g'))`). Ran via `npm run db`; 19 rows updated (11 managers + 8 non-manager profiles). Re-checked: all 29 managers now report YES for having a country code; `goat_2` → `27674008857`, `tildedot` → `27685705806`.
+2. **Shared helper `lib/phone.ts`** (new) — `COUNTRY_CODES`, `normalizePhoneDigits`, `waDigits` (prepends 27 to local SA numbers and strips a trunk `0` after a known country code, e.g. the migrated `270674008857` → `27674008857`), `parsePhoneParts` (splits stored phone into country code + local for the inputs), `toStoredPhone` (combines cc + local, dropping a leading trunk `0`), and `canonicalPhone` (canonical digits for comparing stored vs draft).
+3. **Profile UI** (`app/(protected)/profile/_mobile.tsx` and `_desktop.tsx`) — a `<select>` of country codes (default +27 South Africa; also +44, +1, +233, +234, +264, +353, +31, +49, +389) sits next to the phone input. On load the stored number is split into cc + local via `parsePhoneParts`; on save it is combined via `toStoredPhone` and PATCHed to `/api/profile/update`. Save button visibility uses `canonicalPhone(draft) !== canonicalPhone(saved)`.
+4. **Admin managers page** (`app/(admin)/admin/managers/ManagersClient.tsx`) — the phone edit dialog (previously "international, digits only") now has the same country-code dropdown next to the input; `openEditWa` pre-fills via `parsePhoneParts`.
+5. **Route + render normalization** — `app/api/profile/update/route.ts` and `app/api/admin/managers/set-phone/route.ts` now normalize incoming numbers through `waDigits` (empty input stores `null` in profile/update). `components/ui/WhatsAppButton.tsx` and `components/ui/MessageManagerButton.tsx` build their wa.me links via `waDigits` as a safety net.
+6. **Verification** — `npx tsc --noEmit` clean; `eslint` clean on all touched files; helper round-trips tested for local SA, existing intl, `+`-prefixed, and migrated `270674008857` formats.
+
+## Notes
+- Stored format is digits-only international (e.g. `27674008857`) — the webhook's existing `toInternationalPhone` in `app/api/webhook/route.ts` already handles contact-card normalization and was left as-is.
+- Only this feature's own files were committed (`7733297`+1); the unrelated uncommitted batch (user-management scripts, `public/sw.js`, many *.md context files) was left untouched.

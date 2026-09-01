@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { waDigits } from '@/lib/phone'
 
 export async function PATCH(request: Request) {
   const supabase = await createClient()
@@ -11,7 +12,7 @@ export async function PATCH(request: Request) {
 
   const updates: Record<string, any> = {}
   if (playstyle !== undefined) updates.playstyle = playstyle
-  if (phone !== undefined) updates.phone = phone
+  if (phone !== undefined) updates.phone = phone ? waDigits(String(phone)) : null
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })

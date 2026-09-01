@@ -1,3 +1,5 @@
+import { waDigits } from '@/lib/phone'
+
 interface Props {
   phone: string | null | undefined
   message: string
@@ -15,7 +17,7 @@ export default function WhatsAppButton({
 }: Props) {
   if (!phone) return null
 
-  const clean = phone.replace(/\D/g, '')
+  const clean = waDigits(phone)
   if (!clean) return null
 
   const url = `https://wa.me/${clean}?text=${encodeURIComponent(message)}`

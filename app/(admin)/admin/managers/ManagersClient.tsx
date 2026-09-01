@@ -5,6 +5,7 @@ import Image from 'next/image'
 import WhatsAppButton from '@/components/ui/WhatsAppButton'
 import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
 import { Briefcase, Circle, ArrowLeftRight } from 'lucide-react'
+import { COUNTRY_CODES, parsePhoneParts, toStoredPhone } from '@/lib/phone'
 
 interface Team {
   id: string
@@ -46,6 +47,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
 
   // WhatsApp number editing state
   const [editingWa, setEditingWa] = useState(false)
+  const [waCountryCode, setWaCountryCode] = useState('')
   const [waInput, setWaInput] = useState('')
   const [waSaving, setWaSaving] = useState(false)
   const [waError, setWaError] = useState('')
@@ -137,7 +139,7 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
       const res = await fetch('/api/admin/managers/set-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, phone: waInput }),
+        body: JSON.stringify({ user_id: userId, phone: toStoredPhone(waCountryCode, waInput) }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to save')
@@ -156,7 +158,9 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
   }
 
   function openEditWa(currentNumber: string | null | undefined) {
-    setWaInput(currentNumber ?? '')
+    const parts = parsePhoneParts(currentNumber)
+    setWaCountryCode(parts.countryCode)
+    setWaInput(parts.local)
     setWaError('')
     setEditingWa(true)
   }
@@ -331,16 +335,27 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
                     {editingWa ? (
                       <div className="space-y-2">
                         <label className="text-xs text-text-muted font-medium">
-                          Phone number (international, digits only)
+                          Phone number (international)
                         </label>
-                        <input
-                          type="tel"
-                          value={waInput}
-                          onChange={(e) => setWaInput(e.target.value)}
-                          placeholder="e.g. 447911123456"
-                          className="input-field text-sm py-1.5 w-full"
-                          autoFocus
-                        />
+                        <div className="flex gap-2">
+                          <select
+                            value={waCountryCode}
+                            onChange={(e) => setWaCountryCode(e.target.value)}
+                            className="input-field text-sm py-1.5 w-40 shrink-0"
+                          >
+                            {COUNTRY_CODES.map((c) => (
+                              <option key={c.code} value={c.code}>{c.label}</option>
+                            ))}
+                          </select>
+                          <input
+                            type="tel"
+                            value={waInput}
+                            onChange={(e) => setWaInput(e.target.value)}
+                            placeholder="e.g. 74 008 857"
+                            className="input-field text-sm py-1.5 w-full"
+                            autoFocus
+                          />
+                        </div>
                         {waError && <p className="text-red-400 text-xs">{waError}</p>}
                         <div className="flex gap-2">
                           <button

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from './Button'
 import { X } from 'lucide-react'
+import { waDigits } from '@/lib/phone'
 
 interface Props {
   managerId: string
@@ -15,7 +16,7 @@ export default function MessageManagerButton({ managerId: _managerId, managerUse
 
   const handleClick = () => {
     if (managerPhone) {
-      const cleaned = managerPhone.replace(/\D/g, '')
+      const cleaned = waDigits(managerPhone)
       if (cleaned) {
         window.open(`https://wa.me/${cleaned}`, '_blank', 'noopener,noreferrer')
         return
@@ -24,7 +25,7 @@ export default function MessageManagerButton({ managerId: _managerId, managerUse
     setShowPopup(true)
   }
 
-  const phoneAvailable = managerPhone && managerPhone.replace(/\D/g, '').length > 0
+  const phoneAvailable = !!managerPhone && waDigits(managerPhone).length > 0
 
   return (
     <>

@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { waDigits } from '@/lib/phone'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
   if (!user_id) return Response.json({ error: 'user_id is required' }, { status: 400 })
 
   const adminSupabase = await createAdminClient()
-  const clean = phone ? String(phone).replace(/\D/g, '') : null
+  const clean = phone ? waDigits(String(phone)) : null
 
   const { error } = await (adminSupabase as any)
     .from('profiles')

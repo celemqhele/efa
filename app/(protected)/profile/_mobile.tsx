@@ -10,6 +10,7 @@ import AvatarUpload from '@/components/ui/AvatarUpload'
 import ThemeSettings from '@/components/ui/ThemeSettings'
 import ApplyToSeason from './ApplyToSeason'
 import { Star, Shirt, Shield, Calendar, Gamepad2, Phone } from 'lucide-react'
+import { COUNTRY_CODES, parsePhoneParts, toStoredPhone, canonicalPhone } from '@/lib/phone'
 
 const PLAYSTYLE_OPTIONS = [
   'Tactical adaptive',
@@ -48,9 +49,15 @@ export default function Mobile({ data }: { data: any }) {
   } = data
 
   const [playstyle, setPlaystyle] = useState(profile?.playstyle ?? '')
-  const [phone, setPhone] = useState(profile?.phone ?? '')
+  const [phoneParts] = useState(() => parsePhoneParts(profile?.phone))
+  const [countryCode, setCountryCode] = useState(phoneParts.countryCode)
+  const [phone, setPhone] = useState(phoneParts.local)
+  const [savedPhone, setSavedPhone] = useState(() => canonicalPhone(profile?.phone))
   const [saving, setSaving] = useState(false)
   const [savingPhone, setSavingPhone] = useState(false)
+
+  const draftPhone = canonicalPhone(toStoredPhone(countryCode, phone))
+  const phoneChanged = draftPhone !== savedPhone
 
   async function savePlaystyle() {
     setSaving(true)
@@ -70,8 +77,9 @@ export default function Mobile({ data }: { data: any }) {
       await fetch('/api/profile/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: toStoredPhone(countryCode, phone) }),
       })
+      setSavedPhone(draftPhone)
       window.dispatchEvent(new CustomEvent('show-notification', {
         detail: { title: 'Saved', message: 'Phone number updated', type: 'success' },
       }))
@@ -152,14 +160,23 @@ export default function Mobile({ data }: { data: any }) {
           {/* Phone number */}
           <div className="flex items-center gap-2 pt-space-1">
             <Phone className="w-4 h-4 text-accent shrink-0" />
+            <select
+              value={countryCode}
+              onChange={(e) => setCountryCode(e.target.value)}
+              className="shrink-0 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
+            >
+              {COUNTRY_CODES.map((c) => (
+                <option key={c.code} value={c.code}>{c.label}</option>
+              ))}
+            </select>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+1 234 567 8901"
+              placeholder="e.g. 74 008 857"
               className="flex-1 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
             />
-            {phone !== (profile?.phone ?? '') && (
+            {phoneChanged && (
               <button
                 onClick={savePhone}
                 disabled={savingPhone}
