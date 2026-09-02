@@ -19,6 +19,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/supabase/types'
+import AdminTabBar from './AdminTabBar'
 
 interface BottomTabBarProps {
   profile?: Profile | null
@@ -51,6 +52,11 @@ export default function BottomTabBar({ profile, unreadCount = 0 }: BottomTabBarP
 
   async function closeMore() {
     setMoreOpen(false)
+  }
+
+  // On admin pages show the admin-oriented tab bar instead of the normal one.
+  if (pathname.startsWith('/admin') && isAdmin) {
+    return <AdminTabBar profile={profile} />
   }
 
   return (

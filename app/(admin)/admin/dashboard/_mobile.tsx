@@ -5,6 +5,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 import DueFixturesExportButton from './DueFixturesExportButton'
 import NewsTopicExportButton from './NewsTopicExportButton'
+import SwipeCardStack from '@/components/ui/SwipeCardStack'
 import { APP_TIME_ZONE } from '@/lib/app-time'
 import { Trophy, CheckCircle2, CalendarDays, ClipboardList, AlertTriangle, ChevronRight, ChevronLeft } from 'lucide-react'
 import { cleanTeamName } from '@/lib/clean-team-name'
@@ -226,8 +227,10 @@ export default function Mobile({ data }: { data: any }) {
         {(tournaments ?? []).length === 0 ? (
           <p className="text-sm text-text-muted px-1">No active tournaments.</p>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 snap-x snap-mandatory">
-            {((tournaments ?? []) as any[]).map((t: any) => {
+          <SwipeCardStack
+            items={(tournaments ?? []) as any[]}
+            minH="min-h-[230px]"
+            renderCard={(t: any) => {
               const typeInfo = TYPE_STYLES[t.type] ?? { label: t.type, colour: 'text-slate-400 bg-slate-500/10 border-slate-500/20' }
               const statusCls = t.status === 'active'
                 ? 'text-green-400 bg-green-500/10 border-green-500/20'
@@ -235,9 +238,8 @@ export default function Mobile({ data }: { data: any }) {
               const progress = (fixtureCounts[t.id] ?? 0) > 0 ? Math.round(((completedCounts[t.id] ?? 0) / (fixtureCounts[t.id] ?? 1)) * 100) : 0
               return (
                 <Link
-                  key={t.id}
                   href={`/admin/tournaments/${t.id}`}
-                  className="snap-start shrink-0 w-[220px] bg-bg-surface border border-border rounded-xl p-4 space-y-3 hover:border-accent/40 transition-colors active:scale-[0.98]"
+                  className="block bg-bg-surface border border-border rounded-xl p-4 space-y-3 hover:border-accent/40 transition-colors active:scale-[0.98]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -276,8 +278,8 @@ export default function Mobile({ data }: { data: any }) {
                   )}
                 </Link>
               )
-            })}
-          </div>
+            }}
+          />
         )}
 
         <div className="flex items-center gap-2 px-1">
@@ -307,13 +309,15 @@ export default function Mobile({ data }: { data: any }) {
             <p className="text-sm">All caught up — no fixtures due.</p>
           </div>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 snap-x snap-mandatory">
-            {dueFixtures!.map((fx: any) => (
-              <div key={fx.id} className="snap-start shrink-0 w-[240px] bg-bg-surface border border-border rounded-xl overflow-hidden">
+          <SwipeCardStack
+            items={(dueFixtures ?? []) as any[]}
+            minH="min-h-[250px]"
+            renderCard={(fx: any) => (
+              <div className="bg-bg-surface border border-border rounded-xl overflow-hidden">
                 <FixtureDueCard fx={fx} />
               </div>
-            ))}
-          </div>
+            )}
+          />
         )}
 
         <SectionCard title="Recent Audit Log" icon={<ClipboardList className="w-5 h-5 text-text-muted" />}>
