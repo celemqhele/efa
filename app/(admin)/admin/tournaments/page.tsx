@@ -34,18 +34,30 @@ export default async function TournamentsPage() {
     participantCounts[p.tournament_id] = (participantCounts[p.tournament_id] ?? 0) + 1
   }
 
-  // Fixture counts
-  const { data: fixtures } = tournamentIds.length
-    ? await supabase
+  // Fixture counts (paginated: PostgREST caps a single response at 1000 rows)
+  const PAGE_SIZE = 1000
+  const fixtureRows: any[] = []
+  if (tournamentIds.length) {
+    let from = 0
+    for (;;) {
+      const { data, error } = await supabase
         .from('fixtures')
         .select('tournament_id, status, round_type')
         .in('tournament_id', tournamentIds)
-    : { data: [] }
+        .order('id', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1)
+      if (error) throw error
+      fixtureRows.push(...((data ?? []) as any[]))
+      if (!data || data.length < PAGE_SIZE) break
+      from += PAGE_SIZE
+      if (from > 100_000) break
+    }
+  }
 
   const fixtureCounts: Record<string, number> = {}
   const completedCounts: Record<string, number> = {}
   const koCounts: Record<string, number> = {}
-  for (const f of (fixtures ?? []) as any[]) {
+  for (const f of fixtureRows) {
     fixtureCounts[f.tournament_id] = (fixtureCounts[f.tournament_id] ?? 0) + 1
     if (f.status === 'confirmed') {
       completedCounts[f.tournament_id] = (completedCounts[f.tournament_id] ?? 0) + 1
