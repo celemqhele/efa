@@ -40,6 +40,10 @@ Admin texts `manager applications` (or `manager apps`):
 - Migration `058` applied to live Supabase; cron scheduled; status check widened; `expires_at` backfilled.
 - Live DB checks confirmed all tables/constraints referenced by the fixed route exist (see `058` + `team-change/route.ts`).
 
+## Related files
+- The 7-day sack cooldown this flow introduces is later **overridden** by `onboarding/manager-cooldown-override_2026-08-17.md`.
+- The notifications-page team-change approve/deny fix relates to `onboarding/team-change-requests-grants_2026-08-15.md` (same route's missing service_role grants).
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

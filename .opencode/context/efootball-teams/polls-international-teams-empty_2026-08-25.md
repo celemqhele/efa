@@ -23,3 +23,5 @@ Added the `fifa-world-cup-2026.football-logos.cc` folder with all 49 national te
 - `lib/allowed-teams.ts` — `isAllowedTeam()` / `filterTeamsByFolder()` (unchanged)
 - `app/(public)/polls/[share_code]/page.tsx` — poll view, calls `filterTeamsByFolder` (unchanged)
 - `lib/registry.ts` — `buildRegistry()` reads logo folders from disk (unchanged)
+- `.opencode/context/efootball-teams/efootball_teams_2026-08-15.md` — chain root: introduced the allowlist/`filterTeamsByFolder` this fix extends.
+- `.opencode/context/efootball-teams/polls-efootball-filter-type-fix_2026-08-16.md` — added `filterTeamsByFolder`, used by the same poll page here.

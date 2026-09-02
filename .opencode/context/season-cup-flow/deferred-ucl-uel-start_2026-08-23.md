@@ -60,3 +60,9 @@ Now:
 - Knockout generation (`knockout_ready` = all group fixtures done + no sf fixtures) works
   unchanged because it only depends on the cup tournament existing.
 - Super Cup generation requires both cups to exist (`clubTs.length >= 2` gate).
+
+## Related files
+This flow is intrinsically tied to the knockout chain — the cups it creates feed the bracket
+generation, and the Super Cup needs both cups present:
+- `.opencode/context/knockout-generation/knockout-autogen-removal_2026-08-23.md`
+- `.opencode/context/knockout-generation/auto-super-cup-generation_2026-08-25.md`

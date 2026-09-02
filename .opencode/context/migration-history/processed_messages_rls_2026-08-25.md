@@ -20,6 +20,13 @@ Supabase dashboard flagged `public.processed_messages` as having RLS disabled. T
 - `042_processed_messages.sql` — table creation, index, cleanup function, cron job
 - `048_processed_messages_grants.sql` — GRANT SELECT/INSERT/UPDATE/DELETE to service_role, anon, authenticated
 
+## Related files
+Migration `060` falls inside the `033`–`059` range tracked by the migrations bookkeeping backfill:
+- `.opencode/context/migration-history/backfill_schema_migrations_2026-08-16.md`
+
+`processed_messages` is part of the WhatsApp/webhook table family, so this also relates to the
+webhook context files under `.opencode/context/check-fixtures/`.
+
 ## Restore File Section
 - Original path: `supabase/migrations/060_processed_messages_rls.sql`
 - Purpose: Enable RLS on processed_messages table

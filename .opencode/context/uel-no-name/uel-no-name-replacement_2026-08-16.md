@@ -26,3 +26,6 @@ Replaced Barcelona with a placeholder club "No Name" in the EFA Europa League (S
 - Local `TeamLogoInline` copies in `app/(admin)/admin/export/` and `app/(admin)/admin/polls/page.tsx` render ShieldQuestion for `custom`/`noname`.
 - `next/image` retained only where avatars (manager/requester `avatar_url`) are rendered.
 - Verified: `npx tsc --noEmit` clean; `npm run lint` warning-only (pre-existing).
+
+## Related files
+- `.opencode/context/tbc-badge/tbc-club-badge-for-null-teams_2026-08-25.md` — complements the `ShieldQuestion` placeholder with a TBC badge for null teams; both render through `TeamLogo.tsx`/`getPlaceholderIcon`.

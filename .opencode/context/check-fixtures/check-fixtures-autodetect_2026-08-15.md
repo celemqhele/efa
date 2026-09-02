@@ -26,6 +26,10 @@ Multi-team managers are expected, so the flow always works off a **list of team 
 - Phone formats confirmed mixed in DB (international `+27732509506`, `+233591519713`; local `0694021679`) → prefix-aware matching required.
 - 2 profiles currently manage 2 teams each — combined listing covers them.
 
+## Related files
+- Supersedes the manual team-name path documented in `.opencode/context/check-fixtures/phone-update-and-check-fixtures_2026-08-15.md`.
+- `sendOpponentContact` is later touched by `.opencode/context/check-fixtures/contact-card-phone-fix_2026-08-15.md` (E.164 formatting) and `.opencode/context/check-fixtures/fixtures-contact-closes-session_2026-08-15.md` (session close on contact send).
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

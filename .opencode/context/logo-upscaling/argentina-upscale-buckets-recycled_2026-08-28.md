@@ -41,3 +41,8 @@ The 5 leagues that still have committed upscaled buckets (EPL, FIFA World Cup,
 Serie A, SA Premiership, La Liga) also retain their unused `640x640` /
 `1280x1280` / `2560x2560` folders on disk. They remain dead weight and can be
 cleaned up at a later date if desired.
+
+## Related files
+
+- `.opencode/context/logo-upscaling/logo-upscale-rollback-small-buckets_2026-08-27.md` — the SIZE_MAP rollback (`8c322f4`) this cleanup follows; it declared the upscale buckets dead weight
+- `.opencode/context/logo-upscaling/logo-upscaling_2026-08-27.md` — the AI-upscale ship (`a1f9ee7`) whose test run created the Argentina buckets

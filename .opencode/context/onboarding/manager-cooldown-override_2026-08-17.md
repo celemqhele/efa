@@ -12,6 +12,9 @@ Added an "Override" capability to bypass the 7-day sack cooldown.
    - Included an "Override" button in the dialog that triggers the API with `override: true`.
    - Updated `TeamManagerAdmin.tsx`, `ManagersClient.tsx`, and `SeasonManager.tsx` to pass the `onOverride` handler.
 
+## Related files
+- Bypasses the 7-day sack cooldown introduced in `onboarding/onboarding-and-manager-applications_2026-08-15.md`.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

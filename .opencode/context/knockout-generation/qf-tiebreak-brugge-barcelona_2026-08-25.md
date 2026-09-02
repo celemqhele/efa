@@ -86,6 +86,14 @@ Verified: `npx tsc --noEmit` clean, `npm run lint` warning-only (pre-existing).
 Applied to prod. Away-goals rule NOT implemented in code — future level ties still fall back
 to leg-2 winner unless the admin overrides like this. Leg-2 mirroring is now incremental.
 
+## Related files
+
+- Follow-up (mirrorLeg2Teams + `advanceWinner`) to
+  .opencode/context/knockout-generation/backdoor-dashboard-approve-progression_2026-08-24.md
+  and .opencode/context/knockout-generation/knockout-webhook-progression_2026-08-23.md.
+- Direct follow-up (reverts this manual override, real aggregate was 13–11):
+  .opencode/context/knockout-generation/leg1-falsified-score-barcelona-advance_2026-08-25.md.
+
 ## Restore File Section
 
 | Original Path | Description | Recycle Bin Path |

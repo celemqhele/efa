@@ -68,6 +68,7 @@ Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-String -P
 - `deploy-performance/` — Vercel deployment performance / middleware timeout fixes
 - `context-file-conventions/` — rules on how context files themselves are written (opening intro, cross-references by path)
 - `whatsapp-ux/` — WhatsApp bot UX (welcome menu, input/keyword cleanup, plain-English prompts)
+- `draw-seeding/` — seeded group-stage tournament draws (club-record seeding for Run Draw)
 
 ### Naming requirement
 Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's creation date (a new file always uses the current date). A context file is written once and never updated; a later change or fix on the same topic gets a brand-new file with the new date.

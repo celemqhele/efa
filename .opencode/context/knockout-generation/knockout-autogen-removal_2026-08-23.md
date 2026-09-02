@@ -72,3 +72,11 @@ the EFA Europa League card choosing "2 Legs" (UCL already done as 2-leg).
   a type. Use id + name.
 - If adding auto-anything behind result confirmation, log it loudly / surface it
   in UI; silent side-effects caused this whole investigation.
+
+## Related files
+
+- Chain root for the whole `knockout-generation/` folder (08-23 → 08-24 → 08-25 → 08-26).
+- This removal is why regeneration was needed: `.opencode/context/knockout-generation/knockout-daily-cap_2026-08-23.md`.
+- And why bracket progression had to be wired into non-admin paths: `.opencode/context/knockout-generation/knockout-webhook-progression_2026-08-23.md`.
+- Same-era start-tournament flow: `.opencode/context/season-cup-flow/deferred-ucl-uel-start_2026-08-23.md`.
+- The `GenerateKnockoutsButton.hasKnockouts` guard here is the precedent referenced later by `.opencode/context/knockout-generation/tournament-autocomplete-and-fixtures-guard_2026-08-26.md`.

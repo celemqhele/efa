@@ -68,3 +68,12 @@ auto-creates Super Cup (Newcastle vs UCL winner, scheduled day after UCL final d
   FK constraint this would fail — current schema allows it.
 - `createAdminClient()` is needed for the tournament/fixture inserts because the user-level
   Supabase client may not bypass RLS on `tournaments`/`fixtures` tables.
+
+## Related files
+
+- Extends `advanceWinner` first wired into every confirmation path by
+  .opencode/context/knockout-generation/backdoor-dashboard-approve-progression_2026-08-24.md.
+- The both-cups-complete requirement ties to the start-tournament flow:
+  .opencode/context/season-cup-flow/deferred-ucl-uel-start_2026-08-23.md.
+- Its bug fix (RLS on read queries + audit_log FK):
+  .opencode/context/knockout-generation/super-cup-bugfix_2026-08-26.md.

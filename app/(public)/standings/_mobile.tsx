@@ -3,14 +3,13 @@
 import { useState } from 'react'
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
-import { goalDifference } from '@/lib/standings-core'
+import { goalDifference, normalizeStandingsZones, rowZone, ZONE_BORDER_CLASS, zoneLegend, type StandingsZones } from '@/lib/standings-core'
 import { ListCollapse, List } from 'lucide-react'
 
-const TOURNAMENT_TYPE_LABELS: Record<string, string> = {
-  league: 'Premier League',
-  tournament_club: 'Tournament (Clubs)',
-  tournament_international: 'Tournament (Intl)',
-  friendlies: 'Friendly',
+const ZONE_SWATCH_CLASS: Record<string, string> = {
+  green: 'bg-emerald-500',
+  yellow: 'bg-yellow-400',
+  red: 'bg-red-500',
 }
 
 function formatGroupTitle(groupName: string) {
@@ -19,7 +18,7 @@ function formatGroupTitle(groupName: string) {
   return /^group\s+/i.test(clean) ? clean : `Group ${clean}`
 }
 
-function StandingsCard({ rows, mode, qualifiersPerGroup = 2, extended }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number; extended: boolean }) {
+function StandingsCard({ rows, mode, qualifiersPerGroup = 2, extended, zones }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number; extended: boolean; zones?: StandingsZones | null }) {
   if (extended) {
     return (
       <div className="overflow-x-auto">
@@ -42,8 +41,9 @@ function StandingsCard({ rows, mode, qualifiersPerGroup = 2, extended }: { rows:
               const gd = goalDifference(row)
               const qualifies = mode === 'group' && index < qualifiersPerGroup
               const isTopThree = mode === 'league' && index < 3
+              const zone = mode === 'league' ? rowZone(zones, index, rows.length) : null
               const borderColor = mode === 'league'
-                ? index < 12 ? 'border-l-accent' : index < 20 ? 'border-l-blue-500' : 'border-l-transparent'
+                ? (zone ? ZONE_BORDER_CLASS[zone] : 'border-l-transparent')
                 : qualifies ? 'border-l-accent' : 'border-l-transparent'
 
               return (
@@ -89,10 +89,10 @@ function StandingsCard({ rows, mode, qualifiersPerGroup = 2, extended }: { rows:
   return (
     <div className="divide-y divide-border/50">
       {rows.map((row: any, index: number) => {
-        const gd = goalDifference(row)
         const qualifies = mode === 'group' && index < qualifiersPerGroup
+        const zone = mode === 'league' ? rowZone(zones, index, rows.length) : null
         const qualifierBorder = mode === 'league'
-          ? index < 12 ? 'border-l-accent' : index < 20 ? 'border-l-blue-500' : 'border-l-border'
+          ? (zone ? ZONE_BORDER_CLASS[zone] : 'border-l-border')
           : qualifies ? 'border-l-accent' : 'border-l-border'
 
         const rankBadge = mode === 'league' && index < 3
@@ -185,7 +185,7 @@ export default function Mobile({ data }: MobileProps) {
                     : 'bg-bg-surface text-text-secondary border-border hover:border-accent/40 hover:text-accent'
                 }`}
               >
-                {t.name}
+                {t.name}{t.division && t.type === 'league' ? ` — Division ${t.division}` : ''}
               </Link>
             )
           })}
@@ -215,16 +215,14 @@ export default function Mobile({ data }: MobileProps) {
           </div>
           {leagueStandings.length > 0 ? (
             <>
-              <StandingsCard rows={leagueStandings} mode="league" extended={extended} />
+              <StandingsCard rows={leagueStandings} mode="league" extended={extended} zones={normalizeStandingsZones(activeTournament?.settings)} />
               <div className="flex items-center gap-4 px-4 py-3 border-t border-border bg-bg-base/50">
-                <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-accent" />
-                  UCL
-                </span>
-                <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-blue-500" />
-                  Europa
-                </span>
+                {zoneLegend(normalizeStandingsZones(activeTournament?.settings)).map((item) => (
+                  <span key={item.label} className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                    <span className={`w-2.5 h-2.5 rounded-sm ${ZONE_SWATCH_CLASS[item.color]}`} />
+                    {item.label}
+                  </span>
+                ))}
               </div>
             </>
           ) : (

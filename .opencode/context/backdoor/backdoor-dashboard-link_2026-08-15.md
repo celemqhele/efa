@@ -23,6 +23,11 @@ admin shortcuts.
   staying short enough for the action rail.
 - `npx tsc --noEmit` passes. No API/schema changes.
 
+## Related files
+A later edit added the users nav link to the same `ACTIONS` array:
+
+- `.opencode/context/admin-dashboard/users-nav-link_2026-08-25.md` — added a `Users` quick-action to the same desktop/mobile `ACTIONS` arrays in `_desktop.tsx` / `_mobile.tsx`.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

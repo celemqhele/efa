@@ -53,6 +53,10 @@ The date form now renders in a **floating overlay** instead of in-flow:
   buttons were touched here. Modal interiors are a potential follow-up.
 - No API/schema changes.
 
+## Related files
+- The same `TournamentCard` buttons were later made equal-width in
+  `.opencode/context/admin-dashboard/tournaments-widget-equal-width-grid_2026-08-16.md`.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

@@ -58,6 +58,9 @@ specific manager.
 ### Types
 - `lib/supabase/types.ts` — added `manager_id` to trophies Row/Insert
 
+## Related files
+- Parallel half (same date, same team→manager `ManagersClient.tsx`/tenures theme) of `.opencode/context/forfeit-balances/forfeit-manager-migration_2026-08-25.md` (migration 061, forfeit balances team→manager).
+
 ## Notes
 - `npm run lint` passes (only pre-existing warnings)
 - `npx tsc --noEmit` passes

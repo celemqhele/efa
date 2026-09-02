@@ -1,15 +1,13 @@
 'use client'
 
 import TeamLogo from '@/components/ui/TeamLogo'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { goalDifference } from '@/lib/standings-core'
+import { goalDifference, normalizeStandingsZones, rowZone, ZONE_BORDER_CLASS, zoneLegend, type StandingsZones } from '@/lib/standings-core'
 
-const TOURNAMENT_TYPE_LABELS: Record<string, string> = {
-  league: 'Premier League',
-  tournament_club: 'Tournament (Clubs)',
-  tournament_international: 'Tournament (Intl)',
-  friendlies: 'Friendly',
+const ZONE_SWATCH_CLASS: Record<string, string> = {
+  green: 'bg-emerald-500',
+  yellow: 'bg-yellow-400',
+  red: 'bg-red-500',
 }
 
 function formatGroupTitle(groupName: string) {
@@ -18,7 +16,7 @@ function formatGroupTitle(groupName: string) {
   return /^group\s+/i.test(clean) ? clean : `Group ${clean}`
 }
 
-function StandingsTable({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number }) {
+function StandingsTable({ rows, mode, qualifiersPerGroup = 2, zones }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number; zones?: StandingsZones | null }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border shadow-sm">
       <table className="w-full text-sm">
@@ -40,8 +38,9 @@ function StandingsTable({ rows, mode, qualifiersPerGroup = 2 }: { rows: any[]; m
             const gd = goalDifference(row)
             const qualifies = mode === 'group' && index < qualifiersPerGroup
             const isTopThree = mode === 'league' && index < 3
+            const zone = mode === 'league' ? rowZone(zones, index, rows.length) : null
             const borderColor = mode === 'league'
-              ? index < 12 ? 'border-l-accent' : index < 20 ? 'border-l-blue-500' : 'border-l-transparent'
+              ? (zone ? ZONE_BORDER_CLASS[zone] : 'border-l-transparent')
               : qualifies ? 'border-l-accent' : 'border-l-transparent'
 
             return (
@@ -118,7 +117,7 @@ export default function Desktop({ data }: DesktopProps) {
           >
             {tournaments.map((t: any) => (
               <option key={t.id} value={t.id}>
-                {t.name}
+                {t.name}{t.division && t.type === 'league' ? ` — Division ${t.division}` : ''}
               </option>
             ))}
           </select>
@@ -135,10 +134,14 @@ export default function Desktop({ data }: DesktopProps) {
           </div>
           {leagueStandings.length > 0 ? (
             <div className="p-4 space-y-3">
-              <StandingsTable rows={leagueStandings} mode="league" />
+              <StandingsTable rows={leagueStandings} mode="league" zones={normalizeStandingsZones(activeTournament?.settings)} />
               <div className="flex gap-5 text-[11px] text-text-muted">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-accent" />UCL places</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500" />Europa places</span>
+                {zoneLegend(normalizeStandingsZones(activeTournament?.settings)).map((item) => (
+                  <span key={item.label} className="flex items-center gap-1.5">
+                    <span className={`w-2.5 h-2.5 rounded-sm ${ZONE_SWATCH_CLASS[item.color]}`} />
+                    {item.label}
+                  </span>
+                ))}
               </div>
             </div>
           ) : (

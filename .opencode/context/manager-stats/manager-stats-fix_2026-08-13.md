@@ -11,7 +11,12 @@ Manager tenure stats (wins, draws, losses, etc.) were not updating in real-time.
 ## Fix
 1. Migration `054_fix_manager_stats_trigger.sql`:
    - Removed the `f.status` filter from `recalc_tenure_stats` (a `results` row implies finalisation).
-   - Added `AFTER DELETE` trigger handler to recompute tenure stats when results are voided/reset.
+    - Added `AFTER DELETE` trigger handler to recompute tenure stats when results are voided/reset.
+
+## Related files
+- Part of the manager/tenure-stats theme; relates to
+  `.opencode/context/onboarding/manager-data-transfer_2026-08-25.md`, which also
+  touches the shared `manager_tenures` data.
 
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |

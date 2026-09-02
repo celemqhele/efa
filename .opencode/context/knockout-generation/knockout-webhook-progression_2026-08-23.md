@@ -66,3 +66,11 @@ specific outcome regardless of score would be a separate rule change.
   `x && ...` explicitly.
 - The working tree often has unrelated WIP in flight (seasons page, SeasonManager); scope
   commits file-by-file so WIP type errors don't block or pollute a fix commit.
+
+## Related files
+
+- Follow-up to .opencode/context/knockout-generation/knockout-daily-cap_2026-08-23.md and,
+  deeper back, .opencode/context/knockout-generation/knockout-autogen-removal_2026-08-23.md
+  (removal meant KO results flowed through webhook paths with no progression wiring).
+- The dashboard approve gap left open here was closed by
+  .opencode/context/knockout-generation/backdoor-dashboard-approve-progression_2026-08-24.md.

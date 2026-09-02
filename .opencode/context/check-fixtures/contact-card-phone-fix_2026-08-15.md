@@ -39,6 +39,10 @@ The `profiles` table stores numbers in inconsistent formats. WhatsApp's contacts
 ## Verified
 - `npm run lint`, `npx tsc --noEmit`, `npm run build` pass.
 
+## Related files
+- Follow-up in the `check fixtures` chain (starts at `.opencode/context/check-fixtures/check-fixtures-autodetect_2026-08-15.md`, where `sendOpponentContact` is introduced); shares that handler with `.opencode/context/check-fixtures/fixtures-contact-closes-session_2026-08-15.md`.
+- `toInternationalPhone()` is later refined by `.opencode/context/international-phone/support_2026-08-26.md`.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

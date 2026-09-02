@@ -36,6 +36,10 @@ One-off script `scripts/fix-betis-backdoor-win.ts` (override path, mirrors
   WhatsApp flow's `side_claimed` means "who is NOT responding" (the absent side).
   Not fixed here — only the data was corrected.
 
+## Related files
+- `.opencode/context/backdoor/backdoor-side-inversion_2026-08-16.md` — the structural root-cause fix of this same `side_claimed` bug (fixed separately from the data-only correction here; Real Betis `353711d8` is noted there as the same bug).
+- `.opencode/context/backdoor/backdoor-admin-override_2026-08-15.md` — the `handleBackdoorSide` / `isOverride` mechanism this override script mirrors.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

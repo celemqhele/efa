@@ -1,5 +1,6 @@
 import { addDays, format, parseISO } from 'date-fns'
 import { determineAggregateWinner } from './aggregate'
+import { DAILY_MATCH_CAP } from './fixture-slots'
 import { createAdminClient } from '@/lib/supabase/server'
 import { stampFixtureParticipants } from '@/lib/slot-utils'
 
@@ -158,7 +159,7 @@ const ROUND_STAGE_OFFSET: Record<string, number> = {
   r16: 0, qf: 1, sf: 2, final: 3,
 }
 
-const KO_DAILY_CAP = 5
+const KO_DAILY_CAP = DAILY_MATCH_CAP
 
 async function assignKnockoutDates(
   db: any,

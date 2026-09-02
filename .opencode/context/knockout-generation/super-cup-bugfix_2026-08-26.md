@@ -43,3 +43,10 @@ Created via SQL since the auto-generation failed:
 | UEL winner (away) | `6b72a4ea-f2e3-4228-8e6b-afffd3e9d1cc` |
 | Scheduled date | 2026-08-26 |
 | Season | `fee4a878-9159-4fd7-999f-d1bc7821bf86` (Season 3) |
+
+## Related files
+
+- Fixes .opencode/context/knockout-generation/auto-super-cup-generation_2026-08-25.md
+  (the two bugs that prevented auto-generation).
+- Follow-up (auto-completion + `hasFixtures` guard):
+  .opencode/context/knockout-generation/tournament-autocomplete-and-fixtures-guard_2026-08-26.md.

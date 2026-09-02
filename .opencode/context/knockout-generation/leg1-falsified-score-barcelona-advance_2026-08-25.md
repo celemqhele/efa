@@ -52,7 +52,13 @@ evening: "Club Brugge 5–4 Barcelona" at 21:31 UTC, then "Club Brugge 6–5 Bar
 ## Status
 
 Final: **Barcelona progress to the UCL SF 13–11** vs Al Hilal (md 202 today, md 212 mirror).
-Club Brugge eliminated. Away-goals rule still not implemented in code (see chain root file).
+Club Brugge eliminated. Away-goals rule still not implemented in code (see
+.opencode/context/knockout-generation/knockout-autogen-removal_2026-08-23.md chain).
+
+## Related files
+
+- Direct follow-up that reverts the manual away-goals override:
+  .opencode/context/knockout-generation/qf-tiebreak-brugge-barcelona_2026-08-25.md.
 
 ## Restore File Section
 

@@ -1,7 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { generateGroupFixtures } from '@/lib/fixture-generator'
 import { drawGroups } from '@/lib/tournament-draw'
-import { goalDifference } from '@/lib/standings-core'
+import { sortStandingsRows } from '@/lib/standings-core'
 import { stampFixtureParticipants } from '@/lib/slot-utils'
 
 const CUP_TYPES = ['tournament_club', 'tournament_international'] as const
@@ -66,26 +66,28 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Season is not active' }, { status: 400 })
   }
 
-  // League tournament for this season
-  const { data: leagueTournament } = await db('tournaments')
-    .select('id')
+  // League tournaments (one per division) for this season
+  const { data: leagueTournaments } = await db('tournaments')
+    .select('id, division')
     .eq('season_id', season_id)
     .eq('type', 'league')
-    .single()
+    .order('division', { ascending: true })
 
-  if (!leagueTournament) {
+  if (!leagueTournaments || leagueTournaments.length === 0) {
     return Response.json({ error: 'No league tournament found for this season' }, { status: 404 })
   }
 
   // All league fixtures must be completed
-  const { data: pending } = await db('fixtures')
-    .select('id')
-    .eq('tournament_id', leagueTournament.id)
-    .not('status', 'in', DONE_STATUSES)
-    .limit(1)
+  for (const leagueTournament of leagueTournaments) {
+    const { data: pending } = await db('fixtures')
+      .select('id')
+      .eq('tournament_id', leagueTournament.id)
+      .not('status', 'in', DONE_STATUSES)
+      .limit(1)
 
-  if (pending && pending.length > 0) {
-    return Response.json({ error: 'Not all league fixtures are completed yet' }, { status: 400 })
+    if (pending && pending.length > 0) {
+      return Response.json({ error: 'Not all league fixtures are completed yet' }, { status: 400 })
+    }
   }
 
   // No duplicate cup of this type for this season
@@ -99,10 +101,11 @@ export async function POST(request: Request) {
     return Response.json({ error: `A ${CUP_NAMES[type]} already exists for this season` }, { status: 409 })
   }
 
-  // Teams must come from this season's league (slot owners carry over)
+  // Teams must come from this season's league divisions (slot owners carry over)
+  const leagueTIds = leagueTournaments.map((t: any) => t.id)
   const { data: leagueParticipants } = await db('tournament_participants')
     .select('team_id, user_id')
-    .eq('tournament_id', leagueTournament.id)
+    .in('tournament_id', leagueTIds)
 
   const leagueIds = new Set((leagueParticipants ?? []).map((p: any) => p.team_id))
   if (!team_ids.every((id) => leagueIds.has(id))) {
@@ -127,24 +130,27 @@ export async function POST(request: Request) {
     }
   }
 
-  // Final league standings ordered like the public standings page
-  const { data: standingsRows } = await db('standings')
-    .select('team_id, points, goals_for, goals_against, gd_penalty, teams(name)')
-    .eq('tournament_id', leagueTournament.id)
+  // Final league standings ordered like the public standings page. Ranks are
+  // per-division; Division 2 ranks are offset below Division 1 so higher
+  // finishers seed into earlier pots.
+  const rankByTeam = new Map<string, number>()
+  let rankOffset = 0
+  for (const leagueTournament of leagueTournaments) {
+    const { data: standingsRows } = await db('standings')
+      .select('team_id, points, goals_for, goals_against, gd_penalty, teams(name)')
+      .eq('tournament_id', leagueTournament.id)
 
-  const sorted = [...(standingsRows ?? [])].sort((a: any, b: any) => {
-    if ((b.points ?? 0) !== (a.points ?? 0)) return (b.points ?? 0) - (a.points ?? 0)
-    if (goalDifference(b) !== goalDifference(a)) return goalDifference(b) - goalDifference(a)
-    if ((b.goals_for ?? 0) !== (a.goals_for ?? 0)) return (b.goals_for ?? 0) - (a.goals_for ?? 0)
-    return String(a.teams?.name ?? '').localeCompare(String(b.teams?.name ?? ''))
-  })
+    const sorted = sortStandingsRows(standingsRows ?? [])
+    for (const [idx, row] of sorted.entries()) {
+      rankByTeam.set(row.team_id, rankOffset + idx + 1)
+    }
+    rankOffset += sorted.length
+  }
 
-  const rankByTeam = new Map(sorted.map((row: any, idx: number) => [row.team_id, idx + 1]))
-
-  // Schedule cups after the last league fixture
+  // Schedule cups after the last league fixture across both divisions
   const { data: lastLeagueFixture } = await db('fixtures')
     .select('scheduled_date')
-    .eq('tournament_id', leagueTournament.id)
+    .in('tournament_id', leagueTIds)
     .order('scheduled_date', { ascending: false })
     .limit(1)
     .maybeSingle()

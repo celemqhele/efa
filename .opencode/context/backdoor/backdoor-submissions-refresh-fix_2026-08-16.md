@@ -30,6 +30,12 @@ timestamps, and the Approve/Decline buttons all update immediately.
 - Pre-existing lint warnings (unused imports/`isPending`/`hasScreenshot`) remain;
   `npx tsc --noEmit` passes. No API/schema changes.
 
+## Related files
+Other changes to the same `BackdoorSubmissionsClient.tsx`:
+- `.opencode/context/backdoor/backdoor-admin-auth-fix_2026-08-15.md` — cookie-based auth fix.
+- `.opencode/context/backdoor/backdoor-side-inversion_2026-08-16.md` — flipped single-submission scoring to the side opposite `side_claimed`.
+- `.opencode/context/knockout-generation/backdoor-dashboard-approve-progression_2026-08-24.md` — approve-path progression wiring.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

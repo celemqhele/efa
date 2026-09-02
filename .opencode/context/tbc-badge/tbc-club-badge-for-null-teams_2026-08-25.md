@@ -37,9 +37,13 @@ Replaced null/missing team slots in fixtures with a Lucide `Club` icon + "TBC" t
 - `TBCBadge` uses Lucide `Club` icon (playing card club suit shape)
 
 ## Deliberately unchanged
-- `ShieldQuestion` placeholder for UEL "No Name" team (existing `getPlaceholderIcon` in `TeamLogo`)
+- `ShieldQuestion` placeholder for UEL "No Name" team (existing `getPlaceholderIcon` in `TeamLogo`) — see `.opencode/context/uel-no-name/uel-no-name-replacement_2026-08-16.md`
 - No DB migrations needed
 - Team auto-progression (`advanceWinner`) fills `home_team_id`/`away_team_id` in the DB; on next page load the real team replaces TBC automatically
+
+## Related files
+- `.opencode/context/uel-no-name/uel-no-name-replacement_2026-08-16.md` — the `ShieldQuestion` (No Name) placeholder this change deliberately leaves untouched; both render through `TeamLogo.tsx`/`getPlaceholderIcon`.
+- `.opencode/context/tbc-badge/tbc-club-to-shield-and-empty-string-fix_2026-08-25.md` — follow-up: Club icon → Shield + empty-string TBC display fallback.
 
 ## Verification
 - `npx tsc --noEmit` — clean

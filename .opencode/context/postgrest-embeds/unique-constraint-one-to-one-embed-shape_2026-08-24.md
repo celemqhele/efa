@@ -44,3 +44,10 @@ Treat the embed as an object everywhere it was array-assumed:
 - Repro script pattern: read `.env.local`, build URL from the project ref in
   `.env.supabase`, createClient with `SUPABASE_SERVICE_ROLE_KEY`, run the same select
   string as the page. (Script preserved at `.recycle/tmp-test-embed.mts`.)
+
+## Related files
+This cross-cutting embed-shape fix touches pages documented elsewhere:
+- `.opencode/context/home-upcoming-widget/home-upcoming-widget_2026-08-15.md` — home upcoming
+  widget (`f.result` object access)
+- `.opencode/context/knockout-generation/backdoor-dashboard-approve-progression_2026-08-24.md` —
+  AGG display on the backdoor dashboard

@@ -42,6 +42,11 @@ Also regenerated the service worker precache manifest via `npm run build` —
   `sw.js` is regenerated lean. Fixing the Windows quirk is a separate task.
 - `640x640` + `1280x1280` buckets intentionally kept for all 5 leagues.
 
+## Related files
+
+- `.opencode/context/logo-upscaling/logo-upscale-rollback-small-buckets_2026-08-27.md` — the SIZE_MAP rollback that declared the upscaled buckets dead weight; this cleanup follows it
+- `.opencode/context/logo-upscaling/logo-upscaling_2026-08-27.md` — the AI-upscale ship (`a1f9ee7`) that created the `2560x2560` buckets being removed
+
 ## Restore File Section
 
 | Original Path | Purpose | New Path inside `.recycle` |

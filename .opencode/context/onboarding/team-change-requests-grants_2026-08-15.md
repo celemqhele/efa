@@ -34,6 +34,9 @@ No app-code change needed — the route logic was already correct.
 - Grant check query used: `SELECT privilege_type FROM information_schema.role_table_grants
   WHERE grantee='service_role' AND table_name='team_change_requests';`
 
+## Related files
+- Follow-up to the team-change request approve/deny fix (same route) in `onboarding/onboarding-and-manager-applications_2026-08-15.md`.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

@@ -19,6 +19,13 @@ The User Management page (`/admin/users/manage`) already existed with the Reset 
 | GOAT | GOAT@efa.local | Efootball@2026 |
 | Skooz420 | skoozz420@efa.local | Efootball@2026 |
 
+## Related files
+- The `/admin/users/manage` page this link points to (with the Reset Password
+  button) was built in
+  `.opencode/context/admin-dashboard/reset-password-button_2026-08-25.md`.
+- The same `ACTIONS` arrays in `_desktop.tsx`/`_mobile.tsx` were extended in
+  `.opencode/context/backdoor/backdoor-dashboard-link_2026-08-15.md`.
+
 ## Restore File Section
 - Original path: `app/(admin)/admin/dashboard/_desktop.tsx`
 - Purpose: Admin dashboard desktop nav bar

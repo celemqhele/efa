@@ -18,3 +18,6 @@ The league folder lives on the parent registry entry (`l.folder`), not on each t
 - Updated `app/(public)/polls/[share_code]/page.tsx` to use `filterTeamsByFolder(l.folder, l.teams)` in both the `allowed_leagues` branch and the international branch.
 - Unchanged: the other `filterTeams` call sites (season wizard, admin team management, webhook) pass DB rows that genuinely carry `logo_league_folder`/`logo_team_slug`.
 - Verified with `npm run build` (compiles and typechecks cleanly).
+
+## Related files
+- `.opencode/context/efootball-teams/efootball_teams_2026-08-15.md` — chain root: introduced `filterTeams`/the eFootball 2027 allowlist this fix builds on.

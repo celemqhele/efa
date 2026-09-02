@@ -26,5 +26,5 @@ Changed `window.location.href = redirect` to `router.push(redirect)` (soft/clien
 - `app/(auth)/login/_desktop.tsx` — same change
 
 ## Related fixes (same session)
-- `login-redirect_2026-08-26.md` — Added `?redirect=` param to login links on public pages
-- `public-layout-auth-session-loss_2026-08-26.md` — Added `force-dynamic` to `(public)` layout to prevent cached nav showing logged-out state
+- `.opencode/context/login-redirect/login-redirect_2026-08-26.md` — Added `?redirect=` param to login links on public pages
+- `.opencode/context/login-redirect/public-layout-auth-session-loss_2026-08-26.md` — Added `force-dynamic` to `(public)` layout to prevent cached nav showing logged-out state

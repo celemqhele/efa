@@ -39,3 +39,8 @@ This yields the same full team set for team pickers without touching the disk, s
 | Original Path | Purpose | New Path |
 |---|---|---|
 | (none — no files deleted; only in-place edits to two page files) | | |
+
+## Related files
+
+- `.opencode/context/south-african-premiership/add-sa-lower-leagues_2026-08-27.md` — the league/logo addition that caused the 511 MB `admin/seasons` function
+- `.opencode/context/south-african-premiership/vercel-function-size-polls-apply_2026-08-27.md` — follow-up: same 250 MB limit class, hit via `lib/registry.ts` import tracing

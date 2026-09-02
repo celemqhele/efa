@@ -36,7 +36,7 @@ Approved single submissions, result was applied to the wrong (claimed) side:
 | `0766556f` Bayer Leverkusen vs Al Khaleej (MD4) | Al Khaleej 3-0 | **Leverkusen 3-0** | UEL `80e86b39` |
 
 (Real Betis vs Real Madrid `353711d8` was the same bug — fixed separately in
-`backdoor-betis-win_2026-08-16.md`.)
+`.opencode/context/backdoor/backdoor-betis-win_2026-08-16.md`.)
 
 Note: the Burnley/Barcelona pair nets to the same overall record for both teams
 (each fixture flipped, symmetric) but now matches the managers' claims.
@@ -71,6 +71,14 @@ Leverkusen 5W 1D 0L, Al Khaleej 2W 0D 2L.
 - Older `expired` submissions (Brighton/Como, 9-10 Aug) were applied by other
   paths / were real results, not this bug.
 - `npx tsc --noEmit` passes; lint clean except pre-existing unused-var warnings.
+
+## Related files
+- `.opencode/context/backdoor/backdoor-betis-win_2026-08-16.md` — the same `side_claimed` bug surfaced there, fixed as a data-only correction (this file is the structural root-cause fix).
+- Other changes to the same `BackdoorSubmissionsClient.tsx`:
+  - `.opencode/context/backdoor/backdoor-admin-auth-fix_2026-08-15.md` — cookie-based auth fix.
+  - `.opencode/context/backdoor/backdoor-submissions-refresh-fix_2026-08-16.md` — replaced dead `refreshKey` with `router.refresh()`.
+  - `.opencode/context/knockout-generation/backdoor-dashboard-approve-progression_2026-08-24.md` — approve-path progression wiring.
+- The `lib/backdoor-notify.ts` design intent (side_claimed = the absent side) is documented in `.opencode/context/notification-sounds/notifications-sounds_2026-08-15.md`.
 
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |

@@ -40,6 +40,9 @@ to be personalized and specific:
     personalized sentences.
   - Final note uses team names instead of bare numbers.
 
+## Related files
+- Follow-up to the forfeit-balances work/team→manager migration in `forfeit-balances/forfeit-manager-migration_2026-08-25.md`.
+
 ## Notes
 - `npx tsc --noEmit` passes (no new errors)
 - `npm run lint` passes (only pre-existing warnings)

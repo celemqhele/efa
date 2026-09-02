@@ -48,6 +48,10 @@ const deleteClass = `${CARD_ACTION_BTN_DANGER}${actionCount % 2 === 1 ? ' col-sp
 - `npx tsc --noEmit` passes; `next lint` clean on both edited files. No API/schema
   changes.
 
+## Related files
+- Direct follow-up to the TournamentCard button uniformization in
+  `.opencode/context/admin-dashboard/tournaments-widget-redesign_2026-08-16.md`.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

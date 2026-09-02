@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { addDays, format, subDays } from 'date-fns'
 
-const CUP_WEEKLY_SLOT_BUDGET = 30
+const CUP_WEEKLY_SLOT_BUDGET = 56
 
 export async function POST(request: Request) {
   const supabase = await createAdminClient()

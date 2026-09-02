@@ -38,6 +38,10 @@ No behaviour change to `side_claimed` or scoring — only how the side is resolv
   it previously only selected `home_team_id/away_team_id`.
 - `npx tsc --noEmit` and `npm run lint` pass.
 
+## Related files
+This change builds on the override prompts defined earlier:
+- `.opencode/context/backdoor/backdoor-admin-override_2026-08-15.md` — the chain root defining the `handleBackdoorOverrideConfirm` "Who gets the 3-0 win?" prompt and the `isOverride` override flow that this ask-team-name change updates.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

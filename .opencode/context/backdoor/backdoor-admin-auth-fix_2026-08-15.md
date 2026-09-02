@@ -34,6 +34,12 @@ write `reviewed_by = <admin id>`, and the existing notify/recalculate flow fires
 - `next tsc --noEmit` passes; `next lint` reports only pre-existing unused-var
   warnings in this file.
 
+## Related files
+Other changes to the same `BackdoorSubmissionsClient.tsx`:
+- `.opencode/context/backdoor/backdoor-submissions-refresh-fix_2026-08-16.md` — replaced dead `refreshKey` with `router.refresh()` in the same client.
+- `.opencode/context/backdoor/backdoor-side-inversion_2026-08-16.md` — flipped single-submission scoring to the side opposite `side_claimed`.
+- `.opencode/context/knockout-generation/backdoor-dashboard-approve-progression_2026-08-24.md` — approve-path progression wiring in the same client.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

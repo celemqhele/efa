@@ -32,6 +32,10 @@
 - SW changes require a **production build + deploy** to take effect; dev server uses the old/inert SW.
 - Push-only (no in-app row) notifications: `result-confirmed` for admins (DB trigger covers in-app). All other new notifications create in-app rows + push.
 
+## Related files
+- `.opencode/context/backdoor/backdoor-side-inversion_2026-08-16.md` — quotes the `side_claimed` semantics used by `notifyBackdoorDecision` here.
+- `.opencode/context/notification-sounds/notification-sounds-mobile_2026-08-15.md` — follow-up: custom sound was silent on mobile (AudioContext unlock fix).
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

@@ -47,6 +47,14 @@ Calls `recalculateStandings()` for all 3 affected tournaments:
 
 All 21 fixtures verified `confirmed` with 0–0 result.
 
+## Related files
+This is part of the one-off backdoor script family mirroring the WhatsApp admin backdoor flow (`handleBackdoorSide`) and the direct result-submit pattern:
+- `.opencode/context/backdoor/backdoor-admin-override_2026-08-15.md` — the `isOverride` mechanism used here.
+- `.opencode/context/backdoor/backdoor-mci-loss_2026-08-15.md` — Man City absent walkover losses (same direct-submit pattern referenced in the Fix above).
+- `.opencode/context/backdoor/backdoor-psg-chelsea-override_2026-08-15.md` — override a confirmed result (PSG vs Chelsea).
+- `.opencode/context/backdoor/backdoor-betis-win_2026-08-16.md` — reverse Real Betis's mistaken loss into a win.
+- `.opencode/context/backdoor/backdoor-side-inversion_2026-08-16.md` — correct the `side_claimed`-inverted results.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

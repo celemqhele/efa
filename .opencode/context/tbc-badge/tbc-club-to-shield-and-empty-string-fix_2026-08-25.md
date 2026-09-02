@@ -1,6 +1,6 @@
 # TBC Badge Fix: Club → Shield icon + empty-string fallback — 2026-08-25
 
-Follow-up to `tbc-club-badge-for-null-teams_2026-08-25.md`. Two fixes after deploying to production.
+Follow-up to `.opencode/context/tbc-badge/tbc-club-badge-for-null-teams_2026-08-25.md`. Two fixes after deploying to production.
 
 ## Problem 1: Icon looked like a clover
 The Lucide `Club` icon is a playing-card club suit (clover shape), not a football club badge/crest. User wanted a shield/crest shape instead.

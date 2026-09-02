@@ -25,6 +25,64 @@ export function goalDifference(row: any): number {
   return (row.goals_for ?? 0) - (row.goals_against ?? 0) + (row.gd_penalty ?? 0)
 }
 
+// ─── League standings zones ──────────────────────────────────────────────────
+// Counts live in the tournament's `settings.standings_zones` so the UI is
+// data-driven per division:
+//   Division 1 -> { bottom_yellow: 2, bottom_red: 3 }   (12/13 yellow, 14-16 red)
+//   Division 2 -> { top_green: 3, top_yellow: 2 }        (1-3 green, 4/5 yellow)
+// A tournament without zones renders neutral rows (no special borders).
+
+export type StandingsZones = {
+  top_green?: number
+  top_yellow?: number
+  bottom_yellow?: number
+  bottom_red?: number
+}
+
+export type ZoneKind = 'top_green' | 'top_yellow' | 'bottom_yellow' | 'bottom_red' | null
+
+export function normalizeStandingsZones(settings: any): StandingsZones | null {
+  const zones = settings?.standings_zones
+  if (!zones || typeof zones !== 'object') return null
+  const out: StandingsZones = {}
+  if (Number.isFinite(zones.top_green)) out.top_green = Math.max(0, Math.floor(zones.top_green))
+  if (Number.isFinite(zones.top_yellow)) out.top_yellow = Math.max(0, Math.floor(zones.top_yellow))
+  if (Number.isFinite(zones.bottom_yellow)) out.bottom_yellow = Math.max(0, Math.floor(zones.bottom_yellow))
+  if (Number.isFinite(zones.bottom_red)) out.bottom_red = Math.max(0, Math.floor(zones.bottom_red))
+  return out
+}
+
+export function rowZone(zones: StandingsZones | null | undefined, index: number, total: number): ZoneKind {
+  if (!zones || total <= 0 || index < 0 || index >= total) return null
+  const topGreen = zones.top_green ?? 0
+  const topYellow = zones.top_yellow ?? 0
+  const bottomYellow = zones.bottom_yellow ?? 0
+  const bottomRed = zones.bottom_red ?? 0
+
+  if (topGreen > 0 && index < topGreen) return 'top_green'
+  if (topYellow > 0 && index < topGreen + topYellow) return 'top_yellow'
+  if (bottomRed > 0 && index >= total - bottomRed) return 'bottom_red'
+  if (bottomYellow > 0 && index >= total - bottomRed - bottomYellow) return 'bottom_yellow'
+  return null
+}
+
+export const ZONE_BORDER_CLASS: Record<NonNullable<ZoneKind>, string> = {
+  top_green: 'border-l-emerald-500',
+  top_yellow: 'border-l-yellow-400',
+  bottom_yellow: 'border-l-yellow-400',
+  bottom_red: 'border-l-red-500',
+}
+
+export function zoneLegend(zones: StandingsZones | null | undefined): { color: 'green' | 'yellow' | 'red'; label: string }[] {
+  if (!zones) return []
+  const items: { color: 'green' | 'yellow' | 'red'; label: string }[] = []
+  if ((zones.top_green ?? 0) > 0) items.push({ color: 'green', label: 'Promotion' })
+  if ((zones.top_yellow ?? 0) > 0) items.push({ color: 'yellow', label: 'Promotion playoff' })
+  if ((zones.bottom_yellow ?? 0) > 0) items.push({ color: 'yellow', label: 'Relegation playoff' })
+  if ((zones.bottom_red ?? 0) > 0) items.push({ color: 'red', label: 'Relegation' })
+  return items
+}
+
 export function sortStandingsRows(rows: any[]) {
   return [...rows].sort((a, b) => {
     if ((b.points ?? 0) !== (a.points ?? 0)) return (b.points ?? 0) - (a.points ?? 0)

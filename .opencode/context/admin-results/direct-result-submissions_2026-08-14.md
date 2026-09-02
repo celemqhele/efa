@@ -23,6 +23,14 @@ Each script:
 - "Fixture not found" from the app was likely a stale/deleted fixture ID (recent fixture regeneration/postponement work); the exact API query returns existing fixtures fine. Not reproduced for these two fixtures.
 - 28 group fixtures still pending in UCL, so no knockout generation was triggered.
 
+## Related files
+- The standalone service-role script pattern is shared with
+  `.opencode/context/fixture-scheduling/bulk-postponement_2026-08-15.md`
+  (`scripts/postpone-*.ts`).
+- The note that no knockout was generated ties to the knockout auto-generation
+  removal in
+  `.opencode/context/knockout-generation/knockout-autogen-removal_2026-08-23.md`.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

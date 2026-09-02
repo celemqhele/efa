@@ -11,6 +11,25 @@ interface TeamInput {
   manager_id: string | null
 }
 
+interface DivisionInput {
+  users?: string[]
+  teams?: TeamInput[]
+}
+
+interface DivisionConfig {
+  name: string
+  division: number
+  zones: Record<string, number>
+  input: DivisionInput
+}
+
+interface DivisionResult {
+  tournamentId: string
+  teamIds: string[]
+  slots: { user_id: string | null; team_id: string }[]
+  fixtures: number
+}
+
 async function resolveTeams(adminSupabase: any, teams: TeamInput[]): Promise<string[]> {
   const db = (table: string) => adminSupabase.from(table) as any
   const resolved: string[] = []
@@ -73,13 +92,17 @@ export async function POST(request: Request) {
     start_date: string
     league_teams?: TeamInput[]
     league_users?: string[]
+    division1_teams?: TeamInput[]
+    division2_teams?: TeamInput[]
+    division1_users?: string[]
+    division2_users?: string[]
   }
 
   try { body = await request.json() } catch {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { season_name, start_date, league_teams, league_users } = body
+  const { season_name, start_date, league_teams, league_users, division1_teams, division2_teams, division1_users, division2_users } = body
 
   if (!season_name?.trim() || !start_date) {
     return Response.json({ error: 'season_name and start_date are required' }, { status: 400 })
@@ -88,40 +111,48 @@ export async function POST(request: Request) {
   const adminSupabase = await createAdminClient()
   const db = (table: string) => adminSupabase.from(table) as any
 
-  // Resolve slots: user-driven (each user's current club) or legacy bare teams
-  let slotEntries: { user_id: string | null; team_id: string }[] = []
-  if (league_users && league_users.length > 0) {
-    for (const uid of league_users) {
-      const team_id = await resolveUserClubId(adminSupabase, uid)
-      if (!team_id) return Response.json({ error: 'Every user must currently manage a team' }, { status: 400 })
-      slotEntries.push({ user_id: uid, team_id })
+  // Resolve each division's slots: user-driven (each user's current club) or
+  // legacy bare teams. When no division payloads are sent the old single-league
+  // shape (league_teams / league_users) is honoured as Division 1 only.
+  async function resolveDivisionSlots(input: DivisionInput): Promise<{ user_id: string | null; team_id: string }[]> {
+    if (input.users && input.users.length > 0) {
+      const slots: { user_id: string | null; team_id: string }[] = []
+      for (const uid of input.users) {
+        const team_id = await resolveUserClubId(adminSupabase, uid)
+        if (!team_id) return []
+        slots.push({ user_id: uid, team_id })
+      }
+      return slots
     }
-  } else {
-    const leagueIds = await resolveTeams(adminSupabase, league_teams ?? [])
-    slotEntries = leagueIds.map((team_id) => ({ user_id: null, team_id }))
+    const ids = await resolveTeams(adminSupabase, input.teams ?? [])
+    return ids.map((team_id) => ({ user_id: null, team_id }))
   }
 
-  if (slotEntries.length < 2) {
-    return Response.json({ error: 'At least 2 league participants required' }, { status: 400 })
-  }
-  if (slotEntries.length % 2 !== 0) {
-    return Response.json({ error: 'League must have an even number of participants' }, { status: 400 })
-  }
+  const d1Teams = (division1_teams ?? [])
+  const d2Teams = (division2_teams ?? [])
+  const d1Users = (division1_users ?? [])
+  const d2Users = (division2_users ?? [])
+  const hasDivisionPayload = d1Teams.length > 0 || d2Teams.length > 0 || d1Users.length > 0 || d2Users.length > 0
 
-  const leagueIds = slotEntries.map((s) => s.team_id)
+  const divisions: DivisionConfig[] = hasDivisionPayload
+    ? [
+        { name: 'EFA Premier League', division: 1, zones: { bottom_yellow: 2, bottom_red: 3 }, input: { users: d1Users, teams: d1Teams } },
+        { name: 'EFA Championship', division: 2, zones: { top_green: 3, top_yellow: 2 }, input: { users: d2Users, teams: d2Teams } },
+      ]
+    : [
+        { name: 'EFA Premier League', division: 1, zones: { bottom_yellow: 2, bottom_red: 3 }, input: { users: league_users, teams: league_teams } },
+      ]
 
   const numRounds = 2
-  const leagueFixtureCount = leagueIds.length * (leagueIds.length - 1) * numRounds / 2
 
-  const end_date = computeEndDate(start_date, leagueFixtureCount)
-
+  const seasonStart = start_date
   const seasonRes = await db('seasons')
     .insert({
       name: season_name,
       base_league: 'EFA Premier League',
       status: 'active',
-      start_date,
-      end_date,
+      start_date: seasonStart,
+      end_date: null,
     })
     .select('id')
     .single()
@@ -132,61 +163,98 @@ export async function POST(request: Request) {
 
   const season_id = seasonRes.id
 
-  // League tournament — UCL/UEL are started separately once the league finishes
-  const { data: leagueTournament } = await db('tournaments')
-    .insert({
-      season_id,
-      name: 'EFA Premier League',
-      type: 'league',
-      status: 'active',
-      settings: { start_date, end_date, fixture_mode: 'round_robin', num_rounds: numRounds },
-    })
-    .select('id')
-    .single()
+  const results: DivisionResult[] = []
+  for (const config of divisions) {
+    const slots = await resolveDivisionSlots(config.input)
+    if (slots.length < 2) continue
 
-  if (!leagueTournament) return Response.json({ error: 'Failed to create league tournament' }, { status: 500 })
+    if (slots.length % 2 !== 0) {
+      return Response.json({ error: `${config.name} must have an even number of participants` }, { status: 400 })
+    }
 
-  const leagueTId = leagueTournament.id
+    const teamIds = slots.map((s) => s.team_id)
 
-  const { data: insertedParticipants } = await db('tournament_participants').insert(
-    slotEntries.map((s) => ({ tournament_id: leagueTId, team_id: s.team_id, user_id: s.user_id }))
-  ).select('id, team_id')
+    const { data: leagueTournament } = await db('tournaments')
+      .insert({
+        season_id,
+        name: config.name,
+        type: 'league',
+        division: config.division,
+        status: 'active',
+        settings: {
+          start_date: seasonStart,
+          end_date: null,
+          fixture_mode: 'round_robin',
+          num_rounds: numRounds,
+          division: config.division,
+          standings_zones: config.zones,
+        },
+      })
+      .select('id')
+      .single()
 
-  const participantByTeamId = new Map<string, string>()
-  for (const row of insertedParticipants ?? []) {
-    if (row.team_id) participantByTeamId.set(row.team_id, row.id)
-  }
+    if (!leagueTournament) return Response.json({ error: `Failed to create ${config.name} tournament` }, { status: 500 })
 
-  await db('standings').insert(
-    leagueIds.map((team_id) => ({
-      tournament_id: leagueTId, team_id,
-      participant_id: participantByTeamId.get(team_id) ?? null,
-      played: 0, wins: 0, draws: 0, losses: 0,
-      goals_for: 0, goals_against: 0, points: 0,
-      form: '', unbeaten_run: 0, clean_sheets: 0,
-    }))
-  )
+    const leagueTId = leagueTournament.id
 
-  const leagueFixtures = await generateLeagueFixtures(adminSupabase, leagueIds, leagueTId, numRounds, start_date)
+    const { data: insertedParticipants } = await db('tournament_participants').insert(
+      slots.map((s) => ({ tournament_id: leagueTId, team_id: s.team_id, user_id: s.user_id }))
+    ).select('id, team_id')
 
-  if (leagueFixtures.length > 0) {
-    const stamped = await stampFixtureParticipants(adminSupabase, leagueTId, leagueFixtures)
-    await db('fixtures').insert(
-      stamped.map((f) => ({
-        tournament_id: leagueTId, home_team_id: f.home_team_id, away_team_id: f.away_team_id,
-        home_participant_id: f.home_participant_id, away_participant_id: f.away_participant_id,
-        matchday: f.matchday, scheduled_date: f.scheduled_date, deadline: f.deadline,
-        round_type: f.round_type, leg: f.leg, status: 'scheduled', is_postponed: false,
+    const participantByTeamId = new Map<string, string>()
+    for (const row of insertedParticipants ?? []) {
+      if (row.team_id) participantByTeamId.set(row.team_id, row.id)
+    }
+
+    await db('standings').insert(
+      teamIds.map((team_id) => ({
+        tournament_id: leagueTId, team_id,
+        participant_id: participantByTeamId.get(team_id) ?? null,
+        played: 0, wins: 0, draws: 0, losses: 0,
+        goals_for: 0, goals_against: 0, points: 0,
+        form: '', unbeaten_run: 0, clean_sheets: 0,
       }))
     )
+
+    const leagueFixtures = await generateLeagueFixtures(adminSupabase, teamIds, leagueTId, numRounds, seasonStart)
+
+    if (leagueFixtures.length > 0) {
+      const stamped = await stampFixtureParticipants(adminSupabase, leagueTId, leagueFixtures)
+      await db('fixtures').insert(
+        stamped.map((f) => ({
+          tournament_id: leagueTId, home_team_id: f.home_team_id, away_team_id: f.away_team_id,
+          home_participant_id: f.home_participant_id, away_participant_id: f.away_participant_id,
+          matchday: f.matchday, scheduled_date: f.scheduled_date, deadline: f.deadline,
+          round_type: f.round_type, leg: f.leg, status: 'scheduled', is_postponed: false,
+        }))
+      )
+    }
+
+    results.push({ tournamentId: leagueTId, teamIds, slots, fixtures: leagueFixtures.length })
+  }
+
+  if (results.length === 0) {
+    return Response.json({ error: 'At least one division needs 2+ participants' }, { status: 400 })
+  }
+
+  const allTeamIds = results.flatMap((r) => r.teamIds)
+  const totalFixtures = results.reduce((sum, r) => sum + r.teamIds.length * (r.teamIds.length - 1), 0)
+  const end_date = computeEndDate(seasonStart, totalFixtures)
+
+  await db('seasons').update({ end_date }).eq('id', season_id)
+  for (const r of results) {
+    const { data: t } = await db('tournaments').select('settings').eq('id', r.tournamentId).single()
+    await db('tournaments')
+      .update({ settings: { ...(t?.settings ?? {}), start_date: seasonStart, end_date } })
+      .eq('id', r.tournamentId)
   }
 
   const { data: allTeamRows } = await adminSupabase
     .from('teams')
     .select('id, name, manager_id')
-    .in('id', leagueIds)
+    .in('id', allTeamIds)
 
-  const managedTeams = (allTeamRows ?? []).filter((t) => t.manager_id)
+  const managedTeams = (allTeamRows ?? []).filter((t: any) => t.manager_id)
   if (managedTeams.length > 0) {
     await db('notifications').insert(
       managedTeams.map((t: any) => ({
@@ -206,8 +274,11 @@ export async function POST(request: Request) {
     target_id: season_id,
     details: {
       season_name, start_date, end_date,
-      league_teams: leagueIds.length,
-      league_fixtures: leagueFixtures.length,
+      divisions: results.map((r) => ({
+        team_ids: r.teamIds,
+        league_fixtures: r.fixtures,
+      })),
+      total_fixtures: totalFixtures,
     },
   })
 
@@ -216,8 +287,8 @@ export async function POST(request: Request) {
     season_id,
     end_date,
     fixtures: {
-      league: leagueFixtures.length,
-      total: leagueFixtures.length,
+      divisions: results.map((r) => r.fixtures),
+      total: totalFixtures,
     },
   })
 }

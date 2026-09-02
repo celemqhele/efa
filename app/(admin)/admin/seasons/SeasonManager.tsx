@@ -27,6 +27,7 @@ interface FinalStandingRow {
   name: string
   logo_league_folder: string
   logo_team_slug: string
+  division?: number
 }
 
 interface Tournament {
@@ -34,9 +35,19 @@ interface Tournament {
   name: string
   type: string
   status: string
+  division: number | null
   fixture_count: number
   completed_count: number
   knockout_ready: boolean
+}
+
+interface LeagueDivision {
+  id: string
+  name: string
+  division: number
+  status: string
+  fixture_count: number
+  completed_count: number
 }
 
 interface Season {
@@ -46,9 +57,11 @@ interface Season {
   start_date: string | null
   end_date: string | null
   tournaments: Tournament[]
+  league_tournaments?: LeagueDivision[]
   league_total_fixtures: number
   league_completed_fixtures: number
   final_standings?: FinalStandingRow[]
+  final_standings_by_division?: Record<number, FinalStandingRow[]>
   cup_taken?: Record<string, string>
 }
 
@@ -80,6 +93,7 @@ function SeasonCard({
   const [startCupType, setStartCupType] = useState<'tournament_club' | 'tournament_international' | null>(null)
 
   const leagueT = season.tournaments.find((t) => t.type === 'league')
+  const leagueDivs = season.league_tournaments ?? []
   const clubTs = season.tournaments
     .filter((t) => t.type === 'tournament_club' || t.type === 'tournament_international')
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -87,7 +101,6 @@ function SeasonCard({
 
   const total = season.league_total_fixtures
   const done = season.league_completed_fixtures
-  const progress = total > 0 ? Math.round((done / total) * 100) : 0
   const allDone = total > 0 && done >= total
   const isActive = season.status === 'active'
   const isUpcoming = season.status === 'upcoming'
@@ -168,23 +181,33 @@ function SeasonCard({
 
       {(isActive || isCompleted) && (
         <>
-          {/* League progress */}
-          {leagueT && (
-            <div>
-              <div className="flex items-center justify-between mb-space-1">
-                <span className="text-xs text-text-muted">EFA Premier League</span>
-                <span className="text-xs text-text-secondary">
-                  {done}/{total} fixtures
-                </span>
-              </div>
-              <div className="w-full h-space-2 bg-bg-base rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${allDone ? 'bg-feedback-success' : 'bg-accent'}`}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+          {/* League progress — one bar per division */}
+          {leagueDivs.length > 0 && (
+            <div className="space-y-space-3">
+              {leagueDivs.map((div) => {
+                const dTotal = div.fixture_count
+                const dDone = div.completed_count
+                const dProgress = dTotal > 0 ? Math.round((dDone / dTotal) * 100) : 0
+                const dAllDone = dTotal > 0 && dDone >= dTotal
+                return (
+                  <div key={div.id}>
+                    <div className="flex items-center justify-between mb-space-1">
+                      <span className="text-xs text-text-muted">{div.name}</span>
+                      <span className="text-xs text-text-secondary">
+                        {dDone}/{dTotal} fixtures
+                      </span>
+                    </div>
+                    <div className="w-full h-space-2 bg-bg-base rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${dAllDone ? 'bg-feedback-success' : 'bg-accent'}`}
+                        style={{ width: `${dProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
               {allDone && (
-                <p className="text-xs text-feedback-success mt-space-1">All fixtures completed</p>
+                <p className="text-xs text-feedback-success">All league fixtures completed</p>
               )}
             </div>
           )}
@@ -396,29 +419,45 @@ function StartPhaseDialog({
   const [startDate, setStartDate] = useState(today)
   const [teamSearch, setTeamSearch] = useState('')
 
-  // Selection by slug
-  const [leagueTeamSlugs, setLeagueTeamSlugs] = useState<string[]>(allTeams.map((t) => t.logo_team_slug))
+  // Selection by slug — two divisions (EFA Premier League / EFA Championship),
+  // defaulting to 16 teams in each as the expected split.
+  const allSlugs = allTeams.map((t) => t.logo_team_slug)
+  const [activeDiv, setActiveDiv] = useState<1 | 2>(1)
+  const [d1Slugs, setD1Slugs] = useState<string[]>(allSlugs.slice(0, 16))
+  const [d2Slugs, setD2Slugs] = useState<string[]>(allSlugs.slice(16, 32))
 
-  const leagueTeamObjects = allTeams.filter((t) => leagueTeamSlugs.includes(t.logo_team_slug))
+  const leagueTeamObjects = allTeams.filter((t) => d1Slugs.includes(t.logo_team_slug) || d2Slugs.includes(t.logo_team_slug))
   const filteredTeams = allTeams.filter((t) =>
     t.name.toLowerCase().includes(teamSearch.toLowerCase()) ||
     t.logo_team_slug.toLowerCase().includes(teamSearch.toLowerCase())
   )
 
-  const isEven = leagueTeamSlugs.length % 2 === 0
+  const activeSlugs = activeDiv === 1 ? d1Slugs : d2Slugs
+  const otherSlugs = activeDiv === 1 ? d2Slugs : d1Slugs
 
-  function toggleLeague(slug: string) {
-    if (leagueTeamSlugs.includes(slug)) {
-      setLeagueTeamSlugs((prev) => prev.filter((x) => x !== slug))
+  function toggleTeam(slug: string) {
+    if (otherSlugs.includes(slug)) return
+    const setter = activeDiv === 1 ? setD1Slugs : setD2Slugs
+    if (activeSlugs.includes(slug)) {
+      setter((prev) => prev.filter((x) => x !== slug))
     } else {
-      setLeagueTeamSlugs((prev) => [...prev, slug])
+      setter((prev) => [...prev, slug])
     }
   }
 
+  function setActiveSlugs(slugs: string[]) {
+    if (activeDiv === 1) setD1Slugs(slugs)
+    else setD2Slugs(slugs)
+  }
+
+  const divObjects = (slugs: string[]) =>
+    slugs.map((slug) => allTeams.find((t) => t.logo_team_slug === slug)!)
+
   function computeFixtureCounts() {
-    const leagueTeams = leagueTeamSlugs.length
-    const leagueCount = leagueTeams * (leagueTeams - 1)
-    return { league: leagueCount, total: leagueCount }
+    const d1 = d1Slugs.length
+    const d2 = d2Slugs.length
+    const leagueCount = (d1 > 1 ? d1 * (d1 - 1) : 0) + (d2 > 1 ? d2 * (d2 - 1) : 0)
+    return { division1: d1 > 1 ? d1 * (d1 - 1) : 0, division2: d2 > 1 ? d2 * (d2 - 1) : 0, total: leagueCount }
   }
 
   const endDate = (() => {
@@ -434,7 +473,7 @@ function StartPhaseDialog({
     setError('')
     try {
       const toTeamData = (slugs: string[]) =>
-        slugs.map((slug) => allTeams.find((t) => t.logo_team_slug === slug)!).filter(Boolean).map((t) => ({
+        divObjects(slugs).filter(Boolean).map((t) => ({
           id: t.id,
           name: t.name,
           logo_league_folder: t.logo_league_folder,
@@ -448,7 +487,8 @@ function StartPhaseDialog({
         body: JSON.stringify({
           season_name: seasonName,
           start_date: startDate,
-          league_teams: toTeamData(leagueTeamSlugs),
+          division1_teams: toTeamData(d1Slugs),
+          division2_teams: toTeamData(d2Slugs),
         }),
       })
       const data = await res.json()
@@ -469,8 +509,9 @@ function StartPhaseDialog({
       if (!startDate) { setError('Start date is required.'); return }
     }
     if (step === 2) {
-      if (leagueTeamSlugs.length < 2) { setError('Select at least 2 teams for the league.'); return }
-      if (!isEven) { setError('League must have an even number of teams.'); return }
+      if (d1Slugs.length < 2 && d2Slugs.length < 2) { setError('Select at least 2 teams for the league.'); return }
+      if (d1Slugs.length >= 2 && d1Slugs.length % 2 !== 0) { setError('Division 1 must have an even number of teams.'); return }
+      if (d2Slugs.length >= 2 && d2Slugs.length % 2 !== 0) { setError('Division 2 must have an even number of teams.'); return }
       setUsersLoading(true)
       supabase.from('profiles').select('id, username').order('username')
         .then(({ data }) => { setUsers(data ?? []); setUsersLoading(false) })
@@ -551,14 +592,33 @@ function StartPhaseDialog({
           {/* -- Step 2: League teams -- */}
           {step === 2 && (
             <div className="space-y-space-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-text-primary font-semibold text-sm">Premier League</h3>
-                <span className={`text-xs font-bold ${isEven && leagueTeamSlugs.length >= 2 ? 'text-feedback-success' : 'text-accent'}`}>
-                  {leagueTeamSlugs.length} team{leagueTeamSlugs.length !== 1 ? 's' : ''}{!isEven ? ' (needs even count)' : ''}
-                </span>
+              {/* Division tabs */}
+              <div className="flex items-center gap-space-2">
+                {([1, 2] as const).map((dv) => {
+                  const slugs = dv === 1 ? d1Slugs : d2Slugs
+                  const even = slugs.length % 2 === 0
+                  const active = activeDiv === dv
+                  return (
+                    <button
+                      key={dv}
+                      type="button"
+                      onClick={() => setActiveDiv(dv)}
+                      className={`flex-1 rounded-xl border px-space-3 py-space-2 text-left transition-colors ${
+                        active ? 'border-accent bg-accent/10' : 'border-border bg-bg-base'
+                      }`}
+                    >
+                      <p className="text-xs font-bold text-text-primary">Division {dv}</p>
+                      <p className="text-[10px] text-text-muted">{dv === 1 ? 'EFA Premier League' : 'EFA Championship'}</p>
+                      <p className={`text-[10px] font-bold mt-space-0.5 ${even && slugs.length >= 2 ? 'text-feedback-success' : 'text-accent'}`}>
+                        {slugs.length} team{slugs.length !== 1 ? 's' : ''} {!even ? '· needs even count' : ''}
+                      </p>
+                    </button>
+                  )
+                })}
               </div>
+
               <p className="text-xs text-text-muted">
-                Select an even number of teams (any amount). Click teams or import from a poll.
+                Each division needs an even number of teams (any amount). Click teams or import from a poll.
               </p>
 
               <div className="flex items-center gap-2">
@@ -572,28 +632,30 @@ function StartPhaseDialog({
                     className="input-field pl-8"
                   />
                 </div>
-                <ImportFromPollButton allTeams={allTeams} onSelect={setLeagueTeamSlugs} />
+                <ImportFromPollButton allTeams={allTeams} onSelect={(slugs) => setActiveSlugs(slugs)} />
               </div>
 
               <div className="grid grid-cols-2 gap-space-2 max-h-72 overflow-y-auto pr-space-1">
                 {filteredTeams.map((team) => {
-                  const sel = leagueTeamSlugs.includes(team.logo_team_slug)
+                  const inActive = activeSlugs.includes(team.logo_team_slug)
+                  const inOther = otherSlugs.includes(team.logo_team_slug)
                   return (
                     <TeamPickerButton
                       key={team.logo_team_slug}
                       team={team}
-                      selected={sel}
-                      disabled={false}
+                      selected={inActive}
+                      disabled={inOther}
+                      badgeText={inOther ? `in Division ${activeDiv === 1 ? 2 : 1}` : undefined}
                       accentClass="bg-feedback-success/10 border-feedback-success/40"
-                      onClick={() => toggleLeague(team.logo_team_slug)}
+                      onClick={() => toggleTeam(team.logo_team_slug)}
                     />
                   )
                 })}
               </div>
 
-              {leagueTeamSlugs.length > 0 && (
+              {activeSlugs.length > 0 && (
                 <div className="pt-space-2 border-t border-border">
-                  <p className="text-[10px] text-text-muted mb-space-1">Selected: {leagueTeamSlugs.map((s) => allTeams.find((t) => t.logo_team_slug === s)?.name).join(', ')}</p>
+                  <p className="text-[10px] text-text-muted mb-space-1">Selected (Division {activeDiv}): {activeSlugs.map((s) => allTeams.find((t) => t.logo_team_slug === s)?.name).join(', ')}</p>
                 </div>
               )}
             </div>
@@ -727,8 +789,12 @@ function StartPhaseDialog({
                 </div>
                 <div className="border-t border-border pt-space-3 space-y-space-2">
                   <div className="flex justify-between">
-                    <span className="text-blue-500">League</span>
-                    <span className="text-blue-500 font-medium">{leagueTeamSlugs.length} teams — {counts.league} fixtures</span>
+                    <span className="text-blue-500">Division 1</span>
+                    <span className="text-blue-500 font-medium">{d1Slugs.length} teams — {counts.division1} fixtures</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-500">Division 2</span>
+                    <span className="text-blue-500 font-medium">{d2Slugs.length} teams — {counts.division2} fixtures</span>
                   </div>
                 </div>
                 <div className="border-t border-border pt-space-3 flex justify-between font-semibold">
@@ -737,7 +803,7 @@ function StartPhaseDialog({
                 </div>
                 <p className="text-[11px] text-text-muted">
                   UCL &amp; Europa are not generated now. Once every league fixture is played, start them
-                  from this page — teams are picked automatically from the final standings.
+                  from this page — teams are chosen manually.
                 </p>
               </Card>
             </div>
@@ -1119,22 +1185,35 @@ function StartCupDialog({
   const title = cupType === 'tournament_club' ? 'Champions League' : 'Europa League'
   const otherBadge = cupType === 'tournament_club' ? 'EL' : 'UCL'
 
+  const standingsByDiv = season.final_standings_by_division ?? {}
   const standings = season.final_standings ?? []
+  const hasDivisions = Object.keys(standingsByDiv).length > 0
   const taken = season.cup_taken ?? {}
-  const available = standings.filter((row) => !taken[row.team_id])
 
-  const defaultCount = cupType === 'tournament_club' ? 12 : 8
-  const [teamCount, setTeamCount] = useState(Math.min(defaultCount, available.length))
+  const divisionGroups: [string, FinalStandingRow[]][] = hasDivisions
+    ? Object.entries(standingsByDiv).sort(([a], [b]) => Number(a) - Number(b))
+    : [['0', standings]]
+
+  const [selectedSlugs, setSelectedSlugs] = useState<Set<string>>(new Set())
   const [numGroups, setNumGroups] = useState(2)
   const [qualifiersPerGroup, setQualifiersPerGroup] = useState(2)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const selected = available.slice(0, teamCount)
-  const selectedIds = new Set(selected.map((s) => s.team_id))
+  const allRows = divisionGroups.flatMap(([, rows]) => rows).filter((row) => !taken[row.team_id])
+  const selected = allRows.filter((row) => selectedSlugs.has(row.team_id))
   const perGroup = numGroups > 0 ? Math.floor(selected.length / numGroups) : 0
   const validSplit = numGroups >= 1 && selected.length >= numGroups * 2 && selected.length % numGroups === 0
   const fixtureCount = validSplit ? numGroups * perGroup * (perGroup - 1) : 0
+
+  function toggleTeam(teamId: string) {
+    setSelectedSlugs((prev) => {
+      const next = new Set(prev)
+      if (next.has(teamId)) next.delete(teamId)
+      else next.add(teamId)
+      return next
+    })
+  }
 
   async function handleStart() {
     setLoading(true)
@@ -1176,22 +1255,17 @@ function StartCupDialog({
 
         <div className="p-space-6 space-y-space-5">
           <div className="bg-accent-muted border border-accent/20 rounded-lg p-space-3 text-xs text-accent">
-            Teams are picked automatically from the final league standings of this phase.
+            Teams are chosen manually — click teams in the list to pick them for this competition.
+            Teams already taken by the other competition are locked.
           </div>
 
           {/* Config */}
           <div className="grid grid-cols-3 gap-space-3">
             <div>
-              <label className="text-[10px] text-text-muted">Teams</label>
-              <input
-                type="number"
-                min={2}
-                max={available.length}
-                value={teamCount}
-                onChange={(e) => setTeamCount(Math.min(available.length, Math.max(0, parseInt(e.target.value) || 0)))}
-                className="input-field text-xs"
-                disabled={available.length === 0}
-              />
+              <label className="text-[10px] text-text-muted">Selected</label>
+              <div className="input-field text-xs flex items-center gap-space-1">
+                {selected.length} <span className="text-text-muted">/ {allRows.length}</span>
+              </div>
             </div>
             <div>
               <label className="text-[10px] text-text-muted">Groups</label>
@@ -1216,47 +1290,61 @@ function StartCupDialog({
           </div>
 
           <p className={`text-xs ${validSplit ? 'text-text-secondary' : 'text-feedback-error'}`}>
-            {available.length === 0
+            {allRows.length === 0
               ? 'No teams left to pick from.'
               : validSplit
               ? `${selected.length} teams in ${numGroups} group${numGroups > 1 ? 's' : ''} of ${perGroup} — ${fixtureCount} fixtures`
-              : `Team count must divide evenly across groups (min 2 per group).`}
+              : `Select a team count that divides evenly across groups (min 2 per group).`}
           </p>
 
-          {/* Standings list */}
-          <div className="space-y-space-1.5 max-h-80 overflow-y-auto pr-space-1">
-            {standings.map((row) => {
-              const isSelected = selectedIds.has(row.team_id)
-              const isTaken = !!taken[row.team_id]
-              return (
-                <div
-                  key={row.team_id}
-                  className={`flex items-center gap-space-2.5 px-space-3 py-space-2 rounded-lg border ${
-                    isSelected
-                      ? 'bg-accent/10 border-accent/40'
-                      : isTaken
-                      ? 'bg-bg-elevated border-border opacity-50'
-                      : 'bg-bg-elevated border-border'
-                  }`}
-                >
-                  <span className="text-xs font-bold text-text-secondary w-6 shrink-0 tabular-nums">{row.position}</span>
-                  {row.logo_team_slug ? (
-                    <TeamLogo
-                      leagueFolder={row.logo_league_folder}
-                      teamSlug={row.logo_team_slug}
-                      context="standings_row"
-                      alt={row.name}
-                      className="w-5 h-5 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-5 h-5 rounded bg-bg-base shrink-0" />
-                  )}
-                  <span className="text-xs font-medium text-text-primary truncate flex-1 min-w-0">{row.name}</span>
-                  {isTaken && <span className="text-[9px] text-text-muted shrink-0">{otherBadge}</span>}
-                  {isSelected && <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-accent" />}
+          {/* Standings list — grouped by division */}
+          <div className="space-y-space-3 max-h-80 overflow-y-auto pr-space-1">
+            {divisionGroups.map(([divNum, rows]) => (
+              <div key={divNum}>
+                {hasDivisions && (
+                  <p className="text-[10px] font-bold text-text-muted uppercase tracking-wide mb-space-1">
+                    Division {divNum}
+                  </p>
+                )}
+                <div className="space-y-space-1.5">
+                  {rows.map((row) => {
+                    const isSelected = selectedSlugs.has(row.team_id)
+                    const isTaken = !!taken[row.team_id]
+                    return (
+                      <button
+                        key={row.team_id}
+                        type="button"
+                        disabled={isTaken}
+                        onClick={() => toggleTeam(row.team_id)}
+                        className={`w-full flex items-center gap-space-2.5 px-space-3 py-space-2 rounded-lg border text-left ${
+                          isSelected
+                            ? 'bg-accent/10 border-accent/40'
+                            : isTaken
+                            ? 'bg-bg-elevated border-border opacity-50'
+                            : 'bg-bg-elevated border-border hover:border-border-strong'
+                        }`}
+                      >
+                        <span className="text-xs font-bold text-text-secondary w-6 shrink-0 tabular-nums">{row.position}</span>
+                        {row.logo_team_slug ? (
+                          <TeamLogo
+                            leagueFolder={row.logo_league_folder}
+                            teamSlug={row.logo_team_slug}
+                            context="standings_row"
+                            alt={row.name}
+                            className="w-5 h-5 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-5 h-5 rounded bg-bg-base shrink-0" />
+                        )}
+                        <span className="text-xs font-medium text-text-primary truncate flex-1 min-w-0">{row.name}</span>
+                        {isTaken && <span className="text-[9px] text-text-muted shrink-0">{otherBadge}</span>}
+                        {isSelected && <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-accent" />}
+                      </button>
+                    )
+                  })}
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
 
           {error && (

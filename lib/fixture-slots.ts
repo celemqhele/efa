@@ -57,10 +57,13 @@ export interface SlotAssignment {
   leg?: number
 }
 
+export const WEEKLY_MATCHES = 56
+export const DAILY_MATCH_CAP = 8
+
 export interface SlotOptions {
-  // Total matches the whole tournament is allowed per 7-day window (default 30).
+  // Total matches the whole tournament is allowed per 7-day window (default WEEKLY_MATCHES).
   weeklyMatches?: number
-  // Total matches allowed on any single calendar day (default 5).
+  // Total matches allowed on any single calendar day (default DAILY_MATCH_CAP).
   dailyMatchCap?: number
 }
 
@@ -86,8 +89,8 @@ export async function assignFixtureSlots(
   tournamentId?: string,
   opts?: SlotOptions
 ): Promise<SlotAssignment[]> {
-  const weeklyMatches = opts?.weeklyMatches ?? 30
-  const dailyMatchCap = (opts?.dailyMatchCap ?? 5) - reservedSlots
+  const weeklyMatches = opts?.weeklyMatches ?? WEEKLY_MATCHES
+  const dailyMatchCap = (opts?.dailyMatchCap ?? DAILY_MATCH_CAP) - reservedSlots
   const startDate = startFrom ?? format(new Date(), 'yyyy-MM-dd')
 
   const teamIds = new Set<string>()

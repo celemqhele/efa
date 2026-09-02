@@ -18,6 +18,14 @@ the WhatsApp admin backdoor override flow (`handleBackdoorSide` with `isOverride
   row does NOT re-fire the `on_result_insert` standings trigger, so the full
   rebuild is required (26 rows written, 650 fixtures processed).
 
+## Related files
+This override script reuses the `isOverride` mechanism from the override chain root, and is one of several sibling one-off scripts:
+- `.opencode/context/backdoor/backdoor-admin-override_2026-08-15.md` — the `handleBackdoorSide` / `isOverride` mechanism this script mirrors.
+- `.opencode/context/backdoor/backdoor-mci-loss_2026-08-15.md` — Man City absent walkover losses.
+- `.opencode/context/backdoor/backdoor-betis-win_2026-08-16.md` — reverse Real Betis's mistaken loss into a win.
+- `.opencode/context/backdoor/backdoor-side-inversion_2026-08-16.md` — correct the `side_claimed`-inverted results.
+- `.opencode/context/backdoor/backdoor-both-absent-16aug_2026-08-17.md` — 0-0 both-absent results on 16 Aug.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

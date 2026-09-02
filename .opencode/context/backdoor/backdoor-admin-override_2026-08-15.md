@@ -30,6 +30,13 @@ Admins could only apply backdoors ("backdoor admin" command) to fixtures that we
 - `npx tsc --noEmit` passes; `next lint` clean for `route.ts`.
 - Session state is a plain text column on `whatsapp_sessions` — no schema change needed.
 
+## Related files
+This `isOverride` mechanism is the chain root; the following one-off scripts reuse it to correct already-applied results:
+- `.opencode/context/backdoor/backdoor-psg-chelsea-override_2026-08-15.md` — override a wrong confirmed result (PSG vs Chelsea).
+- `.opencode/context/backdoor/backdoor-betis-win_2026-08-16.md` — reverse Real Betis's mistaken loss into a win.
+- `.opencode/context/backdoor/backdoor-side-inversion_2026-08-16.md` — correct the `side_claimed`-inverted results.
+- `.opencode/context/backdoor/backdoor-both-absent-16aug_2026-08-17.md` — 0-0 both-absent results via the same override path.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

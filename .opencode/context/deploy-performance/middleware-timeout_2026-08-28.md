@@ -76,3 +76,7 @@ export const config = {
 - Chose matcher-only fix (no in-memory `getUser()` cache added).
 - API route auth is enforced inside each route handler, not middleware — no
   change needed there.
+
+## Related files
+
+- `.opencode/context/deploy-performance/middleware-zero-network-fix_2026-08-28.md` — follow-up: the 504 recurred; removed `getUser()` entirely from middleware and made `PageWrapper` stream via Suspense (`NavShell`)

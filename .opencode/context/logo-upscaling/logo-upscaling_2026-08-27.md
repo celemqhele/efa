@@ -46,3 +46,9 @@ The old `64x64/`, `128x128/`, `256x256/` folders still exist on disk for all lea
 **Fix (commit 8c322f4):** Reverted `SIZE_MAP` so every context uses a small bucket that exists in ALL leagues: `standings_row/group_table` → `64x64`, `fixture_card/profile_avatar` → `128x128`, `news_thumb` → `256x256` (`match_detail_hero`→`512x512`, `broadcast_download`→`700x700` unchanged). Reverted the 13 hardcoded `/1280x1280/` refs (admin dashboard/export/managers/polls/hall-of-fame, public managers/polls) back to `/128x128/`.
 
 **Lesson:** Do NOT point logo contexts at folder sizes unless you upscale **every** league. Either upscale all leagues or keep the universal small buckets. The AI-upscaled `640x640`/`1280x1280`/`2560x2560` folders still exist for the 6 leagues but are now unused by running code; they can be cleaned up at your discretion.
+
+## Related files
+
+- `.opencode/context/logo-upscaling/logo-upscale-rollback-small-buckets_2026-08-27.md` — full rollback of `a1f9ee7` (SIZE_MAP + hardcoded `1280x1280` refs) after logo 404s/misalignment on non-upscaled leagues
+- `.opencode/context/logo-upscaling/logo-upscale-remove-2560-only_2026-08-28.md` — cleanup: moved the unused `2560x2560` buckets of the 5 upscaled leagues to `.recycle`
+- `.opencode/context/logo-upscaling/argentina-upscale-buckets-recycled_2026-08-28.md` — cleanup: moved the untracked Argentina upscale buckets to `.recycle`

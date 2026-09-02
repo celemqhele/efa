@@ -24,6 +24,10 @@ Added a "Reset Password" button to the admin User Management page (`/admin/users
 - Audit log entry: `action: 'reset_password'`, `target_type: 'profile'`
 - Works on both mobile and desktop (UserActionButtons is shared)
 
+## Related files
+- Paired with `.opencode/context/admin-dashboard/users-nav-link_2026-08-25.md`
+  (same feature/session), which added the "Users" nav link exposing this page.
+
 ## Restore File Section
 - Original path: `app/api/admin/reset-password/route.ts`
 - Purpose: API route for admin password reset

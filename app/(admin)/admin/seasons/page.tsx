@@ -13,7 +13,7 @@ export default async function SeasonsPage() {
     .from('seasons')
     .select(`
       id, name, status, start_date, end_date,
-      tournaments(id, name, type, status)
+      tournaments(id, name, type, status, division)
     `)
     .order('created_at', { ascending: false }) as any)
 
@@ -42,7 +42,9 @@ export default async function SeasonsPage() {
   }
 
   const seasons = (rawSeasons ?? []).map((s: any) => {
-    const leagueT = s.tournaments?.find((t: any) => t.type === 'league')
+    const leagueTs = (s.tournaments ?? [])
+      .filter((t: any) => t.type === 'league')
+      .sort((a: any, b: any) => (a.division ?? 1) - (b.division ?? 1))
     return {
       id: s.id,
       name: s.name,
@@ -54,6 +56,7 @@ export default async function SeasonsPage() {
         name: t.name,
         type: t.type,
         status: t.status,
+        division: t.division ?? null,
         fixture_count: totalMap[t.id] ?? 0,
         completed_count: doneMap[t.id] ?? 0,
         knockout_ready:
@@ -62,8 +65,16 @@ export default async function SeasonsPage() {
           (groupDoneMap[t.id] ?? 0) === (groupTotalMap[t.id] ?? 0) &&
           (sfCountMap[t.id] ?? 0) === 0,
       })),
-      league_total_fixtures: leagueT ? (totalMap[leagueT.id] ?? 0) : 0,
-      league_completed_fixtures: leagueT ? (doneMap[leagueT.id] ?? 0) : 0,
+      league_tournaments: leagueTs.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        division: t.division ?? 1,
+        status: t.status,
+        fixture_count: totalMap[t.id] ?? 0,
+        completed_count: doneMap[t.id] ?? 0,
+      })),
+      league_total_fixtures: leagueTs.reduce((sum: number, t: any) => sum + (totalMap[t.id] ?? 0), 0),
+      league_completed_fixtures: leagueTs.reduce((sum: number, t: any) => sum + (doneMap[t.id] ?? 0), 0),
     }
   })
 
@@ -71,23 +82,31 @@ export default async function SeasonsPage() {
   // already committed to a cup, so cups can be started after the league ends.
   for (const s of seasons) {
     if (s.status !== 'active') continue
-    const leagueT = s.tournaments.find((t: any) => t.type === 'league')
-    if (!leagueT || !leagueT.id) continue
+    if (s.league_tournaments.length === 0) continue
 
-    const { data: rows } = await supabase
-      .from('standings')
-      .select('team_id, points, goals_for, goals_against, gd_penalty, teams(name, logo_league_folder, logo_team_slug)')
-      .eq('tournament_id', leagueT.id)
+    const finalStandingsByDivision: Record<number, any[]> = {}
+    const finalStandings: any[] = []
+    for (const lt of s.league_tournaments) {
+      const { data: rows } = await supabase
+        .from('standings')
+        .select('team_id, points, goals_for, goals_against, gd_penalty, teams(name, logo_league_folder, logo_team_slug)')
+        .eq('tournament_id', lt.id)
 
-    if (rows) {
-      s.final_standings = sortStandingsRows(rows as any[]).map((r: any, i: number) => ({
-        position: i + 1,
-        team_id: r.team_id,
-        name: r.teams?.name ?? '',
-        logo_league_folder: r.teams?.logo_league_folder ?? '',
-        logo_team_slug: r.teams?.logo_team_slug ?? '',
-      }))
+      if (rows) {
+        const mapped = sortStandingsRows(rows as any[]).map((r: any, i: number) => ({
+          position: i + 1,
+          team_id: r.team_id,
+          name: r.teams?.name ?? '',
+          logo_league_folder: r.teams?.logo_league_folder ?? '',
+          logo_team_slug: r.teams?.logo_team_slug ?? '',
+          division: lt.division,
+        }))
+        finalStandingsByDivision[lt.division] = mapped
+        finalStandings.push(...mapped)
+      }
     }
+    s.final_standings_by_division = finalStandingsByDivision
+    s.final_standings = finalStandings
 
     const cupTs = s.tournaments.filter(
       (t: any) => t.type === 'tournament_club' || t.type === 'tournament_international'

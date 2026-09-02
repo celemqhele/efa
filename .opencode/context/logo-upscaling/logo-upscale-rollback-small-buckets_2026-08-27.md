@@ -50,7 +50,15 @@ Reverted the running code to the **small buckets that exist in every league**, w
 - A **manual `vercel alias set`** to point the custom alias `efa-fxyk.vercel.app` at a specific deployment caused **persistent 500 `MIDDLEWARE_INVOCATION_FAILED`** on the alias (even the root).
 - Fixed by running **`vercel --prod`** (clean production deploy), which properly re-bound **`https://efa-fxyk.vercel.app`** to the new deployment `efa-fxyk-81wf7aadv`. It now serves 200.
 - **Lesson:** use `vercel --prod` (or push to `main`) to update the production alias; do NOT use `vercel alias set` to re-point `efa-fxyk.vercel.app` at an arbitrary deployment — it breaks the edge binding (500).
+- This `MIDDLEWARE_INVOCATION_FAILED` 500 is the same `MIDDLEWARE_INVOCATION_*` failure family documented in `.opencode/context/deploy-performance/middleware-timeout_2026-08-28.md` (there reported as a timeout / 504).
 
 ## Current state of upscaled folders
 - The upscaled `640x640` / `1280x1280` / `2560x2560` folders still exist for the 6 leagues but are **no longer referenced** by running code. They're dead weight (large) and can be cleaned up at your discretion.
 - `match_detail_hero` → `512x512` and `broadcast_download` → `700x700` continue to serve full-res where relevant.
+
+## Related files
+
+- `.opencode/context/logo-upscaling/logo-upscaling_2026-08-27.md` — the AI-upscale ship (`a1f9ee7`) this file reverts (commits `8c322f4`, `b4dbc36`)
+- `.opencode/context/logo-upscaling/logo-upscale-remove-2560-only_2026-08-28.md` — cleanup of the dead `2560x2560` buckets left behind
+- `.opencode/context/logo-upscaling/argentina-upscale-buckets-recycled_2026-08-28.md` — cleanup of the dead Argentina upscale buckets left in the working tree
+- `.opencode/context/deploy-performance/middleware-timeout_2026-08-28.md` — the `MIDDLEWARE_INVOCATION_*` failure family hit via the bad `vercel alias set` in the infra note above

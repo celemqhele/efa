@@ -71,3 +71,8 @@ Hope and North West University are placed in the Motsepe Foundation Championship
 |---|---|---|
 | `scripts/process-sa-lower-leagues.py` | One-off logo processing script | `.recycle/process-sa-lower-leagues.py` |
 | `scripts/insert-sa-lower-leagues.sql` | One-off DB insert script | `.recycle/insert-sa-lower-leagues.sql` |
+
+## Related files
+
+- `.opencode/context/south-african-premiership/add-sa-premiership_2026-08-27.md` — chain root; this extends the Betway Premiership addition to the two lower divisions
+- `.opencode/context/south-african-premiership/vercel-function-size-admin-seasons_2026-08-27.md` — the 180 new logo PNGs pushed `public/logos` to 538 MB and blew past the 250 MB function limit

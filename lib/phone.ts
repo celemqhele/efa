@@ -21,7 +21,7 @@ export function normalizePhoneDigits(phone: string | null | undefined): string {
 // 0) get the SA country code prepended, and a trunk 0 after a country code
 // ("270674008857") is dropped, so the link always works.
 export function waDigits(phone: string | null | undefined): string {
-  let digits = normalizePhoneDigits(phone)
+  const digits = normalizePhoneDigits(phone)
   if (digits.startsWith('0') && digits.length === 10) {
     return `27${digits.slice(1)}`
   }

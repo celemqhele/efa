@@ -213,6 +213,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
+  checkRowLast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   check: {
     width: 14,
     height: 14,
@@ -570,8 +574,8 @@ function InfoPage() {
           <View style={styles.row}>
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
-              After the match, <Text style={styles.rowLabel}>submit your result to the EFA AI</Text>{' '}
-              by sending a screenshot of the final score.
+              After the match, reply <Text style={styles.rowLabel}>1</Text> at the welcome menu — or
+              just send a screenshot of the final score to the EFA AI.
             </Text>
           </View>
           <View style={styles.row}>
@@ -599,9 +603,127 @@ function InfoPage() {
           <View style={styles.row}>
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
-              Send <Text style={styles.rowLabel}>"backdoor"</Text> to the EFA AI when the backdoor
+              Reply <Text style={styles.rowLabel}>2</Text> at the welcome menu — or send{' '}
+              <Text style={styles.rowLabel}>"backdoor"</Text> — to the EFA AI when the backdoor
               window opens on <Text style={styles.rowLabel}>Thursday</Text>. The backdoor is a{' '}
               <Text style={styles.rowLabel}>free win</Text> awarded to you.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>EFA — EFOOTBALL FEDERAL ASSOCIATION</Text>
+        <Text style={styles.footerText}>PLAY • COMPETE • REPRESENT</Text>
+      </View>
+    </Page>
+  )
+}
+
+function GettingStartedPage() {
+  return (
+    <Page size="A4" style={styles.page}>
+      <PageHeader />
+
+      {/* Start a conversation */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.sectionTitle}>Start a Conversation with the EFA AI</Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.intro}>
+            Message the EFA AI on WhatsApp and it replies with a simple numbered menu right away:{' '}
+          </Text>
+          <View style={styles.checkRow}>
+            <Text style={styles.check}>1</Text>
+            <Text style={styles.rowText}>Send a match result</Text>
+          </View>
+          <View style={styles.checkRow}>
+            <Text style={styles.check}>2</Text>
+            <Text style={styles.rowText}>Opponent did not respond, or gave you the win</Text>
+          </View>
+          <View style={styles.checkRow}>
+            <Text style={styles.check}>3</Text>
+            <Text style={styles.rowText}>Create an EFA account</Text>
+          </View>
+          <View style={styles.checkRow}>
+            <Text style={styles.check}>4</Text>
+            <Text style={styles.rowText}>Check my backdoor applications</Text>
+          </View>
+          <View style={styles.checkRowLast}>
+            <Text style={styles.check}>5</Text>
+            <Text style={styles.rowText}>Tournament applications</Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              Just reply with the number of what you need. Mid-flow, every prompt shows{' '}
+              <Text style={styles.rowLabel}>1. Cancel / 2. Start again</Text>, and on match lists type{' '}
+              <Text style={styles.rowLabel}>CANCEL</Text> or <Text style={styles.rowLabel}>START</Text>.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Create an account */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.sectionTitle}>Create Your EFA Account</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              Reply <Text style={styles.rowLabel}>3</Text> at the welcome menu. The bot asks for the{' '}
+              <Text style={styles.rowLabel}>username</Text> you want (letters, numbers and underscores only).
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              If the number you're texting from already has an account, the bot tells you and sends the
+              login link instead.
+            </Text>
+          </View>
+          <View style={styles.rowLast}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              Done: the bot replies with your <Text style={styles.rowLabel}>username, password and login
+              link</Text>, plus the WhatsApp group invite. Your application stays valid for{' '}
+              <Text style={styles.rowLabel}>7 days</Text> while an admin assigns your team.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Tournament applications */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionBar} />
+          <Text style={styles.sectionTitle}>Tournament Applications</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              Reply <Text style={styles.rowLabel}>5</Text> at the welcome menu to see open seasons with
+              free (vacant) seats.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              Pick a season and the club you want to manage, then reply{' '}
+              <Text style={styles.rowLabel}>1</Text> to confirm.
+            </Text>
+          </View>
+          <View style={styles.rowLast}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              Admins review your application and you get a <Text style={styles.rowLabel}>WhatsApp
+              notification</Text> when a decision is made.
             </Text>
           </View>
         </View>
@@ -630,16 +752,18 @@ function AiGuidePage() {
           <View style={styles.row}>
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
-              <Text style={styles.rowLabel}>1. Send a screenshot.</Text> After your match, send a
-              screenshot of the final score screen to the EFA AI.
+              <Text style={styles.rowLabel}>1. Send a screenshot.</Text> Reply{' '}
+              <Text style={styles.rowLabel}>1</Text> at the welcome menu — or just send a screenshot of
+              the final score screen to the EFA AI.
             </Text>
           </View>
           <View style={styles.row}>
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
-              <Text style={styles.rowLabel}>2. Choose the type.</Text> The AI replies with the score
-              it read. Reply <Text style={styles.rowLabel}>1</Text> to submit a scheduled fixture,
-              or <Text style={styles.rowLabel}>2</Text> to fix an already submitted fixture.
+              <Text style={styles.rowLabel}>2. Choose what to do.</Text> The AI shows the score it read
+              (e.g. "Arsenal 3-2 Everton") and asks: reply{' '}
+              <Text style={styles.rowLabel}>1</Text> to submit this score for the first time, or{' '}
+              <Text style={styles.rowLabel}>2</Text> to change a score that was already submitted.
             </Text>
           </View>
           <View style={styles.row}>
@@ -653,17 +777,32 @@ function AiGuidePage() {
           <View style={styles.row}>
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
-              <Text style={styles.rowLabel}>4. Confirm.</Text> Reply <Text style={styles.rowLabel}>YES</Text>{' '}
+              <Text style={styles.rowLabel}>4. Pick the match.</Text> If more than one match comes up,
+              reply with the <Text style={styles.rowLabel}>number</Text> of your match.
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>5. Confirm.</Text> Reply <Text style={styles.rowLabel}>YES</Text>{' '}
               when the AI asks to confirm, then answer the forfeit question (did the losing team
               forfeit before the game finished?) with <Text style={styles.rowLabel}>yes</Text> or{' '}
               <Text style={styles.rowLabel}>no</Text>.
             </Text>
           </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>6. Done.</Text> "Result submitted!" plus your standings
+              link. Your opponent submits the same score and the AI confirms it.
+            </Text>
+          </View>
           <View style={styles.rowLast}>
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
-              <Text style={styles.rowLabel}>5. Done.</Text> The AI records your result and sends the
-              standings link. Your opponent submits the same score and the AI confirms it.
+              <Text style={styles.rowLabel}>Submission window:</Text> results are accepted for matches
+              due today or up to 7 days back. A result for a future fixture is saved and{' '}
+              <Text style={styles.rowLabel}>auto-confirmed on match day</Text>.
             </Text>
           </View>
         </View>
@@ -704,10 +843,18 @@ function AiGuidePage() {
               fixtures for today and get your opponent's contact.
             </Text>
           </View>
+          <View style={styles.row}>
+            <View style={styles.bullet} />
+            <Text style={styles.rowText}>
+              <Text style={styles.rowLabel}>CANCEL</Text> (or the "1. Cancel / 2. Start again" hint on
+              info prompts; <Text style={styles.rowLabel}>CANCEL</Text> or{' '}
+              <Text style={styles.rowLabel}>START</Text> on match lists) — start over any time.
+            </Text>
+          </View>
           <View style={styles.rowLast}>
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
-              <Text style={styles.rowLabel}>CANCEL</Text> — start over any time.
+              <Text style={styles.rowLabel}>START</Text> — back to the welcome menu.
             </Text>
           </View>
         </View>
@@ -805,7 +952,8 @@ function BackdoorGuidePage() {
           <View style={styles.row}>
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
-              <Text style={styles.rowLabel}>1. Send "backdoor"</Text> to the EFA AI.
+              <Text style={styles.rowLabel}>1. Reply 2</Text> at the welcome menu — or send{' '}
+              <Text style={styles.rowLabel}>"backdoor"</Text> — to the EFA AI.
             </Text>
           </View>
           <View style={styles.row}>
@@ -849,7 +997,9 @@ function BackdoorGuidePage() {
             <View style={styles.bullet} />
             <Text style={styles.rowText}>
               Send <Text style={styles.rowLabel}>"backdoor"</Text> and reply{' '}
-              <Text style={styles.rowLabel}>2</Text> any time to see the status of your applications
+              <Text style={styles.rowLabel}>2</Text> — or reply <Text style={styles.rowLabel}>4</Text>{' '}
+              at the welcome menu — any time to see the status
+              of your applications
               (Pending, Approved, Declined or Void).
             </Text>
           </View>
@@ -874,6 +1024,7 @@ const doc = (
     <RulesPage />
     <DropsPage />
     <InfoPage />
+    <GettingStartedPage />
     <AiGuidePage />
     <BackdoorGuidePage />
   </Document>

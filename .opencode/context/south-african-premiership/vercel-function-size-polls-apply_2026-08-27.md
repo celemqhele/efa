@@ -1,7 +1,7 @@
 # Vercel Function Size Limit (2) — api/polls/[share_code]/apply via lib/registry
 
 ## What happened
-After fixing `admin/seasons` (see `vercel-function-size-admin-seasons_2026-08-27.md`), the next deploy failed on a different function:
+After fixing `admin/seasons` (see `.opencode/context/south-african-premiership/vercel-function-size-admin-seasons_2026-08-27.md`), the next deploy failed on a different function:
 > The Vercel Function "api/polls/[share_code]/apply" is 511.11mb uncompressed which exceeds the maximum uncompressed size limit of 250mb.
 
 ## Root cause
@@ -42,3 +42,9 @@ Made `buildRegistry()` disk-free so `lib/registry.ts` no longer imports `fs`/`pa
 | Original Path | Purpose | New Path |
 |---|---|---|
 | (none — no files deleted; `lib/registry-data.json` is newly created and committed) | | |
+
+## Related files
+
+- `.opencode/context/south-african-premiership/vercel-function-size-admin-seasons_2026-08-27.md` — the origin of this fix; same Vercel 250 MB function-limit class
+- `.opencode/context/efootball-teams/efootball_teams_2026-08-15.md` — eFootball 2027 team restriction context; the team/slug data this fix bakes into `lib/registry-data.json`
+- `.opencode/context/logo-upscaling/logo-upscaling_2026-08-27.md` — logo folder/size context; `public/logos` growth from AI-upscaled buckets that pushed functions toward the size limit

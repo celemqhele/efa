@@ -53,7 +53,12 @@ The Nav and BottomTabBar also have bare `/login` links, but those are global nav
 ## Not related
 
 - The middleware already correctly sets `?redirect=` when redirecting protected routes (`/profile`, `/notifications`, `/admin`). `/polls/*` is not a protected route, so middleware doesn't intercept it.
-- The backdoor-admin-auth-fix (localStorage vs cookies) is a separate issue.
+- The backdoor admin auth fix (localStorage vs cookies) is a separate issue — see `.opencode/context/backdoor/backdoor-admin-auth-fix_2026-08-15.md`.
+
+## Related files
+
+- `.opencode/context/login-redirect/public-layout-auth-session-loss_2026-08-26.md` — follow-up in the same session / symptom family (public pages showing logged-out after login)
+- `.opencode/context/login-redirect/safari-login-cookie-drop_2026-08-26.md` — follow-up in the same session / symptom family (Safari dropping session cookies on hard reload)
 
 ## Files Modified
 - `app/(public)/polls/[share_code]/PollClient.tsx`

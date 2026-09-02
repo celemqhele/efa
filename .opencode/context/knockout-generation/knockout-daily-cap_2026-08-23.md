@@ -57,3 +57,12 @@ purpose (admin had already announced them to the community).
 - Slot semantics recap (for future questions): generation-time defaults are 30 matches/week,
   5/day, 1 match per team per day; reschedule/KO checks use `getDailyCapacity`
   (30 weekday / 60 weekend-holiday global, teamCap 3).
+
+## Related files
+
+- Regeneration crammed dates after the auto-gen removal:
+  `.opencode/context/knockout-generation/knockout-autogen-removal_2026-08-23.md`.
+- The 5/day cap contrasts with the batch scheduler's balanced distribution:
+  `.opencode/context/fixture-scheduling/balanced-scheduler_2026-08-13.md`.
+- Next step in the chain — brackets still didn't advance on non-finalise paths:
+  `.opencode/context/knockout-generation/knockout-webhook-progression_2026-08-23.md`.

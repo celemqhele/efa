@@ -160,6 +160,7 @@ export interface Database {
           type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           status: string
           settings: Json | null
+          division: number | null
           created_at: string
         }
         Insert: {
@@ -169,6 +170,7 @@ export interface Database {
           type: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           status?: string
           settings?: Json | null
+          division?: number | null
           created_at?: string
         }
         Update: {
@@ -178,6 +180,7 @@ export interface Database {
           type?: 'league' | 'tournament_club' | 'tournament_international' | 'friendlies'
           status?: string
           settings?: Json | null
+          division?: number | null
           created_at?: string
         }
         Relationships: []

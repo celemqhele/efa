@@ -48,6 +48,13 @@ Run with: `npx tsx scripts/backfill-migration-history.ts`
 - The script is kept in `scripts/` alongside other one-off DB tools; it is
   safe to re-run any time (idempotent).
 
+## Related files
+This backfill covers migrations `033`–`059`, so it is meta-bookkeeping relevant to every
+later migration-based context file, notably:
+- `.opencode/context/migration-history/processed_messages_rls_2026-08-25.md` (migration `060`)
+- `.opencode/context/onboarding/manager-data-transfer_2026-08-25.md` (migration `062`)
+- `.opencode/context/forfeit-balances/forfeit-manager-migration_2026-08-25.md` (migration `061`)
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

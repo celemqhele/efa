@@ -38,6 +38,9 @@ bounded ones merged into `relevantFixtures`:
 - Prefer server-side status/date filters over client-side filtering of a giant list.
 - Same pattern applies to `result_confirmations`, `teams`, etc. if their row counts grow.
 
+## Related files
+- The 1,000-row truncation was triggered by rescheduling after `.opencode/context/fixture-scheduling/balanced-scheduler_2026-08-13.md` and `.opencode/context/fixture-scheduling/bulk-postponement_2026-08-15.md`.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

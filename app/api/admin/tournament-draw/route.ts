@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { drawGroups, drawKnockoutRound, drawOpenBracket, determineQualifiers } from '@/lib/tournament-draw'
+import { computeSeedRanks } from '@/lib/team-seeding'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -38,9 +39,11 @@ export async function POST(request: Request) {
     .select('*, team:team_id(id, name)')
     .eq('tournament_id', tournament_id)
 
+  const seedRanks = await computeSeedRanks(db, (participants ?? []).map((p: any) => p.team_id))
+
   const teams = (participants ?? []).map((p: any) => ({
     id: p.team_id,
-    rank: p.seed_pot ?? 0,
+    rank: seedRanks.get(p.team_id) ?? 999,
     label: p.team?.name,
   }))
 

@@ -61,3 +61,9 @@ Added the South African Premiership (Betway Premiership) as a new selectable lea
 |---|---|---|
 | `scripts/process-sa-logos.py` | One-off logo processing script | `.recycle/process-sa-logos.py` |
 | `scripts/insert-sa-premiership-teams.sql` | One-off DB insert script | `.recycle/insert-sa-premiership-teams.sql` |
+
+## Related files
+
+- `.opencode/context/south-african-premiership/add-sa-lower-leagues_2026-08-27.md` — follow-up: added the Motsepe Foundation Championship + ABC Motsepe League below the Premiership
+- `.opencode/context/south-african-premiership/vercel-function-size-admin-seasons_2026-08-27.md` — follow-up: the added logos pushed `public/logos` past the Vercel 250 MB function limit
+- `.opencode/context/south-african-premiership/vercel-function-size-polls-apply_2026-08-27.md` — follow-up: same function-size-limit class, hit via `lib/registry.ts` tracing

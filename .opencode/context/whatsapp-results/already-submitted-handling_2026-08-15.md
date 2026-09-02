@@ -15,6 +15,9 @@ On WhatsApp, a user who submitted a screenshot, chose option 1 (first-time submi
   - other → re-prompt "Reply YES or NO."
 - Added `dbStatsToSessionFormat()` helper that converts a `match_stats` DB row (`home_possession`/`away_possession`/etc.) back to the `{ possession: { home, away }, ... }` shape so `formatStatsBlock` renders the stored stats.
 
+## Related files
+- Split from the same original with `.opencode/context/home-upcoming-widget/home-upcoming-widget_2026-08-15.md` (see Restore File Section below).
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

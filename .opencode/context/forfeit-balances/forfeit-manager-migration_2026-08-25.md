@@ -60,6 +60,9 @@ historical tenures. 4 of those had `remaining = 1` (active).
 - `npx tsc --noEmit` passes (only pre-existing errors in unrelated file)
 - `npm run lint` passes (only pre-existing warnings)
 
+## Related files
+- Parallel half (same team→manager migration effort) of `.opencode/context/onboarding/manager-data-transfer_2026-08-25.md` (migration 062, trophies → manager-based, plus the transfer feature).
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

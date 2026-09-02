@@ -82,3 +82,14 @@ No manual advancement should ever be needed again.
   mds are 61–68 vs single 51–58 — different offset scheme, don't mix.
 - The dashboard previously duplicated approve logic client-side; keep such flows
   server-side so progression logic has exactly one choke point per action.
+
+## Related files
+
+- Closes the dashboard gap left by
+  .opencode/context/knockout-generation/knockout-webhook-progression_2026-08-23.md.
+- Removing the client-side approve from
+  `BackdoorSubmissionsClient.tsx` connects to the earlier backdoor work in
+  .opencode/context/backdoor/backdoor-submissions-refresh-fix_2026-08-16.md and
+  .opencode/context/backdoor/backdoor-admin-auth-fix_2026-08-15.md.
+- The AGG display overhaul relates to the embed-shape investigation:
+  .opencode/context/postgrest-embeds/unique-constraint-one-to-one-embed-shape_2026-08-24.md.

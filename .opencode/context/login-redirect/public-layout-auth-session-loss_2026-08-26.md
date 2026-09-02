@@ -21,3 +21,8 @@ Added `export const dynamic = 'force-dynamic'` to `app/(public)/layout.tsx`. Thi
 
 ## Files Modified
 - `app/(public)/layout.tsx` — added `export const dynamic = 'force-dynamic'`
+
+## Related files
+
+- `.opencode/context/login-redirect/login-redirect_2026-08-26.md` — same session / symptom family (public pages showing logged-out after login)
+- `.opencode/context/login-redirect/safari-login-cookie-drop_2026-08-26.md` — same session / symptom family (login session lost after navigation)

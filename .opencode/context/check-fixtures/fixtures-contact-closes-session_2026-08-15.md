@@ -13,6 +13,9 @@ The **fixture load failure** branch ("Could not load that fixture. Try again.") 
 
 No DB migration needed — `clearSession` deletes the `whatsapp_sessions` row.
 
+## Related files
+- Touches `sendOpponentContact`, introduced in `.opencode/context/check-fixtures/check-fixtures-autodetect_2026-08-15.md`; related E.164 fix in `.opencode/context/check-fixtures/contact-card-phone-fix_2026-08-15.md`.
+
 ## Verified
 - `npm run lint`, `npx tsc --noEmit`, `npm run build` pass.
 

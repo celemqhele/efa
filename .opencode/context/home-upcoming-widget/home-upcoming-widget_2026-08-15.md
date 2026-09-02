@@ -6,6 +6,10 @@ Home page "Upcoming" widget included finished (FT) fixtures — a `confirmed` fi
 ## Fix (`app/page.tsx`)
 - Removed `'confirmed'` from the batch query status filter (was `['scheduled', 'awaiting_confirmation', 'confirmed']`, now `['scheduled', 'awaiting_confirmation']`). Finished matches no longer appear in "Upcoming".
 - The date-gating query already only looked at `scheduled`/`awaiting_confirmation`, so the widget still resolves the correct next matchday.
+- Note: the widget's `f.result` access was later changed from array (`?.[0]`) to object access by `.opencode/context/postgrest-embeds/unique-constraint-one-to-one-embed-shape_2026-08-24.md`.
+
+## Related files
+- Split from the same original with `.opencode/context/whatsapp-results/already-submitted-handling_2026-08-15.md` (see Restore File Section below).
 
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |

@@ -15,7 +15,7 @@ interface Props {
   className?: string
 }
 
-const MATCHES_PER_WEEK = 30
+const MATCHES_PER_WEEK = 56
 
 export default function GenerateFixturesButton({ tournamentId, tournamentName, type, hasFixtures = false, className = CARD_ACTION_BTN }: Props) {
   const [loading, setLoading] = useState(false)

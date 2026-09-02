@@ -13,3 +13,7 @@ Restricted all team-picking and assignment surfaces to only include clubs and na
         - Webhook `getTeamsForAssignment` (`app/api/webhook/route.ts`)
         - Polls `buildRegistry` (`app/(public)/polls/[share_code]/page.tsx`)
 - **Impact**: Non-game teams are now filtered out of selection UIs. Existing team assignments remain untouched.
+
+## Related files
+- `.opencode/context/efootball-teams/polls-efootball-filter-type-fix_2026-08-16.md` — fixed the `filterTeams` type error this introduced on the polls `buildRegistry`.
+- `.opencode/context/efootball-teams/polls-international-teams-empty_2026-08-25.md` — extended the same allowlist with the `fifa-world-cup-2026` folder.

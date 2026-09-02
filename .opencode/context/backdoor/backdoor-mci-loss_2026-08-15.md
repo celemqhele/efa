@@ -34,6 +34,14 @@ Then calls `recalculateStandings(tournament_id)` for the EFA Champions League
 - The 2 Sporting Cp fixtures on the same date were already `confirmed`
   (Man City 0-4 / 0-8) and were intentionally left untouched.
 
+## Related files
+This is one of several one-off backdoor scripts mirroring the WhatsApp admin backdoor flow:
+- `.opencode/context/backdoor/backdoor-admin-override_2026-08-15.md` — the `handleBackdoorSide` / `isOverride` mechanism this script mirrors.
+- `.opencode/context/backdoor/backdoor-psg-chelsea-override_2026-08-15.md` — override a confirmed result (PSG vs Chelsea).
+- `.opencode/context/backdoor/backdoor-betis-win_2026-08-16.md` — reverse Real Betis's mistaken loss into a win.
+- `.opencode/context/backdoor/backdoor-side-inversion_2026-08-16.md` — correct the `side_claimed`-inverted results.
+- `.opencode/context/backdoor/backdoor-both-absent-16aug_2026-08-17.md` — 0-0 both-absent results on 16 Aug.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|

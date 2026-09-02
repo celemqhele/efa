@@ -21,7 +21,7 @@ Managers text their result from a WhatsApp number, but the phone number stored o
 
 ## Feature 2: Check fixtures flow
 
-> **Note:** The `check fixtures` command now auto-detects the manager from their number and lists fixtures for all teams they manage — see `check-fixtures-autodetect.md` for the current behavior. The description below covers the (now fallback-only) manual team-name path.
+> **Note:** The `check fixtures` command now auto-detects the manager from their number and lists fixtures for all teams they manage — see `.opencode/context/check-fixtures/check-fixtures-autodetect_2026-08-15.md` for the current behavior. The description below covers the (now fallback-only) manual team-name path.
 
 ### Behavior
 - New command: `fixtures` / `my fixtures` / `check fixtures` (intercepted in `handleText` BEFORE the "I only help with submitting match results" rejection).

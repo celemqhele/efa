@@ -12,6 +12,14 @@ Need to postpone fixtures from one date to another.
   - `scripts/postpone-today-to-tomorrow.ts`: 28 fixtures, `status='scheduled'`, +1 day.
   - `scripts/postpone-14aug-to-15aug.ts`: 39 fixtures postponed from 2026-08-14 to 2026-08-15 (recycled, see below).
 
+## Related files
+- Used alongside the balanced scheduler
+  (`.opencode/context/fixture-scheduling/balanced-scheduler_2026-08-13.md`).
+- The postponement created the truncation bug fixed in
+  `.opencode/context/admin-results/submit-page-truncation-fix_2026-08-14.md`.
+- Shares the `scripts/postpone-*.ts` service-role pattern with
+  `.opencode/context/admin-results/direct-result-submissions_2026-08-14.md`.
+
 ## Restore File Section
 | Original Path | Description | Recycle Bin Path |
 |---------------|-------------|------------------|
