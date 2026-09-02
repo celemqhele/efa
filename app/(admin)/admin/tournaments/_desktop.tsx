@@ -2,6 +2,7 @@ import Link from 'next/link'
 import DeleteTournamentButton from './DeleteTournamentButton'
 import GenerateFixturesButton from './GenerateFixturesButton'
 import GenerateKnockoutsButton from './GenerateKnockoutsButton'
+import RescheduleFixturesButton from './RescheduleFixturesButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
 import { CARD_ACTION_BTN, CARD_ACTION_BTN_DANGER } from './card-action-classes'
 import { Trophy } from 'lucide-react'
@@ -20,7 +21,7 @@ const STATUS_COLOURS: Record<string, string> = {
 }
 
 export default function Desktop({ data }: { data: any }) {
-  const { tournaments, participantCounts, fixtureCounts, completedCounts, grouped } = data
+  const { tournaments, participantCounts, fixtureCounts, completedCounts, koCounts, grouped } = data
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -109,10 +110,11 @@ export default function Desktop({ data }: { data: any }) {
                             <Link href={`/standings?tournament=${t.id}`} className={CARD_ACTION_BTN}>
                               Standings
                             </Link>
+                            <RescheduleFixturesButton tournamentId={t.id} tournamentName={t.name} fixtureCount={fc} className={CARD_ACTION_BTN} />
                             <DeleteTournamentButton tournamentId={t.id} tournamentName={t.name} className={CARD_ACTION_BTN_DANGER} />
                             <GenerateFixturesButton tournamentId={t.id} tournamentName={t.name} type={t.type} hasFixtures={fc > 0} className={CARD_ACTION_BTN} />
                             <RunTournamentDrawButton tournamentId={t.id} tournamentName={t.name} type={t.type} className={CARD_ACTION_BTN} />
-                            <GenerateKnockoutsButton tournamentId={t.id} tournamentName={t.name} type={t.type} className={CARD_ACTION_BTN} />
+                            <GenerateKnockoutsButton tournamentId={t.id} tournamentName={t.name} type={t.type} hasKnockouts={(koCounts?.[t.id] ?? 0) > 0} className={CARD_ACTION_BTN} />
                           </div>
                         </td>
                       </tr>

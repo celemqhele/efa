@@ -6,7 +6,7 @@ export default function Desktop({ data }: { data: any }) {
     <div className="max-w-7xl mx-auto space-y-6">
       <SeasonManager
         seasons={data.seasons}
-        allTeams={data.allTeams}
+        users={data.users}
       />
     </div>
   )

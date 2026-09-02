@@ -92,52 +92,88 @@ export async function POST(request: Request) {
 
   let generated: GeneratedFixture[] = []
 
-  if (numGroups && teamsPerGroup && settings?.fixture_mode === 'groups') {
-    const shuffledTeamIds = [...teamIds].sort(() => Math.random() - 0.5)
-    const groups: Record<string, string[]> = {}
-    const participantUpdates: Array<{ id: string; group_name: string }> = []
-
-    const { data: participantsWithIds } = await adminSupabase
+  if (settings?.fixture_mode === 'groups') {
+    const { data: participantRows } = await adminSupabase
       .from('tournament_participants')
-      .select('id, team_id')
+      .select('id, team_id, group_name')
       .eq('tournament_id', tournament_id)
 
-    for (let g = 0; g < numGroups; g++) {
-      const groupName = String.fromCharCode(65 + g)
-      const groupTeams = shuffledTeamIds.slice(g * teamsPerGroup, (g + 1) * teamsPerGroup)
-      groups[groupName] = groupTeams
+    const withGroup = (participantRows ?? []).filter((p) => p.group_name) as {
+      id: string
+      team_id: string
+      group_name: string
+    }[]
+    const allAssigned = (participantRows?.length ?? 0) > 0 && withGroup.length === (participantRows?.length ?? 0)
 
-      groupTeams.forEach((tid) => {
-        const participant = participantsWithIds?.find((p) => p.team_id === tid)
-        if (participant) {
-          participantUpdates.push({ id: participant.id, group_name: groupName })
-        }
-      })
-    }
+    if (allAssigned) {
+      // A seeded Run Draw (or start-tournament) already assigned groups — respect
+      // it instead of discarding the seeded draw with a random shuffle.
+      const groups: Record<string, string[]> = {}
+      for (const p of withGroup) {
+        ;(groups[p.group_name] ??= []).push(p.team_id)
+      }
 
-    for (const update of participantUpdates) {
-      await adminSupabase
-        .from('tournament_participants')
-        .update({ group_name: update.group_name })
-        .eq('id', update.id)
-    }
-
-    const groupStandingRows = participantUpdates.map((u) => {
-      const tid = participantsWithIds?.find((p) => p.id === u.id)?.team_id
-      return {
+      const groupStandingRows = withGroup.map((u) => ({
         tournament_id,
-        team_id: tid,
+        team_id: u.team_id,
         participant_id: u.id,
         group_name: u.group_name,
         played: 0, wins: 0, draws: 0, losses: 0,
         goals_for: 0, goals_against: 0, points: 0,
+      }))
+
+      if (groupStandingRows.length > 0) {
+        const { error: gsErr } = await (adminSupabase.from('group_standings') as any)
+          .upsert(groupStandingRows, { onConflict: 'tournament_id,group_name,participant_id' })
+        if (gsErr) console.error('Failed to init group standings:', gsErr.message)
       }
-    })
 
-    const { error: gsErr } = await (adminSupabase.from('group_standings') as any).insert(groupStandingRows)
-    if (gsErr) console.error('Failed to init group standings:', gsErr.message)
+      generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date, tournament_id)
+    } else if (numGroups && teamsPerGroup) {
+      const shuffledTeamIds = [...teamIds].sort(() => Math.random() - 0.5)
+      const groups: Record<string, string[]> = {}
+      const participantUpdates: Array<{ id: string; group_name: string }> = []
 
-    generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date, tournament_id)
+      for (let g = 0; g < numGroups; g++) {
+        const groupName = String.fromCharCode(65 + g)
+        const groupTeams = shuffledTeamIds.slice(g * teamsPerGroup, (g + 1) * teamsPerGroup)
+        groups[groupName] = groupTeams
+
+        groupTeams.forEach((tid) => {
+          const participant = participantRows?.find((p) => p.team_id === tid)
+          if (participant) {
+            participantUpdates.push({ id: participant.id, group_name: groupName })
+          }
+        })
+      }
+
+      for (const update of participantUpdates) {
+        await adminSupabase
+          .from('tournament_participants')
+          .update({ group_name: update.group_name })
+          .eq('id', update.id)
+      }
+
+      const groupStandingRows = participantUpdates.map((u) => {
+        const tid = participantRows?.find((p) => p.id === u.id)?.team_id
+        return {
+          tournament_id,
+          team_id: tid,
+          participant_id: u.id,
+          group_name: u.group_name,
+          played: 0, wins: 0, draws: 0, losses: 0,
+          goals_for: 0, goals_against: 0, points: 0,
+        }
+      })
+
+      const { error: gsErr } = await (adminSupabase.from('group_standings') as any)
+        .upsert(groupStandingRows, { onConflict: 'tournament_id,group_name,participant_id' })
+      if (gsErr) console.error('Failed to init group standings:', gsErr.message)
+
+      generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date, tournament_id)
+    } else {
+      generated = await generateLeagueFixtures(adminSupabase, teamIds, tournament_id, numRounds, start_date)
+    }
   } else {
     generated = await generateLeagueFixtures(adminSupabase, teamIds, tournament_id, numRounds, start_date)
   }

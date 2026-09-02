@@ -1,10 +1,9 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import TeamLogo from '@/components/ui/TeamLogo'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -67,8 +66,20 @@ interface Season {
 
 interface Props {
   seasons: Season[]
-  allTeams: Team[]
+  users: UserWithClub[]
 }
+
+interface UserWithClub {
+  id: string
+  username: string
+  club: {
+    id: string
+    name: string
+    logo_league_folder: string
+    logo_team_slug: string
+  }
+}
+
 
 // --- Season card -------------------------------------------------------------
 
@@ -151,7 +162,7 @@ function SeasonCard({
                 month: 'short',
                 year: 'numeric',
               })}
-              {' — '}
+              {' ΓÇö '}
               {new Date(season.end_date).toLocaleDateString('en-GB', {
                 day: 'numeric',
                 month: 'short',
@@ -181,7 +192,7 @@ function SeasonCard({
 
       {(isActive || isCompleted) && (
         <>
-          {/* League progress — one bar per division */}
+          {/* League progress ΓÇö one bar per division */}
           {leagueDivs.length > 0 && (
             <div className="space-y-space-3">
               {leagueDivs.map((div) => {
@@ -212,7 +223,7 @@ function SeasonCard({
             </div>
           )}
 
-          {/* Other tournaments — one tile per competition, labelled by its real name */}
+          {/* Other tournaments ΓÇö one tile per competition, labelled by its real name */}
           <div className="grid grid-cols-3 gap-space-2">
             {(['tournament_club', 'tournament_international'] as const).map((cupType) => {
               const existing = clubTs.find((t) => t.type === cupType)
@@ -392,76 +403,64 @@ function TeamPickerButton({
   )
 }
 
+
 // --- Start Phase Dialog -------------------------------------------------------
 
 function StartPhaseDialog({
-  allTeams,
+  users,
   onClose,
 }: {
-  allTeams: Team[]
+  users: UserWithClub[]
   onClose: () => void
 }) {
   const router = useRouter()
-  const supabase = createClient()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const [users, setUsers] = useState<{ id: string; username: string }[]>([])
-  const [usersLoading, setUsersLoading] = useState(false)
-  const [localManagers, setLocalManagers] = useState<Record<string, string>>({})
-  const [assigningTeamId, setAssigningTeamId] = useState<string | null>(null)
-  const [assignErrors, setAssignErrors] = useState<Record<string, string>>({})
-  const [cooldown, setCooldown] = useState<{ username: string; cooldownEndsAt: string; teamId?: string | null } | null>(null)
-
   const today = new Date().toISOString().split('T')[0]
   const [seasonName, setSeasonName] = useState('')
   const [startDate, setStartDate] = useState(today)
-  const [teamSearch, setTeamSearch] = useState('')
-
-  // Selection by slug — two divisions (EFA Premier League / EFA Championship),
-  // defaulting to 16 teams in each as the expected split.
-  const allSlugs = allTeams.map((t) => t.logo_team_slug)
+  const [userSearch, setUserSearch] = useState('')
   const [activeDiv, setActiveDiv] = useState<1 | 2>(1)
-  const [d1Slugs, setD1Slugs] = useState<string[]>(allSlugs.slice(0, 16))
-  const [d2Slugs, setD2Slugs] = useState<string[]>(allSlugs.slice(16, 32))
+  const [d1UserIds, setD1UserIds] = useState<string[]>(users.slice(0, 16).map((u) => u.id))
+  const [d2UserIds, setD2UserIds] = useState<string[]>(users.slice(16, 32).map((u) => u.id))
 
-  const leagueTeamObjects = allTeams.filter((t) => d1Slugs.includes(t.logo_team_slug) || d2Slugs.includes(t.logo_team_slug))
-  const filteredTeams = allTeams.filter((t) =>
-    t.name.toLowerCase().includes(teamSearch.toLowerCase()) ||
-    t.logo_team_slug.toLowerCase().includes(teamSearch.toLowerCase())
-  )
+  const activeUserIds = activeDiv === 1 ? d1UserIds : d2UserIds
+  const otherUserIds = activeDiv === 1 ? d2UserIds : d1UserIds
 
-  const activeSlugs = activeDiv === 1 ? d1Slugs : d2Slugs
-  const otherSlugs = activeDiv === 1 ? d2Slugs : d1Slugs
+  function setActiveUserIds(ids: string[]) {
+    if (activeDiv === 1) setD1UserIds(ids)
+    else setD2UserIds(ids)
+  }
 
-  function toggleTeam(slug: string) {
-    if (otherSlugs.includes(slug)) return
-    const setter = activeDiv === 1 ? setD1Slugs : setD2Slugs
-    if (activeSlugs.includes(slug)) {
-      setter((prev) => prev.filter((x) => x !== slug))
-    } else {
-      setter((prev) => [...prev, slug])
+  const filteredUsers = users.filter((u) => {
+    const q = userSearch.toLowerCase()
+    if (!q) return true
+    return u.username.toLowerCase().includes(q) || u.club.name.toLowerCase().includes(q)
+  })
+
+  const userObjects = (ids: string[]) => ids.map((id) => users.find((u) => u.id === id)).filter((u): u is UserWithClub => !!u)
+
+  function toggleUser(userId: string) {
+    if (otherUserIds.includes(userId)) return
+    if (activeUserIds.includes(userId)) setActiveUserIds(activeUserIds.filter((x) => x !== userId))
+    else setActiveUserIds([...activeUserIds, userId])
+  }
+
+  function divCounts() {
+    const d1 = d1UserIds.length
+    const d2 = d2UserIds.length
+    return {
+      division1: d1 > 1 ? d1 * (d1 - 1) : 0,
+      division2: d2 > 1 ? d2 * (d2 - 1) : 0,
+      total: (d1 > 1 ? d1 * (d1 - 1) : 0) + (d2 > 1 ? d2 * (d2 - 1) : 0),
     }
   }
 
-  function setActiveSlugs(slugs: string[]) {
-    if (activeDiv === 1) setD1Slugs(slugs)
-    else setD2Slugs(slugs)
-  }
-
-  const divObjects = (slugs: string[]) =>
-    slugs.map((slug) => allTeams.find((t) => t.logo_team_slug === slug)!)
-
-  function computeFixtureCounts() {
-    const d1 = d1Slugs.length
-    const d2 = d2Slugs.length
-    const leagueCount = (d1 > 1 ? d1 * (d1 - 1) : 0) + (d2 > 1 ? d2 * (d2 - 1) : 0)
-    return { division1: d1 > 1 ? d1 * (d1 - 1) : 0, division2: d2 > 1 ? d2 * (d2 - 1) : 0, total: leagueCount }
-  }
-
   const endDate = (() => {
-    const counts = computeFixtureCounts()
+    if (!startDate) return ''
+    const counts = divCounts()
     const days = Math.max(7, Math.ceil(counts.total / 15))
     const d = new Date(startDate)
     d.setDate(d.getDate() + days)
@@ -472,23 +471,14 @@ function StartPhaseDialog({
     setLoading(true)
     setError('')
     try {
-      const toTeamData = (slugs: string[]) =>
-        divObjects(slugs).filter(Boolean).map((t) => ({
-          id: t.id,
-          name: t.name,
-          logo_league_folder: t.logo_league_folder,
-          logo_team_slug: t.logo_team_slug,
-          manager_id: localManagers[t.logo_team_slug] ?? t.manager_id ?? null,
-        }))
-
       const res = await fetch('/api/admin/start-phase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           season_name: seasonName,
           start_date: startDate,
-          division1_teams: toTeamData(d1Slugs),
-          division2_teams: toTeamData(d2Slugs),
+          division1_users: d1UserIds,
+          division2_users: d2UserIds,
         }),
       })
       const data = await res.json()
@@ -509,17 +499,14 @@ function StartPhaseDialog({
       if (!startDate) { setError('Start date is required.'); return }
     }
     if (step === 2) {
-      if (d1Slugs.length < 2 && d2Slugs.length < 2) { setError('Select at least 2 teams for the league.'); return }
-      if (d1Slugs.length >= 2 && d1Slugs.length % 2 !== 0) { setError('Division 1 must have an even number of teams.'); return }
-      if (d2Slugs.length >= 2 && d2Slugs.length % 2 !== 0) { setError('Division 2 must have an even number of teams.'); return }
-      setUsersLoading(true)
-      supabase.from('profiles').select('id, username').order('username')
-        .then(({ data }) => { setUsers(data ?? []); setUsersLoading(false) })
+      if (d1UserIds.length < 2 && d2UserIds.length < 2) { setError('Select at least 2 participants for the league.'); return }
+      if (d1UserIds.length >= 2 && d1UserIds.length % 2 !== 0) { setError('Division 1 must have an even number of participants.'); return }
+      if (d2UserIds.length >= 2 && d2UserIds.length % 2 !== 0) { setError('Division 2 must have an even number of participants.'); return }
     }
     setStep((s) => s + 1)
   }
 
-  const STEP_LABELS = ['Phase Details', 'League Teams', 'Assign Managers', 'Confirm & Launch']
+  const STEP_LABELS = ['Phase Details', 'League Participants', 'Confirm & Launch']
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-start justify-center p-space-4 overflow-y-auto">
@@ -529,7 +516,7 @@ function StartPhaseDialog({
           <div>
             <h2 className="text-text-primary font-bold text-lg">Start New Phase</h2>
             <p className="text-text-muted text-xs mt-space-1">
-              Step {step} of 4: {STEP_LABELS[step - 1]}
+              Step {step} of 3: {STEP_LABELS[step - 1]}
             </p>
           </div>
           <Button variant="ghost" onClick={onClose}><X className="w-4 h-4" /></Button>
@@ -539,7 +526,7 @@ function StartPhaseDialog({
         <div className="h-space-1 bg-border-subtle">
           <div
             className="h-full bg-accent transition-all"
-            style={{ width: `${(step / 4) * 100}%` }}
+            style={{ width: `${(step / 3) * 100}%` }}
           />
         </div>
 
@@ -571,7 +558,7 @@ function StartPhaseDialog({
                   <label className="form-label">End Date (auto)</label>
                   <input
                     type="date"
-                    value={endDate || '—'}
+                    value={endDate || ''}
                     readOnly
                     className="input-field opacity-50 cursor-not-allowed"
                     placeholder="Computed on launch"
@@ -581,7 +568,7 @@ function StartPhaseDialog({
               <Card className="p-space-4 text-xs text-text-muted space-y-space-1">
                 <p className="font-medium text-text-primary">What gets generated:</p>
                 <ul className="list-disc list-inside space-y-space-1 mt-space-1">
-                  <li>Premier League fixtures for your selected teams</li>
+                  <li>Premier League fixtures for your selected participants</li>
                   <li>15 fixtures per weekday, 30 per weekend day</li>
                   <li>UCL &amp; Europa start later — from the final league standings</li>
                 </ul>
@@ -589,14 +576,14 @@ function StartPhaseDialog({
             </div>
           )}
 
-          {/* -- Step 2: League teams -- */}
+          {/* -- Step 2: League participants (user slots) -- */}
           {step === 2 && (
             <div className="space-y-space-3">
               {/* Division tabs */}
               <div className="flex items-center gap-space-2">
                 {([1, 2] as const).map((dv) => {
-                  const slugs = dv === 1 ? d1Slugs : d2Slugs
-                  const even = slugs.length % 2 === 0
+                  const ids = dv === 1 ? d1UserIds : d2UserIds
+                  const even = ids.length % 2 === 0
                   const active = activeDiv === dv
                   return (
                     <button
@@ -609,8 +596,8 @@ function StartPhaseDialog({
                     >
                       <p className="text-xs font-bold text-text-primary">Division {dv}</p>
                       <p className="text-[10px] text-text-muted">{dv === 1 ? 'EFA Premier League' : 'EFA Championship'}</p>
-                      <p className={`text-[10px] font-bold mt-space-0.5 ${even && slugs.length >= 2 ? 'text-feedback-success' : 'text-accent'}`}>
-                        {slugs.length} team{slugs.length !== 1 ? 's' : ''} {!even ? '· needs even count' : ''}
+                      <p className={`text-[10px] font-bold mt-space-0.5 ${even && ids.length >= 2 ? 'text-feedback-success' : 'text-accent'}`}>
+                        {ids.length} manager{ids.length !== 1 ? 's' : ''} {!even ? '· needs even count' : ''}
                       </p>
                     </button>
                   )
@@ -618,7 +605,8 @@ function StartPhaseDialog({
               </div>
 
               <p className="text-xs text-text-muted">
-                Each division needs an even number of teams (any amount). Click teams or import from a poll.
+                Each division needs an even number of participants (any amount). Managers bring the club
+                they currently manage into the league.
               </p>
 
               <div className="flex items-center gap-2">
@@ -626,155 +614,70 @@ function StartPhaseDialog({
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
                   <input
                     type="text"
-                    placeholder="Search teams..."
-                    value={teamSearch}
-                    onChange={(e) => setTeamSearch(e.target.value)}
+                    placeholder="Search managers or clubs..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
                     className="input-field pl-8"
                   />
                 </div>
-                <ImportFromPollButton allTeams={allTeams} onSelect={(slugs) => setActiveSlugs(slugs)} />
+                <ImportFromPollButton users={users} onSelect={(ids) => setActiveUserIds(ids)} />
               </div>
 
-              <div className="grid grid-cols-2 gap-space-2 max-h-72 overflow-y-auto pr-space-1">
-                {filteredTeams.map((team) => {
-                  const inActive = activeSlugs.includes(team.logo_team_slug)
-                  const inOther = otherSlugs.includes(team.logo_team_slug)
-                  return (
-                    <TeamPickerButton
-                      key={team.logo_team_slug}
-                      team={team}
-                      selected={inActive}
-                      disabled={inOther}
-                      badgeText={inOther ? `in Division ${activeDiv === 1 ? 2 : 1}` : undefined}
-                      accentClass="bg-feedback-success/10 border-feedback-success/40"
-                      onClick={() => toggleTeam(team.logo_team_slug)}
-                    />
-                  )
-                })}
-              </div>
-
-              {activeSlugs.length > 0 && (
-                <div className="pt-space-2 border-t border-border">
-                  <p className="text-[10px] text-text-muted mb-space-1">Selected (Division {activeDiv}): {activeSlugs.map((s) => allTeams.find((t) => t.logo_team_slug === s)?.name).join(', ')}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* -- Step 3: Assign Managers -- */}
-          {step === 3 && (
-            <div className="space-y-space-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-text-primary font-semibold text-sm">Manager Assignments</h3>
-                <span className="text-xs text-text-muted">Optional — can skip</span>
-              </div>
-              <p className="text-xs text-text-muted">
-                Assign managers to your selected league teams.
-              </p>
-
-              {usersLoading ? (
-                <div className="py-space-8 text-center text-text-muted text-sm">Loading users...</div>
+              {filteredUsers.length === 0 ? (
+                <p className="text-text-muted text-sm py-space-6 text-center">
+                  No managers with a club found yet — managers appear here once they join a team.
+                </p>
               ) : (
-                <div className="space-y-space-1.5 max-h-80 overflow-y-auto pr-space-1">
-                  {leagueTeamObjects.map((team) => {
-                    const resolvedManagerId = localManagers[team.logo_team_slug] ?? team.manager_id
-                    const mgr = resolvedManagerId ? users.find((u) => u.id === resolvedManagerId) : null
-                    const isAssigning = assigningTeamId === team.logo_team_slug
-                    const assignErr = assignErrors[team.logo_team_slug]
-
+                <div className="grid grid-cols-2 gap-space-2 max-h-72 overflow-y-auto pr-space-1">
+                  {filteredUsers.map((user) => {
+                    const inActive = activeUserIds.includes(user.id)
+                    const inOther = otherUserIds.includes(user.id)
                     return (
-                      <div key={team.logo_team_slug} className="flex items-center gap-space-2.5 px-space-3 py-space-2 rounded-lg bg-bg-elevated border border-border">
-                        {team.logo_league_folder ? (
+                      <button
+                        key={user.id}
+                        type="button"
+                        disabled={inOther}
+                        onClick={() => toggleUser(user.id)}
+                        className={`flex items-center gap-space-2.5 px-space-3 py-space-2 rounded-lg border text-left transition-colors ${
+                          inOther ? 'bg-bg-elevated border-border opacity-50' : 'bg-bg-elevated border-border hover:border-border-strong'
+                        } ${inActive ? 'bg-accent/10 border-accent/40' : ''}`}
+                      >
+                        {user.club.logo_league_folder ? (
                           <TeamLogo
-                            leagueFolder={team.logo_league_folder}
-                            teamSlug={team.logo_team_slug}
+                            leagueFolder={user.club.logo_league_folder}
+                            teamSlug={user.club.logo_team_slug}
                             context="standings_row"
-                            alt={team.name}
+                            alt={user.club.name}
                             className="w-5 h-5 shrink-0"
                           />
                         ) : (
                           <div className="w-5 h-5 rounded bg-bg-base shrink-0" />
                         )}
-                        <span className="text-xs font-medium text-text-primary truncate flex-1 min-w-0">{team.name}</span>
-
-                        {assignErr && (
-                          <span className="text-[10px] text-feedback-error truncate max-w-[100px] shrink-0" title={assignErr}>
-                            {assignErr}
-                          </span>
-                        )}
-
-                        {mgr ? (
-                          <div className="flex items-center gap-space-1 shrink-0">
-                            <span className="text-xs text-feedback-success font-medium">{mgr.username}</span>
-                            <Button
-                              variant="ghost"
-                              className="text-[10px] py-0 px-space-1"
-                              onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[team.logo_team_slug]; return n })}
-                            >
-                              <X className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <select
-                            className="text-xs border border-border rounded-md px-space-2 py-space-1 bg-bg-surface text-text-primary max-w-[150px] shrink-0"
-                            value=""
-                            disabled={isAssigning}
-                            onChange={async (e) => {
-                              const userId = e.target.value
-                              if (!userId) return
-                              setAssigningTeamId(team.logo_team_slug)
-                              setAssignErrors((prev) => { const n = { ...prev }; delete n[team.logo_team_slug]; return n })
-                                try {
-                                  const res = await fetch('/api/admin/managers/assign', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                      team_id: team.id,
-                                      user_id: userId,
-                                      logo_league_folder: team.logo_league_folder,
-                                      logo_team_slug: team.logo_team_slug,
-                                      name: team.name,
-                                      override: false,
-                                    }),
-                                  })
-                                  const data = await res.json()
-                                  if (!res.ok) {
-                                    if (data?.code === 'SACK_COOLDOWN') {
-                                      const profile = users.find((u) => u.id === userId)
-                                      setCooldown({
-                                        username: profile?.username ?? 'this manager',
-                                        cooldownEndsAt: data.cooldown_ends_at,
-                                        teamId: team.id,
-                                      })
-                                    }
-                                    throw new Error(data.error ?? 'Failed to assign')
-                                  }
-                                  setLocalManagers((prev) => ({ ...prev, [team.logo_team_slug]: userId }))
-                                } catch (err: any) {
-                                  setAssignErrors((prev) => ({ ...prev, [team.logo_team_slug]: err.message }))
-                                } finally {
-                                  setAssigningTeamId(null)
-                                }
-
-                            }}
-                          >
-                            <option value="">{isAssigning ? 'Assigning...' : '— assign —'}</option>
-                            {users.map((u) => (
-                              <option key={u.id} value={u.id}>{u.username}</option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-medium text-text-primary truncate">{user.username}</span>
+                          <span className="block text-[10px] text-text-muted truncate">{user.club.name}</span>
+                        </span>
+                        {inOther && <span className="text-[9px] text-text-muted shrink-0">Div {activeDiv === 1 ? 2 : 1}</span>}
+                        {inActive && <Check className="w-3.5 h-3.5 ml-auto shrink-0 text-accent" />}
+                      </button>
                     )
                   })}
+                </div>
+              )}
+
+              {activeUserIds.length > 0 && (
+                <div className="pt-space-2 border-t border-border">
+                  <p className="text-[10px] text-text-muted mb-space-1">
+                    Selected (Division {activeDiv}): {userObjects(activeUserIds).map((u) => u.club.name).join(', ')}
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* -- Step 4: Confirm -- */}
-          {step === 4 && (() => {
-            const counts = computeFixtureCounts()
+          {/* -- Step 3: Confirm -- */}
+          {step === 3 && (() => {
+            const counts = divCounts()
             return (
             <div className="space-y-space-4">
               <h3 className="text-text-primary font-semibold">Ready to launch</h3>
@@ -790,11 +693,11 @@ function StartPhaseDialog({
                 <div className="border-t border-border pt-space-3 space-y-space-2">
                   <div className="flex justify-between">
                     <span className="text-blue-500">Division 1</span>
-                    <span className="text-blue-500 font-medium">{d1Slugs.length} teams — {counts.division1} fixtures</span>
+                    <span className="text-blue-500 font-medium">{d1UserIds.length} managers — {counts.division1} fixtures</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-500">Division 2</span>
-                    <span className="text-blue-500 font-medium">{d2Slugs.length} teams — {counts.division2} fixtures</span>
+                    <span className="text-blue-500 font-medium">{d2UserIds.length} managers — {counts.division2} fixtures</span>
                   </div>
                 </div>
                 <div className="border-t border-border pt-space-3 flex justify-between font-semibold">
@@ -824,7 +727,7 @@ function StartPhaseDialog({
             {step === 1 ? 'Cancel' : 'Back'}
           </Button>
 
-          {step < 4 ? (
+          {step < 3 ? (
             <Button variant="primary" onClick={nextStep} className="px-space-8">
               Next
             </Button>
@@ -839,41 +742,6 @@ function StartPhaseDialog({
             </Button>
           )}
         </div>
-
-      <SackCooldownDialog
-        open={!!cooldown}
-        username={cooldown?.username ?? ''}
-        cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
-        onClose={() => setCooldown(null)}
-        onOverride={() => {
-          if (cooldown) {
-            const user = users.find(u => u.username === cooldown.username)
-            const team = cooldown.teamId ? allTeams.find(t => t.id === cooldown.teamId) : undefined
-            if (user && team) {
-              setCooldown(null)
-              fetch('/api/admin/managers/assign', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  team_id: team.id,
-                  user_id: user.id,
-                  logo_league_folder: team.logo_league_folder,
-                  logo_team_slug: team.logo_team_slug,
-                  name: team.name,
-                  override: true,
-                }),
-              }).then(res => res.json()).then(data => {
-                if (data.success) {
-                  setLocalManagers((prev) => ({ ...prev, [team.logo_team_slug]: user.id }))
-                } else {
-                  setAssignErrors((prev) => ({ ...prev, [team.logo_team_slug]: data.error }))
-                }
-              })
-            }
-          }
-        }}
-      />
-
       </div>
     </div>
   )
@@ -881,13 +749,15 @@ function StartPhaseDialog({
 
 // --- Import from Poll button --------------------------------------------------
 
-function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSelect: (slugs: string[]) => void }) {
+function ImportFromPollButton({ users, onSelect }: { users: UserWithClub[]; onSelect: (userIds: string[]) => void }) {
   const [open, setOpen] = useState(false)
   const [polls, setPolls] = useState<any[]>([])
   const [apps, setApps] = useState<any[]>([])
   const [importLoading, setImportLoading] = useState(false)
   const [importError, setImportError] = useState('')
   const [done, setDone] = useState(0)
+
+  const userByApplicantId = new Map<string, UserWithClub>(users.map((u) => [u.id, u]))
 
   async function loadPolls() {
     setImportLoading(true)
@@ -909,17 +779,15 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
       const pollApps = apps.filter((a: any) => a.poll_id === pollId && a.status !== 'withdrawn')
       const matched: string[] = []
       for (const app of pollApps) {
-        const team = allTeams.find(
-          (t) => t.logo_team_slug === app.team_slug && t.logo_league_folder === app.team_league
-        )
-        if (team) matched.push(team.logo_team_slug)
+        const user = app.applicant_id ? userByApplicantId.get(app.applicant_id) : null
+        if (user) matched.push(user.id)
       }
       if (matched.length > 0) {
         onSelect(matched)
         setDone(matched.length)
         setTimeout(() => setDone(0), 2500)
       } else {
-        setImportError('No teams matched — the slug/league names differ from the logo database.')
+        setImportError('No poll applicants currently manage a club.')
       }
     } catch (e: any) {
       setImportError(e.message ?? 'Import failed')
@@ -992,6 +860,7 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
     </>
   )
 }
+
 
 // --- Super Cup Generation Dialog ---------------------------------------------
 
@@ -1255,7 +1124,7 @@ function StartCupDialog({
 
         <div className="p-space-6 space-y-space-5">
           <div className="bg-accent-muted border border-accent/20 rounded-lg p-space-3 text-xs text-accent">
-            Teams are chosen manually — click teams in the list to pick them for this competition.
+            Teams are chosen manually ΓÇö click teams in the list to pick them for this competition.
             Teams already taken by the other competition are locked.
           </div>
 
@@ -1293,11 +1162,11 @@ function StartCupDialog({
             {allRows.length === 0
               ? 'No teams left to pick from.'
               : validSplit
-              ? `${selected.length} teams in ${numGroups} group${numGroups > 1 ? 's' : ''} of ${perGroup} — ${fixtureCount} fixtures`
+              ? `${selected.length} teams in ${numGroups} group${numGroups > 1 ? 's' : ''} of ${perGroup} ΓÇö ${fixtureCount} fixtures`
               : `Select a team count that divides evenly across groups (min 2 per group).`}
           </p>
 
-          {/* Standings list — grouped by division */}
+          {/* Standings list ΓÇö grouped by division */}
           <div className="space-y-space-3 max-h-80 overflow-y-auto pr-space-1">
             {divisionGroups.map(([divNum, rows]) => (
               <div key={divNum}>
@@ -1372,9 +1241,10 @@ function StartCupDialog({
   )
 }
 
+
 // --- Main export --------------------------------------------------------------
 
-export default function SeasonManager({ seasons, allTeams }: Props) {
+export default function SeasonManager({ seasons, users }: Props) {
   const router = useRouter()
   const [showDialog, setShowDialog] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -1499,10 +1369,11 @@ export default function SeasonManager({ seasons, allTeams }: Props) {
       {/* Dialog */}
       {showDialog && (
         <StartPhaseDialog
-          allTeams={allTeams}
+          users={users}
           onClose={() => setShowDialog(false)}
         />
       )}
     </div>
   )
 }
+

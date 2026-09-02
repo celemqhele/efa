@@ -10,7 +10,7 @@ export default function Mobile({ data }: { data: any }) {
 
       <CreateTournamentClient
         seasons={data.seasons}
-        allTeams={data.allTeams}
+        users={data.users}
       />
     </div>
   )

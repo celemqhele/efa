@@ -1,8 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import eFootballTeams from '@/lib/efootball-2027-teams.json'
-import { slugToDisplayName } from '@/lib/logo-resolver'
 import { sortStandingsRows } from '@/lib/standings-core'
 import Shell from './_shell'
 
@@ -126,72 +124,38 @@ export default async function SeasonsPage() {
     s.cup_taken = cupTaken
   }
 
-  const { data: rawTeams } = await supabase
-    .from('teams')
-    .select('id, name, logo_league_folder, logo_team_slug, manager_id')
-    .order('name', { ascending: true })
+  // Users with the club they currently manage — Start Phase participants are
+  // user-owned slots (mirrors resolveUserClubId / the slot model).
+  const [{ data: profiles }, { data: managedTeams }] = await Promise.all([
+    supabase.from('profiles').select('id, username').order('username'),
+    supabase.from('teams').select('id, name, logo_league_folder, logo_team_slug, manager_id').not('manager_id', 'is', null),
+  ])
 
-  // teams already present in the DB (have ids / manager assignments)
-  const dbByKey = new Map<string, {
-    id: string
-    name: string
-    logo_league_folder: string
-    logo_team_slug: string
-    manager_id: string | null
-  }>()
-  for (const t of (rawTeams ?? []) as any[]) {
-    if (!t.logo_team_slug || !t.logo_league_folder) continue
-    const key = `${t.logo_league_folder}::${t.logo_team_slug}`
-    const existing = dbByKey.get(key)
-    if (!existing || (!existing.manager_id && t.manager_id)) {
-      dbByKey.set(key, {
+  const clubByUser = new Map<string, { id: string; name: string; logo_league_folder: string; logo_team_slug: string }>()
+  for (const t of (managedTeams ?? []) as any[]) {
+    if (t.manager_id && !clubByUser.has(t.manager_id)) {
+      clubByUser.set(t.manager_id, {
         id: t.id,
         name: t.name,
         logo_league_folder: t.logo_league_folder,
         logo_team_slug: t.logo_team_slug,
-        manager_id: t.manager_id,
       })
     }
   }
 
-  // Build the full allowed team set from config (no filesystem access), enriched
-  // with DB ids / manager assignments where they exist.
-  const clubMap = new Map<string, {
-    id: string
-    name: string
-    logo_league_folder: string
-    logo_team_slug: string
-    manager_id: string | null
-  }>()
-  const leagues = eFootballTeams.leagues as Record<string, string[]>
-  for (const [folder, slugs] of Object.entries(leagues)) {
-    for (const slug of slugs) {
-      const key = `${folder}::${slug}`
-      const db = dbByKey.get(key)
-      clubMap.set(key, {
-        id: db?.id ?? '',
-        name: db?.name ?? slugToDisplayName(slug),
-        logo_league_folder: folder,
-        logo_team_slug: slug,
-        manager_id: db?.manager_id ?? null,
-      })
-    }
-  }
-
-  // Preserve any DB teams not covered by the current season config (legacy /
-  // custom league teams that were previously surfaced from the teams table).
-  for (const db of dbByKey.values()) {
-    const key = `${db.logo_league_folder}::${db.logo_team_slug}`
-    if (!clubMap.has(key)) clubMap.set(key, db)
-  }
-
-  const allTeams = Array.from(clubMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+  const users = ((profiles ?? []) as any[])
+    .filter((p: any) => clubByUser.has(p.id))
+    .map((p: any) => ({
+      id: p.id,
+      username: p.username ?? 'unknown',
+      club: clubByUser.get(p.id)!,
+    }))
 
   return (
     <Shell
       data={{
         seasons,
-        allTeams,
+        users,
       }}
     />
   )

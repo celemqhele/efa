@@ -1,14 +1,12 @@
 'use client'
 
 // File encoding: UTF-8
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TeamLogo from '@/components/ui/TeamLogo'
-import { createClient } from '@/lib/supabase/client'
 import { Loader2, CheckCircle } from 'lucide-react'
 import ModalPortal from '@/components/ui/ModalPortal'
-import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
 
 interface Season {
   id: string
@@ -18,17 +16,20 @@ interface Season {
   end_date: string | null
 }
 
-interface Team {
-  id: string | null
-  name: string
-  logo_league_folder: string
-  logo_team_slug: string
-  manager_id: string | null
+interface UserWithClub {
+  id: string
+  username: string
+  club: {
+    id: string
+    name: string
+    logo_league_folder: string
+    logo_team_slug: string
+  }
 }
 
 interface Props {
   seasons: Season[]
-  allTeams: Team[]
+  users: UserWithClub[]
 }
 
 const TOURNAMENT_NAMES: Record<string, string> = {
@@ -45,7 +46,7 @@ const FIXTURE_MODE: Record<string, string> = {
   friendlies: 'exhibition',
 }
 
-export default function CreateTournamentClient({ seasons, allTeams }: Props) {
+export default function CreateTournamentClient({ seasons, users }: Props) {
   const router = useRouter()
 
   // Season
@@ -60,56 +61,46 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
   const [type, setType] = useState<'league' | 'tournament_club' | 'tournament_international' | 'friendlies'>('league')
   const [name, setName] = useState(TOURNAMENT_NAMES.league)
 
-  // Team selection — using logo_team_slug as the unique key
-  const [selectedSlugs, setSelectedSlugs] = useState<string[]>([])
-  const [teamSearch, setTeamSearch] = useState('')
+  // Participant selection — user-owned slots (each user's current club)
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+  const [userSearch, setUserSearch] = useState('')
   const [successId, setSuccessId] = useState<string | null>(null)
 
   const isFriendlies = type === 'friendlies'
 
-  useEffect(() => {
-    setName(TOURNAMENT_NAMES[type] ?? type)
-    setSelectedSlugs([])
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type])
+  function switchType(next: typeof type) {
+    setType(next)
+    setName(TOURNAMENT_NAMES[next] ?? next)
+    setSelectedUserIds([])
+  }
 
-
-
-  // Manager assignments
-  const [users, setUsers] = useState<{ id: string; username: string }[]>([])
-  const [localManagers, setLocalManagers] = useState<Record<string, string>>({}) // slug -> user_id
-  const [assigningSlug, setAssigningSlug] = useState<string | null>(null)
-  const [assignErrors, setAssignErrors] = useState<Record<string, string>>({})
-  const [cooldown, setCooldown] = useState<{ username: string; cooldownEndsAt: string } | null>(null)
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.from('profiles').select('id, username').order('username')
-      .then(({ data }) => setUsers(data ?? []))
-  }, [])
+  const filteredUsers = users.filter((u) => {
+    const q = userSearch.toLowerCase()
+    if (!q) return true
+    return (
+      u.username.toLowerCase().includes(q) ||
+      u.club.name.toLowerCase().includes(q) ||
+      u.club.logo_team_slug.toLowerCase().includes(q)
+    )
+  })
 
   // Submission
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  function toggleTeam(slug: string) {
-    setSelectedSlugs((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+  function toggleUser(userId: string) {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((s) => s !== userId) : [...prev, userId]
     )
   }
-
-  const filteredTeams = allTeams.filter((t) =>
-    t.name.toLowerCase().includes(teamSearch.toLowerCase()) ||
-    t.logo_team_slug.toLowerCase().includes(teamSearch.toLowerCase())
-  )
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
     if (!name.trim()) return setError('Tournament name is required.')
-    if (selectedSlugs.length < 2) return setError('Select at least 2 teams.')
-    if (isFriendlies && selectedSlugs.length > 2) return setError('Friendlies can only have 2 teams.')
+    if (selectedUserIds.length < 2) return setError('Select at least 2 participants (managers).')
+    if (isFriendlies && selectedUserIds.length > 2) return setError('Friendlies can only have 2 participants.')
 
     setLoading(true)
     try {
@@ -126,15 +117,6 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
         seasonId = sData.id
       }
 
-      const selectedTeams = allTeams.filter(t => selectedSlugs.includes(t.logo_team_slug))
-      const teamsData = selectedTeams.map(t => ({
-        id: t.id,
-        name: t.name,
-        logo_league_folder: t.logo_league_folder,
-        logo_team_slug: t.logo_team_slug,
-        manager_id: localManagers[t.logo_team_slug] ?? null
-      }))
-
       const res = await fetch('/api/admin/create-tournament', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,7 +124,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
           season_id: seasonId || null,
           name,
           type,
-          teams: teamsData,
+          users: selectedUserIds,
           settings: {
             fixture_mode: FIXTURE_MODE[type] ?? 'round_robin'
           }
@@ -236,7 +218,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
             <label className="form-label">Type</label>
             <select
               value={type}
-              onChange={(e) => setType(e.target.value as any)}
+              onChange={(e) => switchType(e.target.value as any)}
               className="input-field"
             >
               <option value="league">League</option>
@@ -257,52 +239,62 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
             />
           </div>
         </div>
+        <p className="text-text-muted text-xs mt-3">
+          Participants are manager-owned seats — each selected manager brings their
+          current club into the tournament.
+        </p>
       </div>
 
       {!isFriendlies && (
       <div className="card p-5">
         <h2 className="section-header">
-          Teams
+          Participants
           <span className="ml-auto text-xs font-normal text-text-muted flex items-center gap-2">
-            {!isFriendlies && <ImportFromPollButton allTeams={allTeams} onSelect={setSelectedSlugs} />}
-            {selectedSlugs.length} selected
+            {!isFriendlies && <ImportFromPollButton users={users} onSelect={setSelectedUserIds} />}
+            {selectedUserIds.length} selected
           </span>
         </h2>
 
           <input
             type="text"
-            placeholder="Search all clubs..."
-            value={teamSearch}
-            onChange={(e) => setTeamSearch(e.target.value)}
+            placeholder="Search managers or clubs..."
+            value={userSearch}
+            onChange={(e) => setUserSearch(e.target.value)}
             className="input-field mb-4"
           />
 
+          {filteredUsers.length === 0 ? (
+            <p className="text-text-muted text-sm py-6 text-center">
+              No managers with a club found yet. Managers are added when they join a team.
+            </p>
+          ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-96 overflow-y-auto">
-            {filteredTeams.map((team) => {
-              const isSelected = selectedSlugs.includes(team.logo_team_slug)
+            {filteredUsers.map((user) => {
+              const isSelected = selectedUserIds.includes(user.id)
               return (
                 <button
-                  key={team.logo_team_slug}
+                  key={user.id}
                   type="button"
-                  onClick={() => toggleTeam(team.logo_team_slug)}
+                  onClick={() => toggleUser(user.id)}
                   className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${
                     isSelected
                       ? 'bg-gold/10 border-gold/40 text-foreground-primary'
                       : 'bg-navy-light border-navy-border text-foreground-secondary hover:border-gold/20'
                   }`}
                 >
-                  {team.logo_league_folder ? (
-                    <TeamLogo
-                      leagueFolder={team.logo_league_folder}
-                      teamSlug={team.logo_team_slug}
-                      context="standings_row"
-                      alt={team.name}
-                      className="w-6 h-6 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded bg-navy-border shrink-0" />
-                  )}
-                  <span className="text-xs font-medium truncate">{team.name}</span>
+                  <TeamLogo
+                    leagueFolder={user.club.logo_league_folder}
+                    teamSlug={user.club.logo_team_slug}
+                    context="standings_row"
+                    alt={user.club.name}
+                    className="w-6 h-6 shrink-0"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-medium truncate">
+                      <span className="text-foreground-primary">{user.username}</span>
+                    </span>
+                    <span className="block text-[10px] text-text-muted truncate">{user.club.name}</span>
+                  </span>
                   {isSelected && (
                     <span className="ml-auto text-green-400 text-xs shrink-0">✓</span>
                   )}
@@ -310,29 +302,28 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
               )
             })}
           </div>
+          )}
 
-          {selectedSlugs.length > 0 && (
+          {selectedUserIds.length > 0 && (
             <div className="mt-4 pt-4 border-t border-navy-border">
-              <p className="text-xs text-text-muted mb-2">Selected Teams</p>
+              <p className="text-xs text-text-muted mb-2">Selected Participants</p>
               <div className="flex flex-wrap gap-2">
-                {selectedSlugs.map((slug) => {
-                  const team = allTeams.find((t) => t.logo_team_slug === slug)
-                  if (!team) return null
+                {selectedUserIds.map((uid) => {
+                  const user = users.find((u) => u.id === uid)
+                  if (!user) return null
                   return (
-                    <div key={slug} className="flex items-center gap-1.5 bg-gold/10 border border-gold/30 rounded-full pl-1.5 pr-2.5 py-0.5">
-                      {team.logo_league_folder && (
-                        <TeamLogo
-                          leagueFolder={team.logo_league_folder}
-                          teamSlug={team.logo_team_slug}
-                          context="standings_row"
-                          alt={team.name}
-                          className="w-[18px] h-[18px]"
-                        />
-                      )}
-                      <span className="text-xs text-foreground-primary">{team.name}</span>
+                    <div key={uid} className="flex items-center gap-1.5 bg-gold/10 border border-gold/30 rounded-full pl-1.5 pr-2.5 py-0.5">
+                      <TeamLogo
+                        leagueFolder={user.club.logo_league_folder}
+                        teamSlug={user.club.logo_team_slug}
+                        context="standings_row"
+                        alt={user.club.name}
+                        className="w-[18px] h-[18px]"
+                      />
+                      <span className="text-xs text-foreground-primary">{user.club.name}</span>
                       <button
                         type="button"
-                        onClick={() => toggleTeam(slug)}
+                        onClick={() => toggleUser(user.id)}
                         className="text-text-muted hover:text-foreground-primary text-xs ml-0.5"
                       >
                         ×
@@ -348,149 +339,44 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
 
       {isFriendlies && (
         <div className="card p-5">
-          <h2 className="section-header">Choose Teams</h2>
-          <p className="text-text-muted text-sm mb-4">Select exactly 2 teams for the friendly.</p>
+          <h2 className="section-header">Choose Participants</h2>
+          <p className="text-text-muted text-sm mb-4">Select exactly 2 managers for the friendly.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {allTeams.map((team) => {
-              const isSelected = selectedSlugs.includes(team.logo_team_slug)
+            {users.map((user) => {
+              const isSelected = selectedUserIds.includes(user.id)
               return (
                 <button
-                  key={team.logo_team_slug}
+                  key={user.id}
                   type="button"
                   onClick={() => {
                     if (isSelected) {
-                      toggleTeam(team.logo_team_slug)
-                    } else if (selectedSlugs.length < 2) {
-                      toggleTeam(team.logo_team_slug)
+                      toggleUser(user.id)
+                    } else if (selectedUserIds.length < 2) {
+                      toggleUser(user.id)
                     }
                   }}
-                  disabled={!isSelected && selectedSlugs.length >= 2}
+                  disabled={!isSelected && selectedUserIds.length >= 2}
                   className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${
                     isSelected
                       ? 'bg-gold/10 border-gold/40 text-foreground-primary'
-                      : selectedSlugs.length >= 2
+                      : selectedUserIds.length >= 2
                         ? 'bg-navy-light border-navy-border text-foreground-muted cursor-not-allowed'
                         : 'bg-navy-light border-navy-border text-foreground-secondary hover:border-gold/20'
                   }`}
                 >
-                  {team.logo_league_folder ? (
-                    <TeamLogo
-                      leagueFolder={team.logo_league_folder}
-                      teamSlug={team.logo_team_slug}
-                      context="standings_row"
-                      alt={team.name}
-                      className="w-6 h-6 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded bg-navy-border shrink-0" />
-                  )}
-                  <span className="text-xs font-medium truncate">{team.name}</span>
-                  {isSelected && <span className="ml-auto text-green-400 text-xs">?</span>}
+                  <TeamLogo
+                    leagueFolder={user.club.logo_league_folder}
+                    teamSlug={user.club.logo_team_slug}
+                    context="standings_row"
+                    alt={user.club.name}
+                    className="w-6 h-6 shrink-0"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-medium truncate text-foreground-primary">{user.username}</span>
+                    <span className="block text-[10px] text-text-muted truncate">{user.club.name}</span>
+                  </span>
+                  {isSelected && <span className="ml-auto text-green-400 text-xs shrink-0">✓</span>}
                 </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Manager Assignments */}
-      {selectedSlugs.length > 0 && (
-        <div className="card p-5">
-          <h2 className="section-header">
-            Manager Assignments
-            <span className="ml-auto text-sm font-normal text-text-muted">Optional</span>
-          </h2>
-          <p className="text-text-muted text-xs mb-4">
-            Assign managers to selected teams. Teams can compete without a manager.
-          </p>
-          <div className="space-y-1.5">
-            {selectedSlugs.map((slug) => {
-              const team = allTeams.find((t) => t.logo_team_slug === slug)
-              if (!team) return null
-              const resolvedManagerId = localManagers[slug] ?? team.manager_id
-              const mgr = resolvedManagerId ? users.find((u) => u.id === resolvedManagerId) : null
-              const isAssigning = assigningSlug === slug
-              const assignErr = assignErrors[slug]
-
-              return (
-                <div key={slug} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-navy-light border border-navy-border">
-                  {team.logo_league_folder && (
-                    <TeamLogo
-                      leagueFolder={team.logo_league_folder}
-                      teamSlug={team.logo_team_slug}
-                      context="standings_row"
-                      alt={team.name}
-                      className="w-5 h-5 shrink-0"
-                    />
-                  )}
-                  <span className="text-xs font-medium text-foreground-primary truncate flex-1 min-w-0">{team.name}</span>
-
-                  {assignErr && (
-                    <span className="text-[10px] text-red-400 truncate max-w-[100px] shrink-0" title={assignErr}>
-                      {assignErr}
-                    </span>
-                  )}
-
-                  {mgr ? (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-xs text-green-600 font-medium">{mgr.username}</span>
-                      <button
-                        type="button"
-                        title="Change manager"
-                        onClick={() => setLocalManagers((prev) => { const n = { ...prev }; delete n[slug]; return n })}
-                        className="text-[10px] text-text-muted hover:text-red-400 transition-colors"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ) : (
-                    <select
-                      className="text-xs border border-navy-border rounded-md px-2 py-1 bg-bg-surface text-foreground-secondary max-w-[160px] shrink-0"
-                      value=""
-                      disabled={isAssigning}
-                      onChange={async (e) => {
-                        const userId = e.target.value
-                        if (!userId) return
-                        setAssigningSlug(slug)
-                        setAssignErrors((prev) => { const n = { ...prev }; delete n[slug]; return n })
-                        try {
-                          // Note: This API might need updating to handle creating team if it doesn't exist yet, 
-                          // but for now we'll assume it handles it or we'll update it next.
-                          const res = await fetch('/api/admin/managers/assign', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                              team_id: team.id, 
-                              user_id: userId,
-                              // Add these for potential team creation in the assign API
-                              logo_league_folder: team.logo_league_folder,
-                              logo_team_slug: team.logo_team_slug,
-                              name: team.name
-                            }),
-                          })
-                          const data = await res.json()
-                          if (!res.ok) {
-                            if (data?.code === 'SACK_COOLDOWN') {
-                              const profile = users.find((u) => u.id === userId)
-                              setCooldown({ username: profile?.username ?? 'this manager', cooldownEndsAt: data.cooldown_ends_at })
-                            }
-                            throw new Error(data.error ?? 'Failed to assign')
-                          }
-                          setLocalManagers((prev) => ({ ...prev, [slug]: userId }))
-                        } catch (err: any) {
-                          setAssignErrors((prev) => ({ ...prev, [slug]: err.message }))
-                        } finally {
-                          setAssigningSlug(null)
-                        }
-                      }}
-                    >
-                      <option value="">{isAssigning ? 'Assigning…' : '— assign manager —'}</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>{u.username}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
               )
             })}
           </div>
@@ -518,7 +404,7 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
               Creating...
             </span>
           ) : (
-            'Create Tournament & Generate Fixtures'
+            'Create Tournament'
           )}
         </button>
       </div>
@@ -542,94 +428,52 @@ export default function CreateTournamentClient({ seasons, allTeams }: Props) {
           </div>
         </ModalPortal>
       )}
-
-      <SackCooldownDialog
-        open={!!cooldown}
-        username={cooldown?.username ?? ''}
-        cooldownEndsAt={cooldown?.cooldownEndsAt ?? ''}
-        onClose={() => setCooldown(null)}
-        onOverride={() => {
-          if (cooldown) {
-            const user = users.find((u) => u.username === cooldown.username)
-            const slug = assigningSlug
-            if (user && slug) {
-              setCooldown(null)
-              const team = allTeams.find((t) => t.logo_team_slug === slug)
-              if (team) {
-                fetch('/api/admin/managers/assign', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    team_id: team.id,
-                    user_id: user.id,
-                    logo_league_folder: team.logo_league_folder,
-                    logo_team_slug: team.logo_team_slug,
-                    name: team.name,
-                    override: true,
-                  }),
-                })
-                  .then((res) => res.json())
-                  .then((data) => {
-                    if (data.success) {
-                      setLocalManagers((prev) => ({ ...prev, [slug]: user.id }))
-                    } else {
-                      setAssignErrors((prev) => ({ ...prev, [slug]: data.error }))
-                    }
-                  })
-              }
-            }
-          }
-        }}
-      />
     </>
   )
 }
 
-function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSelect: (slugs: string[]) => void }) {
+function ImportFromPollButton({ users, onSelect }: { users: UserWithClub[]; onSelect: (userIds: string[]) => void }) {
   const [open, setOpen] = useState(false)
   const [polls, setPolls] = useState<any[]>([])
   const [apps, setApps] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [importLoading, setImportLoading] = useState(false)
+  const [importError, setImportError] = useState('')
   const [done, setDone] = useState(0)
 
+  const userByApplicantId = new Map<string, UserWithClub>(users.map((u) => [u.id, u]))
+
   async function loadPolls() {
-    setLoading(true)
-    setError('')
+    setImportLoading(true)
+    setImportError('')
     try {
       const res = await fetch('/api/admin/polls')
-      if (!res.ok) { setError(`API error: ${res.status}`); return }
+      if (!res.ok) { setImportError(`API error: ${res.status}`); return }
       const data = await res.json()
       setPolls(data.polls ?? [])
       setApps(data.applications ?? [])
     } catch (e: any) {
-      setError(e.message ?? 'Failed to load polls')
+      setImportError(e.message ?? 'Failed to load polls')
     }
-    setLoading(false)
+    setImportLoading(false)
   }
 
   function handleImport(pollId: string) {
     try {
       const pollApps = apps.filter((a: any) => a.poll_id === pollId && a.status !== 'withdrawn')
-      console.log('[ImportFromPoll] pollApps:', pollApps.length, pollApps)
       const matched: string[] = []
       for (const app of pollApps) {
-        const team = allTeams.find(
-          (t) => t.logo_team_slug === app.team_slug && t.logo_league_folder === app.team_league
-        )
-        console.log(`[ImportFromPoll] app: "${app.team_slug}" / "${app.team_league}" -> ${team ? 'MATCH' : 'NO MATCH'}`)
-        if (team) matched.push(team.logo_team_slug)
+        const user = app.applicant_id ? userByApplicantId.get(app.applicant_id) : null
+        if (user) matched.push(user.id)
       }
-      console.log('[ImportFromPoll] matched:', matched)
       if (matched.length > 0) {
         onSelect(matched)
         setDone(matched.length)
         setTimeout(() => setDone(0), 2500)
       } else {
-        setError('No teams matched — the slug/league names differ from the logo database.')
+        setImportError('No poll applicants currently manage a club.')
       }
     } catch (e: any) {
-      setError(e.message ?? 'Import failed')
+      setImportError(e.message ?? 'Import failed')
     }
   }
 
@@ -653,11 +497,11 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
             <div className="relative z-10 w-full max-w-md bg-bg-surface border border-border rounded-2xl shadow-2xl p-6 animate-scale-in max-h-[80vh] flex flex-col">
               <h3 className="text-lg font-bold text-foreground-primary mb-4">Import from Poll</h3>
 
-              {error && (
-                <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg mb-4">{error}</p>
+              {importError && (
+                <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg mb-4">{importError}</p>
               )}
 
-              {loading ? (
+              {importLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-5 h-5 text-accent animate-spin" />
                 </div>
@@ -699,4 +543,3 @@ function ImportFromPollButton({ allTeams, onSelect }: { allTeams: Team[]; onSele
     </>
   )
 }
-

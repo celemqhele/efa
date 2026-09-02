@@ -2,6 +2,7 @@ import Link from 'next/link'
 import DeleteTournamentButton from './DeleteTournamentButton'
 import GenerateFixturesButton from './GenerateFixturesButton'
 import GenerateKnockoutsButton from './GenerateKnockoutsButton'
+import RescheduleFixturesButton from './RescheduleFixturesButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
 import { Trophy } from 'lucide-react'
 
@@ -24,8 +25,8 @@ const STATUS_COLOURS: Record<string, string> = {
   completed: 'text-text-muted bg-bg-surface0/10 border-slate-500/20',
 }
 
-function TournamentCard({ tournament, participantCount, fixtureCount, completedCount }: {
-  tournament: any; participantCount: number; fixtureCount: number; completedCount: number
+function TournamentCard({ tournament, participantCount, fixtureCount, completedCount, knockoutCount }: {
+  tournament: any; participantCount: number; fixtureCount: number; completedCount: number; knockoutCount: number
 }) {
   const typeInfo = TYPE_LABELS[tournament.type] ?? { label: tournament.type, colour: 'text-text-muted bg-bg-surface0/10 border-slate-500/20' }
   const statusCls = STATUS_COLOURS[tournament.status] ?? STATUS_COLOURS.completed
@@ -84,7 +85,8 @@ function TournamentCard({ tournament, participantCount, fixtureCount, completedC
         <div className="grid grid-cols-3 gap-2">
           <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} hasFixtures={fixtureCount > 0} className={MOBILE_ACTION_BTN} />
           <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
-          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
+          <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} hasKnockouts={knockoutCount > 0} className={MOBILE_ACTION_BTN} />
+          <RescheduleFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} fixtureCount={fixtureCount} className={MOBILE_ACTION_BTN} />
         </div>
       </div>
     </div>
@@ -92,7 +94,7 @@ function TournamentCard({ tournament, participantCount, fixtureCount, completedC
 }
 
 export default function Mobile({ data }: { data: any }) {
-  const { tournaments, participantCounts, fixtureCounts, completedCounts, grouped } = data
+  const { tournaments, participantCounts, fixtureCounts, completedCounts, koCounts, grouped } = data
 
   return (
     <div className="px-4 pb-8 space-y-5">
@@ -128,7 +130,7 @@ export default function Mobile({ data }: { data: any }) {
           </h2>
           <div className="space-y-3">
             {grouped.active.map((t: any) => (
-              <TournamentCard key={t.id} tournament={t} participantCount={participantCounts[t.id] ?? 0} fixtureCount={fixtureCounts[t.id] ?? 0} completedCount={completedCounts[t.id] ?? 0} />
+              <TournamentCard key={t.id} tournament={t} participantCount={participantCounts[t.id] ?? 0} fixtureCount={fixtureCounts[t.id] ?? 0} completedCount={completedCounts[t.id] ?? 0} knockoutCount={koCounts?.[t.id] ?? 0} />
             ))}
           </div>
         </section>
@@ -142,7 +144,7 @@ export default function Mobile({ data }: { data: any }) {
           </h2>
           <div className="space-y-3">
             {grouped.upcoming.map((t: any) => (
-              <TournamentCard key={t.id} tournament={t} participantCount={participantCounts[t.id] ?? 0} fixtureCount={fixtureCounts[t.id] ?? 0} completedCount={completedCounts[t.id] ?? 0} />
+              <TournamentCard key={t.id} tournament={t} participantCount={participantCounts[t.id] ?? 0} fixtureCount={fixtureCounts[t.id] ?? 0} completedCount={completedCounts[t.id] ?? 0} knockoutCount={koCounts?.[t.id] ?? 0} />
             ))}
           </div>
         </section>
@@ -155,7 +157,7 @@ export default function Mobile({ data }: { data: any }) {
           </h2>
           <div className="space-y-3 opacity-60">
             {grouped.completed.map((t: any) => (
-              <TournamentCard key={t.id} tournament={t} participantCount={participantCounts[t.id] ?? 0} fixtureCount={fixtureCounts[t.id] ?? 0} completedCount={completedCounts[t.id] ?? 0} />
+              <TournamentCard key={t.id} tournament={t} participantCount={participantCounts[t.id] ?? 0} fixtureCount={fixtureCounts[t.id] ?? 0} completedCount={completedCounts[t.id] ?? 0} knockoutCount={koCounts?.[t.id] ?? 0} />
             ))}
           </div>
         </section>
