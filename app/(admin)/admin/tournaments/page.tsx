@@ -17,10 +17,17 @@ export default async function TournamentsPage() {
     `)
     .order('created_at', { ascending: false })
 
+  const tournamentIds = ((tournaments ?? []) as any[])
+    .map((t: any) => t.id)
+    .filter((id: any): id is string => typeof id === 'string' && id.length > 0)
+
   // Participant counts
-  const { data: participants } = await supabase
-    .from('tournament_participants')
-    .select('tournament_id')
+  const { data: participants } = tournamentIds.length
+    ? await supabase
+        .from('tournament_participants')
+        .select('tournament_id')
+        .in('tournament_id', tournamentIds)
+    : { data: [] }
 
   const participantCounts: Record<string, number> = {}
   for (const p of (participants ?? []) as any[]) {
@@ -28,9 +35,12 @@ export default async function TournamentsPage() {
   }
 
   // Fixture counts
-  const { data: fixtures } = await supabase
-    .from('fixtures')
-    .select('tournament_id, status, round_type')
+  const { data: fixtures } = tournamentIds.length
+    ? await supabase
+        .from('fixtures')
+        .select('tournament_id, status, round_type')
+        .in('tournament_id', tournamentIds)
+    : { data: [] }
 
   const fixtureCounts: Record<string, number> = {}
   const completedCounts: Record<string, number> = {}
