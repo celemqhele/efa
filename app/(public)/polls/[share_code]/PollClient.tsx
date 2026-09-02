@@ -31,13 +31,14 @@ interface Props {
   poll: any
   leagues: LeagueEntry[]
   user: { id: string; username?: string; avatar_url?: string | null } | null
+  isSeasonLinked: boolean
 }
 
 function logoSrc(folder: string, slug: string) {
   return `/logos/${folder}/128x128/${slug}.png`
 }
 
-export default function PollClient({ poll, leagues, user }: Props) {
+export default function PollClient({ poll, leagues, user, isSeasonLinked }: Props) {
   const [search, setSearch] = useState('')
   const [selectedLeague, setSelectedLeague] = useState('')
   const [loadingTeam, setLoadingTeam] = useState<string | null>(null)
@@ -48,7 +49,10 @@ export default function PollClient({ poll, leagues, user }: Props) {
 
   // Load taken slots and my applications on mount
   useState(() => {
-    fetch(`/api/polls/${poll.share_code}`)
+    const endpoint = isSeasonLinked
+      ? `/api/tournament-applications/me?season_id=${poll.season_id}`
+      : `/api/polls/${poll.share_code}`
+    fetch(endpoint)
       .then((r) => r.json())
       .then((data) => {
         setTakenTeams(new Set(data.taken_slots ?? []))
@@ -110,7 +114,7 @@ export default function PollClient({ poll, leagues, user }: Props) {
 
     setTakenTeams((prev) => new Set(prev).add(teamKey(league, slug)))
     setMyApps((prev) => [...prev, data.application])
-    setSuccess(`Applied for ${name}!`)
+    setSuccess(isSeasonLinked ? `Application submitted for ${name}! Awaiting admin review.` : `Applied for ${name}!`)
   }
 
   async function handleWithdraw(appId: string, league: string, slug: string) {
@@ -149,6 +153,11 @@ export default function PollClient({ poll, leagues, user }: Props) {
           <h1 className="text-2xl font-bold text-text-primary">{poll.title}</h1>
           {poll.description && (
             <p className="text-text-muted text-sm mt-space-1">{poll.description}</p>
+          )}
+          {isSeasonLinked && (
+            <p className="text-xs text-accent mt-space-2">
+              Applications create tournament applications for admin review
+            </p>
           )}
           <span className={`inline-block mt-space-2 text-xs px-space-2 py-space-1 rounded-full border font-medium ${
             isOpen
@@ -193,10 +202,13 @@ export default function PollClient({ poll, leagues, user }: Props) {
                       app.status === 'pending' ? 'text-feedback-warning border-feedback-warning/30 bg-feedback-warning/5' :
                       app.status === 'approved' ? 'text-feedback-success border-feedback-success/30 bg-feedback-success/5' :
                       app.status === 'denied' ? 'text-feedback-error border-feedback-error/30 bg-feedback-error/5' :
+                      app.status === 'expired' ? 'text-text-muted border-border bg-bg-base' :
                       'text-text-muted border-border'
-                    }`}>{app.status}</span>
+                    }`}>
+                      {isSeasonLinked && app.status === 'pending' ? 'Awaiting Review' : app.status}
+                    </span>
                   </div>
-                  {app.status === 'pending' && (
+                  {!isSeasonLinked && app.status === 'pending' && (
                     <Button variant="ghost" className="text-xs" onClick={() => handleWithdraw(app.id, app.team_league, app.team_slug)}>
                       Withdraw
                     </Button>
@@ -269,7 +281,7 @@ export default function PollClient({ poll, leagues, user }: Props) {
                     <span className="text-[10px] text-center leading-tight text-text-secondary font-medium line-clamp-2 w-full">
                       {team.name}
                     </span>
-                    {isMine && <span className="text-[9px] text-accent font-medium">Applied</span>}
+                    {isMine && <span className="text-[9px] text-accent font-medium">{isSeasonLinked ? 'Awaiting Review' : 'Applied'}</span>}
                     {taken && !isMine && <span className="text-[9px] text-text-muted font-medium">Taken</span>}
                     {isLoading && <span className="text-[9px] text-accent">Applying...</span>}
                   </button>

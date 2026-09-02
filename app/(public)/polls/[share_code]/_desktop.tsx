@@ -32,7 +32,7 @@ function logoSrc(folder: string, slug: string) {
 }
 
 export default function Desktop({ data }: { data: any }) {
-  const { poll, leagues, user } = data
+  const { poll, leagues, user, isSeasonLinked } = data
 
   const [search, setSearch] = useState('')
   const [selectedLeague, setSelectedLeague] = useState('')
@@ -43,7 +43,10 @@ export default function Desktop({ data }: { data: any }) {
   const [myApps, setMyApps] = useState<PollApp[]>([])
 
   useState(() => {
-    fetch(`/api/polls/${poll.share_code}`)
+    const endpoint = isSeasonLinked
+      ? `/api/tournament-applications/me?season_id=${poll.season_id}`
+      : `/api/polls/${poll.share_code}`
+    fetch(endpoint)
       .then((r) => r.json())
       .then((data) => {
         setTakenTeams(new Set(data.taken_slots ?? []))
@@ -105,7 +108,7 @@ export default function Desktop({ data }: { data: any }) {
 
     setTakenTeams((prev) => new Set(prev).add(teamKey(league, slug)))
     setMyApps((prev) => [...prev, responseData.application])
-    setSuccess(`Applied for ${name}!`)
+    setSuccess(isSeasonLinked ? `Application submitted for ${name}! Awaiting admin review.` : `Applied for ${name}!`)
   }
 
   async function handleWithdraw(appId: string, league: string, slug: string) {
@@ -189,10 +192,13 @@ export default function Desktop({ data }: { data: any }) {
                     app.status === 'pending' ? 'text-feedback-warning border-feedback-warning/30 bg-feedback-warning/5' :
                     app.status === 'approved' ? 'text-feedback-success border-feedback-success/30 bg-feedback-success/5' :
                     app.status === 'denied' ? 'text-feedback-error border-feedback-error/30 bg-feedback-error/5' :
+                    app.status === 'expired' ? 'text-text-muted border-border bg-bg-base' :
                     'text-text-muted border-border'
-                  }`}>{app.status}</span>
+                  }`}>
+                    {isSeasonLinked && app.status === 'pending' ? 'Awaiting Review' : app.status}
+                  </span>
                 </div>
-                {app.status === 'pending' && (
+                {!isSeasonLinked && app.status === 'pending' && (
                   <Button variant="ghost" className="text-xs" onClick={() => handleWithdraw(app.id, app.team_league, app.team_slug)}>
                     Withdraw
                   </Button>
@@ -257,7 +263,7 @@ export default function Desktop({ data }: { data: any }) {
                       </td>
                       <td className="px-5 py-3">
                         {isMine ? (
-                          <span className="text-xs font-medium text-accent">Applied</span>
+                          <span className="text-xs font-medium text-accent">{isSeasonLinked ? 'Awaiting Review' : 'Applied'}</span>
                         ) : taken ? (
                           <span className="text-xs text-text-muted">Taken</span>
                         ) : (
@@ -265,17 +271,19 @@ export default function Desktop({ data }: { data: any }) {
                         )}
                       </td>
                       <td className="px-5 py-3 text-right">
-                        {isMine ? (
-                          <Button variant="ghost" className="text-xs" onClick={() => handleWithdraw(myApp!.id, league.folder, team.slug)}>
-                            Withdraw
-                          </Button>
-                        ) : !disabled ? (
-                          <Button variant="primary" className="text-xs" onClick={() => handleApply(league.folder, team.slug, team.name)}>
-                            {isLoading ? 'Applying...' : 'Apply'}
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-text-muted">—</span>
-                        )}
+                            {isMine ? (
+                              !isSeasonLinked && (
+                                <Button variant="ghost" className="text-xs" onClick={() => handleWithdraw(myApp!.id, league.folder, team.slug)}>
+                                  Withdraw
+                                </Button>
+                              )
+                            ) : !disabled ? (
+                              <Button variant="primary" className="text-xs" onClick={() => handleApply(league.folder, team.slug, team.name)}>
+                                {isLoading ? 'Applying...' : 'Apply'}
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-text-muted">—</span>
+                            )}
                       </td>
                     </tr>
                   )

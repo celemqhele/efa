@@ -74,6 +74,8 @@ export default function AdminPollsPage() {
   const [description, setDescription] = useState('')
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>([])
   const [allowInternational, setAllowInternational] = useState(false)
+  const [seasonId, setSeasonId] = useState('')
+  const [seasons, setSeasons] = useState<{ id: string; name: string }[]>([])
   const [creating, setCreating] = useState(false)
 
   const LEAGUE_OPTIONS = [
@@ -121,7 +123,16 @@ export default function AdminPollsPage() {
     setLoading(false)
   }, [supabase])
 
+  const loadSeasons = useCallback(async () => {
+    const res = await fetch('/api/admin/seasons')
+    if (res.ok) {
+      const data = await res.json()
+      setSeasons(data.seasons ?? [])
+    }
+  }, [])
+
   useEffect(() => { loadPolls() }, [loadPolls])
+  useEffect(() => { loadSeasons() }, [loadSeasons])
 
   function toggleLeague(value: string) {
     setSelectedLeagues((prev) =>
@@ -142,6 +153,7 @@ export default function AdminPollsPage() {
         description: description.trim() || null,
         allowed_leagues: selectedLeagues.length > 0 ? selectedLeagues : [],
         allowed_international: allowInternational,
+        season_id: seasonId || null,
       }),
     })
 
@@ -157,6 +169,7 @@ export default function AdminPollsPage() {
     setDescription('')
     setSelectedLeagues([])
     setAllowInternational(false)
+    setSeasonId('')
     setCreating(false)
     loadPolls()
   }
@@ -390,6 +403,19 @@ export default function AdminPollsPage() {
               <div>
                 <label className="form-label">Description (optional)</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Instructions for applicants..." className="input-field" rows={3} />
+              </div>
+
+              <div>
+                <label className="form-label">Season (optional)</label>
+                <select value={seasonId} onChange={(e) => setSeasonId(e.target.value)} className="input-field">
+                  <option value="">— No season linked (standalone poll) —</option>
+                  {seasons.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-text-muted mt-space-1">
+                  Link to a season so applications create tournament applications for admin review.
+                </p>
               </div>
 
               <div>

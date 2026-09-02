@@ -15,7 +15,7 @@ export async function GET() {
 
   const { data: polls } = await db
     .from('polls' as any)
-    .select('*, created_by:profiles!polls_created_by_fkey(username)')
+    .select('*, created_by:profiles!polls_created_by_fkey(username), season:seasons!polls_season_id_fkey(id, name)')
     .order('created_at', { ascending: false })
 
   const pollIds = (polls ?? []).map((p: any) => p.id)
@@ -44,10 +44,22 @@ export async function POST(request: Request) {
   if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { title, description, allowed_leagues, allowed_international } = body
+  const { title, description, allowed_leagues, allowed_international, season_id } = body
 
   if (!title?.trim()) {
     return Response.json({ error: 'title is required' }, { status: 400 })
+  }
+
+  // Validate season_id if provided
+  if (season_id) {
+    const { data: season, error: seasonError } = await adminSupabase
+      .from('seasons')
+      .select('id, name')
+      .eq('id', season_id)
+      .single()
+    if (seasonError || !season) {
+      return Response.json({ error: 'Invalid season_id' }, { status: 400 })
+    }
   }
 
   const share_code = crypto.randomBytes(4).toString('hex')
@@ -62,6 +74,7 @@ export async function POST(request: Request) {
       share_code,
       allowed_leagues: allowed_leagues ?? [],
       allowed_international: allowed_international ?? false,
+      season_id: season_id ?? null,
     })
     .select('*')
     .single()
@@ -73,7 +86,7 @@ export async function POST(request: Request) {
     action: 'create_poll',
     target_type: 'poll',
     target_id: poll.id,
-    details: { title, share_code },
+    details: { title, share_code, season_id },
   })
 
   return Response.json({ poll })

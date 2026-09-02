@@ -32,7 +32,7 @@ function logoSrc(folder: string, slug: string) {
 }
 
 export default function Mobile({ data }: { data: any }) {
-  const { poll, leagues, user } = data
+  const { poll, leagues, user, isSeasonLinked } = data
 
   const [search, setSearch] = useState('')
   const [selectedLeague, setSelectedLeague] = useState('')
@@ -44,7 +44,10 @@ export default function Mobile({ data }: { data: any }) {
 
   // Load taken slots and my applications on mount
   useState(() => {
-    fetch(`/api/polls/${poll.share_code}`)
+    const endpoint = isSeasonLinked
+      ? `/api/tournament-applications/me?season_id=${poll.season_id}`
+      : `/api/polls/${poll.share_code}`
+    fetch(endpoint)
       .then((r) => r.json())
       .then((data) => {
         setTakenTeams(new Set(data.taken_slots ?? []))
@@ -106,7 +109,7 @@ export default function Mobile({ data }: { data: any }) {
 
     setTakenTeams((prev) => new Set(prev).add(teamKey(league, slug)))
     setMyApps((prev) => [...prev, responseData.application])
-    setSuccess(`Applied for ${name}!`)
+    setSuccess(isSeasonLinked ? `Application submitted for ${name}! Awaiting admin review.` : `Applied for ${name}!`)
   }
 
   async function handleWithdraw(appId: string, league: string, slug: string) {
@@ -144,6 +147,11 @@ export default function Mobile({ data }: { data: any }) {
         <h1 className="text-lg font-bold text-text-primary">{poll.title}</h1>
         {poll.description && (
           <p className="text-text-muted text-xs mt-1">{poll.description}</p>
+        )}
+        {isSeasonLinked && (
+          <p className="text-xs text-accent mt-2">
+            Applications create tournament applications for admin review
+          </p>
         )}
         <span className={`inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full border font-medium min-h-[24px] ${
           isOpen
@@ -191,10 +199,13 @@ export default function Mobile({ data }: { data: any }) {
                     app.status === 'pending' ? 'text-feedback-warning border-feedback-warning/30 bg-feedback-warning/5' :
                     app.status === 'approved' ? 'text-feedback-success border-feedback-success/30 bg-feedback-success/5' :
                     app.status === 'denied' ? 'text-feedback-error border-feedback-error/30 bg-feedback-error/5' :
+                    app.status === 'expired' ? 'text-text-muted border-border bg-bg-base' :
                     'text-text-muted border-border'
-                  }`}>{app.status}</span>
+                  }`}>
+                    {isSeasonLinked && app.status === 'pending' ? 'Awaiting Review' : app.status}
+                  </span>
                 </div>
-                {app.status === 'pending' && (
+                {!isSeasonLinked && app.status === 'pending' && (
                   <Button variant="ghost" className="text-xs min-h-[32px]" onClick={() => handleWithdraw(app.id, app.team_league, app.team_slug)}>
                     Withdraw
                   </Button>
@@ -266,7 +277,7 @@ export default function Mobile({ data }: { data: any }) {
                   <span className="text-[9px] text-center leading-tight text-text-secondary font-medium line-clamp-2 w-full">
                     {team.name}
                   </span>
-                  {isMine && <span className="text-[9px] text-accent font-medium">Applied</span>}
+                  {isMine && <span className="text-[9px] text-accent font-medium">{isSeasonLinked ? 'Awaiting Review' : 'Applied'}</span>}
                   {taken && !isMine && <span className="text-[9px] text-text-muted font-medium">Taken</span>}
                   {isLoading && <span className="text-[9px] text-accent">Applying...</span>}
                 </button>

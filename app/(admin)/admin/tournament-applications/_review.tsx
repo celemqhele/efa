@@ -13,11 +13,13 @@ type App = {
   season_id: string
   applicant_id: string
   team_id: string
+  poll_id: string | null
   expires_at: string | null
   created_at: string
   season: { id: string; name: string } | null
   applicant: { id: string; username: string | null; avatar_url: string | null; sacked_at: string | null } | null
   team: { id: string; name: string | null; logo_league_folder: string | null; logo_team_slug: string | null } | null
+  poll: { id: string; title: string } | null
 }
 
 type OpenSeason = { season_id: string; season_name: string; vacant_seats: number }
@@ -142,6 +144,14 @@ export default function ReviewShell({ applications, openSeasons }: { application
                     {app.season?.name ?? 'Season'}
                   </Link>
                 </div>
+                {app.poll && (
+                  <div className="flex items-center gap-space-2">
+                    <span className="text-xs text-text-muted">via</span>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-accent/10 text-accent border border-accent/30">
+                      {app.poll.title}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-space-2">
                   <span className="text-xs text-text-muted">Club</span>
                   {app.team?.logo_league_folder && app.team?.logo_team_slug ? (

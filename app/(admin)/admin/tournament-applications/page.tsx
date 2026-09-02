@@ -20,10 +20,11 @@ export default async function TournamentApplicationsPage() {
   const { data } = await adminSupabase
     .from('tournament_applications')
     .select(`
-      id, season_id, applicant_id, team_id, status, review_note, expires_at, created_at,
+      id, season_id, applicant_id, team_id, poll_id, status, review_note, expires_at, created_at,
       season:season_id(name),
       applicant:applicant_id(id, username, avatar_url, sacked_at),
-      team:team_id(id, name, logo_league_folder, logo_team_slug)
+      team:team_id(id, name, logo_league_folder, logo_team_slug),
+      poll:poll_id(id, title)
     `)
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
@@ -35,6 +36,7 @@ export default async function TournamentApplicationsPage() {
     season: Array.isArray(row.season) ? row.season[0] : row.season,
     applicant: Array.isArray(row.applicant) ? row.applicant[0] : row.applicant,
     team: Array.isArray(row.team) ? row.team[0] : row.team,
+    poll: Array.isArray(row.poll) ? row.poll[0] : row.poll,
   }))
 
   return <ReviewShell applications={applications} openSeasons={openSeasons} />
