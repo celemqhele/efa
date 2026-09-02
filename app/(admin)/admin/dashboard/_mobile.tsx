@@ -4,10 +4,9 @@ import Link from 'next/link'
 import TeamLogo from '@/components/ui/TeamLogo'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 import DueFixturesExportButton from './DueFixturesExportButton'
-import NewsTopicExportButton from './NewsTopicExportButton'
 import SwipeCardStack from '@/components/ui/SwipeCardStack'
 import { APP_TIME_ZONE } from '@/lib/app-time'
-import { Trophy, CheckCircle2, CalendarDays, ClipboardList, AlertTriangle, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Trophy, CheckCircle2, CalendarDays, ClipboardList, AlertTriangle, ChevronRight } from 'lucide-react'
 import { cleanTeamName } from '@/lib/clean-team-name'
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -28,37 +27,6 @@ const TYPE_STYLES: Record<string, { label: string; colour: string }> = {
   tournament_club: { label: 'Club', colour: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
   tournament_international: { label: 'Intl', colour: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
   friendlies: { label: 'Friendly', colour: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
-}
-
-const ACTIONS = [
-  { href: '/admin/results/submit', label: 'Submit Result', variant: 'gold' as const },
-  { href: '/admin/fixtures/manage', label: 'Fixtures', variant: 'outline' as const },
-  { href: '/admin/seasons', label: 'Seasons', variant: 'outline' as const },
-  { href: '/admin/tournament-applications', label: 'Applications', variant: 'outline' as const },
-  { href: '/admin/managers', label: 'Managers', variant: 'outline' as const },
-  { href: '/admin/polls', label: 'Polls', variant: 'outline' as const },
-  { href: '/admin/hall-of-fame', label: 'Hall of Fame', variant: 'outline' as const },
-  { href: '/admin/export', label: 'Export', variant: 'outline' as const },
-  { href: '/admin/push-shooter', label: 'Send Push', variant: 'outline' as const },
-  { href: '/admin/backdoor-submissions', label: 'Backdoor', variant: 'outline' as const },
-  { href: '/admin/users/manage', label: 'Users', variant: 'outline' as const },
-]
-
-function QuickActions() {
-  return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 px-3 snap-x snap-mandatory">
-      {ACTIONS.map((a) => (
-        <Link
-          key={a.href}
-          href={a.href}
-          className="snap-start shrink-0 whitespace-nowrap text-sm font-semibold px-5 py-3 rounded-2xl min-h-[48px] flex items-center justify-center transition-colors bg-bg-surface/80 backdrop-saturate-150 backdrop-blur-2xl border border-border/50 text-text-primary hover:bg-bg-surface"
-        >
-          {a.label}
-        </Link>
-      ))}
-      <NewsTopicExportButton />
-    </div>
-  )
 }
 
 function FixtureDueCard({ fx }: { fx: any }) {
@@ -191,8 +159,6 @@ export default function Mobile({ data }: { data: any }) {
           </p>
         </div>
       </div>
-
-      <QuickActions />
 
       {conflictCount > 0 && (
         <div className="bg-bg-surface border border-red-500/30 rounded-xl p-4 space-y-3">
