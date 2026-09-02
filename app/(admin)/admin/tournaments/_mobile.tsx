@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import DeleteTournamentButton from './DeleteTournamentButton'
 import GenerateFixturesButton from './GenerateFixturesButton'
+import GenerateFriendliesButton from './GenerateFriendliesButton'
 import GenerateKnockoutsButton from './GenerateKnockoutsButton'
 import RescheduleFixturesButton from './RescheduleFixturesButton'
 import RunTournamentDrawButton from './RunTournamentDrawButton'
@@ -31,6 +32,8 @@ function TournamentCard({ tournament, participantCount, fixtureCount, completedC
   const typeInfo = TYPE_LABELS[tournament.type] ?? { label: tournament.type, colour: 'text-text-muted bg-bg-surface0/10 border-slate-500/20' }
   const statusCls = STATUS_COLOURS[tournament.status] ?? STATUS_COLOURS.completed
   const progress = fixtureCount > 0 ? Math.round((completedCount / fixtureCount) * 100) : 0
+  const isClubType = tournament.type === 'tournament_club' || tournament.type === 'tournament_international'
+  const isFriendly = tournament.type === 'friendlies'
 
   return (
     <div className="bg-bg-surface border border-border rounded-xl p-5 space-y-4">
@@ -72,22 +75,25 @@ function TournamentCard({ tournament, participantCount, fixtureCount, completedC
         </div>
       )}
 
-      <div className="space-y-2 pt-1">
-        <div className="grid grid-cols-3 gap-2">
-          <Link href={`/admin/fixtures/manage?tournament=${tournament.id}`} className={MOBILE_ACTION_BTN}>
-            Fixtures
-          </Link>
-          <Link href={`/standings?tournament=${tournament.id}`} className={MOBILE_ACTION_BTN}>
-            Standings
-          </Link>
-          <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={MOBILE_ACTION_BTN_DANGER} />
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} hasFixtures={fixtureCount > 0} className={MOBILE_ACTION_BTN} />
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <Link href={`/admin/fixtures/manage?tournament=${tournament.id}`} className={MOBILE_ACTION_BTN}>
+          Fixtures
+        </Link>
+        <Link href={`/standings?tournament=${tournament.id}`} className={MOBILE_ACTION_BTN}>
+          Standings
+        </Link>
+        <GenerateFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} hasFixtures={fixtureCount > 0} className={MOBILE_ACTION_BTN} />
+        <RescheduleFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} fixtureCount={fixtureCount} className={MOBILE_ACTION_BTN} />
+        {isClubType && (
           <RunTournamentDrawButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
+        )}
+        {isClubType && (
           <GenerateKnockoutsButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} hasKnockouts={knockoutCount > 0} className={MOBILE_ACTION_BTN} />
-          <RescheduleFixturesButton tournamentId={tournament.id} tournamentName={tournament.name} fixtureCount={fixtureCount} className={MOBILE_ACTION_BTN} />
-        </div>
+        )}
+        {isFriendly && (
+          <GenerateFriendliesButton tournamentId={tournament.id} tournamentName={tournament.name} type={tournament.type} className={MOBILE_ACTION_BTN} />
+        )}
+        <DeleteTournamentButton tournamentId={tournament.id} tournamentName={tournament.name} className={MOBILE_ACTION_BTN_DANGER} />
       </div>
     </div>
   )
