@@ -36,6 +36,8 @@ Whenever a file needs to be removed:
 
 Context files live in `.opencode/context/`, grouped into category folders. Each folder groups a related feature/topic. **Each change or modification gets its own new context file — never update an existing context file with new info**, because editing an existing file erases the old content that may still be useful. New files are added per change so history is preserved.
 
+> **MANDATORY: Every time you edit, add, or remove code in this repo, you MUST create a new context file documenting the change — no exceptions. Write the context file BEFORE committing. If you skip this, the session is incomplete.**
+
 ### IMPORTANT: finding context files
 The Glob/Grep file tools SKIP hidden/dot-directories, so `.opencode/` is invisible to
 them (`glob(".opencode/context/**/*.md")` returns nothing). You MUST use the shell or
