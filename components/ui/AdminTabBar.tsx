@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/supabase/types'
+import NewsTopicExportButton from '@/app/(admin)/admin/dashboard/NewsTopicExportButton'
 
 const ADMIN_TABS = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -94,6 +95,7 @@ export default function AdminTabBar({ profile }: AdminTabBarProps) {
                     <span className="flex-1">{label}</span>
                   </Link>
                 ))}
+                <NewsTopicExportButton />
 
                 <div className="border-t border-border my-space-2" />
                 <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider px-2 pt-1 pb-1">

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import NewsTopicExportButton from '@/app/(admin)/admin/dashboard/NewsTopicExportButton'
 import {
   LayoutDashboard,
   ClipboardList,
@@ -159,6 +160,7 @@ export default function AdminNavDesktop({ profile, handleLogout }: AdminNavDeskt
                   <span className="flex-1">{label}</span>
                 </Link>
               ))}
+              <NewsTopicExportButton />
             </div>
           </div>
         )}

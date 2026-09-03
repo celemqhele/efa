@@ -4,7 +4,6 @@ import Link from 'next/link'
 import TeamLogo from '@/components/ui/TeamLogo'
 import DashboardFixtureActions from '@/components/ui/DashboardFixtureActions'
 import DueFixturesExportButton from './DueFixturesExportButton'
-import NewsTopicExportButton from './NewsTopicExportButton'
 import DeleteTournamentButton from '@/app/(admin)/admin/tournaments/DeleteTournamentButton'
 import RunTournamentDrawButton from '@/app/(admin)/admin/tournaments/RunTournamentDrawButton'
 import GenerateKnockoutsButton from '@/app/(admin)/admin/tournaments/GenerateKnockoutsButton'
@@ -35,19 +34,6 @@ const TYPE_STYLES: Record<string, { label: string; colour: string }> = {
   tournament_international: { label: 'Intl', colour: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
   friendlies: { label: 'Friendly', colour: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
 }
-
-const ACTIONS = [
-  { href: '/admin/results/submit', label: 'Submit Result', variant: 'gold' as const },
-  { href: '/admin/fixtures/manage', label: 'Fixtures', variant: 'outline' as const },
-  { href: '/admin/seasons', label: 'Seasons', variant: 'outline' as const },
-  { href: '/admin/tournament-applications', label: 'Applications', variant: 'outline' as const },
-  { href: '/admin/polls', label: 'Polls', variant: 'outline' as const },
-  { href: '/admin/hall-of-fame', label: 'Hall of Fame', variant: 'outline' as const },
-  { href: '/admin/export', label: 'Export', variant: 'outline' as const },
-  { href: '/admin/push-shooter', label: 'Send Push', variant: 'outline' as const },
-  { href: '/admin/backdoor-submissions', label: 'Backdoor', variant: 'outline' as const },
-  { href: '/admin/users/manage', label: 'Users', variant: 'outline' as const },
-]
 
 function ConflictCard({ fx, confs }: { fx: any; confs: any[] }) {
   return (
@@ -186,25 +172,6 @@ export default function Desktop({ data }: { data: any }) {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="sticky top-0 z-10 -mx-6 px-6 py-3 bg-bg-surface/80 backdrop-blur-xl border-b border-border">
-        <div className="flex flex-wrap gap-2">
-          {ACTIONS.map((a) => (
-            <Link
-              key={a.href}
-              href={a.href}
-              className={`text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors ${
-                a.variant === 'gold'
-                  ? 'bg-accent text-bg-surface hover:bg-accent-hover'
-                  : 'border border-border text-text-secondary hover:border-accent hover:text-accent'
-              }`}
-            >
-              {a.label}
-            </Link>
-          ))}
-          <NewsTopicExportButton />
-        </div>
-      </div>
-
       <div className="space-y-6 pb-8 pt-6">
         <div className="flex items-center justify-between">
           <div>

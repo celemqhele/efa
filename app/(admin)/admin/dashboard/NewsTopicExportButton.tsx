@@ -33,10 +33,10 @@ export default function NewsTopicExportButton() {
     <button
       onClick={handleExport}
       disabled={loading}
-      className="snap-start shrink-0 whitespace-nowrap text-sm font-semibold px-5 py-3 rounded-2xl min-h-[48px] flex items-center justify-center transition-colors bg-bg-surface/80 backdrop-saturate-150 backdrop-blur-2xl border border-border/50 text-text-primary hover:bg-bg-surface disabled:opacity-50"
+      className="flex items-center gap-3 w-full px-4 py-3 rounded-lg transition-colors text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-50"
     >
-      <FileText className="w-4 h-4 mr-1.5" />
-      {loading ? 'Generating…' : 'News Topic Export'}
+      <FileText className="w-5 h-5 shrink-0 text-text-muted" />
+      {loading ? 'Generating…' : 'Generate News'}
     </button>
   )
 }
