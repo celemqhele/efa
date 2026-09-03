@@ -1,5 +1,7 @@
 # AGENTS.md — Instructions for AI agents working in this repo
 
+> **SESSION STARTUP: Before doing ANYTHING else, list and read the relevant context files in `.opencode/context/`. This is mandatory at the start of every new session — never skip it. Use `Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-Object FullName` to list all context files, then read the relevant ones before answering the user's first question. If you skip this, you WILL miss existing context and make redundant or conflicting changes.**
+
 ## Supabase — you CAN run SQL directly (don't ask the user to paste SQL)
 
 You have direct, working access to the remote Supabase Postgres database from the terminal. Use it. Never tell the user "go paste this in the SQL Editor."
