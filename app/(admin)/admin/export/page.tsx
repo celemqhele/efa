@@ -400,8 +400,26 @@ export default async function ExportPage({ searchParams }: Props) {
         standings = leagueStandings
         
         if (tournament.type !== 'league') {
+          const { data: dayFixtures } = await supabase
+            .from('fixtures')
+            .select('home_team_id, away_team_id')
+            .eq('tournament_id', tournamentId)
+            .gte('scheduled_date', dateStart)
+            .lte('scheduled_date', dateEnd)
+
+          const playingTeamIds = new Set<string>(
+            (dayFixtures ?? []).flatMap(f => [f.home_team_id, f.away_team_id]).filter(Boolean)
+          )
+
+          const filteredGs: Record<string, any[]> = {}
+          for (const [group, rows] of Object.entries(gs)) {
+            if (rows.some(r => playingTeamIds.has(r.team_id))) {
+              filteredGs[group] = rows
+            }
+          }
+
           isChunked = true
-          const groupEntries = Object.entries(gs).sort()
+          const groupEntries = Object.entries(filteredGs).sort()
           for (const [group, rows] of groupEntries) {
             chunks.push({
               key: `${tournamentId}-${cardType}-group-${group}`,
