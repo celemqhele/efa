@@ -175,7 +175,7 @@ function cleanTeamInput(input: string): string {
 
 // Known commands. Ordered from most specific to most generic so multi-word
 // admin commands match before the generic "backdoor" keyword.
-const COMMAND_PHRASES: [string, 'manager_applications' | 'backdoor_submissions' | 'backdoor_admin' | 'backdoor' | 'check_fixtures' | 'apply' | 'submit_result' | 'tournament_applications'][] = [
+const COMMAND_PHRASES: [string, 'manager_applications' | 'backdoor_submissions' | 'backdoor_admin' | 'backdoor' | 'check_fixtures' | 'apply' | 'submit_result' | 'tournament_applications' | 'reset_password'][] = [
   ['manager applications', 'manager_applications'],
   ['manager apps', 'manager_applications'],
 
@@ -214,6 +214,13 @@ const COMMAND_PHRASES: [string, 'manager_applications' | 'backdoor_submissions' 
   ['create an account', 'apply'],
   ['register', 'apply'],
   ['apply', 'apply'],
+  ['reset my password', 'reset_password'],
+  ['reset password', 'reset_password'],
+  ['forgot my password', 'reset_password'],
+  ['forgot password', 'reset_password'],
+  ['change my password', 'reset_password'],
+  ['change password', 'reset_password'],
+  ['new password', 'reset_password'],
 ]
 
 function findCommandHandler(text: string): string | null {
@@ -457,6 +464,9 @@ type SessionData = {
   submission_menu_step: 'menu' | null
   // Onboarding flow (apply command)
   onboarding_username: string | null
+  // Password reset flow (welcome menu / "reset password" command)
+  password_reset_profile_id: string | null
+  password_reset_username: string | null
   // Tournament-application flow
   tourney_apply_step: 'pick_season' | 'pick_team' | 'confirm' | null
   tourney_seasons: { season_id: string; season_name: string; vacant_seats: number }[] | null
@@ -514,7 +524,8 @@ const WELCOME_MENU =
   '2. Opponent did not respond, or gave you the win\n' +
   '3. Create an EFA account\n' +
   '4. Check my backdoor applications\n' +
-  '5. Tournament applications'
+  '5. Tournament applications\n' +
+  '6. Reset my password'
 
 // Footer appended to free-text "info-request" prompts (score, team names, date,
 // forfeit, etc.) so a mid-flow user always has an explicit way out. Not used on
@@ -611,6 +622,10 @@ async function handleWelcomeMenu(from: string, text: string, phoneNumberId: stri
   }
   if (num === 5) {
     await handleTourneyApplyStart(from, phoneNumberId)
+    return
+  }
+  if (num === 6) {
+    await handlePasswordResetStart(from, phoneNumberId)
     return
   }
   await sendTextMessage(from, WELCOME_MENU, phoneNumberId)
@@ -2165,6 +2180,88 @@ async function resolveProfileByPhone(from: string): Promise<{ id: string; userna
   return { id: profile.id as string, username: (profile.username ?? 'player') as string, sacked_at: profile.sacked_at ?? null }
 }
 
+// ─── WhatsApp: password reset (phone-verified funnel) ────────────────────────
+// Security: the password can only be reset for the account whose phone number
+// matches the number the user is messaging from. The reset itself is code-verified
+// (never delegated to free-form LLM output) — the LLM only routes intent here.
+
+async function handlePasswordResetStart(from: string, phoneNumberId: string) {
+  const profile = await resolveProfileByPhone(from)
+  if (!profile) {
+    await sendTextMessage(
+      from,
+      `We couldn't find an EFA account linked to this WhatsApp number. To set one up, reply 3 to create an account.`,
+      phoneNumberId
+    )
+    return
+  }
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_password_reset',
+    password_reset_profile_id: profile.id,
+    password_reset_username: profile.username,
+  })
+  await sendTextMessage(
+    from,
+    `I found the EFA account @${profile.username} linked to this number. Reply YES to reset its password to the default (${DEFAULT_USER_PASSWORD}), or NO to cancel.`,
+    phoneNumberId
+  )
+}
+
+async function handlePasswordResetConfirm(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isNo(text)) {
+    await clearSession(from)
+    await sendTextMessage(from, 'No problem. Send a new screenshot or message when you are ready.', phoneNumberId)
+    return
+  }
+  if (isYes(text)) {
+    const profileId = session.password_reset_profile_id
+    if (!profileId) {
+      await clearSession(from)
+      await sendTextMessage(from, 'Sorry, the reset session expired. Reply 6 to try again.', phoneNumberId)
+      return
+    }
+    const supabase = await createAdminClient()
+    // Re-verify: the messaging number must still match this profile's phone
+    const profile = await resolveProfileByPhone(from)
+    if (!profile || profile.id !== profileId) {
+      await clearSession(from)
+      await sendTextMessage(from, 'Sorry, we could not verify this number against the account. Reply 6 to try again.', phoneNumberId)
+      return
+    }
+    const { error } = await supabase.auth.admin.updateUserById(profileId, { password: DEFAULT_USER_PASSWORD })
+    if (error) {
+      console.error('[webhook] password reset failed:', error.message)
+      await clearSession(from)
+      await sendTextMessage(from, 'Sorry, something went wrong resetting your password. Please try again later.', phoneNumberId)
+      return
+    }
+    try {
+      await supabase.from('audit_log').insert({
+        admin_id: profileId,
+        action: 'reset_password',
+        target_type: 'user',
+        target_id: profileId,
+        details: { username: session.password_reset_username, source: 'whatsapp' },
+      })
+    } catch (e) {
+      console.error('[webhook] password reset audit log failed:', e)
+    }
+    await clearSession(from)
+    await sendTextMessage(
+      from,
+      `Your password has been reset to:\n\n${DEFAULT_USER_PASSWORD}\n\nLogin here: ${ONBOARDING_LOGIN_URL}\n\nYou can change it after logging in on the app.`,
+      phoneNumberId
+    )
+    return
+  }
+  await sendTextMessage(
+    from,
+    `Please reply YES to reset the password, or NO to cancel.`,
+    phoneNumberId
+  )
+}
+
 async function handleTourneyApplyStart(from: string, phoneNumberId: string) {
   const profile = await resolveProfileByPhone(from)
   if (!profile) {
@@ -2999,6 +3096,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     await handleOnboardingUsername(from, text, phoneNumberId)
     return
   }
+  // ─── Password reset flow ────────────────────────────────────────────────────
+  if (session?.state === 'awaiting_password_reset') {
+    await handlePasswordResetConfirm(from, text, session, phoneNumberId)
+    return
+  }
   // ─── Tournament-application flow ───────────────────────────────────────────
   if (session?.state === 'awaiting_tourney_apply') {
     await handleTourneyApplyReply(from, text, session, phoneNumberId)
@@ -3107,6 +3209,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   // ─── Onboarding command (new players) ───────────────────────────────────────
   if (command === 'apply') {
     await handleOnboardingStart(from, phoneNumberId)
+    return
+  }
+  // ─── Reset password command ─────────────────────────────────────────────────
+  if (command === 'reset_password') {
+    await handlePasswordResetStart(from, phoneNumberId)
     return
   }
   // ─── Tournament (season) applications command ───────────────────────────────

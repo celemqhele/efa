@@ -10,7 +10,6 @@ import {
   UserCheck,
   Ellipsis,
   FileCheck2,
-  Users,
   BarChart3,
   Medal,
   Download,
@@ -32,7 +31,6 @@ const ADMIN_TABS = [
 
 const MORE_LINKS = [
   { href: '/admin/results/submit', label: 'Submit Result', icon: FileCheck2 },
-  { href: '/admin/managers', label: 'Managers', icon: Users },
   { href: '/admin/polls', label: 'Polls', icon: BarChart3 },
   { href: '/admin/hall-of-fame', label: 'Hall of Fame', icon: Medal },
   { href: '/admin/export', label: 'Export', icon: Download },

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { House, CalendarDays, ListChecks, Trophy, LayoutDashboard, Bell, LogOut } from 'lucide-react'
 import GlobalSearch from './GlobalSearch'
+import AdminNavDesktop from './AdminNavDesktop'
 
 interface NavDesktopProps {
   profile?: any | null
@@ -29,6 +30,10 @@ function getNavLinks(): { href: string; label: string; icon: any }[] {
 export default function NavDesktop({ profile, unreadCount = 0, handleLogout }: NavDesktopProps) {
   const pathname = usePathname()
   const isAdmin = profile?.role === 'admin'
+
+  if (isAdmin && pathname.startsWith('/admin')) {
+    return <AdminNavDesktop profile={profile} handleLogout={handleLogout} />
+  }
 
   const navLinks = getNavLinks()
 
