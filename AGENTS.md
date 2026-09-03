@@ -38,12 +38,20 @@ Context files live in `.opencode/context/`, grouped into category folders. Each 
 
 ### IMPORTANT: finding context files
 The Glob/Grep file tools SKIP hidden/dot-directories, so `.opencode/` is invisible to
-them (`glob(".opencode/context/**/*.md")` returns nothing). To list/search context files
-you MUST use the shell or the Read tool instead:
+them (`glob(".opencode/context/**/*.md")` returns nothing). You MUST use the shell or
+the Read tool to work with context files.
+
+**List-first, then shortlist (never keyword-grep first).** When researching any topic,
+always begin by listing ALL context files, then shortlist which to read based on the
+**file names** (and category folders) — do NOT rely on keyword searches of file contents
+first. Keywords often don't match the filename, so keyword-grep hides relevant files and
+you end up overlooking them. The filename + category folder is the primary signal.
 ```powershell
 Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-Object FullName
-Get-ChildItem -Recurse -Filter *.md -Path ".opencode\context" | Select-String -Pattern "keyword" -SimpleMatch
 ```
+Only after shortlisting from the full list should you read the chosen files (and, if
+still needed to confirm scope, grep within those files). Avoid content-grep over the whole
+tree as the first step.
 
 ### Category folders
 
