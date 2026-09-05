@@ -123,6 +123,23 @@ export async function resolveUserClubId(db: SupabaseClientLike, userId: string):
   return (data && data[0]?.id) || null
 }
 
+// Resolve the club a user manages, ignoring the Vacant placeholder and any
+// other excluded team ids. The Vacant placeholder must never count as a club.
+export async function resolveUserClubIdExcluding(
+  db: SupabaseClientLike,
+  userId: string,
+  excludeIds: string[]
+): Promise<string | null> {
+  const { data } = await db
+    .from('teams')
+    .select('id, logo_league_folder, logo_team_slug')
+    .eq('manager_id', userId)
+  const row = (data ?? []).find(
+    (t: any) => !excludeIds.includes(t.id) && !(t.logo_league_folder === VACANT_FOLDER && t.logo_team_slug === VACANT_SLUG)
+  )
+  return row?.id ?? null
+}
+
 // ─── Slot (tournament seat) management ────────────────────────────────────────
 // Vacate every slot a user holds: ownership cleared, seat shown as Vacant.
 // Standings continuity is preserved (the seat keeps its points, now under the
@@ -488,7 +505,7 @@ export async function assignVacantSeatToManager(
   // A manager who already runs a club replaces the Vacant seat with that club.
   // A manager with no club just claims ownership ("claim"), and the caller
   // falls back to the normal assign path (seat stays Vacant until they get one).
-  const clubTeamId = await resolveUserClubId(db, managerUserId)
+  const clubTeamId = await resolveUserClubIdExcluding(db, managerUserId, [vacantTeamId])
   if (!clubTeamId) return { action: 'claim', clubTeamId: null, filled: 0 }
 
   const { data: active } = await db
@@ -513,8 +530,8 @@ export async function assignVacantSeatToManager(
       .from('tournament_participants')
       .select('id')
       .eq('tournament_id', tour.id)
-      .is('user_id', null)
       .eq('team_id', vacantTeamId)
+      .or(`user_id.is.null,user_id.eq.${managerUserId}`)
 
     for (const seat of (seats ?? []) as { id: string }[]) {
       await db

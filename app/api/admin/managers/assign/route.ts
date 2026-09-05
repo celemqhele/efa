@@ -89,35 +89,43 @@ export async function POST(request: Request) {
     allClubIds = [resolvedTeamId, ...(siblings ?? []).map((s) => s.id)]
   }
 
-  // Assign manager on all rows for this club
-  const { error: updateErr } = await adminSupabase
-    .from('teams')
-    .update({ manager_id: user_id })
-    .in('id', allClubIds)
+  const isVacant = isVacantPlaceholderTeam(team)
 
-  if (updateErr) return Response.json({ error: updateErr.message }, { status: 500 })
+  // The Vacant placeholder is not a real club, so it must never be bound to a
+  // manager (no teams.manager_id / tenure). If the assigned user manages their
+  // own club, that club gets handed the Vacant seats via assignVacantSeat-
+  // ToManager; a manager with no club simply takes ownership of the seat
+  // (user_id on the seats) and it resolves on their first real fill.
+  if (!isVacant) {
+    // Assign manager on all rows for this club
+    const { error: updateErr } = await adminSupabase
+      .from('teams')
+      .update({ manager_id: user_id })
+      .in('id', allClubIds)
 
-  const now = new Date().toISOString()
+    if (updateErr) return Response.json({ error: updateErr.message }, { status: 500 })
 
+    const now = new Date().toISOString()
 
-  // Close any existing open tenures for these rows
-  await adminSupabase
-    .from('manager_tenures' as any)
-    .update({ ended_at: now })
-    .in('team_id', allClubIds)
-    .is('ended_at', null)
+    // Close any existing open tenures for these rows
+    await adminSupabase
+      .from('manager_tenures' as any)
+      .update({ ended_at: now })
+      .in('team_id', allClubIds)
+      .is('ended_at', null)
 
-  // Open new tenures for all rows
-  await adminSupabase
-    .from('manager_tenures' as any)
-    .insert(
-      allClubIds.map((id) => ({
-        team_id: id,
-        manager_id: user_id,
-        manager_username: targetProfile.username,
-        started_at: now,
-      }))
-    )
+    // Open new tenures for all rows
+    await adminSupabase
+      .from('manager_tenures' as any)
+      .insert(
+        allClubIds.map((id) => ({
+          team_id: id,
+          manager_id: user_id,
+          manager_username: targetProfile.username,
+          started_at: now,
+        }))
+      )
+  }
 
   await adminSupabase.from('audit_log').insert({
     admin_id: user.id,
@@ -127,18 +135,16 @@ export async function POST(request: Request) {
     details: { team_name: team.name, assigned_user_id: user_id, username: targetProfile.username },
   })
 
-  // Reclaim the club's own seats in active tournaments so a sacked seat is
-  // handed back to the incoming manager instead of staying Vacant.
-  await reclaimManagerSlots(adminSupabase, user_id, resolvedTeamId)
-
-  // The Vacant placeholder is not a real club: assigning a manager to it must
-  // not bind them to it as a second club. If the assigned user manages their
-  // own club, that club now replaces the Vacant seat(s) and inherits the seat's
-  // tournament stats, so the club actually plays those fixtures instead of
-  // forfeiting. A manager with no club just takes ownership (assigned above)
-  // and the seat resolves on their first fill.
-  if (isVacantPlaceholderTeam(team)) {
+  if (isVacant) {
+    // Take over the Vacant seat(s) with the manager's real club (inherits the
+    // seat's stats and clears its auto-forfeit results). A manager with no
+    // club claims the seat (user_id set on the seats) without binding to the
+    // Vacant placeholder.
     await assignVacantSeatToManager(adminSupabase, user_id, resolvedTeamId)
+  } else {
+    // Reclaim the club's own seats in active tournaments so a sacked seat is
+    // handed back to the incoming manager instead of staying Vacant.
+    await reclaimManagerSlots(adminSupabase, user_id, resolvedTeamId)
   }
 
   return Response.json({ success: true })
