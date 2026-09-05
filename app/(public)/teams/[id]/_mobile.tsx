@@ -95,6 +95,7 @@ export default function Mobile({ data }: { data: any }) {
     sortedRecentResults,
     siblingIds,
     allTeamIds,
+    isVacantTeam,
   } = data
 
   return (
@@ -258,6 +259,7 @@ export default function Mobile({ data }: { data: any }) {
           currentManagerAvatar={manager?.avatar_url ?? null}
           allProfiles={allProfiles}
           managedTeamByUser={managedTeamByUser}
+          isVacantTeam={isVacantTeam}
         />
       )}
 

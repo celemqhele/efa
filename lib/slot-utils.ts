@@ -465,6 +465,148 @@ async function getProfileUsername(db: SupabaseClientLike, userId: string): Promi
   return data?.username ?? null
 }
 
+// ─── Vacant placeholder take-over (admin assign on the Vacant team page) ──────
+// The Vacant placeholder team (custom/vacant) is not a real club, so assigning
+// a manager to it must NOT bind them to it as a second club. When the assigned
+// user already manages a club, that club replaces the Vacant seat(s) instead:
+// the seat keeps its standings (slot-follows-team) and the new club actually
+// plays the seat's remaining fixtures. Adopted from `reclaimManagerSlots`; the
+// difference is the seat is found by the Vacant placeholder team rather than by
+// a vacated club id.
+export function isVacantPlaceholderTeam(team: {
+  logo_league_folder?: string | null
+  logo_team_slug?: string | null
+}): boolean {
+  return !!team && team.logo_league_folder === VACANT_FOLDER && team.logo_team_slug === VACANT_SLUG
+}
+
+export async function assignVacantSeatToManager(
+  db: SupabaseClientLike,
+  managerUserId: string,
+  vacantTeamId: string
+): Promise<{ action: 'claim' | 'fill'; clubTeamId: string | null; filled: number }> {
+  // A manager who already runs a club replaces the Vacant seat with that club.
+  // A manager with no club just claims ownership ("claim"), and the caller
+  // falls back to the normal assign path (seat stays Vacant until they get one).
+  const clubTeamId = await resolveUserClubId(db, managerUserId)
+  if (!clubTeamId) return { action: 'claim', clubTeamId: null, filled: 0 }
+
+  const { data: active } = await db
+    .from('tournaments')
+    .select('id')
+    .eq('status', 'active')
+
+  const pendingStatuses = ['scheduled', 'awaiting_confirmation', 'confirmed_pending']
+  let filled = 0
+
+  for (const tour of (active ?? []) as { id: string }[]) {
+    // Never give a club a second seat in an already-entered tournament.
+    const { data: clubSeats } = await db
+      .from('tournament_participants')
+      .select('id')
+      .eq('tournament_id', tour.id)
+      .eq('team_id', clubTeamId)
+      .limit(1)
+    if ((clubSeats ?? []).length > 0) continue
+
+    const { data: seats } = await db
+      .from('tournament_participants')
+      .select('id')
+      .eq('tournament_id', tour.id)
+      .is('user_id', null)
+      .eq('team_id', vacantTeamId)
+
+    for (const seat of (seats ?? []) as { id: string }[]) {
+      await db
+        .from('tournament_participants')
+        .update({ user_id: managerUserId, team_id: clubTeamId, vacated_from_team_id: null })
+        .eq('id', seat.id)
+
+      // Display references follow the slot's new club for what is still to be
+      // played; already-played fixtures keep the club that actually played.
+      await db
+        .from('fixtures')
+        .update({ home_team_id: clubTeamId })
+        .eq('tournament_id', tour.id)
+        .eq('home_participant_id', seat.id)
+        .in('status', pendingStatuses)
+      await db
+        .from('fixtures')
+        .update({ away_team_id: clubTeamId })
+        .eq('tournament_id', tour.id)
+        .eq('away_participant_id', seat.id)
+        .in('status', pendingStatuses)
+
+      await db
+        .from('standings')
+        .update({ team_id: clubTeamId })
+        .eq('tournament_id', tour.id)
+        .eq('participant_id', seat.id)
+      await db
+        .from('group_standings')
+        .update({ team_id: clubTeamId })
+        .eq('tournament_id', tour.id)
+        .eq('participant_id', seat.id)
+
+      // Withdraw the seat's auto-forfeit results (vacuation stamped them for
+      // the absent slot) so the replacing club plays its remaining fixtures.
+      await clearAutoForfeitResults(db, tour.id, seat.id)
+
+      filled++
+    }
+  }
+
+  return { action: 'fill', clubTeamId, filled }
+}
+
+// Remove auto-generated forfeit results (finalised_by NULL, stamped by
+// `vacateUserSlots`) on a seat's not-yet-played fixtures, and restore any
+// confirmed_pending fixture back to 'scheduled' so it is a normal fixture
+// again. Human-entered results (finalised_by set) are never touched.
+export async function clearAutoForfeitResults(
+  db: SupabaseClientLike,
+  tournamentId: string,
+  participantId: string
+): Promise<number> {
+  const { data: fixtures } = await db
+    .from('fixtures')
+    .select('id, status')
+    .or(`home_participant_id.eq.${participantId},away_participant_id.eq.${participantId}`)
+    .eq('tournament_id', tournamentId)
+    .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed_pending'])
+
+  const fixtureRows = (fixtures ?? []) as { id: string; status: string }[]
+  if (fixtureRows.length === 0) return 0
+
+  const fixtureIds = fixtureRows.map((f) => f.id)
+
+  const { data: candidates } = await db
+    .from('results')
+    .select('fixture_id, override_reason, finalised_by')
+    .in('fixture_id', fixtureIds)
+    .is('finalised_by', null)
+
+  const autoFixtureIds = (candidates ?? [])
+    .filter((r: any) => {
+      const reason = (r.override_reason ?? '') as string
+      return reason.startsWith('Vacant slot absent') || reason.startsWith('Both slots vacant')
+    })
+    .map((r: any) => r.fixture_id)
+
+  if (autoFixtureIds.length === 0) return 0
+
+  await db.from('results').delete().in('fixture_id', autoFixtureIds)
+
+  const resetFixtureIds = fixtureRows
+    .filter((f) => f.status === 'confirmed_pending' && autoFixtureIds.includes(f.id))
+    .map((f) => f.id)
+  if (resetFixtureIds.length > 0) {
+    await db.from('fixtures').update({ status: 'scheduled' }).in('id', resetFixtureIds)
+  }
+
+  return autoFixtureIds.length
+}
+
 // ─── Season applications ──────────────────────────────────────────────────────
 export async function approveSeasonApplication(
   db: SupabaseClientLike,

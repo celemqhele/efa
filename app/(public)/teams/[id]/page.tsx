@@ -417,6 +417,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
     hasPendingApplication,
     allProfiles,
     managedTeamByUser,
+    isVacantTeam: team.logo_league_folder === 'custom' && team.logo_team_slug === 'vacant',
     trophies,
     standings: allStandings,
     currentStanding,

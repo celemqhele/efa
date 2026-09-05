@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { reclaimManagerSlots } from '@/lib/slot-utils'
+import { assignVacantSeatToManager, isVacantPlaceholderTeam } from '@/lib/slot-utils'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -127,8 +128,18 @@ export async function POST(request: Request) {
   })
 
   // Reclaim the club's own seats in active tournaments so a sacked seat is
-  // handed back to the incoming manager instead of staying Vacant
+  // handed back to the incoming manager instead of staying Vacant.
   await reclaimManagerSlots(adminSupabase, user_id, resolvedTeamId)
+
+  // The Vacant placeholder is not a real club: assigning a manager to it must
+  // not bind them to it as a second club. If the assigned user manages their
+  // own club, that club now replaces the Vacant seat(s) and inherits the seat's
+  // tournament stats, so the club actually plays those fixtures instead of
+  // forfeiting. A manager with no club just takes ownership (assigned above)
+  // and the seat resolves on their first fill.
+  if (isVacantPlaceholderTeam(team)) {
+    await assignVacantSeatToManager(adminSupabase, user_id, resolvedTeamId)
+  }
 
   return Response.json({ success: true })
 }

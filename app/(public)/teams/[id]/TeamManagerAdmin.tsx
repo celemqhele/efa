@@ -17,6 +17,7 @@ interface Props {
   currentManagerAvatar: string | null
   allProfiles: Profile[]
   managedTeamByUser: Record<string, string> // userId → team name
+  isVacantTeam?: boolean
 }
 
 export default function TeamManagerAdmin({
@@ -26,6 +27,7 @@ export default function TeamManagerAdmin({
   currentManagerAvatar,
   allProfiles,
   managedTeamByUser,
+  isVacantTeam = false,
 }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -35,8 +37,16 @@ export default function TeamManagerAdmin({
 
   const [cooldown, setCooldown] = useState<{ username: string; cooldownEndsAt: string } | null>(null)
 
-  const freeUsers = allProfiles.filter((p) => !managedTeamByUser[p.id])
-  const busyUsers = allProfiles.filter((p) => !!managedTeamByUser[p.id] && p.id !== managerId)
+  // On the Vacant placeholder team, a manager who already runs a club can be
+  // assigned directly — their club replaces the Vacant seat and inherits its
+  // stats rather than being refused as "already managing". Only on the Vacant
+  // team are those users moved to the assignable list.
+  const freeUsers = isVacantTeam
+    ? allProfiles.filter((p) => p.id !== managerId)
+    : allProfiles.filter((p) => !managedTeamByUser[p.id])
+  const busyUsers = isVacantTeam
+    ? []
+    : allProfiles.filter((p) => !!managedTeamByUser[p.id] && p.id !== managerId)
 
   async function handleSack() {
     setLoading(true)
@@ -151,9 +161,11 @@ export default function TeamManagerAdmin({
                   Already managing a club
                 </p>
                 {busyUsers.map((user) => (
-                  <div
+                  <button
                     key={user.id}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-100 bg-bg-surface opacity-60"
+                    onClick={() => handleAssign(user.id)}
+                    disabled={loading}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-border bg-bg-surface hover:border-accent/50 hover:bg-accent/5 transition-all text-left disabled:opacity-50"
                   >
                     {user.avatar_url ? (
                       <Image src={user.avatar_url} alt={user.username} width={32} height={32} className="rounded-full object-cover bg-bg-elevated shrink-0" />
@@ -163,10 +175,11 @@ export default function TeamManagerAdmin({
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-text-secondary text-sm font-medium">{user.username}</p>
-                      <p className="text-text-muted text-xs truncate">Manages {managedTeamByUser[user.id]} — sack first</p>
+                      <p className="text-text-primary text-sm font-medium">{user.username}</p>
+                      <p className="text-text-muted text-xs truncate">Manages {managedTeamByUser[user.id]} — takes over this seat</p>
                     </div>
-                  </div>
+                    <span className="text-accent text-xs font-semibold">Assign →</span>
+                  </button>
                 ))}
               </>
             )}
