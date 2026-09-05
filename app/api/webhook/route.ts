@@ -20,6 +20,7 @@ import { notifyBackdoorSubmitted, notifyBackdoorDecision } from '@/lib/backdoor-
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { parseUserDate } from '@/lib/date-parser'
 import { listOpenSeasons, getSeasonPickableTeams, userInSeason } from '@/lib/season-applications'
+import { reclaimManagerSlots } from '@/lib/slot-utils'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
 
@@ -2839,6 +2840,10 @@ async function applyManagerAssignment(
       started_at: now,
     }))
   )
+
+  // Reclaim the club's own seats in active tournaments so a sacked seat is
+  // handed back to the incoming manager instead of staying Vacant
+  await reclaimManagerSlots(supabase, newManagerId, teamId)
 
   // Mark this application approved (with the chosen team)
   await supabase

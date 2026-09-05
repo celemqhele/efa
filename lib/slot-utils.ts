@@ -141,18 +141,28 @@ export async function vacateUserSlots(
 
   const { data: slots } = await db
     .from('tournament_participants')
-    .select('id, tournament_id')
+    .select('id, tournament_id, team_id')
     .eq('user_id', userId)
 
-  const slotRows = (slots ?? []) as { id: string; tournament_id: string }[]
+  const slotRows = (slots ?? []) as { id: string; tournament_id: string; team_id: string | null }[]
   if (slotRows.length === 0) return 0
 
-  const slotIds = slotRows.map((s) => s.id)
+  for (const slot of slotRows) {
+    const stillHasClub = slot.team_id && slot.team_id !== vacantTeamId
+    await db
+      .from('tournament_participants')
+      .update({
+        user_id: null,
+        team_id: vacantTeamId,
+        // Remember which club this seat represented so a later manager
+        // assignment for that club can find and reclaim its own seat
+        // (the team_id copy is overwritten with the Vacant placeholder).
+        ...(stillHasClub ? { vacated_from_team_id: slot.team_id } : {}),
+      })
+      .eq('id', slot.id)
+  }
 
-  await db
-    .from('tournament_participants')
-    .update({ user_id: null, team_id: vacantTeamId })
-    .in('id', slotIds)
+  const slotIds = slotRows.map((s) => s.id)
 
   // Restamp the seat's live references so the vacancy displays as "Vacant":
   // standings/group standings rows and not-yet-played fixtures.
@@ -343,7 +353,7 @@ export async function fillVacantSlot(
 
   await db
     .from('tournament_participants')
-    .update({ user_id: userId, team_id: displayTeamId })
+    .update({ user_id: userId, team_id: displayTeamId, vacated_from_team_id: null })
     .eq('id', participantId)
 
   // Update display references for this slot so the new club shows for what's
@@ -380,6 +390,74 @@ export async function fillVacantSlot(
     team_id: displayTeamId,
     team_name: teamRow?.name ?? 'Vacant',
   }
+}
+
+// ─── Reclaim a club's seats after a manager assignment ───────────────────────
+// A sack turns the club's seat into a Vacant slot (ownership cleared, team_id
+// swapped to the Vacant placeholder) and the admin assign flow only updates
+// teams.manager_id — so the club "split" into a Vacant seat plus phantom rows
+// from its already-played fixtures. Reclaim finds the club's own free seats in
+// every ACTIVE tournament (either still showing the club, or stamped with
+// vacated_from_team_id when the copy was overwritten) and gives them to the
+// new manager. Called after the manager binding is set in all assign paths.
+export async function reclaimManagerSlots(
+  db: SupabaseClientLike,
+  managerUserId: string,
+  clubTeamId: string
+): Promise<number> {
+  const { data: active } = await db
+    .from('tournaments')
+    .select('id')
+    .eq('status', 'active')
+
+  let reclaimed = 0
+  for (const tour of (active ?? []) as { id: string }[]) {
+    const { data: seats } = await db
+      .from('tournament_participants')
+      .select('id')
+      .eq('tournament_id', tour.id)
+      .is('user_id', null)
+      .or(`team_id.eq.${clubTeamId},vacated_from_team_id.eq.${clubTeamId}`)
+
+    for (const seat of (seats ?? []) as { id: string }[]) {
+      await db
+        .from('tournament_participants')
+        .update({ user_id: managerUserId, team_id: clubTeamId, vacated_from_team_id: null })
+        .eq('id', seat.id)
+
+      // Display references follow the slot's current club for what is still
+      // to be played; already-played fixtures keep the club that actually
+      // played so historical matchups stay intact.
+      const pendingStatuses = ['scheduled', 'awaiting_confirmation', 'confirmed_pending']
+      await db
+        .from('fixtures')
+        .update({ home_team_id: clubTeamId })
+        .eq('tournament_id', tour.id)
+        .eq('home_participant_id', seat.id)
+        .in('status', pendingStatuses)
+      await db
+        .from('fixtures')
+        .update({ away_team_id: clubTeamId })
+        .eq('tournament_id', tour.id)
+        .eq('away_participant_id', seat.id)
+        .in('status', pendingStatuses)
+
+      await db
+        .from('standings')
+        .update({ team_id: clubTeamId })
+        .eq('tournament_id', tour.id)
+        .eq('participant_id', seat.id)
+      await db
+        .from('group_standings')
+        .update({ team_id: clubTeamId })
+        .eq('tournament_id', tour.id)
+        .eq('participant_id', seat.id)
+
+      reclaimed++
+    }
+  }
+
+  return reclaimed
 }
 
 async function getProfileUsername(db: SupabaseClientLike, userId: string): Promise<string | null> {

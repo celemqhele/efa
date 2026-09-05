@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { reclaimManagerSlots } from '@/lib/slot-utils'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -124,6 +125,10 @@ export async function POST(request: Request) {
     target_id: resolvedTeamId,
     details: { team_name: team.name, assigned_user_id: user_id, username: targetProfile.username },
   })
+
+  // Reclaim the club's own seats in active tournaments so a sacked seat is
+  // handed back to the incoming manager instead of staying Vacant
+  await reclaimManagerSlots(adminSupabase, user_id, resolvedTeamId)
 
   return Response.json({ success: true })
 }

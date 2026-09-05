@@ -207,12 +207,12 @@ export function applyResultToRow(
 export async function buildLiveStandings(supabase: SupabaseClient, tournamentId: string, tournamentType: string) {
   const { data: participants } = await supabase
     .from('tournament_participants')
-    .select('team_id, group_name, team:teams(id, name, logo_league_folder, logo_team_slug)')
+    .select('id, team_id, group_name, team:teams(id, name, logo_league_folder, logo_team_slug)')
     .eq('tournament_id', tournamentId)
 
   const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('id, home_team_id, away_team_id, round_type, status, results(home_score, away_score, override_reason, is_abandoned, abandoned_type)')
+    .select('id, home_team_id, away_team_id, home_participant_id, away_participant_id, round_type, status, results(home_score, away_score, override_reason, is_abandoned, abandoned_type)')
     .eq('tournament_id', tournamentId)
 
   if (tournamentType === 'league') {
@@ -261,11 +261,28 @@ export async function buildLiveStandings(supabase: SupabaseClient, tournamentId:
   }
 
   const teamGroupMap: Record<string, string> = {}
+  const participantById: Record<string, any> = {}
   participants?.forEach(p => {
     const gn = (p.group_name || 'A').replace(/^group\s+/i, '').trim()
+    if (p.id) participantById[p.id] = p
     teamGroupMap[p.team_id] = gn
     getGroupRow(p.team_id, gn, p.team)
   })
+
+  // Resolve a fixture side to the participant row it belongs to. A side may
+  // reference a team that is no longer a participant (e.g. the seat was
+  // vacated and the team copy went stale); fall back to the seat's current
+  // club so results always land on the slot's active row instead of a
+  // fabricated "unknown" team. Returns null when the side is genuinely
+  // unplaceable (never part of the tournament).
+  const resolveSide = (teamId: string | null, participantId: string | null) => {
+    if (teamId && teamGroupMap[teamId]) return { teamId, group: teamGroupMap[teamId], teamData: undefined }
+    const part = participantId ? participantById[participantId] : null
+    if (part?.team_id && teamGroupMap[part.team_id]) {
+      return { teamId: part.team_id, group: teamGroupMap[part.team_id], teamData: part.team }
+    }
+    return null
+  }
 
   fixtures?.forEach(f => {
     if (f.status !== 'confirmed' || f.round_type !== 'group') return
@@ -284,11 +301,12 @@ export async function buildLiveStandings(supabase: SupabaseClient, tournamentId:
       const effectiveHomeScore = bothForfeit ? 0 : (res.home_score ?? 0)
       const effectiveAwayScore = bothForfeit ? 0 : (res.away_score ?? 0)
 
-      const hgn = teamGroupMap[f.home_team_id!] || 'A'
-      const agn = teamGroupMap[f.away_team_id!] || hgn
-      
-      const hr = getGroupRow(f.home_team_id!, hgn)
-      const ar = getGroupRow(f.away_team_id!, agn)
+      const home = resolveSide(f.home_team_id, f.home_participant_id)
+      const away = resolveSide(f.away_team_id, f.away_participant_id)
+      if (!home || !away) return
+
+      const hr = getGroupRow(home.teamId, home.group, home.teamData)
+      const ar = getGroupRow(away.teamId, away.group, away.teamData)
       if (hr && ar) applyResultToRow(hr, ar, effectiveHomeScore, effectiveAwayScore, isBothAbsent, homeAbsent, awayAbsent, homeForfeit, awayForfeit)
   })
 
