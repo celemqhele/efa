@@ -18,6 +18,7 @@ interface Props {
   allProfiles: Profile[]
   managedTeamByUser: Record<string, string> // userId → team name
   isVacantTeam?: boolean
+  inTournament?: boolean
 }
 
 export default function TeamManagerAdmin({
@@ -28,9 +29,11 @@ export default function TeamManagerAdmin({
   allProfiles,
   managedTeamByUser,
   isVacantTeam = false,
+  inTournament = false,
 }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [disqualifyNotice, setDisqualifyNotice] = useState('')
   const [managerId, setManagerId] = useState(currentManagerId)
   const [managerUsername, setManagerUsername] = useState(currentManagerUsername)
   const [managerAvatar, setManagerAvatar] = useState(currentManagerAvatar)
@@ -51,6 +54,7 @@ export default function TeamManagerAdmin({
   async function handleSack() {
     setLoading(true)
     setError('')
+    setDisqualifyNotice('')
     try {
       const res = await fetch('/api/admin/managers/sack', {
         method: 'POST',
@@ -62,6 +66,30 @@ export default function TeamManagerAdmin({
       setManagerId(null)
       setManagerUsername(null)
       setManagerAvatar(null)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDisqualify() {
+    setLoading(true)
+    setError('')
+    setDisqualifyNotice('')
+    try {
+      const res = await fetch('/api/admin/managers/disqualify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_id: teamId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      setDisqualifyNotice(
+        data.slots_vacated > 0
+          ? 'Manager disqualified — tournament seat(s) vacated. The club keeps its manager.'
+          : 'No tournament seats were vacated. The club keeps its manager.'
+      )
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -110,8 +138,14 @@ export default function TeamManagerAdmin({
         </p>
       )}
 
+      {disqualifyNotice && (
+        <p className="text-orange-700 text-sm bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mb-4">
+          {disqualifyNotice}
+        </p>
+      )}
+
       {managerId ? (
-        <div className="flex items-center gap-3 bg-bg-surface border border-border rounded-xl px-4 py-3">
+        <div className="flex items-center gap-3 bg-bg-surface border border-border rounded-xl px-4 py-3 flex-wrap">
           {managerAvatar ? (
             <Image src={managerAvatar} alt={managerUsername ?? ''} width={40} height={40} className="rounded-full object-cover bg-bg-surface shrink-0" />
           ) : (
@@ -123,15 +157,32 @@ export default function TeamManagerAdmin({
             <p className="text-text-primary font-semibold">@{managerUsername}</p>
             <p className="text-text-muted text-xs">Current manager</p>
           </div>
-          <button
-            onClick={handleSack}
-            disabled={loading}
-            className="shrink-0 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Removing…' : 'Sack'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSack}
+              disabled={loading}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Removing…' : 'Sack'}
+            </button>
+            {inTournament && (
+              <button
+                onClick={handleDisqualify}
+                disabled={loading}
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-600 text-xs font-semibold hover:bg-orange-100 transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Disqualifying…' : 'Disqualify'}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
+        inTournament && (
+          <p className="text-sm text-text-muted mb-3">This seat is currently vacant in its tournament.</p>
+        )
+      )}
+
+      {!managerId && (
         <div className="space-y-2">
           <p className="text-sm text-text-muted mb-3">No manager assigned. Pick a user to assign:</p>
 

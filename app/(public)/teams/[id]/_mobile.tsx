@@ -96,6 +96,7 @@ export default function Mobile({ data }: { data: any }) {
     siblingIds,
     allTeamIds,
     isVacantTeam,
+    inTournament,
   } = data
 
   return (
@@ -260,6 +261,7 @@ export default function Mobile({ data }: { data: any }) {
           allProfiles={allProfiles}
           managedTeamByUser={managedTeamByUser}
           isVacantTeam={isVacantTeam}
+          inTournament={inTournament}
         />
       )}
 

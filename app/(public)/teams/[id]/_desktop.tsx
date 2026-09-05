@@ -93,6 +93,7 @@ export default function Desktop({ data }: { data: any }) {
     siblingIds,
     allTeamIds,
     isVacantTeam,
+    inTournament,
   } = data
 
   return (
@@ -253,6 +254,7 @@ export default function Desktop({ data }: { data: any }) {
           allProfiles={allProfiles}
           managedTeamByUser={managedTeamByUser}
           isVacantTeam={isVacantTeam}
+          inTournament={inTournament}
         />
       )}
 

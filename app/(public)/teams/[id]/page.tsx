@@ -136,6 +136,24 @@ export default async function TeamProfilePage({ params }: PageProps) {
     gs => !mergedByTournament.has(`${gs.tournament_id}:${gs.team_id}`) || !standings.find(s => s.tournament_id === gs.tournament_id && s.team_id === gs.team_id)
   )].map(s => mergedByTournament.get(`${s.tournament_id}:${s.team_id}`) ?? s)
 
+  // Is this club currently holding a seat in an active tournament? (seat model:
+  // tournament_participants rows point at the seat's current team across the
+  // club's sibling rows, so a filled Vacant seat counts too.)
+  const { data: _tournSeats } = await supabase
+    .from('tournament_participants')
+    .select('tournament_id')
+    .in('team_id', siblingIds)
+  const tournSeatIds = [...new Set((_tournSeats ?? []).map((s: any) => s.tournament_id))]
+  let inTournament = false
+  if (tournSeatIds.length > 0) {
+    const { data: _activeTourns } = await supabase
+      .from('tournaments')
+      .select('id')
+      .eq('status', 'active')
+      .in('id', tournSeatIds)
+    inTournament = (_activeTourns ?? []).length > 0
+  }
+
   // Active standings
   const activeStandings = (allStandings ?? []).filter(
     (s: any) => s.tournament?.status === 'active'
@@ -418,6 +436,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
     allProfiles,
     managedTeamByUser,
     isVacantTeam: team.logo_league_folder === 'custom' && team.logo_team_slug === 'vacant',
+    inTournament,
     trophies,
     standings: allStandings,
     currentStanding,
