@@ -1,6 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { drawGroups, drawKnockoutRound, drawOpenBracket, determineQualifiers } from '@/lib/tournament-draw'
-import { computeSeedRanks } from '@/lib/team-seeding'
+import { computeManagerSeedRanks } from '@/lib/team-seeding'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -36,16 +36,35 @@ export async function POST(request: Request) {
 
   // Load participants
   const { data: participants } = await db('tournament_participants')
-    .select('*, team:team_id(id, name)')
+    .select('*, team:team_id(id, name, manager_id)')
     .eq('tournament_id', tournament_id)
 
-  const seedRanks = await computeSeedRanks(db, (participants ?? []).map((p: any) => p.team_id))
+  // Seed by manager: every participant is an account (user_id). Fall back to the
+  // team's bound manager for any legacy rows written without a user slot.
+  const managerIds: string[] = []
+  for (const p of (participants ?? []) as any[]) {
+    const mid = (p.user_id ?? p.team?.manager_id) as string
+    if (mid && !managerIds.includes(mid)) managerIds.push(mid)
+  }
 
-  const teams = (participants ?? []).map((p: any) => ({
-    id: p.team_id,
-    rank: seedRanks.get(p.team_id) ?? 999,
-    label: p.team?.name,
-  }))
+  const [seedRanks, { data: managerProfiles }] = await Promise.all([
+    computeManagerSeedRanks(db, managerIds),
+    managerIds.length > 0 ? db('profiles').select('id, username').in('id', managerIds) : { data: [] },
+  ])
+
+  const usernameByManagerId = new Map<string, string>()
+  for (const p of managerProfiles ?? []) {
+    if (p?.id) usernameByManagerId.set(p.id, p.username ?? '')
+  }
+
+  const teams = (participants ?? []).map((p: any) => {
+    const managerId = p.user_id ?? p.team?.manager_id
+    return {
+      id: p.team_id,
+      rank: managerId ? (seedRanks.get(managerId) ?? 999) : 999,
+      label: (managerId && usernameByManagerId.get(managerId)) || p.team?.name,
+    }
+  })
 
   if (teams.length < 2) {
     return Response.json({ error: 'Not enough teams' }, { status: 400 })
@@ -144,11 +163,15 @@ async function handleGroupDraw(adminSupabase: any, tournament: any, teams: any[]
     },
   })
 
+  const labelById = new Map<string, string>()
+  for (const t of teams) if (t.id) labelById.set(t.id, t.label ? `@${t.label}` : t.id)
+
   return Response.json({
     success: true,
     groups: assignments.map((a) => ({
       name: a.group_name,
       teamCount: a.teams.length,
+      teams: a.teams.map((tid) => labelById.get(tid) ?? tid),
     })),
     iterations: result.iterations,
   })

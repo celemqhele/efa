@@ -142,11 +142,20 @@ export default function RunTournamentDrawButton({ tournamentId, tournamentName, 
 
             {result?.groups && (
               <div className="space-y-3 mb-4">
-                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Groups</p>
+                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Groups (seeded by manager record)</p>
                 {result.groups.map((g: any, idx: number) => (
                   <div key={idx} className="p-3 rounded-lg bg-navy-light border border-navy-border">
-                    <span className="text-xs font-bold text-gold">Group {g.name}</span>
-                    <span className="text-xs text-text-muted ml-2">({g.teamCount} teams)</span>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-gold">Group {g.name}</span>
+                      <span className="text-xs text-text-muted">({g.teamCount} teams)</span>
+                    </div>
+                    {g.teams?.length > 0 && (
+                      <ul className="space-y-0.5">
+                        {g.teams.map((label: string, i: number) => (
+                          <li key={i} className="text-xs text-foreground-primary">{label}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 ))}
                 <p className="text-[10px] text-text-muted">Iterations: {result.iterations}</p>
