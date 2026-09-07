@@ -27,11 +27,12 @@ const ADMIN_TABS = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/fixtures/manage', label: 'Fixtures', icon: ClipboardList },
   { href: '/admin/seasons', label: 'Seasons', icon: Trophy },
-  { href: '/admin/tournament-applications', label: 'Applicants', icon: UserCheck },
+  { href: '/standings', label: 'Standings', icon: Trophy },
 ] as const
 
 const MORE_LINKS = [
   { href: '/admin/results/submit', label: 'Submit Result', icon: FileCheck2 },
+  { href: '/admin/tournament-applications', label: 'Applicants', icon: UserCheck },
   { href: '/admin/polls', label: 'Polls', icon: BarChart3 },
   { href: '/admin/hall-of-fame', label: 'Hall of Fame', icon: Medal },
   { href: '/admin/export', label: 'Export', icon: Download },
