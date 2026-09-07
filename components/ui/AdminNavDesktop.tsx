@@ -26,7 +26,7 @@ const ADMIN_TABS = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/fixtures/manage', label: 'Fixtures', icon: ClipboardList },
   { href: '/admin/seasons', label: 'Seasons', icon: Trophy },
-  { href: '/standings', label: 'Standings', icon: Trophy },
+  { href: '/admin/standings', label: 'Standings', icon: Trophy },
   { href: '/admin/users/manage', label: 'Users', icon: UserCog },
 ] as const
 

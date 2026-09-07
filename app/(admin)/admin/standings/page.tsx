@@ -1,21 +1,20 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { loadStandingsPageData } from '@/lib/standings-page'
-import Shell from './_shell'
+import Shell from '@/app/(public)/standings/_shell'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Standings',
   description: 'EFA league standings — see how teams rank across all tournaments.',
-  openGraph: { title: 'Standings | EFA', description: 'EFA league standings — see how teams rank across all tournaments.' },
 }
 
 interface PageProps {
   searchParams: Promise<{ tournament?: string }>
 }
 
-export default async function StandingsPage({ searchParams }: PageProps) {
+export default async function AdminStandingsPage({ searchParams }: PageProps) {
   const supabase = await createClient()
   const params = await searchParams
   const selectedTournamentId = params.tournament ?? null

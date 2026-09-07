@@ -1,7 +1,7 @@
 'use client'
 
 import TeamLogo from '@/components/ui/TeamLogo'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { goalDifference, normalizeStandingsZones, rowZone, ZONE_BORDER_CLASS, zoneLegend, type StandingsZones } from '@/lib/standings-core'
 
 const ZONE_SWATCH_CLASS: Record<string, string> = {
@@ -95,6 +95,7 @@ interface DesktopProps {
 
 export default function Desktop({ data }: DesktopProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { tournaments, activeTournamentId, activeTournament, leagueStandings, groupStandings } = data
 
   if (!activeTournamentId || !activeTournament) {
@@ -112,7 +113,7 @@ export default function Desktop({ data }: DesktopProps) {
           <label className="text-xs font-semibold text-text-muted uppercase tracking-wider shrink-0">Tournament</label>
           <select
             value={activeTournamentId}
-            onChange={(e) => router.push(`/standings?tournament=${e.target.value}`)}
+            onChange={(e) => router.push(`${pathname}?tournament=${e.target.value}`)}
             className="bg-bg-surface border border-border rounded-xl px-3 py-1.5 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer"
           >
             {tournaments.map((t: any) => (

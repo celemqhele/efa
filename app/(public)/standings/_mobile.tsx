@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import TeamLogo from '@/components/ui/TeamLogo'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { goalDifference, normalizeStandingsZones, rowZone, ZONE_BORDER_CLASS, zoneLegend, type StandingsZones } from '@/lib/standings-core'
 import { ListCollapse, List } from 'lucide-react'
 
@@ -158,6 +159,7 @@ interface MobileProps {
 }
 
 export default function Mobile({ data }: MobileProps) {
+  const pathname = usePathname()
   const { tournaments, activeTournamentId, activeTournament, leagueStandings, groupStandings } = data
   const [extended, setExtended] = useState(false)
 
@@ -178,7 +180,7 @@ export default function Mobile({ data }: MobileProps) {
             return (
               <Link
                 key={t.id}
-                href={`/standings?tournament=${t.id}`}
+                href={`${pathname}?tournament=${t.id}`}
                 className={`snap-start shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border min-h-[44px] flex items-center ${
                   isActive
                     ? 'bg-accent text-bg-base border-accent shadow-sm shadow-accent/25'
