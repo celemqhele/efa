@@ -361,6 +361,8 @@ export default function UsersAndManagersClient({ data, variant }: Props) {
                               currentRole={profile.role}
                               teamId={team?.id ?? null}
                               teamName={team?.name ?? null}
+                              teams={managerTeams ?? []}
+                              profiles={profiles ?? []}
                             />
                           </td>
                         </tr>
@@ -421,6 +423,8 @@ export default function UsersAndManagersClient({ data, variant }: Props) {
                           currentRole={profile.role}
                           teamId={team?.id ?? null}
                           teamName={team?.name ?? null}
+                          teams={managerTeams ?? []}
+                          profiles={profiles ?? []}
                         />
                       </div>
                     </div>
