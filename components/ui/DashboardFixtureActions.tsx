@@ -19,6 +19,38 @@ interface Props {
 
 const POSTPONE_POPOVER_W = 300
 
+type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'night'
+
+const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
+  morning: 'Morning',
+  afternoon: 'Afternoon',
+  evening: 'Evening',
+  night: 'Night',
+}
+
+function getTimeSlot(): TimeSlot {
+  const sastHour = new Date().getUTCHours() + 2
+  const h = ((sastHour % 24) + 24) % 24
+  if (h >= 6 && h < 12) return 'morning'
+  if (h >= 12 && h < 18) return 'afternoon'
+  if (h >= 18 && h < 21) return 'evening'
+  return 'night'
+}
+
+function buildReminder(name: string | null | undefined, opponent: string, slot: TimeSlot): string {
+  const n = name ?? 'there'
+  switch (slot) {
+    case 'morning':
+      return `Hi ${n}! Just a reminder that your fixture vs ${opponent} is scheduled for today. Please submit your result after playing.`
+    case 'afternoon':
+      return `Hi ${n}! Friendly reminder — your fixture vs ${opponent} is today. Your opponent might have forgotten, so please reach out and arrange to play.`
+    case 'evening':
+      return `Hi ${n}! Your fixture vs ${opponent} is still pending. If your opponent is not responding, send a message to the AI here +27 81 8209406`
+    case 'night':
+      return `Hi ${n}! Your result for the fixture vs ${opponent} is still not submitted. Please play or risk a backdoor loss. If your opponent is not responding, now's a good time to submit a backdoor — send it here +27 81 8209406`
+  }
+}
+
 export default function DashboardFixtureActions({
   fixtureId,
   status,
@@ -40,6 +72,7 @@ export default function DashboardFixtureActions({
 
   const isFinished = ['confirmed', 'confirmed_pending', 'completed', 'abandoned'].includes(status)
   const isAwaiting = status === 'awaiting_confirmation'
+  const timeSlot = getTimeSlot()
 
   useEffect(() => {
     if (!showPostpone) return
@@ -99,13 +132,8 @@ export default function DashboardFixtureActions({
     }
   }
 
-  const homeMsg = isAwaiting
-    ? `Hi ${homeManagerName ?? 'there'}! Please confirm the result for your match vs ${awayTeamName} on the EFA platform.`
-    : `Hi ${homeManagerName ?? 'there'}! Just a reminder that your fixture vs ${awayTeamName} is scheduled for today. Please submit your result after playing.`
-
-  const awayMsg = isAwaiting
-    ? `Hi ${awayManagerName ?? 'there'}! Please confirm the result for your match vs ${homeTeamName} on the EFA platform.`
-    : `Hi ${awayManagerName ?? 'there'}! Just a reminder that your fixture vs ${homeTeamName} is scheduled for today. Please submit your result after playing.`
+  const homeMsg = buildReminder(homeManagerName, awayTeamName, timeSlot)
+  const awayMsg = buildReminder(awayManagerName, homeTeamName, timeSlot)
 
   if (isFinished) return null
   if (done) return <span className="text-feedback-warning text-xs font-semibold">Postponed</span>
@@ -113,6 +141,11 @@ export default function DashboardFixtureActions({
   return (
     <div className="flex flex-col items-end gap-space-1 shrink-0" ref={actionsRef}>
       <div className="flex items-center gap-space-2 flex-wrap justify-end">
+        {/* Time slot indicator */}
+        <span className="text-[10px] text-text-muted font-medium uppercase tracking-wide">
+          {TIME_SLOT_LABELS[timeSlot]}
+        </span>
+
         {/* WhatsApp buttons */}
         {homeManagerPhone && (
           <WhatsAppButton phone={homeManagerPhone} message={homeMsg} size="sm" label="H" />
