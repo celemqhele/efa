@@ -31,7 +31,7 @@ const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
 function getTimeSlot(): TimeSlot {
   const sastHour = new Date().getUTCHours() + 2
   const h = ((sastHour % 24) + 24) % 24
-  if (h >= 6 && h < 12) return 'morning'
+  if (h >= 0 && h < 12) return 'morning'
   if (h >= 12 && h < 18) return 'afternoon'
   if (h >= 18 && h < 21) return 'evening'
   return 'night'
