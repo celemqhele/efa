@@ -75,3 +75,46 @@ export function canonicalPhone(phone: string | null | undefined): string {
   const { countryCode, local } = parsePhoneParts(phone)
   return toStoredPhone(countryCode, local)
 }
+
+// Total international digit-length ranges (country code included) per code,
+// used to reject truncated/mistyped numbers before they are stored. A full SA
+// mobile is exactly 27 + 9 = 11 digits; shortening it breaks WhatsApp identity
+// matching (e.g. "2766558283" from "27665582832").
+const PHONE_DIGIT_LENGTHS: Record<string, { min: number; max: number }> = {
+  '27': { min: 11, max: 11 },
+  '44': { min: 11, max: 12 },
+  '1': { min: 11, max: 11 },
+  '233': { min: 12, max: 12 },
+  '234': { min: 13, max: 13 },
+  '264': { min: 12, max: 12 },
+  '353': { min: 10, max: 11 },
+  '31': { min: 11, max: 11 },
+  '49': { min: 8, max: 13 },
+  '389': { min: 11, max: 11 },
+}
+
+export function phoneDigitLengthBounds(countryCode: string): { min: number; max: number } {
+  return PHONE_DIGIT_LENGTHS[countryCode] ?? { min: 7, max: 15 }
+}
+
+// Max digits allowed in the local-part input for a selected country code
+// (total range minus the country-code digits), so a truncated SA number can't
+// be typed below the expected length in the first place.
+export function phoneLocalMaxLength(countryCode: string): number {
+  const { max } = phoneDigitLengthBounds(countryCode)
+  return Math.max(1, max - countryCode.length)
+}
+
+// Accepts only digits-only international numbers that match a known country
+// code's length range. Unknown prefixes fall back to a sane 7-15 window so
+// the check never rejects a legitimate number it doesn't understand.
+export function isValidStoredPhone(phone: string | null | undefined): boolean {
+  const digits = normalizePhoneDigits(phone)
+  if (!digits) return true
+  const match = Object.keys(PHONE_DIGIT_LENGTHS)
+    .sort((a, b) => b.length - a.length)
+    .find((code) => digits.startsWith(code) && digits.length > code.length)
+  if (!match) return digits.length >= 7 && digits.length <= 15
+  const { min, max } = PHONE_DIGIT_LENGTHS[match]
+  return digits.length >= min && digits.length <= max
+}

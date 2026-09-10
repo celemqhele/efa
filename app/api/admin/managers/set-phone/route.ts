@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { waDigits } from '@/lib/phone'
+import { waDigits, isValidStoredPhone } from '@/lib/phone'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -16,12 +16,32 @@ export async function POST(request: Request) {
   const adminSupabase = await createAdminClient()
   const clean = phone ? waDigits(String(phone)) : null
 
-  const { error } = await (adminSupabase as any)
+  if (clean && !isValidStoredPhone(clean)) {
+    return Response.json({ error: 'Invalid phone number — check you have the full number with the country code.' }, { status: 400 })
+  }
+
+  const { error, data: current } = await (adminSupabase as any)
+    .from('profiles')
+    .select('phone')
+    .eq('id', user_id)
+    .maybeSingle()
+
+  if (error) return Response.json({ error: error.message }, { status: 500 })
+
+  const { error: updateError } = await (adminSupabase as any)
     .from('profiles')
     .update({ phone: clean || null })
     .eq('id', user_id)
 
-  if (error) return Response.json({ error: error.message }, { status: 500 })
+  if (updateError) return Response.json({ error: updateError.message }, { status: 500 })
+
+  await (adminSupabase as any).from('audit_log').insert({
+    admin_id: user.id,
+    action: 'update_phone',
+    target_type: 'profile',
+    target_id: user_id,
+    details: { previous_phone: current?.phone ?? null, phone: clean || null, note: 'Phone updated via admin users/managers page' },
+  })
 
   return Response.json({ ok: true, phone: clean || null })
 }

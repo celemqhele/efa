@@ -10,7 +10,7 @@ import ThemeSettings from '@/components/ui/ThemeSettings'
 import ApplyToSeason from './ApplyToSeason'
 import { Star, Shirt, Shield, Calendar, Phone } from 'lucide-react'
 import { useState } from 'react'
-import { COUNTRY_CODES, parsePhoneParts, toStoredPhone, canonicalPhone } from '@/lib/phone'
+import { COUNTRY_CODES, parsePhoneParts, toStoredPhone, canonicalPhone, phoneLocalMaxLength } from '@/lib/phone'
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null
@@ -39,18 +39,25 @@ export default function Desktop({ data }: { data: any }) {
   const [phone, setPhone] = useState(phoneParts.local)
   const [savedPhone, setSavedPhone] = useState(() => canonicalPhone(profile?.phone))
   const [saving, setSaving] = useState(false)
+  const [phoneError, setPhoneError] = useState('')
 
   const draftPhone = canonicalPhone(toStoredPhone(countryCode, phone))
   const phoneChanged = draftPhone !== savedPhone
 
   async function savePhone() {
     setSaving(true)
+    setPhoneError('')
     try {
-      await fetch('/api/profile/update', {
+      const res = await fetch('/api/profile/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: toStoredPhone(countryCode, phone) }),
       })
+      if (!res.ok) {
+        const data = await res.json()
+        setPhoneError(data.error ?? 'Could not save phone number.')
+        return
+      }
       setSavedPhone(draftPhone)
       window.dispatchEvent(new CustomEvent('show-notification', {
         detail: { title: 'Saved', message: 'Phone number updated', type: 'success' },
@@ -117,9 +124,11 @@ export default function Desktop({ data }: { data: any }) {
             </select>
             <input
               type="tel"
+              inputMode="numeric"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, phoneLocalMaxLength(countryCode)))}
               placeholder="e.g. 74 008 857"
+              maxLength={phoneLocalMaxLength(countryCode)}
               className="flex-1 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
             />
             {phoneChanged && (
@@ -132,6 +141,7 @@ export default function Desktop({ data }: { data: any }) {
               </button>
             )}
           </div>
+          {phoneError && <p className="text-xs text-red-400 pt-1">{phoneError}</p>}
         </div>
 
         {/* Quick Career Stats */}

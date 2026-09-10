@@ -5,7 +5,7 @@ import Image from 'next/image'
 import WhatsAppButton from '@/components/ui/WhatsAppButton'
 import SackCooldownDialog from '@/components/ui/SackCooldownDialog'
 import { Briefcase, Circle, ArrowLeftRight } from 'lucide-react'
-import { COUNTRY_CODES, parsePhoneParts, toStoredPhone } from '@/lib/phone'
+import { COUNTRY_CODES, parsePhoneParts, toStoredPhone, phoneLocalMaxLength } from '@/lib/phone'
 
 interface Team {
   id: string
@@ -349,9 +349,11 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
                           </select>
                           <input
                             type="tel"
+                            inputMode="numeric"
                             value={waInput}
-                            onChange={(e) => setWaInput(e.target.value)}
+                            onChange={(e) => setWaInput(e.target.value.replace(/\D/g, '').slice(0, phoneLocalMaxLength(waCountryCode)))}
                             placeholder="e.g. 74 008 857"
+                            maxLength={phoneLocalMaxLength(waCountryCode)}
                             className="input-field text-sm py-1.5 w-full"
                             autoFocus
                           />
