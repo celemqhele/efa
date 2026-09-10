@@ -4,7 +4,7 @@ import ExportButton from './ExportButton'
 import ExportControls from './ExportControls'
 import { Card } from '@/components/ui/Card'
 import { buildLiveStandings, goalDifference } from '@/lib/standings-core'
-import { Shield } from 'lucide-react'
+import { ShieldQuestion } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,10 +58,12 @@ function TeamLogoInline({
   slug?: string | null
   size?: number
 }) {
-  if (!folder || !slug) {
+  const isPlaceholder =
+    folder === 'custom' && (slug === 'vacant' || slug === 'noname')
+  if (!folder || !slug || isPlaceholder) {
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: size, height: size, flexShrink: 0 }}>
-        <Shield className="text-text-muted" size={size * 0.75} strokeWidth={1.5} />
+        <ShieldQuestion className="text-text-muted" size={size * 0.75} strokeWidth={1.5} />
       </span>
     )
   }
