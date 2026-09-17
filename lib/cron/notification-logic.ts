@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { insertNotificationsAndPush, type NotificationRow } from '@/lib/notify'
+import { getSastDateKey } from '@/lib/app-time'
 
 type ReminderType = 'morning' | 'midday' | 'afternoon' | 'deadline'
 
@@ -21,13 +22,7 @@ interface ManagerFixtures {
 }
 
 function getSastDateString(offsetDays = 0): string {
-  const now = new Date()
-  const sast = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }))
-  sast.setDate(sast.getDate() + offsetDays)
-  const y = sast.getFullYear()
-  const m = String(sast.getMonth() + 1).padStart(2, '0')
-  const d = String(sast.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  return getSastDateKey(new Date(), offsetDays)
 }
 
 function getFixtureList(managerFixtures: ManagerFixtures): string {

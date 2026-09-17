@@ -23,6 +23,7 @@ import { listOpenSeasons, getSeasonPickableTeams, userInSeason } from '@/lib/sea
 import { reclaimManagerSlots } from '@/lib/slot-utils'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
+import { getSastDateKey } from '@/lib/app-time'
 
 // ─── Date range helper: Last Sunday to Next Sunday (inclusive) ─────────────────────
 function getSundayRange(): { start: string; end: string } {
@@ -56,16 +57,12 @@ function getWeekRange(): { start: string; end: string } {
 // Non-admin players may submit results for games due up to 7 days in the FUTURE
 // (captured as 'confirmed_pending' until the fixture date) or within the last
 // 7 days. Admins can submit any fixture regardless of date. `scheduled_date`
-// is compared as YYYY-MM-DD strings (same pattern as getWeekRange above).
+// is compared as YYYY-MM-DD strings keyed on SAST (see lib/app-time.ts).
 function getSubmissionWindow(): { start: string; end: string } {
-  const today = new Date()
-  const start = new Date(today)
-  start.setDate(today.getDate() - 7)
-  const end = new Date(today)
-  end.setDate(today.getDate() + 7)
+  const now = new Date()
   return {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0]
+    start: getSastDateKey(now, -7),
+    end: getSastDateKey(now, 7),
   }
 }
 
@@ -100,7 +97,7 @@ function submissionBlockReason(f: any, now = new Date()): string | null {
   const dateKey = fixtureDateKey(f)
   if (!dateKey) return null
   if (isInSubmissionWindow(dateKey)) return null
-  const todayKey = now.toISOString().split('T')[0]
+  const todayKey = getSastDateKey(now)
   if (dateKey > todayKey) {
     const d = new Date(`${dateKey}T00:00:00.000Z`)
     const label = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
@@ -1127,7 +1124,7 @@ function formatDateLabel(dateKey: string): string {
 
 async function sendFixturesForTeams(from: string, teamIds: string[], teamNames: string[], dateKey: string | null, phoneNumberId: string) {
   const supabase = await createAdminClient()
-  const useDate = dateKey || new Date().toISOString().slice(0, 10)
+  const useDate = dateKey || getSastDateKey()
   const label = teamNames.join(' & ')
 
   const orParts = teamIds
@@ -4126,7 +4123,9 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
 
   // A fixture due in the FUTURE is captured as 'confirmed_pending' (deferred
   // standings/knockout until its due date) rather than immediately confirmed.
-  const todayKey = new Date().toISOString().slice(0, 10)
+  // "Today" is the SAST matchday, so a 00:00–02:00 SAST submission for today's
+  // game counts as on-time.
+  const todayKey = getSastDateKey()
   const isPending = !!(fixture?.scheduled_date && fixtureDateKey(fixture) > todayKey)
 
   const hName = fixture ? fixtureTeamName(fixture, 'home') : 'Home'

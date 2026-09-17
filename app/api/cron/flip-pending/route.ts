@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
+import { getSastDateKey } from '@/lib/app-time'
 
 // Promotes 'confirmed_pending' fixtures whose due date has arrived to
 // 'confirmed', recalculates standings for their tournaments, and advances
@@ -14,8 +15,9 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createAdminClient()
 
-  // 1. Find pending fixtures whose due date has arrived (about to be promoted)
-  const todayKey = new Date().toISOString().slice(0, 10)
+  // 1. Find pending fixtures whose due date has arrived (about to be promoted).
+  //    The day key is SAST so fixtures are released at 00:00 on their matchday.
+  const todayKey = getSastDateKey()
   const { data: duePending } = await supabase
     .from('fixtures')
     .select('id, tournament_id, round_type, home_team_id, away_team_id, status, results!results_fixture_id_fkey(home_score, away_score)')

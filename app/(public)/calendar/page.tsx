@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSastDateKey } from '@/lib/app-time'
 import { differenceInDays, parseISO } from 'date-fns'
 import Shell from './_shell'
 
@@ -87,9 +88,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   const allFixtures = (fixtures ?? []) as any[]
   const allBreaks = (breaksRaw ?? []) as any[]
 
-  const _now = new Date()
-  _now.setDate(_now.getDate() - 1)
-  const today = _now.toISOString().slice(0, 10)
+  const today = getSastDateKey(new Date(), -1)
   let nextQuery = supabase
     .from('fixtures')
     .select(`

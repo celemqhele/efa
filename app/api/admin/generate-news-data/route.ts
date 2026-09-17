@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { buildLiveStandings, goalDifference } from '@/lib/standings-core'
+import { getSastDateKey } from '@/lib/app-time'
 
 const ROUND_LABELS: Record<string, string> = {
   league: 'League Match',
@@ -8,23 +9,6 @@ const ROUND_LABELS: Record<string, string> = {
   sf: 'Semi-Final',
   final: 'Final',
   super_cup: 'Super Cup',
-}
-
-async function getDbDateKey(supabase: any): Promise<string> {
-  try {
-    const { data, error } = await supabase.rpc('get_db_now')
-    if (!error && data) return new Date(data).toISOString().slice(0, 10)
-  } catch {}
-  try {
-    const { data: recent } = await supabase
-      .from('fixtures')
-      .select('created_at')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (recent?.created_at) return new Date(recent.created_at).toISOString().slice(0, 10)
-  } catch {}
-  return new Date().toISOString().slice(0, 10)
 }
 
 function formatStandingsRows(rows: any[]): string[] {
@@ -86,7 +70,7 @@ async function getH2HRecord(
 export async function GET() {
   const supabase = await createAdminClient()
 
-  const todayKey = await getDbDateKey(supabase)
+  const todayKey = getSastDateKey()
   const todayDate = new Date(todayKey + 'T00:00:00.000Z')
   const yesterdayDate = new Date(todayDate.getTime() - 86400000)
   const yesterdayKey = yesterdayDate.toISOString().slice(0, 10)

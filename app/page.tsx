@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import PageWrapper from '@/components/ui/PageWrapper'
+import { getSastDateKey } from '@/lib/app-time'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
@@ -47,7 +48,7 @@ export default async function HomePage() {
     ? userTeamIds.flatMap(id => [`home_team_id.eq.${id}`, `away_team_id.eq.${id}`]).join(',')
     : null
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getSastDateKey()
   let upcomingQuery = supabase
     .from('fixtures')
     .select('scheduled_date')
