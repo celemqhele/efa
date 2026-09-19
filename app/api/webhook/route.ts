@@ -1093,7 +1093,7 @@ async function handlePhoneTeamConfirm(from: string, text: string, session: Sessi
     return
   }
 
-  const lower = cleanTeamInput(text)
+  const lower = cleanTeamInput(text).toLowerCase()
   const match = candidates.find(c =>
     c.teamName.toLowerCase() === lower ||
     lower.includes(c.teamName.toLowerCase()) ||
@@ -1644,7 +1644,7 @@ async function resolveBackdoorSide(
   fixtureId: string | null,
   text: string
 ): Promise<'home' | 'away' | null> {
-  const input = cleanTeamInput(text)
+  const input = cleanTeamInput(text).toLowerCase()
   if (input === 'home') return 'home'
   if (input === 'away') return 'away'
   if (!fixtureId) return null
