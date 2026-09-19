@@ -501,12 +501,20 @@ export async function assignVacantSeatToManager(
   db: SupabaseClientLike,
   managerUserId: string,
   vacantTeamId: string
-): Promise<{ action: 'claim' | 'fill'; clubTeamId: string | null; filled: number }> {
+): Promise<{ action: 'claim' | 'fill'; clubTeamId: string | null; clubName: string | null; filled: number }> {
   // A manager who already runs a club replaces the Vacant seat with that club.
-  // A manager with no club just claims ownership ("claim"), and the caller
-  // falls back to the normal assign path (seat stays Vacant until they get one).
+  // A manager with no club claims ownership ("claim"): user_id is stamped on
+  // the vacant seats so they can't be taken by someone else, while the seat
+  // keeps showing the Vacant placeholder until the manager gets a club.
   const clubTeamId = await resolveUserClubIdExcluding(db, managerUserId, [vacantTeamId])
-  if (!clubTeamId) return { action: 'claim', clubTeamId: null, filled: 0 }
+  if (!clubTeamId) return claimVacantSeats(db, managerUserId, vacantTeamId)
+
+  const { data: clubRow } = await db
+    .from('teams')
+    .select('name')
+    .eq('id', clubTeamId)
+    .maybeSingle()
+  const clubName = clubRow?.name ?? null
 
   const { data: active } = await db
     .from('tournaments')
@@ -573,7 +581,42 @@ export async function assignVacantSeatToManager(
     }
   }
 
-  return { action: 'fill', clubTeamId, filled }
+  return { action: 'fill', clubTeamId, clubName, filled }
+}
+
+// A manager with no club owns the vacant seat(s) but keeps showing the Vacant
+// placeholder. The seat is only stamped with user_id (display team_id and the
+// seat's pending fixtures stay Vacant); a later real fill resolves it into the
+// manager's club.
+async function claimVacantSeats(
+  db: SupabaseClientLike,
+  managerUserId: string,
+  vacantTeamId: string
+): Promise<{ action: 'claim'; clubTeamId: null; clubName: null; filled: number }> {
+  const { data: active } = await db
+    .from('tournaments')
+    .select('id')
+    .eq('status', 'active')
+
+  let filled = 0
+  for (const tour of (active ?? []) as { id: string }[]) {
+    const { data: seats } = await db
+      .from('tournament_participants')
+      .select('id')
+      .eq('tournament_id', tour.id)
+      .eq('team_id', vacantTeamId)
+      .is('user_id', null)
+
+    for (const seat of (seats ?? []) as { id: string }[]) {
+      await db
+        .from('tournament_participants')
+        .update({ user_id: managerUserId })
+        .eq('id', seat.id)
+      filled++
+    }
+  }
+
+  return { action: 'claim', clubTeamId: null, clubName: null, filled }
 }
 
 // Remove auto-generated forfeit results (finalised_by NULL, stamped by

@@ -34,6 +34,7 @@ export default function TeamManagerAdmin({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [disqualifyNotice, setDisqualifyNotice] = useState('')
+  const [assignNotice, setAssignNotice] = useState('')
   const [managerId, setManagerId] = useState(currentManagerId)
   const [managerUsername, setManagerUsername] = useState(currentManagerUsername)
   const [managerAvatar, setManagerAvatar] = useState(currentManagerAvatar)
@@ -55,6 +56,7 @@ export default function TeamManagerAdmin({
     setLoading(true)
     setError('')
     setDisqualifyNotice('')
+    setAssignNotice('')
     try {
       const res = await fetch('/api/admin/managers/sack', {
         method: 'POST',
@@ -77,6 +79,7 @@ export default function TeamManagerAdmin({
     setLoading(true)
     setError('')
     setDisqualifyNotice('')
+    setAssignNotice('')
     try {
       const res = await fetch('/api/admin/managers/disqualify', {
         method: 'POST',
@@ -100,6 +103,7 @@ export default function TeamManagerAdmin({
   async function handleAssign(userId: string, override: boolean = false) {
     setLoading(true)
     setError('')
+    setAssignNotice('')
     try {
       const res = await fetch('/api/admin/managers/assign', {
         method: 'POST',
@@ -117,10 +121,18 @@ export default function TeamManagerAdmin({
         throw new Error(data.error ?? 'Failed')
       }
       const profile = allProfiles.find((p) => p.id === userId)
+      if (data?.action === 'claim') {
+        // No club for this user: they own the seat but it still renders as
+        // Vacant. Don't flip the "current manager" card — nothing was filled.
+        setAssignNotice(data.message ?? 'No club found for this user — the seat stays as Vacant until they get a club.')
+        setCooldown(null)
+        return
+      }
       setManagerId(userId)
       setManagerUsername(profile?.username ?? null)
       setManagerAvatar(profile?.avatar_url ?? null)
       setCooldown(null)
+      if (data?.action === 'fill' && data?.message) setAssignNotice(data.message)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -141,6 +153,12 @@ export default function TeamManagerAdmin({
       {disqualifyNotice && (
         <p className="text-orange-700 text-sm bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mb-4">
           {disqualifyNotice}
+        </p>
+      )}
+
+      {assignNotice && (
+        <p className="text-sky-700 text-sm bg-sky-50 border border-sky-200 rounded-lg px-3 py-2 mb-4">
+          {assignNotice}
         </p>
       )}
 

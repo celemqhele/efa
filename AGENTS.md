@@ -24,6 +24,37 @@ Schema changes (DDL) need `npm run db`. For plain queries you can also use the R
 
 Project ref: `dtxnqtfqsehofezdmdbd`
 
+## EFA News / Poster Generation (Leonardo AI)
+
+The user generates comedy/satire "news" for the EFA league. Enter this workflow whenever the user asks to make a **poster prompt** or generate **news** — any request about a poster prompt or news triggers it.
+
+1. **Ideas → research first.** The user gives a joke headline/idea. Before writing anything, pull all the involved subjects from Supabase with `npm run db`:
+   - Manager CV/tenures: `manager_tenures` (teams, dates, W/D/L, GF/GA)
+   - Teams: `teams` (name, abandon_count)
+   - Current form: `standings` / `group_standings` (points, form, GF/GA) and `results` + `fixtures`
+   - Trophies: `trophies` · Profile: `profiles` (playstyle, sacked_at) · Forfeits: `forfeit_balances`
+   - NOTE: one real manager can have TWO accounts (e.g. `Thando` + `thando_1110`) — search both usernames and merge their records when researching.
+   - **FACTS ONLY — no hallucinated stats.** Everything in the prompt/caption that is a fact (records, scores, W/D/L, GF/GA, points, trophies, teams managed, names) MUST come from these Supabase queries verbatim. Never invent numbers, results, or history to fill a gap — if the data isn't there, omit it or leave it to the AI's imagery. Only the joke/narrative itself is invented; the underlying facts are real league data.
+2. **Output a Leonardo AI prompt** (LANDSCAPE poster):
+   - Paste the user's headline EXACTLY as given — it must appear word-for-word as the poster title.
+   - Dump all researched context (identity, record, teams managed, trophies, playstyle, stats) so the image AI knows the subject — it has no league context.
+   - Give the AI full creative control over narrative/imagery; only the headline is fixed.
+   - **PRIORITISE — no text dumps.** Only the headline may appear as text on the poster. All researched facts are background knowledge / optional visual motifs ONLY — they must NOT be rendered as text blocks, stat lists, labels, or subheadings (no playstyle labels, no team CV strips, no trophy notes, no record breakdowns). Instruct the AI to pick ONE clear focal scene that carries the whole joke and at most 1-2 small supporting props; drop anything that doesn't serve that single gag. Instruct the AI to keep any on-poster text typography plain and tabloid-clean (no em dashes, no long hyphen flourishes).
+   - **Style guidance (user reference examples — GUIDANCE, not explicit instructions).** The user likes three poster vibes (reference images: `C:\Users\mqhel\Downloads\WhatsApp Image 2026-09-14 at 20.58.14.jpeg`, `C:\Users\mqhel\Downloads\b3953c8f-e58c-43fb-923b-b8e9482ceb71.jpg`, `C:\Users\mqhel\Downloads\43afd68c-4642-4e59-924e-918a5982d605.jpg`):
+     - **Tabloid newspaper front page** (e.g. "Ghana Chronicle") — masthead, date banner, price tag, splash headline, multi-column article with invented quotes, "(sacked)" style portrait captions, "WHAT'S NEXT" box.
+     - **Sports broadcast stat card** — bold stat call-outs (e.g. goals scored / conceded), mini standings table (P W D L GF GA GD PTS).
+     - **Match fixture card** — day + date + "KICK OFF HH:MM" + tournament branding.
+     Let the AI pick the layout best suited to the story; within an adopted layout, structured text (masthead, kicker, headline, mini tables) is on-brand and allowed — but it must be layout-driven, not an arbitrary fact-dump.
+3. **Add a post caption** in **English SAL** (South African English as Second Additional Language — SA slang/tabloid banter tone; occasional local flavour words like "yho", "bayajika" are allowed where natural). Meme-style, fits a WhatsApp group.
+   - **BANTER STYLE — Twitter/Instagram comment-section energy (researched). NOT ChatGPT prose.** Write like a football Twitter reply or IG comment riffing off the news, not like a newsreader:
+     - Short punchy reactions, fragments, not paragraphs. One or two words carry the shot ("washed", "finished", "cooked", "in the mud", "ratio").
+     - Facts as deadpan ammunition, no metaphors or flowery build-up around them ("0 wins, 4 losses, 3 scored, 13 conceded").
+     - Minimal punctuation: no em dashes, periods rare, sentences are fragments. ALL-CAPS for emphasis/sarcasm.
+     - Repetition for effect ("he sold the stadium he sold the stadium"), casual broken grammar ("Korea 2- SA 1", "mara 😂") is a feature not a bug.
+     - Emoji as the actual punchline in the mix (😂😭💀), not decoration; SA flavour words used naturally where they fit, never as adornment.
+     - Hype/roast energy, even when the target is a mate's team. Never elegiac, never poetic.
+   - **NO EM DASHES anywhere** — in the caption text AND instruct the Leonardo prompt to avoid rendering em dashes / long hyphen flourishes in any on-poster text; keep poster typography plain and tabloid-clean.
+
 ## File Deletion Policy
 **NEVER permanently delete files.** 
 Whenever a file needs to be removed:
@@ -82,6 +113,7 @@ tree as the first step.
 - `whatsapp-ux/` — WhatsApp bot UX (welcome menu, input/keyword cleanup, plain-English prompts)
 - `draw-seeding/` — seeded group-stage tournament draws (club-record seeding for Run Draw)
 - `user-based-competitions/` — slot-owned competitions (slots model, vacant display, sacked-club reclaim)
+- `efa-news/` — EFA comedy/satire news + Leonardo AI poster generation workflow
 
 ### Naming requirement
 Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's creation date (a new file always uses the current date). A context file is written once and never updated; a later change or fix on the same topic gets a brand-new file with the new date.

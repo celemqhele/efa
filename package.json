@@ -5,7 +5,7 @@
   "scripts": {
     "fix-encoding": "node scripts/fix-encoding.js",
     "db": "tsx scripts/db.ts",
-    "generate-onboarding-pdf": "tsx scripts/generate-onboarding-pdf.tsx",
+    "generate-guide-pdfs": "tsx scripts/generate-guide-pdfs.tsx",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

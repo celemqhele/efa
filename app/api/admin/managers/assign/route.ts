@@ -140,7 +140,26 @@ export async function POST(request: Request) {
     // seat's stats and clears its auto-forfeit results). A manager with no
     // club claims the seat (user_id set on the seats) without binding to the
     // Vacant placeholder.
-    await assignVacantSeatToManager(adminSupabase, user_id, resolvedTeamId)
+    const result = await assignVacantSeatToManager(adminSupabase, user_id, resolvedTeamId)
+    if (result.action === 'claim') {
+      return Response.json({
+        success: true,
+        action: 'claim',
+        filled: result.filled,
+        message: result.filled > 0
+          ? `No club found for @${targetProfile.username} — the seat is claimed (still shows as Vacant) until they get a club.`
+          : `No club found for @${targetProfile.username} and no vacant seats to claim.`,
+      })
+    }
+    return Response.json({
+      success: true,
+      action: 'fill',
+      filled: result.filled,
+      club: result.clubName,
+      message: result.filled > 0
+        ? `${result.clubName ?? '@' + targetProfile.username} has taken over the vacant seat.`
+        : `No vacant seat was found for ${result.clubName ?? '@' + targetProfile.username} to fill.`,
+    })
   } else {
     // Reclaim the club's own seats in active tournaments so a sacked seat is
     // handed back to the incoming manager instead of staying Vacant.
