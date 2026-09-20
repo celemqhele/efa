@@ -224,6 +224,22 @@ export async function buildLiveStandings(supabase: SupabaseClient, tournamentId:
 
     participants?.forEach(p => getRow(p.team_id, p.team))
 
+    // Resolve a fixture side by its seat (participant) first so a seat's
+    // history always counts toward the seat's current club (slot-follows-team):
+    // an incoming club replaces a vacant seat and shows only that seat's record.
+    // The team copy on an already-played fixture is a historical snapshot and
+    // can be ambiguous; fall back to it only for legacy fixtures without a seat.
+    const participantById: Record<string, any> = {}
+    participants?.forEach(p => {
+      if (p.id) participantById[p.id] = p
+    })
+    const resolveSide = (teamId: string | null, participantId: string | null) => {
+      const part = participantId ? participantById[participantId] : null
+      if (part?.team_id) return { teamId: part.team_id, teamData: part.team }
+      if (teamId) return { teamId, teamData: undefined }
+      return null
+    }
+
     fixtures?.forEach(f => {
       if (f.status !== 'confirmed') return
       const res = Array.isArray(f.results) ? f.results[0] : f.results
@@ -241,8 +257,11 @@ export async function buildLiveStandings(supabase: SupabaseClient, tournamentId:
       const effectiveHomeScore = bothForfeit ? 0 : (res.home_score ?? 0)
       const effectiveAwayScore = bothForfeit ? 0 : (res.away_score ?? 0)
 
-      const hr = getRow(f.home_team_id!)
-      const ar = getRow(f.away_team_id!)
+      const home = resolveSide(f.home_team_id, f.home_participant_id)
+      const away = resolveSide(f.away_team_id, f.away_participant_id)
+      if (!home || !away) return
+      const hr = getRow(home.teamId, home.teamData)
+      const ar = getRow(away.teamId, away.teamData)
       if (hr && ar) applyResultToRow(hr, ar, effectiveHomeScore, effectiveAwayScore, isBothAbsent, homeAbsent, awayAbsent, homeForfeit, awayForfeit)
     })
 
@@ -269,17 +288,22 @@ export async function buildLiveStandings(supabase: SupabaseClient, tournamentId:
     getGroupRow(p.team_id, gn, p.team)
   })
 
-  // Resolve a fixture side to the participant row it belongs to. A side may
-  // reference a team that is no longer a participant (e.g. the seat was
-  // vacated and the team copy went stale); fall back to the seat's current
-  // club so results always land on the slot's active row instead of a
-  // fabricated "unknown" team. Returns null when the side is genuinely
-  // unplaceable (never part of the tournament).
+  // Resolve a fixture side by its seat (participant) first: a seat's history
+  // always counts toward the seat's current club and group (slot-follows-team).
+  // The team copy on an already-played fixture is a historical snapshot and can
+  // be ambiguous — the same club id may appear on fixtures from a stale seat in
+  // another group (e.g. a vacated seat refilled by a different club); routing
+  // those by copy would fold an old group's matches into a club's current group.
+  // Fall back to the team copy only for legacy fixtures without a seat. Returns
+  // null when the side is genuinely unplaceable (never part of the tournament).
   const resolveSide = (teamId: string | null, participantId: string | null) => {
-    if (teamId && teamGroupMap[teamId]) return { teamId, group: teamGroupMap[teamId], teamData: undefined }
     const part = participantId ? participantById[participantId] : null
-    if (part?.team_id && teamGroupMap[part.team_id]) {
-      return { teamId: part.team_id, group: teamGroupMap[part.team_id], teamData: part.team }
+    if (part?.team_id) {
+      const gn = (part.group_name || 'A').replace(/^group\s+/i, '').trim()
+      return { teamId: part.team_id, group: gn, teamData: part.team }
+    }
+    if (teamId && teamGroupMap[teamId]) {
+      return { teamId, group: teamGroupMap[teamId], teamData: undefined }
     }
     return null
   }
