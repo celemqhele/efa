@@ -6,6 +6,8 @@
     "fix-encoding": "node scripts/fix-encoding.js",
     "db": "tsx scripts/db.ts",
     "generate-guide-pdfs": "tsx scripts/generate-guide-pdfs.tsx",
+    "generate-announcement-pdf": "tsx scripts/generate-announcement-pdf.tsx",
+    "generate-bracket-png": "tsx scripts/generate-bracket-png.tsx",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

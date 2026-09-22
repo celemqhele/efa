@@ -114,6 +114,7 @@ tree as the first step.
 - `draw-seeding/` — seeded group-stage tournament draws (club-record seeding for Run Draw)
 - `user-based-competitions/` — slot-owned competitions (slots model, vacant display, sacked-club reclaim)
 - `efa-news/` — EFA comedy/satire news + Leonardo AI poster generation workflow
+- `knockout-bracket-poster/` — tournament knockout bracket posters (2K PNG generation via react-pdf + Ghostscript)
 
 ### Naming requirement
 Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's creation date (a new file always uses the current date). A context file is written once and never updated; a later change or fix on the same topic gets a brand-new file with the new date.

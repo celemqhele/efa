@@ -15,6 +15,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ shar
     return Response.json({ error: 'Poll not found' }, { status: 404 })
   }
 
+  const { voter_restrictions: _, ...publicPoll } = poll
+
   // Count applications per team
   const adminSupabase = await createAdminClient()
   const { data: applications } = await adminSupabase
@@ -33,7 +35,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ shar
     : []
 
   return Response.json({
-    poll,
+    poll: publicPoll,
     taken_slots: [...takenTeams],
     my_applications: myApplications,
   })

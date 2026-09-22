@@ -32,7 +32,7 @@ function logoSrc(folder: string, slug: string) {
 }
 
 export default function Mobile({ data }: { data: any }) {
-  const { poll, leagues, user, isSeasonLinked } = data
+  const { poll, leagues, user, isSeasonLinked, isEligible } = data
 
   const [search, setSearch] = useState('')
   const [selectedLeague, setSelectedLeague] = useState('')
@@ -166,6 +166,16 @@ export default function Mobile({ data }: { data: any }) {
         <Card className="p-3 text-center">
           <p className="text-sm text-text-muted">
             <a href={`/login?redirect=${encodeURIComponent(`/polls/${poll.share_code}`)}`} className="text-accent underline">Log in</a> to apply for teams.
+          </p>
+        </Card>
+      )}
+
+      {user && isEligible === false && (
+        <Card className="p-5 text-center bg-feedback-error/5 border-feedback-error/30">
+          <p className="text-2xl mb-2">🚫</p>
+          <p className="text-text-primary font-semibold text-sm">This poll is restricted to tournament managers</p>
+          <p className="text-text-muted text-xs mt-1">
+            Only managers ranked in the EFA International Cup placement are eligible to pick a team here.
           </p>
         </Card>
       )}

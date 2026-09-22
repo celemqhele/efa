@@ -77,6 +77,9 @@ export default function AdminPollsPage() {
   const [seasonId, setSeasonId] = useState('')
   const [seasons, setSeasons] = useState<{ id: string; name: string }[]>([])
   const [creating, setCreating] = useState(false)
+  const [voterTournamentId, setVoterTournamentId] = useState('')
+  const [voterPslCount, setVoterPslCount] = useState(16)
+  const [tournaments, setTournaments] = useState<{ id: string; name: string }[]>([])
 
   const LEAGUE_OPTIONS = [
     { value: 'english-premier-league-2025-2026.football-logos.cc', label: 'Premier League' },
@@ -97,6 +100,9 @@ export default function AdminPollsPage() {
     { value: 'brazil-serie-a-2025-2026.football-logos.cc', label: 'Série A' },
     { value: 'brazil-serie-b-2025-2026.football-logos.cc', label: 'Série B' },
     { value: 'saudi-arabia-pro-league-2025-2026.football-logos.cc', label: 'Saudi Pro League' },
+    { value: 'south-african-premiership-2026-2027.football-logos.cc', label: 'Betway Premiership' },
+    { value: 'motsepe-foundation-championship-2026-2027.football-logos.cc', label: 'Motsepe Foundation Championship' },
+    { value: 'abc-motsepe-league-2026-2027.football-logos.cc', label: 'ABC Motsepe League' },
   ]
 
   function getApplicantName(a: Application): string {
@@ -131,8 +137,17 @@ export default function AdminPollsPage() {
     }
   }, [])
 
+  const loadTournaments = useCallback(async () => {
+    const res = await fetch('/api/admin/tournaments')
+    if (res.ok) {
+      const data = await res.json()
+      setTournaments((Array.isArray(data) ? data : []).map((t: any) => ({ id: t.id, name: t.name })))
+    }
+  }, [])
+
   useEffect(() => { loadPolls() }, [loadPolls])
   useEffect(() => { loadSeasons() }, [loadSeasons])
+  useEffect(() => { loadTournaments() }, [loadTournaments])
 
   function toggleLeague(value: string) {
     setSelectedLeagues((prev) =>
@@ -154,6 +169,8 @@ export default function AdminPollsPage() {
         allowed_leagues: selectedLeagues.length > 0 ? selectedLeagues : [],
         allowed_international: allowInternational,
         season_id: seasonId || null,
+        voter_tournament_id: voterTournamentId || null,
+        voter_psl_count: voterPslCount,
       }),
     })
 
@@ -170,6 +187,8 @@ export default function AdminPollsPage() {
     setSelectedLeagues([])
     setAllowInternational(false)
     setSeasonId('')
+    setVoterTournamentId('')
+    setVoterPslCount(16)
     setCreating(false)
     loadPolls()
   }
@@ -416,6 +435,35 @@ export default function AdminPollsPage() {
                 <p className="text-[10px] text-text-muted mt-space-1">
                   Link to a season so applications create tournament applications for admin review.
                 </p>
+              </div>
+
+              <div>
+                <label className="form-label">Restrict voters (optional)</label>
+                <select value={voterTournamentId} onChange={(e) => setVoterTournamentId(e.target.value)} className="input-field">
+                  <option value="">— No restriction (any logged-in user) —</option>
+                  {tournaments.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-text-muted mt-space-1">
+                  Restrict voting to a tournament's participants. Pick the tournament whose group-stage
+                  placement decides who can vote.
+                </p>
+                {voterTournamentId && (
+                  <div className="mt-space-2">
+                    <label className="form-label">PSL quota (top N)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={voterPslCount}
+                      onChange={(e) => setVoterPslCount(Number(e.target.value) || 0)}
+                      className="input-field"
+                    />
+                    <p className="text-[10px] text-text-muted mt-space-1">
+                      The top N ranked managers get the first league; the rest get the remaining leagues.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>

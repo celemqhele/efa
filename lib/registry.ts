@@ -79,6 +79,14 @@ export const LEAGUE_META: Record<string, LeagueMeta> = {
   // Middle East
   'saudi-arabia-pro-league-2025-2026.football-logos.cc':
     { region: 'Middle East', country: 'Saudi Arabia', league: 'Saudi Pro League' },
+
+  // South Africa
+  'south-african-premiership-2026-2027.football-logos.cc':
+    { region: 'Africa', country: 'South Africa', league: 'Betway Premiership' },
+  'motsepe-foundation-championship-2026-2027.football-logos.cc':
+    { region: 'Africa', country: 'South Africa', league: 'Motsepe Foundation Championship' },
+  'abc-motsepe-league-2026-2027.football-logos.cc':
+    { region: 'Africa', country: 'South Africa', league: 'ABC Motsepe League' },
 }
 
 // ─── Slug → display name ──────────────────────────────────────────────────────

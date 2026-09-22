@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Check, X, Trophy, Loader2, Search } from 'lucide-react'
 import ModalPortal from '@/components/ui/ModalPortal'
+import { splitRestrictedUsersByDivision } from '@/lib/poll-voter-restrictions'
 
 // --- Types -------------------------------------------------------------------
 
@@ -620,7 +621,11 @@ function StartPhaseDialog({
                     className="input-field pl-8"
                   />
                 </div>
-                <ImportFromPollButton users={users} onSelect={(ids) => setActiveUserIds(ids)} />
+                <ImportFromPollButton
+                  users={users}
+                  onSelect={(ids) => setActiveUserIds(ids)}
+                  onSplitSelect={(d1, d2) => { setD1UserIds(d1); setD2UserIds(d2); setActiveDiv(1) }}
+                />
               </div>
 
               {filteredUsers.length === 0 ? (
@@ -749,13 +754,21 @@ function StartPhaseDialog({
 
 // --- Import from Poll button --------------------------------------------------
 
-function ImportFromPollButton({ users, onSelect }: { users: UserWithClub[]; onSelect: (userIds: string[]) => void }) {
+function ImportFromPollButton({
+  users,
+  onSelect,
+  onSplitSelect,
+}: {
+  users: UserWithClub[]
+  onSelect: (userIds: string[]) => void
+  onSplitSelect?: (d1: string[], d2: string[]) => void
+}) {
   const [open, setOpen] = useState(false)
   const [polls, setPolls] = useState<any[]>([])
   const [apps, setApps] = useState<any[]>([])
   const [importLoading, setImportLoading] = useState(false)
-  const [importError, setImportError] = useState('')
-  const [done, setDone] = useState(0)
+const [importError, setImportError] = useState('')
+  const [done, setDone] = useState('')
 
   const userByApplicantId = new Map<string, UserWithClub>(users.map((u) => [u.id, u]))
 
@@ -774,21 +787,35 @@ function ImportFromPollButton({ users, onSelect }: { users: UserWithClub[]; onSe
     setImportLoading(false)
   }
 
-  function handleImport(pollId: string) {
+function handleImport(pollId: string) {
     try {
+      const poll = polls.find((p: any) => p.id === pollId)
       const pollApps = apps.filter((a: any) => a.poll_id === pollId && a.status !== 'withdrawn')
       const matched: string[] = []
       for (const app of pollApps) {
         const user = app.applicant_id ? userByApplicantId.get(app.applicant_id) : null
         if (user) matched.push(user.id)
       }
-      if (matched.length > 0) {
-        onSelect(matched)
-        setDone(matched.length)
-        setTimeout(() => setDone(0), 2500)
-      } else {
+      if (matched.length === 0) {
         setImportError('No poll applicants currently manage a club.')
+        return
       }
+
+      // Restricted polls carry the division split in voter_restrictions:
+      // split D1(D2) applicants straight into the matching division.
+      const restrictions = (poll as any)?.voter_restrictions ?? null
+      if (onSplitSelect && restrictions) {
+        const { d1, d2 } = splitRestrictedUsersByDivision(restrictions, matched)
+        onSplitSelect(d1, d2)
+        setDone(d1.length + d2.length > 0 ? `${matched.length} imported (D1 ${d1.length} · D2 ${d2.length})` : '')
+        setTimeout(() => setDone(''), 2500)
+        if (d1.length + d2.length === 0) setImportError('No poll applicants currently manage a club.')
+        return
+      }
+
+      onSelect(matched)
+      setDone(`${matched.length} imported`)
+      setTimeout(() => setDone(''), 2500)
     } catch (e: any) {
       setImportError(e.message ?? 'Import failed')
     }
@@ -796,8 +823,8 @@ function ImportFromPollButton({ users, onSelect }: { users: UserWithClub[]; onSe
 
   return (
     <>
-      <div className="flex items-center gap-1 shrink-0">
-        {done > 0 && <span className="text-[10px] text-green-400">{done} imported</span>}
+<div className="flex items-center gap-1 shrink-0">
+        {done && <span className="text-[10px] text-green-400">{done}</span>}
         <button
           type="button"
           onClick={() => { setOpen(true); loadPolls() }}
@@ -835,9 +862,12 @@ function ImportFromPollButton({ users, onSelect }: { users: UserWithClub[]; onSe
                         onClick={() => handleImport(poll.id)}
                         className="w-full flex items-center justify-between p-3 rounded-lg border border-border bg-bg-elevated hover:border-accent/30 transition-colors text-left"
                       >
-                        <div>
+<div>
                           <p className="text-sm font-medium text-foreground-primary">{poll.title}</p>
-                          <p className="text-xs text-text-muted mt-0.5">{pollApps.length} teams</p>
+                          <p className="text-xs text-text-muted mt-0.5">
+                            {pollApps.length} teams
+                            {poll.voter_restrictions && <span className="text-accent"> · Division split</span>}
+                          </p>
                         </div>
                         <span className="text-xs text-accent shrink-0">Import</span>
                       </button>

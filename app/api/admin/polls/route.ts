@@ -1,5 +1,12 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
+import {
+  rankTournamentManagers,
+  buildPlacementRestrictions,
+  SA_PREMIERSHIP_FOLDER,
+  SA_MOTSEPE_FOLDER,
+  SA_ABC_FOLDER,
+} from '@/lib/poll-voter-restrictions'
 
 export async function GET() {
   const supabase = await createClient()
@@ -44,7 +51,15 @@ export async function POST(request: Request) {
   if (profile?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await request.json()
-  const { title, description, allowed_leagues, allowed_international, season_id } = body
+  const {
+    title,
+    description,
+    allowed_leagues,
+    allowed_international,
+    season_id,
+    voter_tournament_id,
+    voter_psl_count,
+  } = body
 
   if (!title?.trim()) {
     return Response.json({ error: 'title is required' }, { status: 400 })
@@ -62,6 +77,27 @@ export async function POST(request: Request) {
     }
   }
 
+  // Build voter restrictions from a tournament's participants (placement split)
+  let voter_restrictions: Record<string, string[]> | null = null
+  if (voter_tournament_id) {
+    const { data: tournament, error: tournamentError } = await adminSupabase
+      .from('tournaments')
+      .select('id, name')
+      .eq('id', voter_tournament_id)
+      .single()
+    if (tournamentError || !tournament) {
+      return Response.json({ error: 'Invalid voter_tournament_id' }, { status: 400 })
+    }
+
+    const ranked = await rankTournamentManagers(adminSupabase, voter_tournament_id)
+    const psl_count = Number(voter_psl_count)
+    voter_restrictions = buildPlacementRestrictions(ranked, {
+      psl_count: Number.isFinite(psl_count) && psl_count > 0 ? psl_count : 16,
+      top_leagues: [SA_PREMIERSHIP_FOLDER],
+      bottom_leagues: [SA_MOTSEPE_FOLDER, SA_ABC_FOLDER],
+    })
+  }
+
   const share_code = crypto.randomBytes(4).toString('hex')
 
   const { data: poll, error } = await adminSupabase
@@ -75,6 +111,7 @@ export async function POST(request: Request) {
       allowed_leagues: allowed_leagues ?? [],
       allowed_international: allowed_international ?? false,
       season_id: season_id ?? null,
+      voter_restrictions,
     })
     .select('*')
     .single()

@@ -20,12 +20,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ sha
   // Get poll
   const { data: poll } = await adminSupabase
     .from('polls' as any)
-    .select('id, status, allowed_leagues, allowed_international, season_id')
+    .select('id, status, allowed_leagues, allowed_international, season_id, voter_restrictions')
     .eq('share_code', share_code)
     .single()
 
   if (!poll) return Response.json({ error: 'Poll not found' }, { status: 404 })
   if (poll.status !== 'open') return Response.json({ error: 'This poll is closed' }, { status: 400 })
+
+  // Voter restrictions: only users in the allowlist may apply, and only to
+  // teams in their allowed league folders.
+  const restrictions: Record<string, string[]> | null = poll.voter_restrictions ?? null
+  if (restrictions) {
+    const allowedFolders = restrictions[user.id]
+    if (!allowedFolders || allowedFolders.length === 0) {
+      return Response.json({ error: 'You are not eligible for this poll' }, { status: 403 })
+    }
+    if (!allowedFolders.includes(team_league)) {
+      return Response.json({ error: 'This team is outside your eligible leagues' }, { status: 403 })
+    }
+  }
 
   // If poll is linked to a season, create tournament_application instead of poll_application
   if (poll.season_id) {
