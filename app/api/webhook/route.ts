@@ -350,18 +350,22 @@ const msg = messages[0]
     // screenshot. Never run OCR on it: a duplicate/stray image must not trigger
     // the results-submit path or wipe the backdoor session.
     if (imageMessages.length > 0) {
-      const session = await getSession(from)
-      if (session?.state === 'awaiting_backdoor') {
+      // Expire stale sessions so a late screenshot on a dead backdoor session
+      // resumes nothing — the re-read below sees no session and the image
+      // falls through to normal handling instead.
+      await handleExpiredSession(from, await getSession(from))
+      const activeSession = (await getSession(from)) as SessionData | null
+      if (activeSession?.state === 'awaiting_backdoor') {
         const imgMsg = imageMessages[0]
         const caption = imgMsg.image.caption?.trim() || ''
         const mediaId = imgMsg.image.id
         // Ignore re-deliveries of a screenshot we already saved for this flow
         // (WhatsApp/Vercel can deliver the same image with different message ids).
-        if (session.backdoor_screenshot_media_id && session.backdoor_screenshot_media_id === mediaId) {
+        if (activeSession.backdoor_screenshot_media_id && activeSession.backdoor_screenshot_media_id === mediaId) {
           console.log(`[webhook] duplicate backdoor screenshot ignored: ${mediaId}`)
           return
         }
-        if (session.backdoor_menu_step === 'screenshot') {
+        if (activeSession.backdoor_menu_step === 'screenshot') {
           if (caption) {
             // User sent screenshot with team names in caption - search directly
             await upsertSession({
@@ -370,7 +374,7 @@ const msg = messages[0]
               backdoor_menu_step: 'fixture_search',
               backdoor_screenshot_media_id: mediaId
             })
-            await handleBackdoorFixtureSearch(from, caption, session, phoneNumberId)
+            await handleBackdoorFixtureSearch(from, caption, activeSession, phoneNumberId)
             return
           }
           await upsertSession({
@@ -390,8 +394,19 @@ const msg = messages[0]
           side: 'Screenshot received. Type the team that is not responding. Type CANCEL to stop.',
           check: 'Reply 1 or 2. Type CANCEL to exit.',
         }
-        const prompt = backdoorPrompts[session.backdoor_menu_step || ''] || 'Type team names or type CANCEL to exit.'
+        const prompt = backdoorPrompts[activeSession.backdoor_menu_step || ''] || 'Type team names or type CANCEL to exit.'
         await sendTextMessage(from, prompt, phoneNumberId)
+        return
+      }
+    }
+
+    // Logged-in result screenshots: the manager already picked their game (or
+    // started the fix flow), so their screenshot feeds the pre-matched fixture
+    // instead of the anonymous screenshot → team-name → submission-type chain.
+    if (imageMessages.length > 0) {
+      const current = (await getSession(from)) as SessionData | null
+      if (current?.state === 'loggedin_first_time_screenshot' || current?.state === 'awaiting_fix_screenshot') {
+        await handleLoggedInScreenshotImage(from, imageMessages[0], current, phoneNumberId)
         return
       }
     }
@@ -437,6 +452,8 @@ const msg = messages[0]
 type SessionData = {
   phone_number: string
   state: string
+  created_at?: string
+  updated_at?: string
   home_team: string | null
   away_team: string | null
   home_score: number | null
@@ -498,6 +515,26 @@ async function clearSession(phoneNumber: string) {
   await supabase.from('whatsapp_sessions').delete().eq('phone_number', phoneNumber)
 }
 
+// ─── Session expiry ─────────────────────────────────────────────────────────────
+// A session that has been silent for longer than SESSION_MAX_IDLE clears itself
+// on the next message. This guarantees a reminder-link "Hi" (or any random
+// message after an hour of silence) lands on the fresh welcome menu instead of a
+// stale mid-flow state. Every state-changing upsert touches `updated_at`, so the
+// window is measured from the last activity.
+const SESSION_MAX_IDLE_MS = 60 * 60 * 1000
+
+async function handleExpiredSession(phoneNumber: string, session: SessionData | null): Promise<boolean> {
+  if (!session) return false
+  const last = new Date(session.updated_at ?? session.created_at ?? '')
+  if (Number.isNaN(last.getTime())) return false
+  if (Date.now() - last.getTime() > SESSION_MAX_IDLE_MS) {
+    console.log(`[webhook] session expired (idle > 60min), clearing for ${phoneNumber}`)
+    await clearSession(phoneNumber)
+    return true
+  }
+  return false
+}
+
 // ─── Backdoor admin flow ──────────────────────────────────────────────────────
 
 async function isBackdoorWindowEnabled(supabase: any): Promise<boolean> {
@@ -524,6 +561,61 @@ const WELCOME_MENU =
   '4. Check my backdoor applications\n' +
   '5. Tournament applications\n' +
   '6. Reset my password'
+
+// Signed-in variant of the welcome menu. Shown when the texting number matches a
+// manager profile (detected via phoneNumbersMatch), so the bot can skip the "who
+// are you" steps and greet the manager by username.
+function loggedInWelcomeMenu(username: string): string {
+  return `Hello @${username} 👋 You are speaking to the EFA bot.\n\n` +
+    'What do you need help with? Reply with a number:\n\n' +
+    '1. Submit a match result\n' +
+    '2. Opponent did not respond, or gave you the win\n' +
+    '3. Check my fixtures\n' +
+    '4. Check my backdoor applications\n' +
+    '5. Tournament applications\n' +
+    '6. Reset my password'
+}
+
+// A manager whose phone number is on the system (so the bot knows who is texting).
+type LoggedInManager = {
+  profileId: string
+  username: string
+  teamIds: string[]
+  teamNames: string[]
+}
+
+// Resolves the manager texting from `from` by matching their stored profile phone
+// number. One real manager can own multiple teams, so every flow using this must
+// loop over teamIds/teamNames. Returns null for unrecognised numbers — those get
+// the anonymous WELCOME_MENU and the screenshot-first flows instead.
+async function getLoggedInManager(from: string): Promise<LoggedInManager | null> {
+  const supabase = await createAdminClient()
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, username, phone')
+    .not('phone', 'is', null)
+  const profile = (profiles as any[] || []).find(p => phoneNumbersMatch(p.phone, from))
+  if (!profile) return null
+  const { data: teams } = await supabase
+    .from('teams')
+    .select('id, name')
+    .eq('manager_id', profile.id)
+  const owned = (teams as any[] || [])
+  if (owned.length === 0) return null
+  return {
+    profileId: profile.id,
+    username: profile.username || 'manager',
+    teamIds: owned.map(t => t.id),
+    teamNames: owned.map(t => t.name),
+  }
+}
+
+// Sends the right welcome menu for the sender: the personalised logged-in menu
+// when their number matches the system, the generic one otherwise.
+async function sendWelcomeMenu(from: string, phoneNumberId: string) {
+  const manager = await getLoggedInManager(from)
+  await sendTextMessage(from, manager ? loggedInWelcomeMenu(manager.username) : WELCOME_MENU, phoneNumberId)
+}
 
 // Footer appended to free-text "info-request" prompts (score, team names, date,
 // forfeit, etc.) so a mid-flow user always has an explicit way out. Not used on
@@ -564,7 +656,7 @@ async function handleFlowHint(from: string, text: string, phoneNumberId: string)
   if (trimmed === '1') {
     await sendTextMessage(from, 'Cancelled. Send a new screenshot when you\'re ready.', phoneNumberId)
   } else {
-    await sendTextMessage(from, WELCOME_MENU, phoneNumberId)
+    await sendWelcomeMenu(from, phoneNumberId)
   }
   return true
 }
@@ -586,15 +678,67 @@ function isStartAgain(text: string): boolean {
 async function handleStartAgain(from: string, text: string, phoneNumberId: string): Promise<boolean> {
   if (!isStartAgain(text)) return false
   await clearSession(from)
-  await sendTextMessage(from, WELCOME_MENU, phoneNumberId)
+  await sendWelcomeMenu(from, phoneNumberId)
   return true
 }
 
-// Shown only on initial contact (no active flow). Every mid-flow state is
+// Shown on initial contact (no active flow) — including freshly-expired
+// sessions that were cleared via handleExpiredSession. Every mid-flow state is
 // handled earlier in handleText, so this never re-triggers while the user is
 // choosing options inside an existing flow.
 async function handleWelcomeMenu(from: string, text: string, phoneNumberId: string) {
   const num = extractNumber(text)
+  const manager = await getLoggedInManager(from)
+
+  if (manager) {
+    if (num === 1) {
+      // Logged-in first-time submit: pick a game from the combined list BEFORE
+      // the screenshot (the bot already knows who is texting, so no team-name or
+      // "which match" questions are needed).
+      await upsertSession({
+        phone_number: from,
+        state: 'awaiting_submission_type',
+        submission_type: null,
+        submission_menu_step: 'menu',
+      })
+      await sendTextMessage(
+        from,
+        'What are you submitting?\n\n1. A game\'s score for the first time\n2. Change a score that was already submitted\n\nReply 1 or 2. Type CANCEL to stop.',
+        phoneNumberId
+      )
+      return
+    }
+    if (num === 2) {
+      const supabase = await createAdminClient()
+      if (!(await isBackdoorWindowEnabled(supabase))) {
+        await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
+        return
+      }
+      await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot' })
+      await sendTextMessage(from, 'Send a screenshot showing that the opponent did not respond.', phoneNumberId)
+      return
+    }
+    if (num === 3) {
+      await handleCheckFixturesCommand(from, phoneNumberId)
+      return
+    }
+    if (num === 4) {
+      await showUserBackdoorApplications(from, phoneNumberId)
+      await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
+      return
+    }
+    if (num === 5) {
+      await handleTourneyApplyStart(from, phoneNumberId)
+      return
+    }
+    if (num === 6) {
+      await handlePasswordResetStart(from, phoneNumberId)
+      return
+    }
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
   if (num === 1) {
     await sendTextMessage(from, 'Send a screenshot of your result screen and I will take it from there.', phoneNumberId)
     return
@@ -626,7 +770,7 @@ async function handleWelcomeMenu(from: string, text: string, phoneNumberId: stri
     await handlePasswordResetStart(from, phoneNumberId)
     return
   }
-  await sendTextMessage(from, WELCOME_MENU, phoneNumberId)
+  await sendWelcomeMenu(from, phoneNumberId)
 }
 
 // Deterministic re-prompt for when a user mid-flow (scores loaded) sends an
@@ -915,6 +1059,35 @@ async function handleSubmissionType(from: string, text: string, session: Session
 
   if (step === 'menu') {
     const option = extractNumber(text)
+
+    // Logged-in manager: pick the game from a numbered list first. The bot knows
+    // who is texting, so no screenshot + team-name matching is needed to identify
+    // the fixture — the screenshot is only for the score/stats.
+    const manager = await getLoggedInManager(from)
+    if (manager) {
+      if (option === 1) {
+        await handleLoggedInFirstTimeList(from, manager, phoneNumberId)
+        return
+      }
+      if (option === 2) {
+        await upsertSession({
+          phone_number: from,
+          state: 'awaiting_fix_screenshot',
+          submission_type: 'fix',
+          home_team: session.home_team,
+          away_team: session.away_team,
+          home_score: session.home_score,
+          away_score: session.away_score,
+          match_stats: session.match_stats,
+          screenshot_media_id: session.screenshot_media_id,
+        })
+        await sendTextMessage(from, 'Send a screenshot of the result screen and I will take it from there.', phoneNumberId)
+        return
+      }
+      await sendTextMessage(from, 'Reply 1 or 2. Type CANCEL to stop.', phoneNumberId)
+      return
+    }
+
     if (option === 1) {
       // Submitting scheduled fixture - filter by scheduled status
       await upsertSession({ 
@@ -950,6 +1123,229 @@ async function handleSubmissionType(from: string, text: string, session: Session
     await sendTextMessage(from, 'Reply 1 or 2. Type CANCEL to stop.', phoneNumberId)
     return
   }
+}
+
+// ─── Logged-in first-time submission (pick from combined list) ────────────────
+// Category 1 = the manager's games due TODAY (status 'scheduled').
+// Category 2 = games with an approved backdoor result in the last 7 days (the
+// system submitted that result, so the real score is a first-time submission).
+// Both are shown as ONE numbered list (cat 1 → options 1..N, then cat 2 →
+// options N+1...). Picking a number then asks for the screenshot.
+
+async function handleLoggedInFirstTimeList(from: string, manager: LoggedInManager, phoneNumberId: string) {
+  const supabase = await createAdminClient()
+  const todayKey = getSastDateKey()
+
+  // Category 1 — games due today that are still scheduled
+  const orParts = manager.teamIds
+    .map(id => `and(home_team_id.eq.${id},scheduled_date.eq.${todayKey}),and(away_team_id.eq.${id},scheduled_date.eq.${todayKey})`)
+    .join(',')
+  const { data: todayFixtures } = await supabase
+    .from('fixtures')
+    .select('id, status, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .or(orParts)
+    .eq('scheduled_date', todayKey)
+    .eq('status', 'scheduled')
+    .order('matchday', { ascending: true })
+  const cat1 = ((todayFixtures as any[]) || [])
+    .filter(f => String(f.scheduled_date).slice(0, 10) === todayKey)
+
+  // Category 2 — fixtures with an approved backdoor result in the last 7 days
+  // involving the manager's teams. The approved backdoor submission is voided
+  // when the real result is written (see writeResultToDb), so already-replaced
+  // games drop out of this list automatically.
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const { data: backdoorSubs } = await supabase
+    .from('backdoor_submissions')
+    .select(`
+      id,
+      fixture:fixtures(
+        id, status, scheduled_date, home_team_id, away_team_id,
+        home_team:teams!fixtures_home_team_id_fkey(name),
+        away_team:teams!fixtures_away_team_id_fkey(name),
+        tournament:tournaments(name),
+        results!results_fixture_id_fkey(home_score, away_score)
+      )
+    `)
+    .eq('status', 'approved')
+    .gte('reviewed_at', cutoff)
+
+  const cat2ById = new Map<string, any>()
+  for (const s of backdoorSubs ?? []) {
+    const f = Array.isArray(s.fixture) ? s.fixture[0] : s.fixture
+    if (!f) continue
+    const involved = manager.teamIds.some(id => String(id) === String(f.home_team_id) || String(id) === String(f.away_team_id))
+    if (!involved) continue
+    if (!isFixtureConfirmed(f)) continue
+    if (!isInSubmissionWindow(fixtureDateKey(f))) continue
+    cat2ById.set(f.id, f)
+  }
+  const cat2 = Array.from(cat2ById.values()).sort((a, b) =>
+    String(a.scheduled_date || '').localeCompare(String(b.scheduled_date || '')),
+  )
+
+  const combined = [...cat1.map((f: any) => f.id), ...cat2.map((f: any) => f.id)]
+  if (combined.length === 0) {
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_submission_type',
+      submission_type: null,
+      submission_menu_step: 'menu',
+    })
+    await sendTextMessage(
+      from,
+      'There are no games to submit right now. Today\'s games appear here on match day, and games with a backdoor result appear here within 7 days. Type CANCEL to stop.',
+      phoneNumberId
+    )
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'loggedin_first_time_pick',
+    displayed_fixtures: combined,
+    submission_type: 'new',
+    match_stats: null,
+  })
+
+  const lines: string[] = []
+  let idx = 0
+  lines.push('Today\'s games:')
+  if (cat1.length === 0) {
+    lines.push('· none')
+  } else {
+    for (const f of cat1) lines.push(formatFixtureLine(f, idx++))
+  }
+  lines.push('')
+  lines.push('Backdoor-result games (last 7 days):')
+  if (cat2.length === 0) {
+    lines.push('· none')
+  } else {
+    for (const f of cat2) lines.push(formatFixtureLine(f, idx++))
+  }
+
+  await sendTextMessage(from, `Submit a score for the first time:\n\n${lines.join('\n')}\n\nReply with the number of your match, then send a screenshot of the result screen.${MATCH_LIST_HINT}`, phoneNumberId)
+}
+
+async function handleLoggedInFirstTimePick(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendTextMessage(from, "OK. Send a new screenshot when you're ready.", phoneNumberId)
+    return
+  }
+  if (await handleStartAgain(from, text, phoneNumberId)) return
+
+  const num = extractNumber(text)
+  if (num === null || num < 1 || !session.displayed_fixtures || num > session.displayed_fixtures.length) {
+    await sendTextMessage(from, `Pick a number between 1 and ${session.displayed_fixtures?.length || 0}.`, phoneNumberId)
+    return
+  }
+  const fixtureId = session.displayed_fixtures[num - 1]
+
+  const supabase = await createAdminClient()
+  const { data: fixture } = await supabase
+    .from('fixtures')
+    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .eq('id', fixtureId)
+    .single()
+  if (!fixture) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Something went wrong. Please start again.', phoneNumberId)
+    return
+  }
+
+  const hName = fixtureTeamName(fixture, 'home')
+  const aName = fixtureTeamName(fixture, 'away')
+  const dateLine = formatFixtureWhen(fixture) ? ` - ${formatFixtureWhen(fixture)}` : ''
+  const backdoorNote = isFixtureConfirmed(fixture)
+    ? '\n\nThis game currently has a backdoor result. Submitting will replace it with the real score.'
+    : ''
+
+  await upsertSession({
+    phone_number: from,
+    state: 'loggedin_first_time_screenshot',
+    matched_fixture_id: fixtureId,
+    home_team: hName,
+    away_team: aName,
+    displayed_fixtures: session.displayed_fixtures,
+    submission_type: 'new',
+    match_stats: null,
+  })
+
+  await sendTextMessage(from, `${hName} vs ${aName}${dateLine}\n\nSend a screenshot of the result screen.${backdoorNote}`, phoneNumberId)
+}
+
+// Screenshot OCR for a logged-in manager who already picked their game. It skips
+// the anonymous screenshot → team-name → submission-type chain and goes straight
+// to the confirm menu using the pre-matched fixture.
+async function handleLoggedInScreenshotImage(from: string, msg: { image: { id: string; mime_type: string } }, session: SessionData, phoneNumberId: string) {
+  const isFix = session.state === 'awaiting_fix_screenshot'
+  await sendTextMessage(from, "OK, checking your screenshot... \uD83D\uDC40", phoneNumberId)
+
+  const mediaUrl = await getMediaUrl(msg.image.id)
+  const { buffer: rawBuffer, mimeType } = await fetchImageBytes(mediaUrl)
+  const buffer = await normalizeToLandscape(rawBuffer)
+  const analysis = await analyzeImageBuffer(buffer, mimeType)
+
+  if (analysis.invalidReason || analysis.homeScore === null || analysis.awayScore === null) {
+    await sendTextMessage(from, "Sorry, I could not read the score in the screenshot. Please send it again.", phoneNumberId)
+    return
+  }
+
+  if (isFix) {
+    // Fix flow: the fixture is identified by team names after the screenshot.
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_match_name',
+      submission_type: 'fix',
+      home_team: analysis.homeTeam,
+      away_team: analysis.awayTeam,
+      home_score: analysis.homeScore,
+      away_score: analysis.awayScore,
+      match_stats: analysis.matchStats,
+      screenshot_media_id: msg.image.id,
+      matched_fixture_id: null,
+    })
+    await sendTextMessage(from, `Score extracted: ${analysis.homeTeam || '?'} ${analysis.homeScore}-${analysis.awayScore} ${analysis.awayTeam || '?'}\n\nWhat match is it for? Type the team names, e.g. "Arsenal vs Everton".${FLOW_HINT}`, phoneNumberId)
+    return
+  }
+
+  // First-time flow: fixture was pre-selected from the combined list.
+  const fixtureId = session.matched_fixture_id
+  if (!fixtureId) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Something went wrong. Please start again.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const { data: fixture } = await supabase
+    .from('fixtures')
+    .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .eq('id', fixtureId)
+    .single()
+  const isAlreadyConfirmed = isFixtureConfirmed(fixture as any)
+
+  await upsertSession({
+    phone_number: from,
+    matched_fixture_id: fixtureId,
+    home_team: session.home_team,
+    away_team: session.away_team,
+    home_score: analysis.homeScore,
+    away_score: analysis.awayScore,
+    match_stats: analysis.matchStats,
+    screenshot_media_id: msg.image.id,
+    displayed_fixtures: null,
+    state: isAlreadyConfirmed ? 'awaiting_override_confirm' : 'idle',
+  })
+
+  const hName = session.home_team || 'Home'
+  const aName = session.away_team || 'Away'
+  const result = fixture ? (Array.isArray(fixture.results) ? fixture.results[0] : fixture.results) : null
+  const resultLine = result && isAlreadyConfirmed ? ` (backdoor result applied: ${result.home_score}-${result.away_score})` : ''
+  const statsBlock = formatStatsBlock(analysis.matchStats)
+  const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This game already has a backdoor result. Submitting will replace it with the real score.' : ''
+  await sendTextMessage(from, `Confirm result: ${hName} ${analysis.homeScore}-${analysis.awayScore} ${aName}${resultLine}?${statsBlock ? '\n\n' + statsBlock : ''}${overrideWarning}\n\n1. Submit result\n2. Edit score\n3. Swap the stats\n4. Cancel`, phoneNumberId)
 }
 
 // ─── Phone number update (result submission mismatch flow) ────────────────────
@@ -3118,6 +3514,13 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   const session = await getSession(from)
   console.log('[handleText] session:', JSON.stringify(session))
 
+  // Expire stale sessions (idle > 60 min). The cleared session must not feed any
+  // mid-flow handler below, so route straight to the welcome menu.
+  if (await handleExpiredSession(from, session)) {
+    await handleWelcomeMenu(from, text, phoneNumberId)
+    return
+  }
+
   // ─── Numbered "1. Cancel / 2. Start again" hint (free-text info states) ──
   if (session && FLOW_HINT_STATES.has(session.state)) {
     if (await handleFlowHint(from, text, phoneNumberId)) {
@@ -3203,6 +3606,15 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   }
   if (session?.state === 'awaiting_fixtures_action') {
     await handleFixturesAction(from, text, session, phoneNumberId)
+    return
+  }
+  // ─── Logged-in first-time submission (pick from combined list) ───────────────
+  if (session?.state === 'loggedin_first_time_pick') {
+    await handleLoggedInFirstTimePick(from, text, session, phoneNumberId)
+    return
+  }
+  if (session?.state === 'loggedin_first_time_screenshot' || session?.state === 'awaiting_fix_screenshot') {
+    await sendTextMessage(from, 'Please send a screenshot of the result screen.', phoneNumberId)
     return
   }
   // ─── Commands (keyword-tolerant: quotes, extra words and punctuation are stripped) ──
@@ -3926,7 +4338,8 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
     case 'correct': {
       if (!session || !intent.corrections) {
-        await sendTextMessage(from, session ? resultFlowReprompt(session) : WELCOME_MENU, phoneNumberId)
+        if (session) await sendTextMessage(from, resultFlowReprompt(session), phoneNumberId)
+        else await sendWelcomeMenu(from, phoneNumberId)
         return
       }
       const c = intent.corrections
@@ -3940,7 +4353,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       await sendTextMessage(from, intent.reply, phoneNumberId)
       return
     }
-    default: { await sendTextMessage(from, session ? resultFlowReprompt(session) : WELCOME_MENU, phoneNumberId); return }
+    default: { if (session) await sendTextMessage(from, resultFlowReprompt(session), phoneNumberId); else await sendWelcomeMenu(from, phoneNumberId); return }
   }
 }
 
@@ -3961,28 +4374,33 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
 
   let homeTeam: string | null = null, awayTeam: string | null = null
   let homeScore: number | null = null, awayScore: number | null = null
-  let matchStats: Record<string, { home: number; away: number }> | null = null
+  const matchStats: Record<string, { home: number; away: number }> = {}
   let invalidReason: string | null = null
+  let textStats: Record<string, { home: number; away: number }> | null = null
 
+  // 1. Tesseract regex → text LLM chain. The LLMs read the GARBLED OCR text, so
+  // they are treated as a fallback source, never as the authority.
   if (ocrResult?.rawText) {
     try {
       const cleaned = await cleanOcrText(ocrResult.rawText)
-      if (cleaned) {
-        if (cleaned.valid === false) {
-          // Don't set invalidReason yet — vision may still find a score
-        } else {
-          homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats
+      if (cleaned && cleaned.valid !== false) {
+        homeTeam = homeTeam || cleaned.homeTeam || null
+        awayTeam = awayTeam || cleaned.awayTeam || null
+        if (cleaned.homeScore != null && cleaned.awayScore != null) {
+          homeScore = cleaned.homeScore; awayScore = cleaned.awayScore
         }
+        textStats = cleaned.matchStats || null
       }
     } catch {
       try {
         const cleaned = await cleanOcrWithGroq(ocrResult.rawText)
-        if (cleaned) {
-          if (cleaned.valid === false) {
-            // Don't set invalidReason yet — vision may still find a score
-          } else {
-            homeTeam = cleaned.homeTeam; awayTeam = cleaned.awayTeam; homeScore = cleaned.homeScore; awayScore = cleaned.awayScore; matchStats = cleaned.matchStats
+        if (cleaned && cleaned.valid !== false) {
+          homeTeam = homeTeam || cleaned.homeTeam || null
+          awayTeam = awayTeam || cleaned.awayTeam || null
+          if (cleaned.homeScore != null && cleaned.awayScore != null) {
+            homeScore = cleaned.homeScore; awayScore = cleaned.awayScore
           }
+          textStats = cleaned.matchStats || null
         }
       } catch {}
     }
@@ -3993,10 +4411,19 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
     homeTeam = homeTeam || ocrResult.homeTeamOcr || null; awayTeam = awayTeam || ocrResult.awayTeamOcr || null
   }
 
-  if (!matchStats && ocrResult?.stats && Object.keys(ocrResult.stats).length > 0) {
-    matchStats = ocrResult.stats
+  // 2. UNION-merge every stat key from every source instead of winner-takes-all.
+  //    Missing/null keys from one source are filled by another; a key is only
+  //    dropped when every source failed to read it. This guarantees that a
+  //    2-digit tesseract read ("25 passes") never erases a correct 3-digit read.
+  for (const [k, v] of Object.entries(ocrResult?.stats || {})) {
+    if (v && v.home != null && v.away != null) matchStats[k] = { home: v.home, away: v.away }
+  }
+  for (const [k, v] of Object.entries(textStats || {})) {
+    if (v && v.home != null && v.away != null) matchStats[k] = { home: v.home, away: v.away }
   }
 
+  // 3. Gemini vision reads the ACTUAL PIXELS, so it is the authority per stat:
+  //    for every key it reports, its numbers overwrite the tesseract/text reads.
   try {
     const geminiResult = await analyzeScreenshot(buffer, mimeType)
     if (geminiResult) {
@@ -4011,7 +4438,9 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
           homeScore = geminiResult.homeScore; awayScore = geminiResult.awayScore
         }
         homeTeam = geminiResult.homeTeam || homeTeam; awayTeam = geminiResult.awayTeam || awayTeam
-        if (!matchStats && geminiResult.matchStats) matchStats = geminiResult.matchStats
+        for (const [k, v] of Object.entries(geminiResult.matchStats || {})) {
+          if (v && v.home != null && v.away != null) matchStats[k] = { home: v.home, away: v.away }
+        }
       }
     }
   } catch {}
@@ -4019,7 +4448,7 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
   // If vision failed but text/OCR found scores, that's still valid
   if (homeScore !== null && awayScore !== null) invalidReason = null
 
-  return { homeTeam, awayTeam, homeScore, awayScore, matchStats, invalidReason }
+  return { homeTeam, awayTeam, homeScore, awayScore, matchStats: Object.keys(matchStats).length > 0 ? matchStats : null, invalidReason }
 }
 
 // ─── Image handler ───────────────────────────────────────────────────────────────
@@ -4079,11 +4508,27 @@ const STAT_KEY_TO_DB: Record<string, [string, string]> = {
 function matchStatsToDbColumns(matchStats: Record<string, { home: number; away: number }> | null): Record<string, number> | null {
   if (!matchStats) return null
   const cols: Record<string, number> = {}
+
+  // Physics sanity guards: an OCR stat must be possible in real football.
+  // A misread stat that violates these is DROPPED (kept null) rather than written,
+  // so bad OCR never pollutes averages / standings.
+  const shots = matchStats.shots
+  const passes = matchStats.passes
+  const clamp = (n: number) => Math.max(0, Math.min(999, Math.floor(n)))
+
   for (const [key, [homeCol, awayCol]] of Object.entries(STAT_KEY_TO_DB)) {
     const s = matchStats[key]
     if (s && s.home !== null && s.away !== null) {
-      cols[homeCol] = s.home
-      cols[awayCol] = s.away
+      // shots on target can never exceed total shots
+      if (key === 'shotsOnTarget' && shots) {
+        if (s.home > shots.home || s.away > shots.away) continue
+      }
+      // successful passes can never exceed total passes
+      if (key === 'successfulPasses' && passes) {
+        if (s.home > passes.home || s.away > passes.away) continue
+      }
+      cols[homeCol] = clamp(s.home)
+      cols[awayCol] = clamp(s.away)
     }
   }
   return Object.keys(cols).length > 0 ? cols : null
@@ -4334,16 +4779,17 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
       .eq('id', session.matched_fixture_id)
   }
 
-  // Void any pending backdoor submissions for this fixture now that the real
-  // result is recorded (on-time / backdated games only). Mirrors
-  // finalise-result/route.ts — the WhatsApp result path previously left them
-  // stale as 'pending', which could then be wrongly approved.
+  // Void any pending OR approved backdoor submissions for this fixture now that
+  // the real result is recorded. 'pending' mirrors finalise-result/route.ts (the
+  // WhatsApp result path previously left them stale and wrongly approvable);
+  // 'approved' covers the logged-in first-time flow where a backdoor-result game
+  // is replaced with the real score (category 2).
   if (!isPending) {
     await supabase
       .from('backdoor_submissions')
       .update({ status: 'void_game_played' })
       .eq('fixture_id', session.matched_fixture_id)
-      .eq('status', 'pending')
+      .in('status', ['pending', 'approved'])
   }
 
   // Knockout progression only happens once the game is confirmed — a

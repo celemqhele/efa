@@ -19,7 +19,7 @@ export default function Desktop({ data }: { data: any }) {
     { key: 'tackles', label: 'Tackles', h: stats?.home_tackles, a: stats?.away_tackles, unit: '' },
     { key: 'saves', label: 'Saves', h: stats?.home_saves, a: stats?.away_saves, unit: '' },
     { key: 'interceptions', label: 'Interceptions', h: stats?.home_interceptions, a: stats?.away_interceptions, unit: '' },
-  ].filter(s => s.h != null)
+  ].filter(s => s.h != null || s.a != null)
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -114,9 +114,9 @@ export default function Desktop({ data }: { data: any }) {
                 <tbody>
                   {statDefs.map((s) => (
                     <tr key={s.key} className="border-b border-border/20 hover:bg-accent/5 transition-colors">
-                      <td className="text-right py-3 pr-6 font-semibold text-text-primary tabular-nums">{s.h}{s.unit}</td>
+                      <td className="text-right py-3 pr-6 font-semibold text-text-primary tabular-nums">{s.h ?? '–'}{s.h != null ? s.unit : ''}</td>
                       <td className="py-3 px-6 text-xs text-text-muted font-medium">{s.label}</td>
-                      <td className="py-3 pl-6 font-semibold text-text-primary tabular-nums">{s.a}{s.unit}</td>
+                      <td className="py-3 pl-6 font-semibold text-text-primary tabular-nums">{s.a ?? '–'}{s.a != null ? s.unit : ''}</td>
                     </tr>
                   ))}
                 </tbody>

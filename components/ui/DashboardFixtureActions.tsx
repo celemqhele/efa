@@ -19,6 +19,11 @@ interface Props {
 
 const POSTPONE_POPOVER_W = 300
 
+// The AI WhatsApp bot number (E.164 digits, no spacing) that the reminder link
+// opens. Preloaded text is "Hi" so the bot lands on the welcome menu.
+const AI_BOT_DIGITS = '27818209406'
+const REMINDER_LINK = `https://wa.me/${AI_BOT_DIGITS}?text=Hi`
+
 type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'night'
 
 const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
@@ -41,13 +46,13 @@ function buildReminder(name: string | null | undefined, opponent: string, slot: 
   const n = name ?? 'there'
   switch (slot) {
     case 'morning':
-      return `Hi ${n}! Just a reminder that your fixture vs ${opponent} is scheduled for today. Please submit your result after playing.`
+      return `Hi ${n}! Just a reminder that your fixture vs ${opponent} is scheduled for today. If you already played, submit the score here: ${REMINDER_LINK}`
     case 'afternoon':
-      return `Hi ${n}! Friendly reminder — your fixture vs ${opponent} is today. Your opponent might have forgotten, so please reach out and arrange to play.`
+      return `Hi ${n}! Friendly reminder that your fixture vs ${opponent} is today. If you already played, submit the score here: ${REMINDER_LINK}. If your opponent is not responding, report a backdoor win: ${REMINDER_LINK}`
     case 'evening':
-      return `Hi ${n}! Your fixture vs ${opponent} is still pending. If your opponent is not responding, send a message to the AI here +27 81 8209406`
+      return `Hi ${n}! Your fixture vs ${opponent} is still pending. If your opponent is not responding, report them to the AI here: ${REMINDER_LINK}`
     case 'night':
-      return `Hi ${n}! Your result for the fixture vs ${opponent} is still not submitted. Please play or risk a backdoor loss. If your opponent is not responding, now's a good time to submit a backdoor — send it here +27 81 8209406`
+      return `Hi ${n}! Your result for the fixture vs ${opponent} is still not submitted. Please play or risk a backdoor loss. If your opponent is not responding, submit a backdoor here: ${REMINDER_LINK}`
   }
 }
 
@@ -146,12 +151,12 @@ export default function DashboardFixtureActions({
           {TIME_SLOT_LABELS[timeSlot]}
         </span>
 
-        {/* WhatsApp buttons */}
+        {/* WhatsApp buttons — message to the manager, link opens on the AI bot */}
         {homeManagerPhone && (
-          <WhatsAppButton phone={homeManagerPhone} message={homeMsg} size="sm" label="H" />
+          <WhatsAppButton phone={homeManagerPhone} overridePhone={AI_BOT_DIGITS} message={homeMsg} size="sm" label="H" />
         )}
         {awayManagerPhone && (
-          <WhatsAppButton phone={awayManagerPhone} message={awayMsg} size="sm" label="A" />
+          <WhatsAppButton phone={awayManagerPhone} overridePhone={AI_BOT_DIGITS} message={awayMsg} size="sm" label="A" />
         )}
 
         <Button

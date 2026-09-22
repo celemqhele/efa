@@ -252,6 +252,8 @@ If a score is visible, extract:
 Rules:
 - If a stat table is partially visible (cut off), only include the stats you can actually read; set the rest to null within the stats object.
 - Never guess or estimate a number you cannot clearly read. Use null instead.
+- A stat value of 0 is only valid if you can clearly read the digit 0 for that side; otherwise use null.
+- Stat numbers are often LARGE (e.g. passes 180-270, successful passes 120-200). Garbled OCR frequently drops trailing digits ("250" becomes "25"). Read the FULL number digit by digit; if a number looks suspiciously small for a stat that is normally large, be extra careful.
 - Respond with ONLY the JSON object, no other text.
 
 Here is the raw OCR text:
@@ -317,6 +319,8 @@ If a score is visible, extract:
 Rules:
 - If a stat table is partially visible (cut off), only include the stats you can actually read; set the rest to null within the stats object.
 - Never guess or estimate a number you cannot clearly read. Use null instead.
+- A stat value of 0 is only valid if you can clearly read the digit 0 for that side; otherwise use null.
+- Stat numbers are often LARGE (e.g. passes 180-270, successful passes 120-200). Garbled OCR frequently drops trailing digits ("250" becomes "25"). Read the FULL number digit by digit; if a number looks suspiciously small for a stat that is normally large, be extra careful.
 - Respond with ONLY the JSON object, no other text.
 
 Here is the raw OCR text:
@@ -388,6 +392,8 @@ If a score is visible, extract:
 Rules:
 - If a stat table is partially visible (cut off), only include the stats you can actually read; set the rest to null within the stats object.
 - Never guess or estimate a number you cannot clearly read. Use null instead.
+- A stat value of 0 is only valid if you can clearly read the digit 0 for that side; otherwise use null.
+- Stat numbers are often LARGE (e.g. passes 180-270, successful passes 120-200). Garbled OCR frequently drops trailing digits ("250" becomes "25"). Read the FULL number digit by digit; if a number looks suspiciously small for a stat that is normally large, be extra careful.
 - Team crests/badges may not match team names exactly (e.g. a generic club badge); prefer the text label next to the crest if present.
 - Respond with ONLY the JSON object, no other text.`
 

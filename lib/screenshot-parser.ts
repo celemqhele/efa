@@ -50,14 +50,20 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
   const w = meta.width ?? 1920
   const h = meta.height ?? 1080
 
-  // The center stats table in eFootball matches
-  const cropLeft   = Math.round(w * 0.30)
-  const cropWidth  = Math.round(w * 0.40)
+  // The centre stats table in eFootball matches. Crop slightly wider than the
+  // narrow column so digits on the edges (e.g. 3-digit pass counts) aren't cut.
+  const cropLeft   = Math.round(w * 0.22)
+  const cropWidth  = Math.round(w * 0.56)
   const cropTop    = Math.round(h * 0.08)
   const cropHeight = Math.round(h * 0.90)
 
+  // Upscale 2x before OCR: tesseract misreads 3-digit numbers (250 → 25) on
+  // small phone-screenshot crops; doubling the pixel size massively improves
+  // digit recognition. Combined with PSM 6 (block of text) which suits the
+  // tabular stat layout better than the default auto mode.
   const processed = await sharp(imageBuffer)
     .extract({ left: cropLeft, top: cropTop, width: cropWidth, height: cropHeight })
+    .resize({ width: Math.round(cropWidth * 2), withoutEnlargement: false })
     .greyscale()
     .normalize()
     .sharpen()
@@ -66,7 +72,10 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
 
   const { data: { text } } = await Tesseract.recognize(processed, 'eng', {
     logger: () => {},
-  })
+    // Block-of-text segmentation suits the compact stats table; auto mode
+    // sometimes splits adjacent numbers and drops trailing digits.
+    tessedit_pageseg_mode: '6',
+  } as any)
 
   const lines = text.split('\n').map((l: string) => l.trim()).filter(Boolean)
 
@@ -126,7 +135,7 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
   ]
 
   for (const line of lines) {
-    if (stats && Object.keys(stats).length >= 12) break // all stats found
+    if (stats && Object.keys(stats).length >= 13) break // all stat types found
 
     for (const statRegex of statPatterns) {
       const m = line.match(statRegex)
@@ -153,7 +162,10 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
           const homeVal = matcher.key === 'possession' ? parsePossession(homeValStr) : parseNumber(homeValStr)
           const awayVal = matcher.key === 'possession' ? parsePossession(awayValStr) : parseNumber(awayValStr)
 
-          if (!stats[matcher.key] && homeVal > 0 && awayVal > 0) {
+          // A stat is kept when both numbers were actually read (a legit 0 is kept — the
+          // "home/away both present" check below is what surfaces in eFootball),
+          // but a missing/blank side must NOT be recorded to avoid zero-filling.
+          if (!stats[matcher.key] && homeVal >= 0 && awayVal >= 0) {
             stats[matcher.key] = { home: homeVal, away: awayVal }
           }
           break

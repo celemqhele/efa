@@ -4,26 +4,29 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import { AlertTriangle, BarChart3, ChevronDown, Camera, ArrowLeft, ChevronRight } from 'lucide-react'
 
-function StatRow({ label, homeVal, awayVal }: { label: string; homeVal: number; awayVal: number }) {
-  const total = homeVal + awayVal || 1
-  const homePct = Math.round((homeVal / total) * 100)
+function StatRow({ label, homeVal, awayVal }: { label: string; homeVal: number | null; awayVal: number | null }) {
+  const hasHome = homeVal != null
+  const hasAway = awayVal != null
+  const bothMissing = !hasHome && !hasAway
+  const total = (homeVal ?? 0) + (awayVal ?? 0) || 1
+  const homePct = bothMissing ? 50 : Math.round(((homeVal ?? 0) / total) * 100)
   return (
     <div className="flex items-center gap-3 py-2 border-b border-border/30 last:border-0">
-      <span className="w-8 text-right text-xs font-semibold text-foreground-primary tabular-nums">{homeVal}</span>
+      <span className="w-8 text-right text-xs font-semibold text-foreground-primary tabular-nums">{hasHome ? homeVal : '–'}</span>
       <div className="flex-1">
-        <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-elevated">
+        <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-elevated" style={bothMissing ? { opacity: 0.35 } : undefined}>
           <div className="bg-[#c9a84c] transition-all" style={{ width: `${homePct}%` }} />
           <div className="bg-blue-500 transition-all" style={{ width: `${100 - homePct}%` }} />
         </div>
       </div>
       <span className="text-[10px] text-text-muted font-medium w-16 text-center truncate">{label}</span>
       <div className="flex-1">
-        <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-elevated">
+        <div className="flex h-1.5 rounded-full overflow-hidden bg-bg-elevated" style={bothMissing ? { opacity: 0.35 } : undefined}>
           <div className="bg-blue-500 transition-all" style={{ width: `${100 - homePct}%` }} />
           <div className="bg-[#c9a84c] transition-all" style={{ width: `${homePct}%` }} />
         </div>
       </div>
-      <span className="w-8 text-left text-xs font-semibold text-foreground-primary tabular-nums">{awayVal}</span>
+      <span className="w-8 text-left text-xs font-semibold text-foreground-primary tabular-nums">{hasAway ? awayVal : '–'}</span>
     </div>
   )
 }
@@ -113,16 +116,16 @@ export default function Mobile({ data }: { data: any }) {
             <ChevronDown className="w-4 h-4 text-text-muted transition-transform group-open:rotate-180 shrink-0" />
           </summary>
           <div className="px-4 pb-4 border-t border-border pt-3">
-            {stats.home_possession != null && <StatRow label="Possession" homeVal={stats.home_possession} awayVal={stats.away_possession ?? 0} />}
-            {stats.home_shots != null && <StatRow label="Shots" homeVal={stats.home_shots} awayVal={stats.away_shots ?? 0} />}
-            {stats.home_shots_on_target != null && <StatRow label="SOT" homeVal={stats.home_shots_on_target} awayVal={stats.away_shots_on_target ?? 0} />}
-            {stats.home_passes != null && <StatRow label="Passes" homeVal={stats.home_passes} awayVal={stats.away_passes ?? 0} />}
-            {stats.home_successful_passes != null && <StatRow label="Succ Pass" homeVal={stats.home_successful_passes} awayVal={stats.away_successful_passes ?? 0} />}
-            {stats.home_corners != null && <StatRow label="Corners" homeVal={stats.home_corners} awayVal={stats.away_corners ?? 0} />}
-            {stats.home_fouls != null && <StatRow label="Fouls" homeVal={stats.home_fouls} awayVal={stats.away_fouls ?? 0} />}
-            {stats.home_tackles != null && <StatRow label="Tackles" homeVal={stats.home_tackles} awayVal={stats.away_tackles ?? 0} />}
-            {stats.home_saves != null && <StatRow label="Saves" homeVal={stats.home_saves} awayVal={stats.away_saves ?? 0} />}
-            {stats.home_interceptions != null && <StatRow label="Interceptions" homeVal={stats.home_interceptions} awayVal={stats.away_interceptions ?? 0} />}
+            {(stats.home_possession != null || stats.away_possession != null) && <StatRow label="Possession" homeVal={stats.home_possession ?? null} awayVal={stats.away_possession ?? null} />}
+            {(stats.home_shots != null || stats.away_shots != null) && <StatRow label="Shots" homeVal={stats.home_shots ?? null} awayVal={stats.away_shots ?? null} />}
+            {(stats.home_shots_on_target != null || stats.away_shots_on_target != null) && <StatRow label="SOT" homeVal={stats.home_shots_on_target ?? null} awayVal={stats.away_shots_on_target ?? null} />}
+            {(stats.home_passes != null || stats.away_passes != null) && <StatRow label="Passes" homeVal={stats.home_passes ?? null} awayVal={stats.away_passes ?? null} />}
+            {(stats.home_successful_passes != null || stats.away_successful_passes != null) && <StatRow label="Succ Pass" homeVal={stats.home_successful_passes ?? null} awayVal={stats.away_successful_passes ?? null} />}
+            {(stats.home_corners != null || stats.away_corners != null) && <StatRow label="Corners" homeVal={stats.home_corners ?? null} awayVal={stats.away_corners ?? null} />}
+            {(stats.home_fouls != null || stats.away_fouls != null) && <StatRow label="Fouls" homeVal={stats.home_fouls ?? null} awayVal={stats.away_fouls ?? null} />}
+            {(stats.home_tackles != null || stats.away_tackles != null) && <StatRow label="Tackles" homeVal={stats.home_tackles ?? null} awayVal={stats.away_tackles ?? null} />}
+            {(stats.home_saves != null || stats.away_saves != null) && <StatRow label="Saves" homeVal={stats.home_saves ?? null} awayVal={stats.away_saves ?? null} />}
+            {(stats.home_interceptions != null || stats.away_interceptions != null) && <StatRow label="Interceptions" homeVal={stats.home_interceptions ?? null} awayVal={stats.away_interceptions ?? null} />}
 
             <div className="flex justify-between pt-3 mt-2 border-t border-border">
               <div className="flex items-center gap-1.5">
