@@ -3,7 +3,6 @@ import { waDigits } from '@/lib/phone'
 interface Props {
   phone: string | null | undefined
   message: string
-  overridePhone?: string
   label?: string
   size?: 'sm' | 'default'
   className?: string
@@ -12,7 +11,6 @@ interface Props {
 export default function WhatsAppButton({
   phone,
   message,
-  overridePhone,
   label,
   size = 'default',
   className = '',
@@ -22,8 +20,7 @@ export default function WhatsAppButton({
   const clean = waDigits(phone)
   if (!clean) return null
 
-  const target = overridePhone ? waDigits(overridePhone) || clean : clean
-  const url = `https://wa.me/${target}?text=${encodeURIComponent(message)}`
+  const url = `https://wa.me/${clean}?text=${encodeURIComponent(message)}`
 
   return (
     <a

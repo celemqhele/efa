@@ -151,12 +151,12 @@ export default function DashboardFixtureActions({
           {TIME_SLOT_LABELS[timeSlot]}
         </span>
 
-        {/* WhatsApp buttons — message to the manager, link opens on the AI bot */}
+        {/* WhatsApp buttons — reminder goes to the player; the link inside it opens the AI bot */}
         {homeManagerPhone && (
-          <WhatsAppButton phone={homeManagerPhone} overridePhone={AI_BOT_DIGITS} message={homeMsg} size="sm" label="H" />
+          <WhatsAppButton phone={homeManagerPhone} message={homeMsg} size="sm" label="H" />
         )}
         {awayManagerPhone && (
-          <WhatsAppButton phone={awayManagerPhone} overridePhone={AI_BOT_DIGITS} message={awayMsg} size="sm" label="A" />
+          <WhatsAppButton phone={awayManagerPhone} message={awayMsg} size="sm" label="A" />
         )}
 
         <Button
