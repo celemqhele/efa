@@ -1463,14 +1463,21 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
   // Strip score patterns
   const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
 
+  // Search fixtures in ANY state (not just scheduled) — knockout/league fixtures
+  // move to confirmed/awaiting the moment a result lands, and the backdoor flow
+  // must still find them to report what happened. Non-admins are limited to the
+  // backdoor window (±7 days); admins may search any date.
+  const isAdmin = isAdminPhone(from)
   const { start, end } = getWeekRange()
 
-  const { data: fixtures } = await supabase
+  let query = supabase
     .from('fixtures')
-    .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
-    .eq('status', 'scheduled')
-    .gte('scheduled_date', start)
-    .lte('scheduled_date', end)
+    .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score, override_reason)')
+    .in('status', ['scheduled', 'confirmed', 'confirmed_pending', 'awaiting_confirmation', 'completed', 'abandoned'])
+  if (!isAdmin) {
+    query = query.gte('scheduled_date', start).lte('scheduled_date', end)
+  }
+  const { data: fixtures } = await query
     .order('scheduled_date', { ascending: false })
     .order('matchday')
 
@@ -1526,6 +1533,23 @@ if (teamSearches.length === 0) {
     const f = matchedFixtures[0]
     const hName = fixtureTeamName(f, 'home')
     const aName = fixtureTeamName(f, 'away')
+
+    // A non-scheduled match has already been settled (result confirmed, awaiting
+    // confirmation, abandoned, etc.). Surface the existing result instead of
+    // steering the user into the "who is not responding?" step, where the side
+    // selector would dead-end on "This fixture is no longer available for backdoor."
+    if (f.status !== 'scheduled') {
+      const result = Array.isArray(f.results) ? f.results[0] : f.results
+      if (result) {
+        const reason = result.override_reason ? ` (${result.override_reason})` : ''
+        const dateLine = formatFixtureWhen(f) ? ` on ${formatFixtureWhen(f)}` : ''
+        await sendTextMessage(from, `This match has already been processed: ${hName} ${result.home_score ?? '?'}-${result.away_score ?? '?'} ${aName}${reason}${dateLine}.`, phoneNumberId)
+      } else {
+        await sendTextMessage(from, `This match is no longer available for backdoor (status: ${f.status}).`, phoneNumberId)
+      }
+      await clearSession(from)
+      return
+    }
 
     await upsertSession({
       phone_number: from,
@@ -1714,12 +1738,20 @@ async function handleBackdoorSideSelect(from: string, text: string, session: Ses
   // Check fixture still scheduled
   const { data: fixture } = await supabase
     .from('fixtures')
-    .select('status')
+    .select('status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score, override_reason)')
     .eq('id', session.matched_fixture_id)
     .single()
 
   if (!fixture || fixture.status !== 'scheduled') {
-    await sendTextMessage(from, 'This fixture is no longer available for backdoor.', phoneNumberId)
+    const res = Array.isArray(fixture?.results) ? fixture.results[0] : fixture?.results
+    if (res) {
+      const hName = fixtureTeamName(fixture, 'home')
+      const aName = fixtureTeamName(fixture, 'away')
+      const reason = res.override_reason ? ` (${res.override_reason})` : ''
+      await sendTextMessage(from, `This match has already been processed: ${hName} ${res.home_score ?? '?'}-${res.away_score ?? '?'} ${aName}${reason}.`, phoneNumberId)
+    } else {
+      await sendTextMessage(from, 'This fixture is no longer available for backdoor.', phoneNumberId)
+    }
     await clearSession(from)
     return
   }
