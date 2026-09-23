@@ -152,52 +152,54 @@ export default function Mobile({ data }: { data: any }) {
                       ? roundLabel(fx.round_type, fx.leg)
                       : null
                     return (
-                      <div key={fx.id} className="bg-bg-surface border border-border rounded-xl p-4 space-y-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {time && (
-                            <span className="text-text-muted text-sm font-bold font-mono">{time}</span>
-                          )}
-                          {round && (
-                            <span className="text-text-muted text-[10px] font-semibold uppercase">{round}</span>
-                          )}
-                          <span className="text-text-muted text-[10px]">MD{fx.matchday}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>
-                            {fx.status.replaceAll('_', ' ')}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-text-primary text-base font-semibold flex items-center gap-1.5">
-                            {homeTeam ? (
-                              <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="standings_row" alt={homeTeam.name} className="w-5 h-5 shrink-0" />
-                            ) : (
-                              <TBCBadge className="w-5 h-5 shrink-0" />
+                      <div key={fx.id} className="group bg-bg-surface border border-border rounded-xl p-4 space-y-3">
+                        <Link href={`/fixtures/${fx.id}`} className="block space-y-3" title="View fixture">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {time && (
+                              <span className="text-text-muted text-sm font-bold font-mono">{time}</span>
                             )}
-                            {cleanTeamName(homeTeam?.name) || 'TBC'}
-                            <span className="text-text-muted font-normal mx-1.5">
-                              {result ? `${result.home_score}–${result.away_score}` : 'vs'}
+                            {round && (
+                              <span className="text-text-muted text-[10px] font-semibold uppercase">{round}</span>
+                            )}
+                            <span className="text-text-muted text-[10px]">MD{fx.matchday}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusCls}`}>
+                              {fx.status.replaceAll('_', ' ')}
                             </span>
-                            {cleanTeamName(awayTeam?.name) || 'TBC'}
-                            {awayTeam ? (
-                              <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="standings_row" alt={awayTeam.name} className="w-5 h-5 shrink-0" />
-                            ) : (
-                              <TBCBadge className="w-5 h-5 shrink-0" />
+                          </div>
+                          <div>
+                            <p className="text-text-primary text-base font-semibold flex items-center gap-1.5">
+                              {homeTeam ? (
+                                <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="standings_row" alt={homeTeam.name} className="w-5 h-5 shrink-0" />
+                              ) : (
+                                <TBCBadge className="w-5 h-5 shrink-0" />
+                              )}
+                              <span className="group-hover:text-accent">{cleanTeamName(homeTeam?.name) || 'TBC'}</span>
+                              <span className="text-text-muted font-normal mx-1.5">
+                                {result ? `${result.home_score}–${result.away_score}` : 'vs'}
+                              </span>
+                              <span className="group-hover:text-accent">{cleanTeamName(awayTeam?.name) || 'TBC'}</span>
+                              {awayTeam ? (
+                                <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="standings_row" alt={awayTeam.name} className="w-5 h-5 shrink-0" />
+                              ) : (
+                                <TBCBadge className="w-5 h-5 shrink-0" />
+                              )}
+                            </p>
+                            {(fx._aggregate || fx._penScore) && (
+                              <div className="flex items-center gap-1 mt-1">
+                                {fx._aggregate && (
+                                  <span className="text-[10px] text-text-muted font-semibold px-1 py-0.5 rounded bg-bg-elevated">
+                                    AGG {fx._aggregate.home}–{fx._aggregate.away}
+                                  </span>
+                                )}
+                                {fx._penScore && (
+                                  <span className="text-[10px] text-text-muted/70 px-1 py-0.5 rounded bg-bg-elevated">
+                                    pens {fx._penScore.home}–{fx._penScore.away}
+                                  </span>
+                                )}
+                              </div>
                             )}
-                          </p>
-                          {(fx._aggregate || fx._penScore) && (
-                            <div className="flex items-center gap-1 mt-1">
-                              {fx._aggregate && (
-                                <span className="text-[10px] text-text-muted font-semibold px-1 py-0.5 rounded bg-bg-elevated">
-                                  AGG {fx._aggregate.home}–{fx._aggregate.away}
-                                </span>
-                              )}
-                              {fx._penScore && (
-                                <span className="text-[10px] text-text-muted/70 px-1 py-0.5 rounded bg-bg-elevated">
-                                  pens {fx._penScore.home}–{fx._penScore.away}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        </Link>
                         <FixtureActions
                           fixtureId={fx.id}
                           currentDate={fx.scheduled_date}

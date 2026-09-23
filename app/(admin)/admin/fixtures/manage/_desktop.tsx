@@ -163,15 +163,19 @@ export default function Desktop({ data }: { data: any }) {
                           ? roundLabel(fx.round_type, fx.leg)
                           : null
                         return (
-                          <tr key={fx.id} className="border-b border-border hover:bg-bg-base/60 transition-colors">
+                          <tr key={fx.id} className="group border-b border-border hover:bg-bg-base/60 transition-colors">
                             <td className="px-5 py-4">
-                              <span className="text-text-primary font-bold font-mono text-sm">{time ?? '—'}</span>
+                              <Link href={`/fixtures/${fx.id}`} className="inline-block" title="View fixture">
+                                <span className="text-text-primary font-bold font-mono text-sm group-hover:text-accent">{time ?? '—'}</span>
+                              </Link>
                             </td>
                             <td className="px-5 py-4 text-text-muted text-xs uppercase">
-                              {round ?? `MD${fx.matchday}`}
+                              <Link href={`/fixtures/${fx.id}`} className="group-hover:text-accent" title="View fixture">
+                                {round ?? `MD${fx.matchday}`}
+                              </Link>
                             </td>
                             <td className="px-5 py-4">
-                              <div className="flex items-center gap-2">
+                              <Link href={`/fixtures/${fx.id}`} className="flex items-center gap-2" title="View fixture">
                                 {homeTeam ? (
                                   <TeamLogo
                                     leagueFolder={homeTeam.logo_league_folder}
@@ -183,35 +187,37 @@ export default function Desktop({ data }: { data: any }) {
                                 ) : (
                                   <TBCBadge className="w-6 h-6 shrink-0" />
                                 )}
-                                <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(homeTeam?.name) || 'TBC'}</span>
-                              </div>
+                                <span className="text-text-primary font-medium whitespace-nowrap group-hover:text-accent">{cleanTeamName(homeTeam?.name) || 'TBC'}</span>
+                              </Link>
                             </td>
                             <td className="px-5 py-4 text-center">
-                              {result ? (
-                                <div className="flex flex-col items-center">
-                                  <span className="text-text-primary font-bold text-base">
-                                    {result.home_score} – {result.away_score}
-                                  </span>
-                                  <div className="flex items-center gap-1 mt-0.5">
-                                    {fx._aggregate && (
-                                      <span className="text-[9px] text-text-muted font-semibold px-1 py-0.5 rounded bg-bg-elevated">
-                                        AGG {fx._aggregate.home}–{fx._aggregate.away}
-                                      </span>
-                                    )}
-                                    {fx._penScore && (
-                                      <span className="text-[9px] text-text-muted/70 px-1 py-0.5 rounded bg-bg-elevated">
-                                        pens {fx._penScore.home}–{fx._penScore.away}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-text-muted">vs</span>
-                              )}
+                              <Link href={`/fixtures/${fx.id}`} className="flex flex-col items-center" title="View fixture">
+                                {result ? (
+                                  <>
+                                    <span className="text-text-primary font-bold text-base group-hover:text-accent">
+                                      {result.home_score} – {result.away_score}
+                                    </span>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      {fx._aggregate && (
+                                        <span className="text-[9px] text-text-muted font-semibold px-1 py-0.5 rounded bg-bg-elevated">
+                                          AGG {fx._aggregate.home}–{fx._aggregate.away}
+                                        </span>
+                                      )}
+                                      {fx._penScore && (
+                                        <span className="text-[9px] text-text-muted/70 px-1 py-0.5 rounded bg-bg-elevated">
+                                          pens {fx._penScore.home}–{fx._penScore.away}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <span className="text-text-muted group-hover:text-accent">vs</span>
+                                )}
+                              </Link>
                             </td>
                             <td className="px-5 py-4">
-                              <div className="flex items-center gap-2 justify-end">
-                                <span className="text-text-primary font-medium whitespace-nowrap">{cleanTeamName(awayTeam?.name) || 'TBC'}</span>
+                              <Link href={`/fixtures/${fx.id}`} className="flex items-center gap-2 justify-end" title="View fixture">
+                                <span className="text-text-primary font-medium whitespace-nowrap group-hover:text-accent">{cleanTeamName(awayTeam?.name) || 'TBC'}</span>
                                 {awayTeam ? (
                                   <TeamLogo
                                     leagueFolder={awayTeam.logo_league_folder}
@@ -223,12 +229,14 @@ export default function Desktop({ data }: { data: any }) {
                                 ) : (
                                   <TBCBadge className="w-6 h-6 shrink-0" />
                                 )}
-                              </div>
+                              </Link>
                             </td>
                             <td className="px-5 py-4">
-                              <span className={`text-[10px] px-2 py-0.5 rounded border ${statusCls}`}>
-                                {fx.status.replaceAll('_', ' ')}
-                              </span>
+                              <Link href={`/fixtures/${fx.id}`} className="inline-block" title="View fixture">
+                                <span className={`text-[10px] px-2 py-0.5 rounded border ${statusCls}`}>
+                                  {fx.status.replaceAll('_', ' ')}
+                                </span>
+                              </Link>
                             </td>
                             <td className="px-5 py-4 text-right">
                               <FixtureActions
