@@ -24,6 +24,35 @@ Schema changes (DDL) need `npm run db`. For plain queries you can also use the R
 
 Project ref: `dtxnqtfqsehofezdmdbd`
 
+### Data API grants — auto-granted via default privileges (Oct 30, 2026 rule)
+
+Since Oct 30, 2026, Supabase no longer auto-grants Data API access to new
+tables in `public` for existing projects. A table created **without** explicit
+grants is unreachable through supabase-js/PostgREST (permission denied), and
+this also applies to migrations, preview branches, and `supabase db reset`.
+
+**This repo is already covered:** migration `076_data_api_default_privileges.sql`
+re-created the old auto-grant as default privileges for the `postgres` role in
+`public` (tables = SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER,
+sequences = SELECT/UPDATE/USAGE, functions = EXECUTE, for `anon`,
+`authenticated` and `service_role`). Any future table created via `npm run db`
+(as role `postgres`) is reachable immediately — verified with a throwaway
+table.
+
+**Still follow the belt-and-braces rule:** any migration that creates a table
+SHOULD also include its grants in the SAME file (adjust the role list to the
+minimum the app actually needs — service_role for server-side only,
+authenticated for logged-in users, SELECT-only for public reads). The default
+privileges are the safety net if a migration forgets; patterns to follow are
+`053_backdoor_window.sql` and `066_user_based_slots.sql`.
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.<table> TO service_role, anon, authenticated;
+```
+
+NOTE: default privileges do NOT roll back — if you ever need to re-run this on a
+fresh/preview database, they are additive and idempotent.
+
 ## EFA News / Poster Generation (Leonardo AI)
 
 The user generates comedy/satire "news" for the EFA league. Enter this workflow whenever the user asks to make a **poster prompt** or generate **news** — any request about a poster prompt or news triggers it.
