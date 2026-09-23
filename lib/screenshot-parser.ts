@@ -7,6 +7,7 @@ export interface ParsedResult {
   awayTeamOcr: string
   homeScore: number
   awayScore: number
+  scoreMatched: boolean
   stats: Record<string, { home: number; away: number }>
   rawText: string
 }
@@ -83,6 +84,10 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
   let awayTeamOcr = ''
   let homeScore = 0
   let awayScore = 0
+  // True only when a header/final-score regex actually matched. The numbers
+  // default to 0 otherwise, so callers must not treat 0 as a real read of a
+  // 0-0 score unless this flag is set.
+  let scoreMatched = false
 
   const standardHeader = /^(.+?)\s+(\d+)\s*[-–]\s*(\d+)\s+(.+)$/
   const efootballHeader = /^(.+?)\s+(\d{1,2})\s+[^0-9a-zA-Z\s][^\d]*(\d{1,2})/
@@ -96,6 +101,7 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
       homeScore = parseInt(m1[2])
       awayScore = parseInt(m1[3])
       awayTeamOcr = m1[4].trim()
+      scoreMatched = true
       break
     }
 
@@ -105,6 +111,7 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
       homeScore = parseInt(m2[2])
       awayScore = parseInt(m2[3])
       awayTeamOcr = ''
+      scoreMatched = true
     }
   }
 
@@ -118,6 +125,7 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
         awayScore = parseInt(digits[digits.length - 1])
         const nameMatch = headerLine.match(/^([A-Za-z\s]+?)\s+\d/)
         homeTeamOcr = nameMatch ? nameMatch[1].trim() : ''
+        scoreMatched = true
       }
     }
   }
@@ -175,5 +183,5 @@ export async function parseScreenshot(imageBuffer: Buffer): Promise<ParsedResult
     }
   }
 
-  return { homeTeamOcr, awayTeamOcr, homeScore, awayScore, stats, rawText: text }
+  return { homeTeamOcr, awayTeamOcr, homeScore, awayScore, scoreMatched, stats, rawText: text }
 }

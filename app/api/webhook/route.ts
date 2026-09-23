@@ -363,7 +363,7 @@ const msg = messages[0]
         // (WhatsApp/Vercel can deliver the same image with different message ids).
         if (activeSession.backdoor_screenshot_media_id && activeSession.backdoor_screenshot_media_id === mediaId) {
           console.log(`[webhook] duplicate backdoor screenshot ignored: ${mediaId}`)
-          return
+          return new NextResponse(null, { status: 200 })
         }
         if (activeSession.backdoor_menu_step === 'screenshot') {
           if (caption) {
@@ -375,7 +375,7 @@ const msg = messages[0]
               backdoor_screenshot_media_id: mediaId
             })
             await handleBackdoorFixtureSearch(from, caption, activeSession, phoneNumberId)
-            return
+            return new NextResponse(null, { status: 200 })
           }
           await upsertSession({
             phone_number: from,
@@ -384,7 +384,7 @@ const msg = messages[0]
             backdoor_screenshot_media_id: mediaId
           })
           await sendTextMessage(from, 'Which fixture? Type team names (e.g., "Arsenal vs Chelsea").', phoneNumberId)
-          return
+          return new NextResponse(null, { status: 200 })
         }
         // Already past the screenshot step - ignore stray/duplicate images
         const backdoorPrompts: Record<string, string> = {
@@ -396,7 +396,7 @@ const msg = messages[0]
         }
         const prompt = backdoorPrompts[activeSession.backdoor_menu_step || ''] || 'Type team names or type CANCEL to exit.'
         await sendTextMessage(from, prompt, phoneNumberId)
-        return
+        return new NextResponse(null, { status: 200 })
       }
     }
 
@@ -407,7 +407,7 @@ const msg = messages[0]
       const current = (await getSession(from)) as SessionData | null
       if (current?.state === 'loggedin_first_time_screenshot' || current?.state === 'awaiting_fix_screenshot') {
         await handleLoggedInScreenshotImage(from, imageMessages[0], current, phoneNumberId)
-        return
+        return new NextResponse(null, { status: 200 })
       }
     }
 
@@ -4369,83 +4369,94 @@ type ImageAnalysis = {
 }
 
 async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<ImageAnalysis> {
+  const startedAt = Date.now()
   let ocrResult: Awaited<ReturnType<typeof parseScreenshot>> | null = null
-  try { ocrResult = await parseScreenshot(buffer) } catch {}
+  try { ocrResult = await parseScreenshot(buffer) } catch (e) { console.error('[ocr] tesseract failed:', e) }
 
   let homeTeam: string | null = null, awayTeam: string | null = null
   let homeScore: number | null = null, awayScore: number | null = null
   const matchStats: Record<string, { home: number; away: number }> = {}
   let invalidReason: string | null = null
-  let textStats: Record<string, { home: number; away: number }> | null = null
 
-  // 1. Tesseract regex → text LLM chain. The LLMs read the GARBLED OCR text, so
-  // they are treated as a fallback source, never as the authority.
-  if (ocrResult?.rawText) {
-    try {
-      const cleaned = await cleanOcrText(ocrResult.rawText)
-      if (cleaned && cleaned.valid !== false) {
-        homeTeam = homeTeam || cleaned.homeTeam || null
-        awayTeam = awayTeam || cleaned.awayTeam || null
-        if (cleaned.homeScore != null && cleaned.awayScore != null) {
-          homeScore = cleaned.homeScore; awayScore = cleaned.awayScore
-        }
-        textStats = cleaned.matchStats || null
-      }
-    } catch {
-      try {
-        const cleaned = await cleanOcrWithGroq(ocrResult.rawText)
-        if (cleaned && cleaned.valid !== false) {
-          homeTeam = homeTeam || cleaned.homeTeam || null
-          awayTeam = awayTeam || cleaned.awayTeam || null
-          if (cleaned.homeScore != null && cleaned.awayScore != null) {
-            homeScore = cleaned.homeScore; awayScore = cleaned.awayScore
-          }
-          textStats = cleaned.matchStats || null
-        }
-      } catch {}
-    }
-  }
-
-  if (homeScore === null && ocrResult) {
-    homeScore = ocrResult.homeScore || null; awayScore = ocrResult.awayScore || null
-    homeTeam = homeTeam || ocrResult.homeTeamOcr || null; awayTeam = awayTeam || ocrResult.awayTeamOcr || null
-  }
-
-  // 2. UNION-merge every stat key from every source instead of winner-takes-all.
-  //    Missing/null keys from one source are filled by another; a key is only
-  //    dropped when every source failed to read it. This guarantees that a
-  //    2-digit tesseract read ("25 passes") never erases a correct 3-digit read.
-  for (const [k, v] of Object.entries(ocrResult?.stats || {})) {
+  // Stat writes follow a precedence ladder — tesseract (weakest, sets first),
+  // text LLM, vision (strongest, overwrites). A low-confidence read on a key
+  // never erases a higher-confidence one.
+  const setStat = (k: string, v?: { home: number; away: number } | null) => {
     if (v && v.home != null && v.away != null) matchStats[k] = { home: v.home, away: v.away }
   }
-  for (const [k, v] of Object.entries(textStats || {})) {
-    if (v && v.home != null && v.away != null) matchStats[k] = { home: v.home, away: v.away }
+  const mergeStats = (map: Record<string, { home: number; away: number }> | null | undefined) => {
+    for (const [k, v] of Object.entries(map || {})) setStat(k, v)
+  }
+  const fillMissingTeams = (home: string | null | undefined, away: string | null | undefined) => {
+    homeTeam = homeTeam || home || null
+    awayTeam = awayTeam || away || null
   }
 
-  // 3. Gemini vision reads the ACTUAL PIXELS, so it is the authority per stat:
-  //    for every key it reports, its numbers overwrite the tesseract/text reads.
+  // 1. GEMINI VISION is the PRIMARY reader — it reads the ACTUAL PIXELS, so a
+  //    bare "2 - 1" with no team labels or stat table still parses. Everything
+  //    below only fills fields it left null, or backs it up when it fails.
+  let geminiResult: Awaited<ReturnType<typeof analyzeScreenshot>> | null = null
   try {
-    const geminiResult = await analyzeScreenshot(buffer, mimeType)
-    if (geminiResult) {
-      if (geminiResult.valid === false) {
-        // vision says invalid — only keep text-based reason if vision also confirms it
-        if (homeScore !== null) invalidReason = null  // text found scores, trust that
-        else if (!invalidReason) invalidReason = geminiResult.reason || null
-      } else {
-        // vision found valid data — override any text-based invalidReason
-        invalidReason = null
-        if (geminiResult.homeScore != null && geminiResult.awayScore != null) {
-          homeScore = geminiResult.homeScore; awayScore = geminiResult.awayScore
-        }
-        homeTeam = geminiResult.homeTeam || homeTeam; awayTeam = geminiResult.awayTeam || awayTeam
-        for (const [k, v] of Object.entries(geminiResult.matchStats || {})) {
-          if (v && v.home != null && v.away != null) matchStats[k] = { home: v.home, away: v.away }
-        }
-      }
-    }
-  } catch {}
+    geminiResult = await analyzeScreenshot(buffer, mimeType)
+    console.log('[ocr] vision', JSON.stringify({
+      valid: geminiResult?.valid, reason: geminiResult?.reason || null,
+      score: geminiResult ? [geminiResult.homeScore, geminiResult.awayScore] : null,
+      teams: geminiResult ? [geminiResult.homeTeam, geminiResult.awayTeam] : null,
+      statKeys: geminiResult?.matchStats ? Object.keys(geminiResult.matchStats) : [],
+    }), `(${Date.now() - startedAt}ms)`)
+  } catch (e) {
+    console.error('[ocr] vision failed:', e, `(${Date.now() - startedAt}ms)`)
+  }
 
-  // If vision failed but text/OCR found scores, that's still valid
+  if (geminiResult && geminiResult.valid !== false && geminiResult.homeScore != null && geminiResult.awayScore != null) {
+    homeScore = geminiResult.homeScore; awayScore = geminiResult.awayScore
+    fillMissingTeams(geminiResult.homeTeam, geminiResult.awayTeam)
+    invalidReason = null
+    mergeStats(geminiResult.matchStats)
+  } else if (geminiResult && geminiResult.valid === false) {
+    // Vision saw no score (menu / live screen). The verdict stands only if the
+    // fallback chain below also fails to find a score.
+    invalidReason = geminiResult.reason || null
+  }
+
+  // 2. FALLBACK: text LLM reads the GARBLED tesseract text. Only consulted when
+  //    vision did not produce a score (failed / invalid / null) — it must never
+  //    veto the pixels vision actually saw.
+  if (homeScore === null && ocrResult?.rawText) {
+    let cleaned: Awaited<ReturnType<typeof cleanOcrText>> | null = null
+    try { cleaned = await cleanOcrText(ocrResult.rawText) }
+    catch {
+      try { cleaned = await cleanOcrWithGroq(ocrResult.rawText) }
+      catch (e) { console.error('[ocr] text LLM failed:', e, `(${Date.now() - startedAt}ms)`) }
+    }
+    if (cleaned && cleaned.valid !== false) {
+      fillMissingTeams(cleaned.homeTeam, cleaned.awayTeam)
+      if (cleaned.homeScore != null && cleaned.awayScore != null) {
+        homeScore = cleaned.homeScore; awayScore = cleaned.awayScore
+        invalidReason = null
+      }
+      mergeStats(cleaned.matchStats)
+    } else if (cleaned && cleaned.valid === false) {
+      invalidReason = invalidReason || cleaned.reason || null
+    }
+  }
+
+  // 3. TESSERACT FALLBACK: fills any teams/stats vision and text left null. Its
+  //    raw header scores are the last resort too, but only when the header regex
+  //    actually matched (`scoreMatched`) — otherwise its 0s are just defaults.
+  //    A legit 0 (1-0 / 0-2) is a real read, never `|| null`'d into silence.
+  if (ocrResult) {
+    fillMissingTeams(ocrResult.homeTeamOcr || null, ocrResult.awayTeamOcr || null)
+    mergeStats(ocrResult.stats)
+    if (ocrResult.scoreMatched && homeScore === null) {
+      homeScore = ocrResult.homeScore
+      awayScore = ocrResult.awayScore
+    }
+  }
+
+  console.log('[ocr] tesseract/text score:', [homeScore, awayScore], `(${Date.now() - startedAt}ms)`)
+
+  // If any source found a score, a vision/LLM "invalid" verdict is overruled.
   if (homeScore !== null && awayScore !== null) invalidReason = null
 
   return { homeTeam, awayTeam, homeScore, awayScore, matchStats: Object.keys(matchStats).length > 0 ? matchStats : null, invalidReason }
