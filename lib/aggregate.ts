@@ -77,6 +77,54 @@ export function flipAggregate(agg: AggregateScore): AggregateScore {
   return { home: agg.away, away: agg.home }
 }
 
+export async function resolveTournamentGdLeader(
+  db: any,
+  tournamentId: string,
+  teamA: string | null,
+  teamB: string | null
+): Promise<string | null> {
+  if (!teamA || !teamB || teamA === teamB) return null
+
+  const { data: fixtures } = await db
+    .from('fixtures')
+    .select('home_team_id, away_team_id, status, results!results_fixture_id_fkey(home_score, away_score, is_abandoned, abandoned_type, override_reason)')
+    .eq('tournament_id', tournamentId)
+
+  const gd = new Map<string, number>()
+  const add = (teamId: string | null, delta: number) => {
+    if (!teamId) return
+    gd.set(teamId, (gd.get(teamId) ?? 0) + delta)
+  }
+
+  for (const f of fixtures ?? []) {
+    if (f.status !== 'confirmed') continue
+    const res = Array.isArray(f.results) ? f.results[0] : f.results
+    if (!res) continue
+
+    // Both-absent ties are scored 0-0 but the standings engine still applies a
+    // -3 GD penalty per side (gd_penalty), so mirror that here for parity.
+    const reason = String(res.override_reason ?? '').toLowerCase()
+    const bothAbsent =
+      (res.is_abandoned === true && res.abandoned_type === 'both') ||
+      (reason.includes('both') && reason.includes('absent'))
+    if (bothAbsent) {
+      add(f.home_team_id, -3)
+      add(f.away_team_id, -3)
+      continue
+    }
+
+    const homeScore = res.home_score ?? 0
+    const awayScore = res.away_score ?? 0
+    add(f.home_team_id, homeScore - awayScore)
+    add(f.away_team_id, awayScore - homeScore)
+  }
+
+  const gdA = gd.get(teamA) ?? 0
+  const gdB = gd.get(teamB) ?? 0
+  if (gdA === gdB) return null
+  return gdA > gdB ? teamA : teamB
+}
+
 export function determineAggregateWinner(
   leg1Fixture: any,
   leg1Result: any,

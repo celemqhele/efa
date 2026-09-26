@@ -1,5 +1,5 @@
 import { addDays, format, parseISO } from 'date-fns'
-import { determineAggregateWinner } from './aggregate'
+import { determineAggregateWinner, resolveTournamentGdLeader } from './aggregate'
 import { DAILY_MATCH_CAP } from './fixture-slots'
 import { createAdminClient } from '@/lib/supabase/server'
 import { stampFixtureParticipants } from '@/lib/slot-utils'
@@ -530,8 +530,21 @@ export async function advanceWinner(
     if (!leg1Fix || !leg2Fix || !leg1Result || !leg2Result) return
 
     winnerId = determineAggregateWinner(leg1Fix, leg1Result, leg2Fix, leg2Result)
+
+    // Level tie with no winner after all standard tie-breaks (e.g. both teams
+    // absent or a 0-0 submitted result): the team with the higher total GD in
+    // this tournament advances.
+    if (!winnerId) {
+      winnerId = await resolveTournamentGdLeader(db, tournamentId, leg1Fix.home_team_id, leg1Fix.away_team_id)
+    }
   } else {
     winnerId = homeScore > awayScore ? homeTeamId : awayScore > homeScore ? awayTeamId : null
+
+    // Single-leg 0-0 (both teams absent / backdoor result): higher tournament
+    // GD advances.
+    if (!winnerId) {
+      winnerId = await resolveTournamentGdLeader(db, tournamentId, homeTeamId, awayTeamId)
+    }
   }
 
   if (!winnerId) return
@@ -703,7 +716,10 @@ export async function awardTrophy(
   homeTeamId: string | null,
   awayTeamId: string | null
 ): Promise<void> {
-  const winner = homeScore >= awayScore ? homeTeamId : awayTeamId
+  let winner: string | null = null
+  if (homeScore > awayScore) winner = homeTeamId
+  else if (awayScore > homeScore) winner = awayTeamId
+  else winner = await resolveTournamentGdLeader(db, tournamentId, homeTeamId, awayTeamId)
   if (!winner) return
 
   const { data: tournament } = await db
