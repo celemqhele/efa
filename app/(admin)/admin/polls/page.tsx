@@ -6,6 +6,7 @@ import { ShieldQuestion } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { createClient } from '@/lib/supabase/client'
+import { SA_PREMIERSHIP_FOLDER } from '@/lib/poll-voter-restrictions'
 
 function TeamLogoInline({
   folder,
@@ -44,6 +45,7 @@ interface Poll {
   share_code: string
   created_at: string
   created_by: { username: string } | { username: string }[]
+  voter_restrictions?: Record<string, string[]> | null
 }
 
 interface Application {
@@ -113,6 +115,13 @@ export default function AdminPollsPage() {
   function getApplicantAvatar(a: Application): string | null {
     const a2 = Array.isArray(a.applicant) ? a.applicant[0] : a.applicant
     return a2?.avatar_url ?? null
+  }
+
+  function isPslVoter(poll: Poll, app: Application): boolean {
+    const restrictions = poll.voter_restrictions
+    if (!restrictions) return false
+    const folders = restrictions[app.applicant_id]
+    return Array.isArray(folders) && folders.includes(SA_PREMIERSHIP_FOLDER)
   }
 
   const loadPolls = useCallback(async () => {
@@ -360,45 +369,75 @@ export default function AdminPollsPage() {
                   >
                     <svg className={`w-3 h-3 transition-transform ${expandedPoll === poll.id ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                     Applications ({applications.filter((a) => a.poll_id === poll.id).length})
+                    {poll.voter_restrictions && (() => {
+                      const pollApps = applications.filter((a) => a.poll_id === poll.id)
+                      const psl = pollApps.filter((a) => isPslVoter(poll, a)).length
+                      const motsepe = pollApps.length - psl
+                      return (
+                        <span className="text-text-muted">
+                          {' · '}PSL {psl} / Motsepe {motsepe}
+                        </span>
+                      )
+                    })()}
                   </button>
 
-                  {expandedPoll === poll.id && (
-                    <div className="mt-space-2 space-y-space-1">
-                      {applications.filter((a) => a.poll_id === poll.id).length === 0 ? (
-                        <p className="text-xs text-text-muted py-space-2">No applications yet.</p>
-                      ) : (
-                        applications
-                          .filter((a) => a.poll_id === poll.id)
-                          .map((app) => (
-                            <div key={app.id} className="flex items-center justify-between px-space-3 py-space-2 rounded-lg bg-bg-elevated/50 border border-border">
-                              <div className="flex items-center gap-space-2 min-w-0">
-                                <span className="text-sm font-medium text-text-primary truncate">{app.team_name}</span>
-                                <span className="text-[10px] text-text-muted truncate">{app.team_league}</span>
-                              </div>
-                              <div className="flex items-center gap-space-2 shrink-0">
-                                <span className="text-xs text-text-muted">{getApplicantName(app)}</span>
-                                <span className={`text-xs px-space-2 py-space-1 rounded-full font-medium ${
-                                  app.status === 'pending'
-                                    ? 'bg-warning/10 text-warning'
-                                    : app.status === 'approved'
-                                    ? 'bg-feedback-success/10 text-feedback-success'
-                                    : 'bg-bg-elevated text-text-muted'
-                                }`}>
-                                  {app.status}
-                                </span>
-                                <button
-                                  onClick={() => handleDeleteApplication(app.id)}
-                                  className="text-[10px] text-feedback-error hover:text-feedback-error/80 transition-colors"
-                                  title="Delete application"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  )}
+                  {expandedPoll === poll.id && (() => {
+                    const pollApps = applications.filter((a) => a.poll_id === poll.id)
+                    if (pollApps.length === 0) {
+                      return <p className="text-xs text-text-muted py-space-2">No applications yet.</p>
+                    }
+
+                    const restricted = Boolean(poll.voter_restrictions)
+                    const groups = restricted
+                      ? {
+                          'PSL (Betway Premiership)': pollApps.filter((a) => isPslVoter(poll, a)),
+                          'Motsepe (Championship + ABC)': pollApps.filter((a) => !isPslVoter(poll, a)),
+                        }
+                      : { Applications: pollApps }
+
+                    return (
+                      <div className="mt-space-2 space-y-space-3">
+                        {Object.entries(groups).map(([label, apps]) => (
+                          <div key={label} className="space-y-space-1">
+                            <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
+                              {label} ({apps.length})
+                            </p>
+                            {apps.length === 0 ? (
+                              <p className="text-xs text-text-muted py-space-1">None yet.</p>
+                            ) : (
+                              apps.map((app: Application) => (
+                                <div key={app.id} className="flex items-center justify-between px-space-3 py-space-2 rounded-lg bg-bg-elevated/50 border border-border">
+                                  <div className="flex items-center gap-space-2 min-w-0">
+                                    <span className="text-sm font-medium text-text-primary truncate">{app.team_name}</span>
+                                    <span className="text-[10px] text-text-muted truncate">{app.team_league}</span>
+                                  </div>
+                                  <div className="flex items-center gap-space-2 shrink-0">
+                                    <span className="text-xs text-text-muted">{getApplicantName(app)}</span>
+                                    <span className={`text-xs px-space-2 py-space-1 rounded-full font-medium ${
+                                      app.status === 'pending'
+                                        ? 'bg-warning/10 text-warning'
+                                        : app.status === 'approved'
+                                        ? 'bg-feedback-success/10 text-feedback-success'
+                                        : 'bg-bg-elevated text-text-muted'
+                                    }`}>
+                                      {app.status}
+                                    </span>
+                                    <button
+                                      onClick={() => handleDeleteApplication(app.id)}
+                                      className="text-[10px] text-feedback-error hover:text-feedback-error/80 transition-colors"
+                                      title="Delete application"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               </Card>
             )
