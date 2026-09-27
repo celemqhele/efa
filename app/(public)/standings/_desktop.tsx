@@ -46,10 +46,14 @@ function StandingsTable({ rows, mode, qualifiersPerGroup = 2, zones }: { rows: a
             return (
               <tr
                 key={row.id ?? `${row.team_id}-${index}`}
-                className={`border-l-4 ${borderColor} ${index % 2 === 0 ? 'bg-bg-surface' : 'bg-bg-base'} hover:bg-accent/5 transition-colors cursor-pointer`}
+                className={`${index % 2 === 0 ? 'bg-bg-surface' : 'bg-bg-base'} hover:bg-accent/5 transition-colors cursor-pointer`}
                 onClick={() => window.location.href = `/teams/${row.team_id}`}
               >
-                <td className={`text-center font-bold px-2 py-2 tabular-nums ${isTopThree ? 'text-accent' : 'text-text-muted'}`}>{index + 1}</td>
+                {/* The zone border must live on a <td>, not the <tr>: Tailwind's
+                    preflight sets `border-collapse: collapse` on tables and browsers
+                    do not paint borders on collapsed <tr> elements, which left every
+                    zone row white while the legend dots still showed colour. */}
+                <td className={`border-l-4 ${borderColor} text-center font-bold px-2 py-2 tabular-nums ${isTopThree ? 'text-accent' : 'text-text-muted'}`}>{index + 1}</td>
                 <td className="px-2 py-2 min-w-0">
                   <div className="flex items-center gap-2">
                     {row.team?.logo_league_folder && (
