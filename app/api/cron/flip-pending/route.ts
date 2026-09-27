@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { getSastDateKey } from '@/lib/app-time'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 // Promotes 'confirmed_pending' fixtures whose due date has arrived to
 // 'confirmed', recalculates standings for their tournaments, and advances
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 
   // 4. Advance knockout progression for confirmed KO fixtures
   let advanced = 0
-  const koFixtures = fixtures.filter((f) => ['r16', 'qf', 'sf', 'final'].includes(f.round_type ?? ''))
+  const koFixtures = fixtures.filter((f) => KO_ROUNDS.includes(f.round_type ?? ''))
   for (const fx of koFixtures) {
     const res = Array.isArray(fx.results) ? fx.results[0] : fx.results
     if (!res) continue

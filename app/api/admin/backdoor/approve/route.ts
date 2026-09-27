@@ -2,6 +2,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { notifyBackdoorDecision } from '@/lib/backdoor-notify'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
 
   if (
     fixture.tournament_id &&
-    ['r16', 'qf', 'sf', 'final'].includes(fixture.round_type ?? '')
+    KO_ROUNDS.includes(fixture.round_type ?? '')
   ) {
     try {
       await advanceWinner(

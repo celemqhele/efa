@@ -5,6 +5,8 @@ import { getSastDateKey } from '@/lib/app-time'
 const ROUND_LABELS: Record<string, string> = {
   league: 'League Match',
   group: 'Group Stage',
+  r32: 'Round of 32',
+  r16: 'Round of 16',
   qf: 'Quarter-Final',
   sf: 'Semi-Final',
   final: 'Final',

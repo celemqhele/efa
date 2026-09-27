@@ -5,8 +5,7 @@ import { advanceWinner } from '@/lib/tournament-progression'
 import { notifyBackdoorDecision } from '@/lib/backdoor-notify'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { getSastDateKey } from '@/lib/app-time'
-
-const KO_ROUNDS = ['r16', 'qf', 'sf', 'final']
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 // Daily at 02:00 SAST (00:00 UTC): any match due on a previous matchday that is
 // still unplayed ('scheduled', no result) is finalised automatically —

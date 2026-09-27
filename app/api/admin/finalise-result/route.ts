@@ -8,6 +8,7 @@ import { vacateUserSlots } from '@/lib/slot-utils'
 import type { Database } from '@/lib/supabase/types'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { notifyAdminsOfResult } from '@/lib/backdoor-notify'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 type MatchStatsInsert = Database['public']['Tables']['match_stats']['Insert']
 
@@ -439,13 +440,13 @@ export async function POST(request: Request) {
       await recalculateStandings(tournamentId).catch(e =>
         console.error('[finalise-result] Standings recalc failed:', e)
       )
-    } else if (['r16', 'qf', 'sf', 'final'].includes(roundType)) {
+    } else if (KO_ROUNDS.includes(roundType)) {
       if (bothAbsent && roundType !== 'final') {
         const { data: allKO } = await adminSupabase
           .from('fixtures')
           .select('home_team_id, away_team_id')
           .eq('tournament_id', tournamentId)
-          .in('round_type', ['r16', 'qf', 'sf', 'final'])
+          .in('round_type', KO_ROUNDS)
 
         const koTeamIds = new Set<string>(
           (allKO ?? [])

@@ -998,7 +998,7 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
     try { await recalculateStandings(existingFix.tournament_id) } catch (e) {}
   }
 
-  if (existingFix && ['r16', 'qf', 'sf', 'final'].includes(existingFix.round_type ?? '')) {
+  if (existingFix && KO_ROUNDS.includes(existingFix.round_type ?? '')) {
     try {
       await advanceWinner(
         supabase,
@@ -2442,7 +2442,7 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
       try { await recalculateStandings(fixData.tournament_id) } catch (e) {}
     }
 
-    if (fixtureId && fixData?.tournament_id && ['r16', 'qf', 'sf', 'final'].includes(fixData.round_type ?? '')) {
+    if (fixtureId && fixData?.tournament_id && KO_ROUNDS.includes(fixData.round_type ?? '')) {
       try {
         await advanceWinner(
           supabase,
@@ -2997,6 +2997,7 @@ async function handleManagerApplicationsStart(from: string, phoneNumberId: strin
 }
 
 import { isAllowedTeam } from '@/lib/allowed-teams'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 async function getTeamsForAssignment(supabase: any): Promise<{ id: string; name: string }[]> {
   const teamMap = new Map<string, { name: string; folder: string; slug: string }>()
@@ -4805,7 +4806,7 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
 
   // Knockout progression only happens once the game is confirmed — a
   // future-dated (pending) result must NOT advance the winner until its due date.
-  if (!isPending && ['r16', 'qf', 'sf', 'final'].includes(fixture?.round_type ?? '')) {
+  if (!isPending && KO_ROUNDS.includes(fixture?.round_type ?? '')) {
     try {
       await advanceWinner(
         supabase,

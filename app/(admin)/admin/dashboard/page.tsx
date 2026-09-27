@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getAppTodayKey, getAppDayUtcRange } from '@/lib/app-time'
 import Shell from './_shell'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 export const revalidate = 0
 
@@ -45,7 +46,7 @@ export default async function AdminDashboardPage() {
     if (f.status === 'confirmed') {
       completedCounts[f.tournament_id] = (completedCounts[f.tournament_id] ?? 0) + 1
     }
-    if (['r16', 'qf', 'sf', 'final'].includes(f.round_type)) {
+    if (KO_ROUNDS.includes(f.round_type)) {
       koCounts[f.tournament_id] = (koCounts[f.tournament_id] ?? 0) + 1
     }
   }

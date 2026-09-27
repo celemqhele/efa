@@ -3,10 +3,31 @@ import { determineAggregateWinner, resolveTournamentGdLeader } from './aggregate
 import { DAILY_MATCH_CAP } from './fixture-slots'
 import { createAdminClient } from '@/lib/supabase/server'
 import { stampFixtureParticipants } from '@/lib/slot-utils'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
-type KnockoutRound = 'r16' | 'qf' | 'sf' | 'final'
+type KnockoutRound = 'r32' | 'r16' | 'qf' | 'sf' | 'final'
 
 const BRACKET_PROGRESSION: Record<number, { nextMd: number; slot: 'home_team_id' | 'away_team_id' }> = {
+  // Single-leg R32 (16 ties) -> R16. R32 is always single-leg: the sibling-leg
+  // lookup in advanceWinner is hardcoded to matchday +/- 10, so a 401-416 leg-1
+  // band cannot also host a leg-2 band without colliding. Because no fixtures
+  // exist at matchday+10, the single-match winner path is used automatically.
+  401: { nextMd: 51, slot: 'home_team_id' },
+  402: { nextMd: 51, slot: 'away_team_id' },
+  403: { nextMd: 52, slot: 'home_team_id' },
+  404: { nextMd: 52, slot: 'away_team_id' },
+  405: { nextMd: 53, slot: 'home_team_id' },
+  406: { nextMd: 53, slot: 'away_team_id' },
+  407: { nextMd: 54, slot: 'home_team_id' },
+  408: { nextMd: 54, slot: 'away_team_id' },
+  409: { nextMd: 55, slot: 'home_team_id' },
+  410: { nextMd: 55, slot: 'away_team_id' },
+  411: { nextMd: 56, slot: 'home_team_id' },
+  412: { nextMd: 56, slot: 'away_team_id' },
+  413: { nextMd: 57, slot: 'home_team_id' },
+  414: { nextMd: 57, slot: 'away_team_id' },
+  415: { nextMd: 58, slot: 'home_team_id' },
+  416: { nextMd: 58, slot: 'away_team_id' },
   // Single-leg R16 → QF
   51: { nextMd: 101, slot: 'home_team_id' },
   52: { nextMd: 101, slot: 'away_team_id' },
@@ -156,7 +177,7 @@ function buildQualifierOrder(sortedGroups: any[][], numGroups: number, qualifier
 }
 
 const ROUND_STAGE_OFFSET: Record<string, number> = {
-  r16: 0, qf: 1, sf: 2, final: 3,
+  r32: -1, r16: 0, qf: 1, sf: 2, final: 3,
 }
 
 const KO_DAILY_CAP = DAILY_MATCH_CAP
@@ -179,9 +200,24 @@ async function assignKnockoutDates(
     .maybeSingle()
 
   const today = format(new Date(), 'yyyy-MM-dd')
+
+  // A tournament with no group stage (a straight knockout such as the Nedbank
+  // Cup) is anchored to its own settings.start_date so its bracket can be
+  // scheduled after the leagues rather than from today.
+  let tournamentStart: string | null = null
+  if (!lastGroupRow) {
+    const { data: tRow } = await db
+      .from('tournaments')
+      .select('settings')
+      .eq('id', tournamentId)
+      .maybeSingle()
+    const sd = (tRow?.settings as any)?.start_date
+    if (sd) tournamentStart = String(sd).slice(0, 10)
+  }
+
   const afterDate: string = lastGroupRow?.scheduled_date
     ? String(lastGroupRow.scheduled_date).slice(0, 10)
-    : today
+    : (tournamentStart ?? today)
 
   const candidateDate = format(addDays(parseISO(afterDate), 1), 'yyyy-MM-dd')
   const baseStartDate = candidateDate > today ? candidateDate : today
@@ -247,7 +283,7 @@ export async function generateTBCKnockouts(
     .from('fixtures')
     .select('*', { count: 'exact', head: true })
     .eq('tournament_id', tournamentId)
-    .in('round_type', ['r16', 'qf', 'sf', 'final'])
+    .in('round_type', [...KO_ROUNDS])
 
   if ((existingKO ?? 0) > 0) return { error: 'Knockout fixtures already exist' }
 
@@ -292,7 +328,34 @@ export async function generateTBCKnockouts(
 
   const isTwoLeg = numLegs === 2
 
-  if (teamCount === 16) {
+  if (teamCount === 32) {
+    if (isTwoLeg) {
+      return { error: 'A 32-team bracket is single-leg only (R32 has no leg-2 band)' }
+    }
+    // R32 - all 16 ties have real teams
+    for (let i = 0; i < 16; i++) {
+      koFixtures.push({
+        home_team_id: finalQualifiers[i * 2],
+        away_team_id: finalQualifiers[i * 2 + 1],
+        matchday: 401 + i,
+        round_type: 'r32',
+        leg: 1,
+      })
+    }
+    // R16 (TBC) - winners of the 16 R32 ties fill matchdays 51-58
+    for (let i = 0; i < 8; i++) {
+      koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 51 + i, round_type: 'r16', leg: 1 })
+    }
+    // QF (TBC)
+    for (let i = 0; i < 4; i++) {
+      koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 101 + i, round_type: 'qf', leg: 1 })
+    }
+    // SF (TBC)
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 201, round_type: 'sf', leg: 1 })
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 202, round_type: 'sf', leg: 1 })
+    // Final (TBC)
+    koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 301, round_type: 'final', leg: 1 })
+  } else if (teamCount === 16) {
     // R16 leg 1
     for (let i = 0; i < 8; i++) {
       koFixtures.push({
@@ -382,7 +445,7 @@ export async function generateTBCKnockouts(
   } else if (teamCount === 2) {
     koFixtures.push({ home_team_id: finalQualifiers[0], away_team_id: finalQualifiers[1] ?? null, matchday: 301, round_type: 'final', leg: 1 })
   } else {
-    return { error: `Unsupported knockout team count: ${teamCount}. Only 2, 4, 8, or 16 teams are supported.` }
+    return { error: `Unsupported knockout team count: ${teamCount}. Only 2, 4, 8, 16, or 32 teams are supported.` }
   }
 
   const dates = await assignKnockoutDates(db, koFixtures, tournamentId)
@@ -499,12 +562,18 @@ export async function advanceWinner(
 
   let winnerId: string | null = null
 
+  // Leg 2 always sits 10 matchdays away, but only for rounds that actually have
+  // two legs. Matching on round_type + the opposite leg stops a single-leg round
+  // from picking up an unrelated tie in that matchday range (the 32-team R32 band
+  // 401-416 overlaps its own +10 range, e.g. 401 -> 411).
   const siblingMd = curFx.leg === 1 ? curFx.matchday + 10 : curFx.matchday - 10
   const { data: siblingFx } = await db
     .from('fixtures')
     .select('id')
     .eq('tournament_id', tournamentId)
     .eq('matchday', siblingMd)
+    .eq('round_type', curFx.round_type)
+    .eq('leg', curFx.leg === 1 ? 2 : 1)
     .maybeSingle()
 
   if (siblingFx) {
@@ -595,14 +664,24 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
 
   const { data: clubTs } = await adminDb
     .from('tournaments')
-    .select('id, name')
+    .select('id, name, settings')
     .eq('season_id', seasonId)
     .eq('type', 'tournament_club')
+    .order('created_at', { ascending: true })
 
   if (!clubTs || clubTs.length < 2) return
 
-  const uclT = clubTs[0]
-  const europaT = clubTs[1]
+  // A season can hold more than two club tournaments (Season 4 also runs the
+  // Nedbank Cup), so the continental pair must be selected explicitly rather
+  // than by position. Competitions flagged settings.is_continental win; seasons
+  // without the flag (legacy) keep the original first-two behaviour.
+  const continental = (clubTs as any[]).filter((t) => (t.settings as any)?.is_continental === true)
+  const pair = continental.length >= 2 ? continental : clubTs
+  if (pair.length < 2) return
+
+  const uclT = pair[0]
+  const europaT = pair[1]
+  const superCupName = (uclT.settings as any)?.super_cup_name ?? 'EFA Super Cup'
 
   const { data: uclTrophy } = await adminDb
     .from('trophies')
@@ -629,7 +708,27 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
     .limit(1)
     .maybeSingle()
 
-  if (existing) return
+  // A pre-created Super Cup shell (Season 4 does this so the competition is
+  // visible from day one) is adopted rather than skipped. It stays reusable
+  // while its fixture is still a TBC placeholder with no teams; once real teams
+  // are set the Super Cup is settled and nothing more happens.
+  let scTournamentId: string | null = null
+  let placeholderFixtureId: string | null = null
+
+  if (existing) {
+    const { data: scFxRows } = await adminDb
+      .from('fixtures')
+      .select('id, home_team_id, away_team_id')
+      .eq('tournament_id', existing.id)
+
+    for (const f of (scFxRows ?? []) as any[]) {
+      if (f.home_team_id || f.away_team_id) return
+      placeholderFixtureId = f.id
+    }
+
+    scTournamentId = existing.id
+    await adminDb.from('tournaments').update({ name: superCupName }).eq('id', existing.id)
+  }
 
   const uclWinnerId = uclTrophy.team_id
   const europaWinnerId = europaTrophy.team_id
@@ -655,23 +754,26 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
   const laterDate = uclDate > europaDate ? uclDate : europaDate
   const scheduledDate = format(addDays(laterDate, 1), 'yyyy-MM-dd')
 
-  const { data: scTournament, error: tErr } = await adminDb
-    .from('tournaments')
-    .insert({
-      season_id: seasonId,
-      name: 'EFA Super Cup',
-      type: 'friendlies',
-      status: 'active',
-      settings: { is_super_cup: true },
-    })
-    .select('id')
-    .single()
+  if (!scTournamentId) {
+    const { data: scTournament, error: tErr } = await adminDb
+      .from('tournaments')
+      .insert({
+        season_id: seasonId,
+        name: superCupName,
+        type: 'friendlies',
+        status: 'active',
+        settings: { is_super_cup: true },
+      })
+      .select('id')
+      .single()
 
-  if (tErr || !scTournament) return
+    if (tErr || !scTournament) return
+    scTournamentId = scTournament.id
+  }
 
   const { data: scParticipants } = await adminDb.from('tournament_participants').insert([
-    { tournament_id: scTournament.id, team_id: uclWinnerId },
-    { tournament_id: scTournament.id, team_id: europaWinnerId },
+    { tournament_id: scTournamentId, team_id: uclWinnerId },
+    { tournament_id: scTournamentId, team_id: europaWinnerId },
   ]).select('id, team_id')
 
   const scParticipantByTeam = new Map<string, string>()
@@ -679,18 +781,23 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
     if (row.team_id) scParticipantByTeam.set(row.team_id, row.id)
   }
 
-  await adminDb.from('fixtures').insert({
-    tournament_id: scTournament.id,
+  const superCupFixture = {
     home_team_id: uclWinnerId,
     away_team_id: europaWinnerId,
     home_participant_id: scParticipantByTeam.get(uclWinnerId) ?? null,
     away_participant_id: scParticipantByTeam.get(europaWinnerId) ?? null,
     matchday: 1,
-    round_type: 'final',
+    round_type: 'super_cup',
     status: 'scheduled',
     scheduled_date: scheduledDate,
     deadline: `${scheduledDate}T20:00:00Z`,
-  })
+  }
+
+  if (placeholderFixtureId) {
+    await adminDb.from('fixtures').update(superCupFixture).eq('id', placeholderFixtureId)
+  } else {
+    await adminDb.from('fixtures').insert({ tournament_id: scTournamentId, ...superCupFixture })
+  }
 
   const { data: adminUser } = await adminDb
     .from('profiles')
@@ -703,7 +810,7 @@ async function checkAndCreateSuperCup(db: any, justCompletedTournamentId: string
     admin_id: adminUser?.id ?? justCompletedTournamentId,
     action: 'auto_generate_super_cup',
     target_type: 'tournament',
-    target_id: scTournament.id,
+    target_id: scTournamentId,
     details: { season_id: seasonId, ucl_winner_id: uclWinnerId, europa_winner_id: europaWinnerId },
   })
 }

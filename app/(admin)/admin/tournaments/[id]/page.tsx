@@ -9,6 +9,7 @@ import GenerateKnockoutsButton from '../GenerateKnockoutsButton'
 import GenerateFixturesButton from '../GenerateFixturesButton'
 import GenerateFriendliesButton from '../GenerateFriendliesButton'
 import { Trophy, ArrowLeft } from 'lucide-react'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 const DETAIL_ACTION_BTN =
   'text-sm font-semibold text-center px-3 py-3 rounded-xl border border-border text-text-secondary min-h-[48px] flex items-center justify-center transition-colors hover:border-accent hover:text-accent'
@@ -66,7 +67,7 @@ export default async function TournamentDetailPage({ params }: PageProps) {
   const participantCount = (participants ?? []).length
   const fixtureCount = (fixtures ?? []).length
   const completedCount = (fixtures ?? []).filter((f: any) => f.status === 'confirmed').length
-  const knockoutCount = (fixtures ?? []).filter((f: any) => ['r16', 'qf', 'sf', 'final'].includes(f.round_type)).length
+  const knockoutCount = (fixtures ?? []).filter((f: any) => KO_ROUNDS.includes(f.round_type)).length
   const progress = fixtureCount > 0 ? Math.round((completedCount / fixtureCount) * 100) : 0
 
   const typeInfo = TYPE_LABELS[tournament.type] ?? { label: tournament.type, colour: 'text-text-muted bg-bg-surface0/10 border-slate-500/20' }

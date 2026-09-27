@@ -6,7 +6,7 @@ export interface GeneratedFixture {
   matchday: number
   scheduled_date: string
   deadline: string
-  round_type: 'league' | 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
+  round_type: 'league' | 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
   leg: number
 }
 

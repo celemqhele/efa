@@ -284,7 +284,7 @@ export interface Database {
           home_participant_id: string | null
           away_participant_id: string | null
           matchday: number
-          round_type: 'league' | 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
+          round_type: 'league' | 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
           leg: number
           scheduled_date: string | null
           status: string
@@ -305,7 +305,7 @@ export interface Database {
           home_participant_id?: string | null
           away_participant_id?: string | null
           matchday: number
-          round_type?: 'league' | 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
+          round_type?: 'league' | 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
           leg?: number
           scheduled_date?: string | null
           status?: string
@@ -326,7 +326,7 @@ export interface Database {
           home_participant_id?: string | null
           away_participant_id?: string | null
           matchday?: number
-          round_type?: 'league' | 'group' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
+          round_type?: 'league' | 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'final' | 'super_cup'
           leg?: number
           scheduled_date?: string | null
           status?: string
