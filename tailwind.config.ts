@@ -6,6 +6,10 @@ const config: Config = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    // lib/ holds Tailwind class name maps that are referenced from app/ but
+    // declared in lib/ (e.g. ZONE_BORDER_CLASS in lib/standings-core.ts).
+    // Without this scan those classes are never generated and render invisible.
+    './lib/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
