@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { pickLockState } from '@/lib/poll-pick-lock'
 
 interface TeamEntry {
   slug: string
@@ -25,6 +26,7 @@ interface PollApp {
   team_league: string
   team_name: string
   status: string
+  auto_approve_at?: string | null
 }
 
 function logoSrc(folder: string, slug: string) {
@@ -108,7 +110,7 @@ export default function Desktop({ data }: { data: any }) {
 
     setTakenTeams((prev) => new Set(prev).add(teamKey(league, slug)))
     setMyApps((prev) => [...prev, responseData.application])
-    setSuccess(isSeasonLinked ? `Application submitted for ${name}! Awaiting admin review.` : `Applied for ${name}!`)
+    setSuccess(isSeasonLinked ? `Application submitted for ${name}! Awaiting admin review.` : `Applied for ${name}! You can change it for 24 hours.`)
   }
 
   async function handleWithdraw(appId: string, league: string, slug: string) {
@@ -193,7 +195,9 @@ export default function Desktop({ data }: { data: any }) {
             </h2>
           </div>
           <div className="divide-y divide-border/60">
-            {myApps.map((app) => (
+            {myApps.map((app) => {
+              const lock = pickLockState(app)
+              return (
               <div key={app.id} className="flex items-center justify-between px-5 py-3 hover:bg-accent/5 transition-colors">
                 <div className="flex items-center gap-3">
                   <Image src={logoSrc(app.team_league, app.team_slug)} alt={app.team_name} width={28} height={28} className="object-contain rounded shrink-0" />
@@ -207,14 +211,18 @@ export default function Desktop({ data }: { data: any }) {
                   }`}>
                     {isSeasonLinked && app.status === 'pending' ? 'Awaiting Review' : app.status}
                   </span>
+                  {!isSeasonLinked && (
+                    <span className="text-[10px] text-text-muted">{lock.label}</span>
+                  )}
                 </div>
-                {!isSeasonLinked && app.status === 'pending' && (
+                {!isSeasonLinked && app.status === 'pending' && !lock.locked && (
                   <Button variant="ghost" className="text-xs" onClick={() => handleWithdraw(app.id, app.team_league, app.team_slug)}>
                     Withdraw
                   </Button>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

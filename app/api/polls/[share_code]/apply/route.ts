@@ -150,7 +150,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ sha
     }
   }
 
-  // Insert application
+  // Insert application. The 24h buffer gives the player a window to change their
+  // mind: withdrawal is a hard DELETE, so re-applying inserts a fresh row and
+  // restarts auto_approve_at from the new pick.
+  const autoApproveAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   const { data: app, error } = await adminSupabase
     .from('poll_applications' as any)
     .insert({
@@ -160,6 +163,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sha
       team_slug,
       team_league,
       status: 'pending',
+      auto_approve_at: autoApproveAt,
     })
     .select('*')
     .single()

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { pickLockState } from '@/lib/poll-pick-lock'
 
 interface TeamEntry {
   slug: string
@@ -25,6 +26,7 @@ interface PollApp {
   team_league: string
   team_name: string
   status: string
+  auto_approve_at?: string | null
 }
 
 interface Props {
@@ -114,7 +116,7 @@ export default function PollClient({ poll, leagues, user, isSeasonLinked }: Prop
 
     setTakenTeams((prev) => new Set(prev).add(teamKey(league, slug)))
     setMyApps((prev) => [...prev, data.application])
-    setSuccess(isSeasonLinked ? `Application submitted for ${name}! Awaiting admin review.` : `Applied for ${name}!`)
+    setSuccess(isSeasonLinked ? `Application submitted for ${name}! Awaiting admin review.` : `Applied for ${name}! You can change it for 24 hours.`)
   }
 
   async function handleWithdraw(appId: string, league: string, slug: string) {
@@ -193,7 +195,9 @@ export default function PollClient({ poll, leagues, user, isSeasonLinked }: Prop
           <Card className="p-space-5">
             <h2 className="font-semibold text-text-primary mb-space-3">My Applications</h2>
             <div className="space-y-space-2">
-              {myApps.map((app) => (
+              {myApps.map((app) => {
+                const lock = pickLockState(app)
+                return (
                 <div key={app.id} className="flex items-center justify-between bg-bg-elevated rounded-lg px-space-3 py-space-2">
                   <div className="flex items-center gap-space-2">
                     <Image src={logoSrc(app.team_league, app.team_slug)} alt={app.team_name} width={24} height={24} className="object-contain rounded" />
@@ -207,14 +211,18 @@ export default function PollClient({ poll, leagues, user, isSeasonLinked }: Prop
                     }`}>
                       {isSeasonLinked && app.status === 'pending' ? 'Awaiting Review' : app.status}
                     </span>
+                    {!isSeasonLinked && (
+                      <span className="text-[10px] text-text-muted">{lock.label}</span>
+                    )}
                   </div>
-                  {!isSeasonLinked && app.status === 'pending' && (
+                  {!isSeasonLinked && app.status === 'pending' && !lock.locked && (
                     <Button variant="ghost" className="text-xs" onClick={() => handleWithdraw(app.id, app.team_league, app.team_slug)}>
                       Withdraw
                     </Button>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </Card>
         )}

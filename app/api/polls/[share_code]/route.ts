@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ shar
   const adminSupabase = await createAdminClient()
   const { data: applications } = await adminSupabase
     .from('poll_applications' as any)
-    .select('id, team_slug, team_league, status, applicant_id')
+    .select('id, team_slug, team_league, status, applicant_id, auto_approve_at')
     .eq('poll_id', poll.id)
 
   const takenTeams = new Set(
