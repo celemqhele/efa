@@ -16,6 +16,14 @@ const nextConfig = {
     '/api/webhook': ['./node_modules/tesseract.js-core/*.wasm'],
     '/api/admin/parse-screenshot': ['./node_modules/tesseract.js-core/*.wasm'],
   },
+  // `app/api/og` builds team-crest URLs at runtime and fetches them over HTTP,
+  // so nothing there reads public/logos off disk. Next.js traces at folder level
+  // though, and public/logos is ~538 MB against Vercel's 250 MB uncompressed
+  // function cap, so exclude it explicitly. Same class of bug as the earlier
+  // lib/registry fs-readdir blowups.
+  outputFileTracingExcludes: {
+    '/api/og': ['./public/logos/**'],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',

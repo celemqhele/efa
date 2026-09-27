@@ -1,9 +1,12 @@
 import { notFound } from 'next/navigation'
+import { cache } from 'react'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { calculateProbability } from '@/lib/probability-engine'
 import { getTeamDNAFromDB } from '@/lib/dna-engine'
 import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
 import { parseForfeitAdjusted } from '@/lib/forfeit-note'
+import { ogMeta, formatMatchday, roundLabel } from '@/lib/og'
 import Shell from './_shell'
 
 export const revalidate = 30
@@ -11,6 +14,65 @@ export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ id: string }>
+}
+
+// Shared by generateMetadata and the page body so the link preview does not
+// double the fixture query on every request.
+const getFixture = cache(async (supabase: any, id: string) => {
+  const { data } = await supabase
+    .from('fixtures')
+    .select(
+      `*,
+      tournament:tournaments(*),
+      home_team:teams!fixtures_home_team_id_fkey(*, manager:profiles!teams_manager_id_fkey(*)),
+      away_team:teams!fixtures_away_team_id_fkey(*, manager:profiles!teams_manager_id_fkey(*))`
+    )
+    .eq('id', id)
+    .single() as any
+  return data as any
+})
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const fixture = await getFixture(supabase, id)
+
+  if (!fixture) {
+    return ogMeta({
+      title: 'Fixture not found',
+      description: 'This EFA fixture could not be found.',
+      path: `/fixtures/${id}`,
+    })
+  }
+
+  const home = fixture.home_team?.name ?? 'Home'
+  const away = fixture.away_team?.name ?? 'Away'
+  const tourney = fixture.tournament?.name
+  const matchday = fixture.matchday
+  const when = formatMatchday(fixture.scheduled_date)
+  const round = roundLabel(fixture.round_type, fixture.leg)
+
+  const subtitle = [tourney, matchday ? `Matchday ${matchday}` : null, when, round]
+    .filter(Boolean)
+    .join(' · ')
+
+  const description =
+    `${home} vs ${away}${subtitle ? ` — ${subtitle}.` : '.'} ` +
+    'Team form, head-to-head record, and match preview on the official EFA site.'
+
+  return ogMeta({
+    title: `${home} vs ${away}`,
+    description,
+    path: `/fixtures/${id}`,
+    subtitle: subtitle || undefined,
+    badge: fixture.is_postponed ? 'POSTPONED' : fixture.round_type === 'final' ? 'FINAL' : round || undefined,
+    home: fixture.home_team?.logo_league_folder && fixture.home_team?.logo_team_slug
+      ? { folder: fixture.home_team.logo_league_folder, slug: fixture.home_team.logo_team_slug }
+      : undefined,
+    away: fixture.away_team?.logo_league_folder && fixture.away_team?.logo_team_slug
+      ? { folder: fixture.away_team.logo_league_folder, slug: fixture.away_team.logo_team_slug }
+      : undefined,
+  })
 }
 
 export default async function FixtureDetailPage({ params }: PageProps) {
@@ -23,17 +85,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   } = await supabase.auth.getUser()
 
   // Fixture with teams + tournament
-  const { data: _fixture } = await supabase
-    .from('fixtures')
-    .select(
-      `*,
-      tournament:tournaments(*),
-      home_team:teams!fixtures_home_team_id_fkey(*, manager:profiles!teams_manager_id_fkey(*)),
-      away_team:teams!fixtures_away_team_id_fkey(*, manager:profiles!teams_manager_id_fkey(*))`
-    )
-    .eq('id', id)
-    .single() as any
-  const fixture = _fixture as any
+  const fixture = await getFixture(supabase, id)
 
   if (!fixture) notFound()
 

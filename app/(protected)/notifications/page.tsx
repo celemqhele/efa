@@ -1,10 +1,19 @@
 export const dynamic = 'force-dynamic'
 
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { ogMeta } from '@/lib/og'
 import Shell from './_shell'
 
 export const revalidate = 0
+
+export const metadata: Metadata = ogMeta({
+  title: 'Notifications',
+  description: 'EFA notifications — fixture reminders, submission windows, and league news.',
+  path: '/notifications',
+  withImage: false,
+})
 
 export default async function NotificationsPage() {
   const supabase = await createClient()

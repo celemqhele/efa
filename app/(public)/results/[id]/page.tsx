@@ -1,7 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
+import { cache } from 'react'
+import type { Metadata } from 'next'
 import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
 import { parseForfeitAdjusted } from '@/lib/forfeit-note'
+import { ogMeta, formatMatchday, roundLabel } from '@/lib/og'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
@@ -10,11 +13,10 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-export default async function ResultDetailPage({ params }: Props) {
-  const { id } = await params
-  const supabase = await createClient()
-
-  const { data: _result } = await supabase
+// Shared by generateMetadata and the page body so the link preview does not
+// double the result query on every request.
+const getResult = cache(async (supabase: any, id: string) => {
+  const { data } = await supabase
     .from('results')
     .select(`
       *,
@@ -34,7 +36,72 @@ export default async function ResultDetailPage({ params }: Props) {
     `)
     .eq('id', id)
     .single() as any
-  const result = _result as any
+  return data as any
+})
+
+/** "2 - 1", falling back to penalties when a shootout decided it. */
+function scoreline(result: any): string | null {
+  if (result?.pen_home_score != null && result?.pen_away_score != null) {
+    return `${result.home_score ?? 0} - ${result.away_score ?? 0} (${result.pen_home_score}-${result.pen_away_score} pens)`
+  }
+  if (result?.home_score == null || result?.away_score == null) return null
+  return `${result.home_score} - ${result.away_score}`
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const result = await getResult(supabase, id)
+
+  if (!result) {
+    return ogMeta({
+      title: 'Result not found',
+      description: 'This EFA match result could not be found.',
+      path: `/results/${id}`,
+    })
+  }
+
+  const fixture = result.fixtures
+  const home = fixture?.home_team?.name ?? 'Home'
+  const away = fixture?.away_team?.name ?? 'Away'
+  const line = scoreline(result)
+  const tourney = fixture?.tournament?.name
+  const matchday = fixture?.matchday
+  const when = formatMatchday(fixture?.scheduled_date)
+  const round = roundLabel(fixture?.round_type)
+
+  const badge = result.is_abandoned
+    ? 'FORFEIT'
+    : fixture?.round_type === 'final'
+      ? 'FINAL'
+      : round || 'FULL TIME'
+
+  const subtitle = [tourney, matchday ? `Matchday ${matchday}` : null, when].filter(Boolean).join(' · ')
+
+  const headline = line ? `${home} ${line} ${away}` : `${home} vs ${away}`
+
+  return ogMeta({
+    title: headline,
+    description:
+      `${headline}${subtitle ? ` — ${subtitle}.` : '.'} ` +
+      'Full-time score, scorers, and match stats on the official EFA site.',
+    path: `/results/${id}`,
+    subtitle: subtitle || undefined,
+    badge,
+    home: fixture?.home_team?.logo_league_folder && fixture?.home_team?.logo_team_slug
+      ? { folder: fixture.home_team.logo_league_folder, slug: fixture.home_team.logo_team_slug }
+      : undefined,
+    away: fixture?.away_team?.logo_league_folder && fixture?.away_team?.logo_team_slug
+      ? { folder: fixture.away_team.logo_league_folder, slug: fixture.away_team.logo_team_slug }
+      : undefined,
+  })
+}
+
+export default async function ResultDetailPage({ params }: Props) {
+  const { id } = await params
+  const supabase = await createClient()
+
+  const result = await getResult(supabase, id)
 
   if (!result) notFound()
 

@@ -1,7 +1,9 @@
 export const dynamic = 'force-dynamic'
 
+import type { Metadata } from 'next'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { ogMeta } from '@/lib/og'
 import Shell from './_shell'
 import {
   listOpenSeasons,
@@ -10,6 +12,13 @@ import {
 } from '@/lib/season-applications'
 
 export const revalidate = 0
+
+export const metadata: Metadata = ogMeta({
+  title: 'My profile',
+  description: 'Your EFA manager profile — club, career stats, and competition entries.',
+  path: '/profile',
+  withImage: false,
+})
 
 export default async function ProfilePage() {
   const supabase = await createClient()

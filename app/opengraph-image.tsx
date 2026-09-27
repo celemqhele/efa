@@ -1,12 +1,41 @@
 import { ImageResponse } from 'next/og'
+import { promises as fs } from 'fs'
+import path from 'path'
 
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
+type OgFont = { name: string; data: ArrayBuffer; weight: 400 | 600; style: 'normal' }
+
+let fontCache: OgFont[] | null = null
+
+/**
+ * Static Poppins TTFs from the repo. Satori throws when it has no font, so a
+ * fonts.gstatic.com failure would strip the image off every link preview for
+ * the whole site rather than just degrade the type. It also cannot parse
+ * variable fonts, which is why the static cut is used instead of the
+ * `GeistVF.woff` sitting in the same directory.
+ */
+async function loadFonts(): Promise<OgFont[] | null> {
+  if (fontCache) return fontCache
+  const read = async (file: string, weight: 400 | 600): Promise<OgFont | null> => {
+    try {
+      const buf = await fs.readFile(path.join(process.cwd(), 'app', 'fonts', file))
+      const data = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
+      return { name: 'Poppins', data, weight, style: 'normal' }
+    } catch {
+      return null
+    }
+  }
+  const [semibold] = await Promise.all([read('Poppins-SemiBold.ttf', 600), read('Poppins-Bold.ttf', 400)])
+  const fonts = [semibold].filter(Boolean) as OgFont[]
+  if (!fonts.length) return null
+  fontCache = fonts
+  return fontCache
+}
+
 export default async function OGImage() {
-  const fontData = await fetch(
-    'https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf',
-  ).then((r) => r.arrayBuffer())
+  const fonts = await loadFonts()
 
   return new ImageResponse(
     (
@@ -19,7 +48,7 @@ export default async function OGImage() {
           alignItems: 'center',
           justifyContent: 'center',
           background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-          fontFamily: 'Inter',
+          fontFamily: fonts ? 'Poppins' : 'sans-serif',
         }}
       >
         <div
@@ -50,7 +79,7 @@ export default async function OGImage() {
     {
       width: 1200,
       height: 630,
-      fonts: [{ name: 'Inter', data: fontData, weight: 400 }],
+      ...(fonts ? { fonts } : {}),
     },
   )
 }

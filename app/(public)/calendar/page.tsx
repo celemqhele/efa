@@ -1,5 +1,7 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { getSastDateKey } from '@/lib/app-time'
+import { ogMeta } from '@/lib/og'
 import { differenceInDays, parseISO } from 'date-fns'
 import Shell from './_shell'
 
@@ -32,6 +34,25 @@ function nextMonth(year: number, month: number): { year: number; month: number }
 
 interface PageProps {
   searchParams: Promise<{ month?: string; scope?: string }>
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const { month } = await searchParams
+  const { year, month: m } = parseMonthParam(month)
+  const label = `${MONTH_NAMES[m - 1]} ${year}`
+
+  return ogMeta({
+    title: `Fixtures — ${label}`,
+    description: `EFA fixture calendar for ${label} — every scheduled match, kick-off date, and competition.`,
+    path: '/calendar',
+    subtitle: `All EFA matches in ${label}`,
+    badge: 'CALENDAR',
+  })
 }
 
 export default async function CalendarPage({ searchParams }: PageProps) {

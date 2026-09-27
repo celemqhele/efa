@@ -1,11 +1,41 @@
 import { notFound } from 'next/navigation'
+import { cache } from 'react'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { ogMeta } from '@/lib/og'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
   params: Promise<{ id: string }>
+}
+
+const getTeam = cache(async (supabase: any, id: string) => {
+  const { data } = await supabase.from('teams').select('id, name, logo_league_folder, logo_team_slug').eq('id', id).maybeSingle()
+  return data as any
+})
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params
+  const supabase = await createClient()
+  const team = await getTeam(supabase, id)
+  const name = team?.name
+
+  if (!name) {
+    return ogMeta({
+      title: 'Team not found',
+      description: 'This EFA team could not be found.',
+      path: `/teams/${id}/fixtures`,
+    })
+  }
+
+  return ogMeta({
+    title: `${name} — Fixtures`,
+    description: `${name} fixtures, kick-off dates, results, and upcoming matches on the official EFA site.`,
+    path: `/teams/${id}/fixtures`,
+    subtitle: 'Fixtures, results, and upcoming matches',
+  })
 }
 
 export default async function TeamFixturesPage({ params }: PageProps) {
