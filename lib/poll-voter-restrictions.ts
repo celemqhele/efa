@@ -93,3 +93,19 @@ export function splitRestrictedUsersByDivision(
   }
   return { d1, d2 }
 }
+
+// Resolve which league folders a user may pick from for a poll.
+// - No restrictions (null map) => null, meaning open to any authenticated user.
+// - User present in the map => their allowed folders verbatim.
+// - Restricted poll but user NOT in the map (e.g. account created after the
+//   allowlist snapshot) => default them to the non-premiership (second division)
+//   folders so they can still vote without unlocking the top division.
+export function resolveVoterFolders(
+  restrictions: VoterRestrictions | null,
+  userId: string
+): string[] | null {
+  if (!restrictions) return null
+  const folders = restrictions[userId]
+  if (folders && folders.length > 0) return folders
+  return [SA_MOTSEPE_FOLDER, SA_ABC_FOLDER]
+}

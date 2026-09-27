@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { LEAGUE_META } from '@/lib/registry'
+import { resolveVoterFolders } from '@/lib/poll-voter-restrictions'
 import { listOpenSeasons, userInSeason, getSeasonPickableTeams } from '@/lib/season-applications'
 
 export async function POST(request: Request, { params }: { params: Promise<{ share_code: string }> }) {
@@ -27,11 +28,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ sha
   if (!poll) return Response.json({ error: 'Poll not found' }, { status: 404 })
   if (poll.status !== 'open') return Response.json({ error: 'This poll is closed' }, { status: 400 })
 
-  // Voter restrictions: only users in the allowlist may apply, and only to
-  // teams in their allowed league folders.
+  // Voter restrictions: restrict to the user's allowed league folders. A user
+  // created after the allowlist snapshot falls back to the second-division
+  // folders (via resolveVoterFolders) instead of being locked out.
   const restrictions: Record<string, string[]> | null = poll.voter_restrictions ?? null
   if (restrictions) {
-    const allowedFolders = restrictions[user.id]
+    const allowedFolders = resolveVoterFolders(restrictions, user.id)
     if (!allowedFolders || allowedFolders.length === 0) {
       return Response.json({ error: 'You are not eligible for this poll' }, { status: 403 })
     }

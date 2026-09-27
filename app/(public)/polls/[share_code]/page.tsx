@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { buildRegistry } from '@/lib/registry'
 import { filterTeamsByFolder } from '@/lib/allowed-teams'
+import { resolveVoterFolders } from '@/lib/poll-voter-restrictions'
 import { getSeasonPickableTeams } from '@/lib/season-applications'
 import Shell from './_shell'
 
@@ -30,10 +31,12 @@ export default async function PollPage({ params }: { params: Promise<{ share_cod
   let seasonPickableTeams: { id: string; name: string; logo_league_folder: string; logo_team_slug: string }[] = []
 
   // Poll voter restrictions: an allowlist of user_id -> [league_folder, ...].
-  // Absent = open to any authenticated user (legacy). Present = only listed
-  // users may apply, and only to teams inside their allowed folders.
+  // Absent = open to any authenticated user (legacy). Present = users only see
+  // teams inside their allowed folders. A user created after the allowlist
+  // snapshot falls back to the second-division folders (resolveVoterFolders)
+  // instead of being locked out.
   const restrictions: Record<string, string[]> | null = poll.voter_restrictions ?? null
-  const allowedFolders = restrictions && user ? (restrictions[user.id] ?? []) : null
+  const allowedFolders = user ? resolveVoterFolders(restrictions, user.id) : null
   const isEligible = !restrictions || (!!user && (allowedFolders ?? []).length > 0)
 
   // If poll is linked to a season, get pickable teams for that season
