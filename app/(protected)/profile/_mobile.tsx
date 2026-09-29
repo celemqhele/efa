@@ -95,10 +95,10 @@ export default function Mobile({ data }: { data: any }) {
   }
 
   return (
-    <div className="space-y-space-8 max-w-3xl mx-auto">
+    <div className="space-y-space-5 max-w-3xl mx-auto">
 
       {/* -- Profile Card --------------------------------------------------- */}
-      <Card className="p-space-6 flex flex-col sm:flex-row items-center sm:items-start gap-space-6">
+      <Card className="p-space-5 flex flex-col sm:flex-row items-center sm:items-start gap-space-5">
         {/* Avatar */}
         <div className="shrink-0">
           <AvatarUpload avatarUrl={profile?.avatar_url} username={profile?.username ?? 'User'} />
@@ -140,62 +140,77 @@ export default function Mobile({ data }: { data: any }) {
 
           <p className="text-xs text-text-muted">{user.email}</p>
 
-          {/* Playstyle selector */}
-          <div className="flex items-center gap-2 pt-space-1">
-            <Gamepad2 className="w-4 h-4 text-accent shrink-0" />
-            <select
-              value={playstyle}
-              onChange={(e) => setPlaystyle(e.target.value)}
-              className="flex-1 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
-            >
-              <option value="">Select playstyle…</option>
-              {PLAYSTYLE_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
+          {/* Playstyle selector.
+              The <select> is a flex child, and flex children default to
+              min-width:auto — a native select's intrinsic width is its widest
+              <option> ("Set-Piece Specialists"), so `flex-1` alone will not
+              shrink it and it bursts the card. `min-w-0` + `w-full` is the fix. */}
+          <div className="pt-space-1">
+            <div className="flex items-center gap-2">
+              <Gamepad2 className="w-4 h-4 text-accent shrink-0" />
+              <select
+                value={playstyle}
+                onChange={(e) => setPlaystyle(e.target.value)}
+                aria-label="Playstyle"
+                className="flex-1 min-w-0 w-full h-11 text-xs bg-bg-elevated border border-border rounded-lg px-2 text-text-primary outline-none focus:border-accent/50"
+              >
+                <option value="">Select playstyle…</option>
+                {PLAYSTYLE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
             {playstyle !== (profile?.playstyle ?? '') && (
               <button
                 onClick={savePlaystyle}
                 disabled={saving}
-                className="text-[10px] font-semibold bg-accent text-bg-base rounded-lg px-2.5 py-1.5 hover:bg-accent/90 transition-colors disabled:opacity-40 shrink-0"
+                className="mt-space-1 w-full min-h-[44px] text-xs font-semibold bg-accent text-bg-base rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-40"
               >
-                {saving ? '…' : 'Save'}
+                {saving ? 'Saving…' : 'Save playstyle'}
               </button>
             )}
           </div>
 
-          {/* Phone number */}
-          <div className="flex items-center gap-2 pt-space-1">
-            <Phone className="w-4 h-4 text-accent shrink-0" />
-            <select
-              value={countryCode}
-              onChange={(e) => setCountryCode(e.target.value)}
-              className="shrink-0 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
-            >
-              {COUNTRY_CODES.map((c) => (
-                <option key={c.code} value={c.code}>{c.label}</option>
-              ))}
-            </select>
-            <input
-              type="tel"
-              inputMode="numeric"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, phoneLocalMaxLength(countryCode)))}
-              placeholder="e.g. 74 008 857"
-              maxLength={phoneLocalMaxLength(countryCode)}
-              className="flex-1 text-xs bg-bg-elevated border border-border rounded-lg px-2 py-1.5 text-text-primary outline-none focus:border-accent/50"
-            />
+          {/* Phone number. The country select keeps `shrink-0` but is width-capped
+              and shows the dialling code only — the longest full label
+              ("+389 North Macedonia") would otherwise set the row's min-content
+              width. The full label is still used on the desktop variant. */}
+          <div className="pt-space-1">
+            <div className="flex items-center gap-2">
+              <Phone className="w-4 h-4 text-accent shrink-0" />
+              <select
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                aria-label="Country dialling code"
+                title={COUNTRY_CODES.find((c) => c.code === countryCode)?.label}
+                className="shrink-0 w-20 max-w-[5rem] h-11 text-xs bg-bg-elevated border border-border rounded-lg px-2 text-text-primary outline-none focus:border-accent/50 tabular-nums"
+              >
+                {COUNTRY_CODES.map((c) => (
+                  <option key={c.code} value={c.code}>+{c.code}</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                inputMode="numeric"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, phoneLocalMaxLength(countryCode)))}
+                placeholder="e.g. 74 008 857"
+                maxLength={phoneLocalMaxLength(countryCode)}
+                aria-label="Phone number"
+                className="flex-1 min-w-0 w-full h-11 text-xs bg-bg-elevated border border-border rounded-lg px-2 text-text-primary outline-none focus:border-accent/50"
+              />
+            </div>
             {phoneChanged && (
               <button
                 onClick={savePhone}
                 disabled={savingPhone}
-                className="text-[10px] font-semibold bg-accent text-bg-base rounded-lg px-2.5 py-1.5 hover:bg-accent/90 transition-colors disabled:opacity-40 shrink-0"
+                className="mt-space-1 w-full min-h-[44px] text-xs font-semibold bg-accent text-bg-base rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-40"
               >
-                {savingPhone ? '…' : 'Save'}
+                {savingPhone ? 'Saving…' : 'Save phone number'}
               </button>
             )}
           </div>
-          {phoneError && <p className="text-xs text-red-400 pt-1">{phoneError}</p>}
+          {phoneError && <p className="text-xs text-feedback-error pt-1">{phoneError}</p>}
         </div>
 
         {/* Quick Career Stats */}
@@ -222,7 +237,7 @@ export default function Mobile({ data }: { data: any }) {
       {/* -- Career History Section ------------------------------------------ */}
       <Card className="p-space-5 space-y-space-4">
         <h2 className="section-header">
-          <Shirt className="w-5 h-5 text-gold" /> Management History
+          <Shirt className="w-5 h-5 text-accent" /> Management History
         </h2>
 
         {(tenures ?? []).length === 0 ? (
@@ -276,7 +291,7 @@ export default function Mobile({ data }: { data: any }) {
       {team && (
         <Card className="p-space-5 space-y-space-4">
           <h2 className="section-header">
-            <Calendar className="w-5 h-5 text-gold" /> Upcoming Fixtures
+            <Calendar className="w-5 h-5 text-accent" /> Upcoming Fixtures
           </h2>
 
           {next3.length === 0 ? (

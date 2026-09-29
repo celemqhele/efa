@@ -133,6 +133,9 @@ export default function FixtureActions({
   return (
     <div className="flex flex-col gap-2">
       {/* ── Action buttons ─────────────────────────────────────────────────── */}
+      {/* Buttons wrap to two per row on narrow screens and grow to fill.
+          `min-h-[44px]` + `inline-flex items-center justify-center` replaces
+          the old `py-1`, which rendered a ~28px tap target. */}
       <div className="flex items-center gap-2 flex-wrap">
         {!isFinished && (
           <button
@@ -140,7 +143,7 @@ export default function FixtureActions({
               setShowPostpone(!showPostpone)
               setShowBatch(false)
             }}
-            className="btn-outline text-xs py-1 px-2.5"
+            className="btn-outline text-xs px-2.5 min-h-[44px] flex-1 min-w-[8.5rem] inline-flex items-center justify-center"
           >
             Postpone
           </button>
@@ -151,21 +154,21 @@ export default function FixtureActions({
               setShowBatch(!showBatch)
               setShowPostpone(false)
             }}
-            className="btn-outline text-xs py-1 px-2.5"
+            className="btn-outline text-xs px-2.5 min-h-[44px] flex-1 min-w-[8.5rem] inline-flex items-center justify-center"
           >
             Batch Postpone
           </button>
         )}
         {/* FIX: Shows the button for both 'scheduled' and 'awaiting_confirmation' and sets the text to 'Submit' */}
         {['scheduled', 'awaiting_confirmation'].includes(status) && (
-          <a href={`/admin/results/submit?fixture=${fixtureId}`} className="btn-gold text-xs py-1 px-2.5">
+          <a href={`/admin/results/submit?fixture=${fixtureId}`} className="btn-gold text-xs px-2.5 min-h-[44px] flex-1 min-w-[8.5rem] inline-flex items-center justify-center">
             Submit
           </a>
         )}
         {isFinished && (
           <button
             onClick={() => setShowResetConfirm(true)}
-            className="btn-outline text-xs py-1 px-2.5 text-red-400 border-red-500/20 hover:bg-red-500/10"
+            className="btn-outline text-xs px-2.5 min-h-[44px] flex-1 min-w-[8.5rem] inline-flex items-center justify-center text-red-400 border-red-500/20 hover:bg-red-500/10"
           >
             Reset Result
           </button>

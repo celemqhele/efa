@@ -498,11 +498,11 @@ export default function ResultSubmitClient({
 
   if (submitSuccess) {
     return (
-      <div className="card p-12 text-center">
-        <CheckCircle2 className="w-14 h-14 text-green-400 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-foreground-primary mb-2">Result Finalised</h2>
+      <div className="card p-6 sm:p-8 text-center">
+        <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
+        <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">Result Finalised</h2>
         <p className="text-text-muted mb-6">The result has been saved and standings updated.</p>
-        <div className="flex gap-3 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button onClick={() => { setSubmitSuccess(false); resetOcr(); setSelectedFixtureId('') }} className="btn-outline">
             Submit Another
           </button>
@@ -520,12 +520,12 @@ export default function ResultSubmitClient({
           <h2 className="section-header">Select Fixture</h2>
           
           {/* Status Filter Tab Selector */}
-          <div className="flex rounded-lg overflow-hidden border border-navy-border p-0.5 bg-navy-light mb-3">
+          <div className="flex rounded-lg overflow-hidden border border-border p-0.5 bg-bg-elevated mb-3">
             <button
               type="button"
               onClick={() => setStatusFilter('all')}
-              className={`flex-1 text-center py-1.5 text-xs font-medium rounded transition-colors ${
-                statusFilter === 'all' ? 'bg-gold text-navy shadow-sm' : 'text-text-muted hover:text-foreground-primary'
+              className={`flex-1 text-center min-h-[40px] py-1.5 text-xs font-medium rounded transition-colors ${
+                statusFilter === 'all' ? 'bg-accent text-bg-base shadow-sm' : 'text-text-muted hover:text-text-primary'
               }`}
             >
               All
@@ -533,8 +533,8 @@ export default function ResultSubmitClient({
             <button
               type="button"
               onClick={() => setStatusFilter('awaiting_confirmation')}
-              className={`flex-1 text-center py-1.5 text-xs font-medium rounded transition-colors ${
-                statusFilter === 'awaiting_confirmation' ? 'bg-gold text-navy shadow-sm' : 'text-text-muted hover:text-foreground-primary'
+              className={`flex-1 text-center min-h-[40px] py-1.5 text-xs font-medium rounded transition-colors ${
+                statusFilter === 'awaiting_confirmation' ? 'bg-accent text-bg-base shadow-sm' : 'text-text-muted hover:text-text-primary'
               }`}
             >
               Pending
@@ -542,8 +542,8 @@ export default function ResultSubmitClient({
             <button
               type="button"
               onClick={() => setStatusFilter('scheduled')}
-              className={`flex-1 text-center py-1.5 text-xs font-medium rounded transition-colors ${
-                statusFilter === 'scheduled' ? 'bg-gold text-navy shadow-sm' : 'text-text-muted hover:text-foreground-primary'
+              className={`flex-1 text-center min-h-[40px] py-1.5 text-xs font-medium rounded transition-colors ${
+                statusFilter === 'scheduled' ? 'bg-accent text-bg-base shadow-sm' : 'text-text-muted hover:text-text-primary'
               }`}
             >
               Sched.
@@ -551,8 +551,8 @@ export default function ResultSubmitClient({
             <button
               type="button"
               onClick={() => setStatusFilter('completed')}
-              className={`flex-1 text-center py-1.5 text-xs font-medium rounded transition-colors ${
-                statusFilter === 'completed' ? 'bg-gold text-navy shadow-sm' : 'text-text-muted hover:text-foreground-primary'
+              className={`flex-1 text-center min-h-[40px] py-1.5 text-xs font-medium rounded transition-colors ${
+                statusFilter === 'completed' ? 'bg-accent text-bg-base shadow-sm' : 'text-text-muted hover:text-text-primary'
               }`}
             >
               Comp.
@@ -580,24 +580,24 @@ export default function ResultSubmitClient({
                 <button
                   key={fx.id}
                   onClick={() => { setSelectedFixtureId(fx.id); resetOcr() }}
-                  className={`w-full text-left rounded-lg px-3 py-2.5 border transition-colors text-sm ${
+                  className={`w-full text-left rounded-lg px-3 py-2.5 min-h-[44px] border transition-colors text-sm ${
                     isSelected
-                      ? 'bg-gold/10 border-gold/40 text-foreground-primary'
-                      : 'bg-navy-light border-navy-border text-foreground-secondary hover:border-gold/20'
+                      ? 'bg-accent/10 border-accent/40 text-text-primary'
+                      : 'bg-bg-elevated border-border text-text-secondary hover:border-accent/20'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium truncate">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <span className="font-medium truncate min-w-0">
                       {fx.home_team?.name} vs {fx.away_team?.name}
                     </span>
-                    {hasConflict && <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 ml-1" />}
+                    {hasConflict && <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-text-muted text-xs">MD{fx.matchday}</span>
                     <span className={`text-xs px-1.5 rounded ${
                       fx.status === 'awaiting_confirmation'
                         ? 'text-yellow-400 bg-yellow-500/10'
-                        : 'text-text-muted bg-bg-surface0/10'
+                        : 'text-text-muted bg-bg-elevated/10'
                     }`}>{fx.status.replace('_', ' ')}</span>
                     {confs.length > 0 && (
                       <span className="text-xs text-blue-400">{confs.length} conf.</span>
@@ -612,12 +612,12 @@ export default function ResultSubmitClient({
         {/* Existing Confirmations */}
         {selectedFixture && existingConfs.length > 0 && (
           <div className="card p-4">
-            <h2 className="text-sm font-bold text-foreground-primary mb-3">Submitted Scores</h2>
+            <h2 className="text-sm font-bold text-text-primary mb-3">Submitted Scores</h2>
             <div className="space-y-2">
               {existingConfs.map((c, i) => (
-                <div key={i} className="flex items-center justify-between bg-navy-light rounded px-3 py-2 border border-navy-border">
+                <div key={i} className="flex items-center justify-between bg-bg-elevated rounded px-3 py-2 border border-border">
                   <span className="text-text-muted text-xs">Submission {i + 1}</span>
-                  <span className="font-bold text-foreground-primary">{c.home_score} – {c.away_score}</span>
+                  <span className="font-bold text-text-primary">{c.home_score} – {c.away_score}</span>
                 </div>
               ))}
             </div>
@@ -628,60 +628,63 @@ export default function ResultSubmitClient({
       {/* Main Form */}
       <div className="lg:col-span-2 space-y-4">
         {!selectedFixture ? (
-          <div className="card p-12 text-center text-text-muted">
+          <div className="card p-6 text-center text-text-muted">
             <CircleDot className="w-10 h-10 text-text-muted mx-auto mb-3" />
             <p>Select a fixture to submit its result.</p>
           </div>
         ) : isFinished ? (
-          <div className="card p-12 text-center space-y-6">
-            <Flag className="w-12 h-12 text-text-muted mx-auto" />
+          <div className="card p-5 sm:p-6 text-center space-y-5">
+            <Flag className="w-10 h-10 text-text-muted mx-auto" />
             <div>
-              <h2 className="text-2xl font-bold text-foreground-primary">Fixture Completed</h2>
-              <p className="text-text-muted mt-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-text-primary">Fixture Completed</h2>
+              <p className="text-text-muted mt-2 text-sm">
                 This fixture already has a finalised result. 
                 Resetting it will delete the result and return it to <span className="font-bold">Scheduled</span>.
               </p>
             </div>
 
-            <div className="p-6 bg-navy-light rounded-2xl border border-navy-border inline-block min-w-[240px]">
-              <div className="flex items-center justify-center gap-6">
-                <div className="text-center">
+            {/* `min-w-[240px]` + `p-6` on a box that also sat inside a 160px
+                `p-12` card forced the inner width past the viewport. The block
+                now fills the card and stops growing. */}
+            <div className="p-4 bg-bg-elevated rounded-2xl border border-border w-full max-w-sm mx-auto">
+              <div className="flex items-center justify-center gap-4 sm:gap-6">
+                <div className="text-center min-w-0 flex-1">
                   {selectedFixture.home_team?.logo_league_folder && (
                     <TeamLogo
                       leagueFolder={selectedFixture.home_team.logo_league_folder}
                       teamSlug={selectedFixture.home_team.logo_team_slug}
                       context="fixture_card"
                       alt={selectedFixture.home_team.name}
-                      className="w-14 h-14 mx-auto"
+                      className="w-12 h-12 mx-auto"
                     />
                   )}
                 </div>
-                <div className="text-3xl font-black text-foreground-primary">vs</div>
-                <div className="text-center">
+                <div className="text-2xl sm:text-3xl font-black text-text-primary shrink-0">vs</div>
+                <div className="text-center min-w-0 flex-1">
                   {selectedFixture.away_team?.logo_league_folder && (
                     <TeamLogo
                       leagueFolder={selectedFixture.away_team.logo_league_folder}
                       teamSlug={selectedFixture.away_team.logo_team_slug}
                       context="fixture_card"
                       alt={selectedFixture.away_team.name}
-                      className="w-14 h-14 mx-auto"
+                      className="w-12 h-12 mx-auto"
                     />
                   )}
                 </div>
               </div>
-              <p className="text-xs font-bold text-text-muted mt-4 uppercase tracking-widest">{selectedFixture.status}</p>
+              <p className="text-xs font-bold text-text-muted mt-4 uppercase tracking-widest break-words">{selectedFixture.status}</p>
             </div>
 
-            <div className="pt-4">
+            <div className="pt-1">
               <button
                 onClick={handleReset}
                 disabled={resetLoading}
-                className="btn-outline border-red-500/20 text-red-500 hover:bg-red-50 py-3 px-8 font-bold text-base"
+                className="btn-outline border-red-500/20 text-red-500 hover:bg-red-500/10 min-h-[44px] w-full sm:w-auto sm:px-8 py-3 font-bold text-sm sm:text-base"
               >
                 {resetLoading ? 'Resetting...' : 'Reset Result & Recalculate Standings'}
               </button>
               {submitError && (
-                <p className="text-red-500 text-sm mt-4 bg-red-50 p-3 rounded-lg border border-red-100">{submitError}</p>
+                <p className="text-red-500 text-sm mt-4 bg-red-500/10 p-3 rounded-lg border border-red-500/20">{submitError}</p>
               )}
             </div>
           </div>
@@ -690,8 +693,8 @@ export default function ResultSubmitClient({
             {/* Fixture Header */}
             <div className="card p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex items-center justify-center gap-4">
-                  <div className="text-center">
+                <div className="flex items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
+                  <div className="text-center min-w-0 flex-1 sm:flex-none">
                     <div className="flex items-center justify-center gap-1.5">
                       {selectedFixture.home_team?.logo_league_folder && (
                         <TeamLogo
@@ -699,7 +702,7 @@ export default function ResultSubmitClient({
                           teamSlug={selectedFixture.home_team.logo_team_slug}
                           context="fixture_card"
                           alt={selectedFixture.home_team.name}
-                          className="w-12 h-12"
+                          className="w-10 h-10 sm:w-12 sm:h-12 shrink-0"
                         />
                       )}
                       <ForfeitBalanceBadge
@@ -709,14 +712,14 @@ export default function ResultSubmitClient({
                         onUse={handleUseForfeitBalance}
                       />
                     </div>
-                    <p className="text-foreground-primary text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.home_team?.name}</p>
+                    <p className="text-text-primary text-xs font-bold mt-1 max-w-[64px] sm:max-w-[80px] truncate mx-auto">{selectedFixture.home_team?.name}</p>
                   </div>
-                  <div className="text-center">
+                  <div className="text-center shrink-0">
                     <p className="text-text-muted text-xs">MD{selectedFixture.matchday}</p>
-                    <p className="text-gold font-bold text-xl">vs</p>
-                    <p className="text-text-muted text-xs truncate max-w-[90px]">{selectedFixture.tournament?.name}</p>
+                    <p className="text-accent font-bold text-xl">vs</p>
+                    <p className="text-text-muted text-xs truncate max-w-[72px] sm:max-w-[90px]">{selectedFixture.tournament?.name}</p>
                   </div>
-                  <div className="text-center">
+                  <div className="text-center min-w-0 flex-1 sm:flex-none">
                     <div className="flex items-center justify-center gap-1.5">
                       {selectedFixture.away_team?.logo_league_folder && (
                         <TeamLogo
@@ -724,7 +727,7 @@ export default function ResultSubmitClient({
                           teamSlug={selectedFixture.away_team.logo_team_slug}
                           context="fixture_card"
                           alt={selectedFixture.away_team.name}
-                          className="w-12 h-12"
+                          className="w-10 h-10 sm:w-12 sm:h-12 shrink-0"
                         />
                       )}
                       <ForfeitBalanceBadge
@@ -734,22 +737,22 @@ export default function ResultSubmitClient({
                         onUse={handleUseForfeitBalance}
                       />
                     </div>
-                    <p className="text-foreground-primary text-xs font-bold mt-1 max-w-[80px] truncate">{selectedFixture.away_team?.name}</p>
+                    <p className="text-text-primary text-xs font-bold mt-1 max-w-[64px] sm:max-w-[80px] truncate mx-auto">{selectedFixture.away_team?.name}</p>
                   </div>
                 </div>
-                <div className="flex rounded-lg overflow-hidden border border-navy-border self-center sm:self-auto shrink-0">
+                <div className="flex rounded-lg overflow-hidden border border-border self-center sm:self-auto shrink-0">
                   <button
                     onClick={() => setMode('screenshot')}
-                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                      mode === 'screenshot' ? 'bg-gold text-navy' : 'bg-navy-light text-text-muted hover:text-foreground-primary'
+                    className={`min-h-[40px] px-2.5 sm:px-3 text-xs font-medium transition-colors ${
+                      mode === 'screenshot' ? 'bg-accent text-bg-base' : 'bg-bg-elevated text-text-muted hover:text-text-primary'
                     }`}
                   >
                     Screenshot
                   </button>
                   <button
                     onClick={() => setMode('manual')}
-                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                      mode === 'manual' ? 'bg-gold text-navy' : 'bg-navy-light text-text-muted hover:text-foreground-primary'
+                    className={`min-h-[40px] px-2.5 sm:px-3 text-xs font-medium transition-colors ${
+                      mode === 'manual' ? 'bg-accent text-bg-base' : 'bg-bg-elevated text-text-muted hover:text-text-primary'
                     }`}
                   >
                     Manual
@@ -762,7 +765,7 @@ export default function ResultSubmitClient({
               <div className="card p-5 space-y-4">
                 <h2 className="section-header">Screenshot Upload</h2>
 
-                <div className="border-2 border-dashed border-navy-border rounded-xl p-8 text-center">
+                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
                   <input
                     ref={fileRef}
                     type="file"
@@ -773,18 +776,18 @@ export default function ResultSubmitClient({
                   />
                   <label htmlFor="screenshot-upload" className="cursor-pointer block">
                     <Camera className="w-10 h-10 text-text-muted mx-auto mb-2" />
-                    <p className="text-foreground-secondary text-sm font-medium">Click to upload screenshot</p>
+                    <p className="text-text-secondary text-sm font-medium">Click to upload screenshot</p>
                     <p className="text-text-muted text-xs mt-1">PNG, JPG up to 10MB</p>
                   </label>
                   {ocrProgress > 0 && ocrProgress < 100 && (
                     <div className="mt-4 space-y-2">
-                      <div className="flex items-center justify-between text-xs text-gold">
+                      <div className="flex items-center justify-between text-xs text-accent">
                         <span>{ocrStatus}</span>
                         <span>{ocrProgress}%</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-navy-border overflow-hidden">
                         <div
-                          className="h-full bg-gold rounded-full transition-all duration-300"
+                          className="h-full bg-accent rounded-full transition-all duration-300"
                           style={{ width: `${ocrProgress}%` }}
                         />
                       </div>
@@ -803,8 +806,8 @@ export default function ResultSubmitClient({
 
                 {ocrResult && (
                   <div className="space-y-4">
-                    <div className="bg-navy-light rounded-lg p-4 border border-navy-border">
-                      <h3 className="text-sm font-bold text-foreground-primary mb-3">Team Verification</h3>
+                    <div className="bg-bg-elevated rounded-lg p-4 border border-border">
+                      <h3 className="text-sm font-bold text-text-primary mb-3">Team Verification</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="form-label">OCR: &ldquo;{ocrResult.home_team_name}&rdquo;</label>
@@ -864,7 +867,7 @@ export default function ResultSubmitClient({
                 <button
                   type="button"
                   onClick={handleSwap}
-                  className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy-light text-foreground-muted hover:text-gold hover:border-gold border border-navy-border transition-colors"
+                  className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-elevated text-text-muted hover:text-accent hover:border-accent border border-border transition-colors"
                 >
                   ⇄ Swap Home/Away
                 </button>
@@ -880,7 +883,7 @@ export default function ResultSubmitClient({
                     onChange={(e) => setHomeAbsent(e.target.checked)}
                     className="accent-red-500 w-4 h-4"
                   />
-                  <span className="text-sm font-medium text-foreground-secondary">
+                  <span className="text-sm font-medium text-text-secondary">
                     {selectedFixture.home_team?.name} absent
                   </span>
                 </label>
@@ -893,7 +896,7 @@ export default function ResultSubmitClient({
                     onChange={(e) => setAwayAbsent(e.target.checked)}
                     className="accent-red-500 w-4 h-4"
                   />
-                  <span className="text-sm font-medium text-foreground-secondary">
+                  <span className="text-sm font-medium text-text-secondary">
                     {selectedFixture.away_team?.name} absent
                   </span>
                 </label>
@@ -909,7 +912,7 @@ export default function ResultSubmitClient({
                     onChange={(e) => setHomeForfeit(e.target.checked)}
                     className="accent-orange-500 w-4 h-4"
                   />
-                  <span className="text-sm font-medium text-foreground-secondary">
+                  <span className="text-sm font-medium text-text-secondary">
                     {selectedFixture.home_team?.name} forfeit (mid-game)
                   </span>
                 </label>
@@ -922,7 +925,7 @@ export default function ResultSubmitClient({
                     onChange={(e) => setAwayForfeit(e.target.checked)}
                     className="accent-orange-500 w-4 h-4"
                   />
-                  <span className="text-sm font-medium text-foreground-secondary">
+                  <span className="text-sm font-medium text-text-secondary">
                     {selectedFixture.away_team?.name} forfeit (mid-game)
                   </span>
                 </label>
@@ -961,7 +964,7 @@ export default function ResultSubmitClient({
                     placeholder="0"
                   />
                 </div>
-                <div className="text-gold text-3xl font-black pt-5">–</div>
+                <div className="text-accent text-3xl font-black pt-5">–</div>
                 <div className="flex-1">
                   <label className="form-label">{selectedFixture.away_team?.name}</label>
                   <input
@@ -978,12 +981,12 @@ export default function ResultSubmitClient({
 
               {/* Aggregate preview for 2-leg knockout leg 2 */}
               {leg1Aggregate && (
-                <div className="mt-4 p-3 bg-bg-surface rounded-lg border border-gold/20">
+                <div className="mt-4 p-3 bg-bg-surface rounded-lg border border-accent/20">
                   <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Aggregate</div>
                   <div className="flex items-center justify-center gap-4">
-                    <span className="text-sm font-bold text-foreground-primary">{leg1Aggregate.home}</span>
+                    <span className="text-sm font-bold text-text-primary">{leg1Aggregate.home}</span>
                     <span className="text-xs text-text-muted">–</span>
-                    <span className="text-sm font-bold text-foreground-primary">{leg1Aggregate.away}</span>
+                    <span className="text-sm font-bold text-text-primary">{leg1Aggregate.away}</span>
                     <span className="text-[10px] text-text-muted">(after leg 1)</span>
                   </div>
                   <div className="text-[10px] text-text-muted text-center mt-1">
@@ -1003,9 +1006,9 @@ export default function ResultSubmitClient({
                         setShowPenalties(e.target.checked)
                         if (!e.target.checked) { setPenHomeScore(''); setPenAwayScore('') }
                       }}
-                      className="w-4 h-4 text-gold border-border rounded focus:ring-gold"
+                      className="w-4 h-4 text-accent border-border rounded focus:ring-gold"
                     />
-                    <span className="text-sm font-medium text-foreground-secondary">Penalties?</span>
+                    <span className="text-sm font-medium text-text-secondary">Penalties?</span>
                   </label>
                   {showPenalties && (
                     <div className="flex items-center gap-4 mt-3">
@@ -1020,7 +1023,7 @@ export default function ResultSubmitClient({
                           placeholder="0"
                         />
                       </div>
-                      <div className="text-gold text-xl font-black pt-5">–</div>
+                      <div className="text-accent text-xl font-black pt-5">–</div>
                       <div className="flex-1">
                         <label className="form-label text-[10px]">{selectedFixture.away_team?.name ?? 'Away'}</label>
                         <input
@@ -1088,8 +1091,8 @@ export default function ResultSubmitClient({
 
             {/* Preview Panel */}
             {homeScore && awayScore && (
-              <div className="card p-5 border-gold/20">
-                <h2 className="section-header text-gold">Preview</h2>
+              <div className="card p-5 border-accent/20">
+                <h2 className="section-header text-accent">Preview</h2>
                 <div className="flex items-center justify-center gap-6 py-4">
                   <div className="text-center">
                     {selectedFixture.home_team?.logo_league_folder && (
@@ -1101,9 +1104,9 @@ export default function ResultSubmitClient({
                         className="w-14 h-14 mx-auto"
                       />
                     )}
-                    <p className="text-foreground-primary font-bold mt-1">{selectedFixture.home_team?.name}</p>
+                    <p className="text-text-primary font-bold mt-1">{selectedFixture.home_team?.name}</p>
                   </div>
-                  <div className="text-5xl font-black text-foreground-primary">
+                  <div className="text-5xl font-black text-text-primary">
                     {homeScore} – {awayScore}
                   </div>
                   <div className="text-center">
@@ -1116,7 +1119,7 @@ export default function ResultSubmitClient({
                         className="w-14 h-14 mx-auto"
                       />
                     )}
-                    <p className="text-foreground-primary font-bold mt-1">{selectedFixture.away_team?.name}</p>
+                    <p className="text-text-primary font-bold mt-1">{selectedFixture.away_team?.name}</p>
                   </div>
                 </div>
                 {leg1Aggregate && (

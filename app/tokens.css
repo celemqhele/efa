@@ -15,6 +15,27 @@
   --color-feedback-warning: #ED8936;
   --color-feedback-error: #F56565;
 
+  /* Colour channels ("R G B") for the tokens above.
+     Tailwind can only synthesise opacity variants (bg-accent/15, border-gold/40)
+     from a colour declared as rgb(var(--channel) / <alpha-value>). The hex
+     tokens stay in use by globals.css / inline styles; these triplets exist
+     purely so `theme.extend.colors` can opt into alpha support. Keep both in
+     sync when a colour changes. */
+  --color-bg-base-rgb: 15 17 23;
+  --color-bg-surface-rgb: 23 26 33;
+  --color-bg-elevated-rgb: 36 40 51;
+  --color-text-primary-rgb: 247 250 252;
+  --color-text-secondary-rgb: 203 213 224;
+  --color-text-muted-rgb: 113 128 150;
+  --color-border-rgb: 45 50 63;
+  --color-border-subtle-rgb: 28 32 41;
+  --color-accent-rgb: 214 182 93;
+  --color-accent-hover-rgb: 227 198 119;
+  --color-accent-muted-rgb: 46 40 24;
+  --color-feedback-success-rgb: 72 187 120;
+  --color-feedback-warning-rgb: 237 137 54;
+  --color-feedback-error-rgb: 245 101 101;
+
   /* Spacing (4px scale) */
   --space-1: 4px;
   --space-2: 8px;

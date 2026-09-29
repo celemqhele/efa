@@ -159,8 +159,10 @@ export default function AdminTabBar({ profile }: AdminTabBarProps) {
         </div>
       )}
 
-      {/* Spacer for tab bar height */}
-      <div className="h-20 lg:hidden" />
+      {/* No in-flow spacer. The bar is `fixed`, so it contributes no height of
+          its own; PageWrapper's mobile `pb-[calc(4.5rem+env(safe-area-inset-bottom))]`
+          already clears it. The old `h-20` spacer pushed 80px of dead space
+          above every page's content instead. */}
     </>
   )
 }
