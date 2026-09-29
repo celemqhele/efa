@@ -735,6 +735,7 @@ async function handleWelcomeMenu(from: string, text: string, phoneNumberId: stri
       await handlePasswordResetStart(from, phoneNumberId)
       return
     }
+    if (await handleLoggedInMatchNameSearch(from, manager, text, phoneNumberId)) return
     await sendWelcomeMenu(from, phoneNumberId)
     return
   }
@@ -771,6 +772,81 @@ async function handleWelcomeMenu(from: string, text: string, phoneNumberId: stri
     return
   }
   await sendWelcomeMenu(from, phoneNumberId)
+}
+
+// Free-text "Team A vs Team B" from an identified manager with no active flow.
+// Resolves the pair, restricts to their own in-window scheduled games, and jumps
+// straight to the screenshot step (single match) or a numbered pick (multiple).
+async function handleLoggedInMatchNameSearch(from: string, manager: LoggedInManager, text: string, phoneNumberId: string): Promise<boolean> {
+  const searchInput = cleanTeamInput(text)
+    .replace(/\d+\s*[-:]\s*\d+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const vsParts = searchInput.split(/\s+vs\.?\s+/i)
+  if (vsParts.length < 2) return false
+  const teamSearches = [vsParts[0].trim(), vsParts.slice(1).join(' ').trim()].filter(s => s.length >= 2)
+  if (teamSearches.length !== 2) return false
+
+  const resolved = await Promise.all(teamSearches.map(s => resolveTeamName(s)))
+  if (resolved.some(r => r === null)) return false
+
+  const supabase = await createAdminClient()
+  const { data: teamRows } = await supabase.from('teams').select('id, name').in('name', resolved as string[])
+  const idByName = new Map((teamRows as any[] || []).map(t => [t.name.toLowerCase(), t.id]))
+  const id1 = idByName.get((resolved[0] as string).toLowerCase())
+  const id2 = idByName.get((resolved[1] as string).toLowerCase())
+  if (!id1 || !id2) return false
+  if (!manager.teamIds.some(tid => String(tid) === String(id1) || String(tid) === String(id2))) return false
+
+  const { start: windowStart, end: windowEnd } = getSubmissionWindow()
+  const { data: fixtures } = await supabase
+    .from('fixtures')
+    .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .in('status', ['scheduled'])
+    .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
+    .gte('scheduled_date', windowStart)
+    .lte('scheduled_date', windowEnd)
+    .order('scheduled_date', { ascending: false })
+    .order('matchday')
+
+  const matched = sortFixturesForDisplay((fixtures as any[]) || [])
+
+  if (matched.length === 0) {
+    await sendTextMessage(from, `No un-submitted match for that in your schedule right now. Try the full names, e.g. "AmaZulu vs Kaizer Chiefs", or reply 1 to pick from your listed games.`, phoneNumberId)
+    return true
+  }
+
+  if (matched.length === 1) {
+    const f = matched[0]
+    const hName = fixtureTeamName(f, 'home')
+    const aName = fixtureTeamName(f, 'away')
+    const dateLine = formatFixtureWhen(f) ? ` - ${formatFixtureWhen(f)}` : ''
+    const backdoorNote = isFixtureConfirmed(f)
+      ? '\n\nThis game currently has a backdoor result. Submitting will replace it with the real score.'
+      : ''
+    await upsertSession({
+      phone_number: from,
+      state: 'loggedin_first_time_screenshot',
+      matched_fixture_id: f.id,
+      home_team: hName,
+      away_team: aName,
+      submission_type: 'new',
+      match_stats: null,
+    })
+    await sendTextMessage(from, `${hName} vs ${aName}${dateLine}\n\nSend a screenshot of the result screen.${backdoorNote}`, phoneNumberId)
+    return true
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'loggedin_first_time_pick',
+    displayed_fixtures: matched.map((f: any) => f.id),
+    submission_type: 'new',
+    match_stats: null,
+  })
+  const listLines = matched.map((f: any, i: number) => formatFixtureLine(f, i))
+  await sendTextMessage(from, `Found ${matched.length} matches:\n\n${listLines.join('\n')}\n\nReply with the number of your match.${MATCH_LIST_HINT}`, phoneNumberId)
+  return true
 }
 
 // Deterministic re-prompt for when a user mid-flow (scores loaded) sends an
@@ -1126,7 +1202,8 @@ async function handleSubmissionType(from: string, text: string, session: Session
 }
 
 // ─── Logged-in first-time submission (pick from combined list) ────────────────
-// Category 1 = the manager's games due TODAY (status 'scheduled').
+// Category 1 = the manager's still-scheduled games inside the submission window
+// (today-7 .. today+7, status 'scheduled'), grouped as Today / Earlier / Later.
 // Category 2 = games with an approved backdoor result in the last 7 days (the
 // system submitted that result, so the real score is a first-time submission).
 // Both are shown as ONE numbered list (cat 1 → options 1..N, then cat 2 →
@@ -1135,20 +1212,25 @@ async function handleSubmissionType(from: string, text: string, session: Session
 async function handleLoggedInFirstTimeList(from: string, manager: LoggedInManager, phoneNumberId: string) {
   const supabase = await createAdminClient()
   const todayKey = getSastDateKey()
+  const { start: winStart, end: winEnd } = getSubmissionWindow()
 
-  // Category 1 — games due today that are still scheduled
+  // Category 1 — the manager's still-scheduled games in the submission window
+  // (today-7 .. today+7). Window-based instead of today-only so a game played
+  // yesterday stays listed between SAST midnight and the 02:00 auto-finalise job.
   const orParts = manager.teamIds
-    .map(id => `and(home_team_id.eq.${id},scheduled_date.eq.${todayKey}),and(away_team_id.eq.${id},scheduled_date.eq.${todayKey})`)
+    .map(id => `and(home_team_id.eq.${id},scheduled_date.gte.${winStart},scheduled_date.lte.${winEnd}),and(away_team_id.eq.${id},scheduled_date.gte.${winStart},scheduled_date.lte.${winEnd})`)
     .join(',')
-  const { data: todayFixtures } = await supabase
+  const { data: windowFixtures } = await supabase
     .from('fixtures')
     .select('id, status, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
     .or(orParts)
-    .eq('scheduled_date', todayKey)
     .eq('status', 'scheduled')
     .order('matchday', { ascending: true })
-  const cat1 = ((todayFixtures as any[]) || [])
-    .filter(f => String(f.scheduled_date).slice(0, 10) === todayKey)
+  const cat1 = ((windowFixtures as any[]) || [])
+    .filter(f => {
+      const k = fixtureDateKey(f)
+      return Boolean(k) && isInSubmissionWindow(k)
+    })
 
   // Category 2 — fixtures with an approved backdoor result in the last 7 days
   // involving the manager's teams. The approved backdoor submission is voided
@@ -1208,15 +1290,28 @@ async function handleLoggedInFirstTimeList(from: string, manager: LoggedInManage
     match_stats: null,
   })
 
+  const grouped = [
+    { header: 'Today\'s games:', items: [] as any[] },
+    { header: 'Earlier this week:', items: [] as any[] },
+    { header: 'Later this week:', items: [] as any[] },
+  ]
+  for (const f of cat1) {
+    const k = fixtureDateKey(f)
+    const bucket = k === todayKey ? grouped[0] : (k < todayKey ? grouped[1] : grouped[2])
+    bucket.items.push(f)
+  }
+
   const lines: string[] = []
   let idx = 0
-  lines.push('Today\'s games:')
-  if (cat1.length === 0) {
-    lines.push('· none')
-  } else {
-    for (const f of cat1) lines.push(formatFixtureLine(f, idx++))
+  for (const g of grouped) {
+    lines.push(g.header)
+    if (g.items.length === 0) {
+      lines.push('· none')
+    } else {
+      for (const f of g.items) lines.push(formatFixtureLine(f, idx++))
+    }
+    lines.push('')
   }
-  lines.push('')
   lines.push('Backdoor-result games (last 7 days):')
   if (cat2.length === 0) {
     lines.push('· none')
@@ -3815,11 +3910,17 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           .select('id, scheduled_date')
           .in('status', ['scheduled', 'confirmed', 'confirmed_pending', 'awaiting_confirmation', 'completed', 'abandoned'])
           .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
-          .order('scheduled_date', { ascending: false })
-          .order('matchday')
-        const outOfWindow = ((anyFixtures as any[]) || []).find(
-          (fx) => isInSubmissionWindow(fixtureDateKey(fx)) === false
-        )
+        const nowMs = Date.parse(`${getSastDateKey()}T00:00:00Z`)
+        const outOfWindow = ((anyFixtures as any[]) || [])
+          .filter(fx => {
+            const k = fixtureDateKey(fx)
+            return Boolean(k) && !isInSubmissionWindow(k)
+          })
+          .sort((a, b) => {
+            const da = Math.abs(Date.parse(`${fixtureDateKey(a)}T00:00:00Z`) - nowMs)
+            const db = Math.abs(Date.parse(`${fixtureDateKey(b)}T00:00:00Z`) - nowMs)
+            return da - db
+          })[0]
         if (outOfWindow) {
           const reason = submissionBlockReason(outOfWindow)
           if (reason) {
