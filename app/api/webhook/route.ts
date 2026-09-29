@@ -1388,6 +1388,12 @@ function toInternationalPhone(n: string | null | undefined): string | null {
   if (digits.startsWith('00')) digits = digits.slice(2)
   // Only treat as SA local if it's exactly 10 digits starting with 0
   if (digits.startsWith('0') && digits.length === 10) return `27${digits.slice(1)}`
+  // "27" followed by a 10-digit national number that kept its local leading
+  // zero ("270601110760" for 060 111 0760). 12 digits is never valid for SA, and
+  // the rule above cannot see it because the value starts with 2, not 0, so it
+  // used to ship as-is and WhatsApp rejected the whole contact card with 131009 —
+  // one bad row breaking the group sync for every other member.
+  if (digits.startsWith('270') && digits.length === 12) return `27${digits.slice(3)}`
   return digits
 }
 

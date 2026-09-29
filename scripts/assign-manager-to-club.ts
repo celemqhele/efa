@@ -81,6 +81,17 @@ function digits(n: string | null | undefined): string {
   return String(n ?? '').replace(/\D/g, '')
 }
 
+/**
+ * Supabase mutations resolve with { error } instead of throwing, so an unchecked
+ * write fails silently and the run still prints a success line — leaving a
+ * half-applied assignment (manager_id set, no tenure, no audit row) that looks
+ * fine until someone reads the history. The route only checks its teams update;
+ * this checks every write.
+ */
+function must(res: { error: { message: string } | null } | null, what: string): void {
+  if (res?.error) throw new Error(`${what} failed: ${res.error.message}`)
+}
+
 async function main() {
   const raw = process.argv.flatMap((a, i) => (a === '--assign' ? [process.argv[i + 1]] : []))
   if (raw.length === 0) {
@@ -144,35 +155,48 @@ async function main() {
       allClubIds = [team.id, ...(siblings ?? []).map((s: any) => s.id as string)]
     }
 
-    if (phone) await db.from('profiles').update({ phone }).eq('id', target.id)
-
     if (dryRun) {
       console.log(`[dry-run] @${username} -> ${team.name} (${allClubIds.length} team row(s))` +
-        (phone ? `, phone ${phone}` : ''))
+        (phone ? `, would store phone ${phone} (digits ${digits(phone)})` : ', no phone given'))
       continue
     }
 
-    await db.from('teams').update({ manager_id: target.id }).in('id', allClubIds)
+    // Only reached on a real run — --dry-run must not write anything.
+    if (phone) must(await db.from('profiles').update({ phone }).eq('id', target.id), `store phone for @${username}`)
 
-    const now = new Date().toISOString()
-    await db.from('manager_tenures' as any)
-      .update({ ended_at: now }).in('team_id', allClubIds).is('ended_at', null)
-    await db.from('manager_tenures' as any).insert(
-      allClubIds.map((id) => ({
-        team_id: id,
-        manager_id: target.id,
-        manager_username: target.username,
-        started_at: now,
-      }))
+    must(
+      await db.from('teams').update({ manager_id: target.id }).in('id', allClubIds),
+      `set teams.manager_id for ${team.name}`
     )
 
-    await db.from('audit_log').insert({
-      admin_id: adminRow.id,
-      action: 'assign_manager',
-      target_type: 'team',
-      target_id: team.id,
-      details: { team_name: team.name, assigned_user_id: target.id, username: target.username, via: 'scripts/assign-manager-to-club.ts' },
-    })
+    const now = new Date().toISOString()
+    must(
+      await db.from('manager_tenures' as any)
+        .update({ ended_at: now }).in('team_id', allClubIds).is('ended_at', null),
+      'close open tenures'
+    )
+    must(
+      await db.from('manager_tenures' as any).insert(
+        allClubIds.map((id) => ({
+          team_id: id,
+          manager_id: target.id,
+          manager_username: target.username,
+          started_at: now,
+        }))
+      ),
+      'open new tenures'
+    )
+
+    must(
+      await db.from('audit_log').insert({
+        admin_id: adminRow.id,
+        action: 'assign_manager',
+        target_type: 'team',
+        target_id: team.id,
+        details: { team_name: team.name, assigned_user_id: target.id, username: target.username, via: 'scripts/assign-manager-to-club.ts' },
+      }),
+      'write audit_log'
+    )
 
     const reclaimed = await reclaimManagerSlots(db, target.id, team.id)
 
