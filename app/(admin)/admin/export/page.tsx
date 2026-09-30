@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import ExportButton from './ExportButton'
 import ExportControls from './ExportControls'
 import { Card } from '@/components/ui/Card'
-import { buildLiveStandings, goalDifference } from '@/lib/standings-core'
+import { buildLiveStandings, goalDifference, normalizeStandingsZones, rowZone, zoneLegend } from '@/lib/standings-core'
+import type { StandingsZones, ZoneKind } from '@/lib/standings-core'
 import { ShieldQuestion } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -79,18 +80,33 @@ function TeamLogoInline({
   )
 }
 
+const ZONE_COLOR: Record<NonNullable<ZoneKind>, string> = {
+  top_green: '#10b981',
+  top_yellow: '#facc15',
+  bottom_yellow: '#facc15',
+  bottom_red: '#ef4444',
+}
+
+const ZONE_SWATCH_COLOR: Record<'green' | 'yellow' | 'red', string> = {
+  green: '#10b981',
+  yellow: '#facc15',
+  red: '#ef4444',
+}
+
 function StandingsTable({
   rows,
   mode,
   accent,
   offset = 0,
   qualifiersPerGroup = 2,
+  zones = null,
 }: {
   rows: any[]
   mode: 'league' | 'group'
   accent: string
   offset?: number
   qualifiersPerGroup?: number
+  zones?: StandingsZones | null
 }) {
   const rowEven: React.CSSProperties = { background: 'var(--export-row-bg)', borderRadius: '8px' }
   const rowOdd: React.CSSProperties = { background: 'transparent' }
@@ -120,12 +136,14 @@ function StandingsTable({
       {rows.map((s: any, i: number) => {
         const gd = goalDifference(s)
         const pos = i + offset
+        const zone =
+          mode === 'league'
+            ? rowZone(zones, pos, rows.length + offset)
+            : null
         const borderColor =
           mode === 'league'
-            ? pos < 12
-              ? 'var(--color-accent)'
-              : pos < 20
-              ? '#3b82f6'
+            ? zone
+              ? ZONE_COLOR[zone]
               : 'transparent'
             : pos < qualifiersPerGroup ? 'var(--color-accent)' : 'transparent'
         return (
@@ -241,6 +259,21 @@ function StandingsTable({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function StandingsLegend({ zones, style }: { zones: StandingsZones | null; style?: React.CSSProperties }) {
+  const items = zoneLegend(zones)
+  if (items.length === 0) return null
+  return (
+    <div style={{ display: 'flex', gap: '16px', ...style }}>
+      {items.map((item) => (
+        <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: ZONE_SWATCH_COLOR[item.color] }} />
+          <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>{item.label}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -651,17 +684,8 @@ export default async function ExportPage({ searchParams }: Props) {
                       {/* Chunk Content: Standings (League) */}
                       {chunk.standings && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                          <StandingsTable rows={chunk.standings} mode="league" accent={accent} offset={chunk.standingsOffset} />
-                          <div style={{ display: 'flex', gap: '16px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
-                              <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>UCL places</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
-                              <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Europa places</span>
-                            </div>
-                          </div>
+                          <StandingsTable rows={chunk.standings} mode="league" accent={accent} offset={chunk.standingsOffset} zones={normalizeStandingsZones(card.tournament?.settings)} />
+                          <StandingsLegend zones={normalizeStandingsZones(card.tournament?.settings)} />
                         </div>
                       )}
 
@@ -950,17 +974,8 @@ export default async function ExportPage({ searchParams }: Props) {
                 {/* STANDINGS (league) */}
                 {card.type === 'standings' && card.tournament.type === 'league' && !card.isChunked && (
                   <>
-                    <StandingsTable rows={card.standings} mode="league" accent={accent} />
-                    <div style={{ display: 'flex', gap: '16px', marginTop: '14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: 'var(--color-accent)' }} />
-                        <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>UCL places</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }} />
-                        <span style={{ color: 'var(--export-muted)', fontSize: '10px' }}>Europa places</span>
-                      </div>
-                    </div>
+                    <StandingsTable rows={card.standings} mode="league" accent={accent} zones={normalizeStandingsZones(card.tournament?.settings)} />
+                    <StandingsLegend zones={normalizeStandingsZones(card.tournament?.settings)} style={{ marginTop: '14px' }} />
                   </>
                 )}
 
