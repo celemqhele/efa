@@ -4,7 +4,7 @@ import {
   awardTrophy,
 } from '@/lib/tournament-progression'
 import { recalculateStandings } from '@/lib/standings-engine'
-import { vacateUserSlots } from '@/lib/slot-utils'
+import { forfeitUnmanagedClubSlots } from '@/lib/slot-utils'
 import type { Database } from '@/lib/supabase/types'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { notifyAdminsOfResult } from '@/lib/backdoor-notify'
@@ -74,8 +74,9 @@ async function checkAndAutoSack(
   // Record sack time for the 1-week reassignment cooldown
   await db.from('profiles').update({ sacked_at: new Date().toISOString() }).eq('id', sackUserId)
 
-  // Their tournament seats become Vacant slots (standings continuity preserved)
-  const vacatedCount = await vacateUserSlots(db, sackUserId)
+  // The club keeps its identity: its seats drop ownership (no "Vacant"
+  // relabel) and its remaining fixtures auto-forfeit 3-0.
+  const { forfeits } = await forfeitUnmanagedClubSlots(db, allClubIds)
 
   await db
     .from('manager_tenures' as any)
@@ -100,7 +101,7 @@ async function checkAndAutoSack(
       team_name: team.name,
       sacked_user_id: sackUserId,
       reason: `${threshold} consecutive absences`,
-      slots_vacated: vacatedCount,
+      forfeits_scheduled: forfeits,
     },
   })
 }

@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { insertNotificationsAndPush } from '@/lib/notify'
+import { forfeitUnmanagedClubSlots } from '@/lib/slot-utils'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -19,12 +20,25 @@ export async function POST(request: Request) {
   const adminSupabase = await createAdminClient()
 
   const { data: team } = await adminSupabase
-    .from('teams').select('id, name, manager_id').eq('id', team_id).single()
+    .from('teams').select('id, name, manager_id, logo_league_folder, logo_team_slug').eq('id', team_id).single()
 
   if (!team) return Response.json({ error: 'Team not found' }, { status: 404 })
   if (!team.manager_id) return Response.json({ error: 'This team has no manager' }, { status: 400 })
 
   const sackedUserId = team.manager_id
+
+  // Sibling rows share a club across competitions (e.g. a national side and its
+  // league club); they all lose the manager together.
+  let allClubIds: string[] = [team_id]
+  if (team.logo_league_folder && team.logo_team_slug) {
+    const { data: siblings } = await adminSupabase
+      .from('teams')
+      .select('id')
+      .eq('logo_league_folder', team.logo_league_folder)
+      .eq('logo_team_slug', team.logo_team_slug)
+      .neq('id', team_id)
+    allClubIds = [team_id, ...(siblings ?? []).map((s: any) => s.id as string)]
+  }
 
   // Record sack time for the 1-week reassignment cooldown
   const now = new Date().toISOString()
@@ -71,9 +85,13 @@ export async function POST(request: Request) {
   const { error: updateError } = await adminSupabase
     .from('teams')
     .update({ manager_id: null, abandon_count: 0 })
-    .eq('id', team_id)
+    .in('id', allClubIds)
 
   if (updateError) return Response.json({ error: updateError.message }, { status: 500 })
+
+  // The club keeps its identity: its seats drop ownership (no "Vacant"
+  // relabel) and its remaining fixtures auto-forfeit 3-0.
+  const { forfeits } = await forfeitUnmanagedClubSlots(adminSupabase, allClubIds)
 
   // Notify sacked manager (in-app + push)
   await insertNotificationsAndPush(adminSupabase, {
@@ -90,7 +108,7 @@ export async function POST(request: Request) {
     action: 'sack_manager',
     target_type: 'team',
     target_id: team_id,
-    details: { sacked_user_id: sackedUserId, team_name: team.name },
+    details: { sacked_user_id: sackedUserId, team_name: team.name, forfeits_scheduled: forfeits },
   })
 
   return Response.json({ success: true })

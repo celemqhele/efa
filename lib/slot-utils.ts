@@ -1,9 +1,20 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 type SupabaseClientLike = any
 
 const VACANT_FOLDER = 'custom'
 const VACANT_SLUG = 'vacant'
+
+// override_reason prefixes stamped by the auto-forfeit flows. 'absent' keeps the
+// standings trigger applying the absentee penalty, and 'both' marks the 0-0 void
+// case. clearAutoForfeitResults() withdraws results matching any of these.
+const AUTO_FORFEIT_REASON_PREFIXES = [
+  'Vacant slot absent',
+  'Both slots vacant',
+  'Managerless club',
+  'Both clubs managerless',
+]
 
 export const SACK_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -269,6 +280,222 @@ export async function vacateUserSlots(
   return slotIds.length
 }
 
+// ─── Managerless club forfeits (sack keeps the club's identity) ────────────────
+// A sacked club is NOT relabelled "Vacant": the seat keeps its real club
+// (team_id unchanged) and only its ownership is dropped, so standings, history
+// and the club's own logo stay intact. Because nobody can play the club's
+// remaining fixtures, each one is auto-decided 3-0 against the managerless side
+// (0-0 void when BOTH sides are managerless), for every round type — league,
+// group and knockout. Future-dated results land as 'confirmed_pending' (the
+// insert trigger defers standings), so the flip-pending cron confirms them on
+// matchday and advances knockout progression. Human-entered results
+// (finalised_by set) are never overwritten.
+//
+// Reclaimed by reclaimManagerSlots() when a new manager is assigned: the seat
+// is restamped with the club and the auto-forfeits are withdrawn.
+export async function forfeitUnmanagedClubSlots(
+  db: SupabaseClientLike,
+  clubTeamIds: string[]
+): Promise<{ seats: number; forfeits: number }> {
+  const vacantTeamId = await getVacantTeamId(db)
+  const clubIds = [...new Set(clubTeamIds)].filter((id) => id && id !== vacantTeamId)
+  if (clubIds.length === 0) return { seats: 0, forfeits: 0 }
+
+  // Find every seat these clubs hold. Covers the post-sack state (team_id is
+  // still the club, user_id stale) and repairs the legacy placeholder state
+  // (team_id overwritten with Vacant, vacated_from_team_id remembers the club).
+  const { data: slots } = await db
+    .from('tournament_participants')
+    .select('id, tournament_id, team_id, user_id, vacated_from_team_id')
+    .or(clubIds.map((id) => `team_id.eq.${id},vacated_from_team_id.eq.${id}`).join(','))
+
+  const slotRows = (slots ?? []) as {
+    id: string
+    tournament_id: string
+    team_id: string | null
+    user_id: string | null
+    vacated_from_team_id: string | null
+  }[]
+  if (slotRows.length === 0) return { seats: 0, forfeits: 0 }
+
+  const pendingStatuses = ['scheduled', 'awaiting_confirmation', 'confirmed_pending']
+  const autoStatuses = ['scheduled', 'confirmed_pending']
+
+  // Drop ownership but KEEP the real club on the seat. A seat left on the
+  // placeholder by an older vacating flow is restored to its own club first.
+  for (const slot of slotRows) {
+    // Prefer the club currently on the seat; fall back to vacated_from_team_id
+    // when an older vacating flow already overwrote team_id with the
+    // placeholder, so that seat is restored to its own club instead of skipped.
+    const clubId =
+      slot.team_id && slot.team_id !== vacantTeamId
+        ? slot.team_id
+        : slot.vacated_from_team_id && clubIds.includes(slot.vacated_from_team_id)
+          ? slot.vacated_from_team_id
+          : null
+    if (!clubId) continue
+
+    await db
+      .from('tournament_participants')
+      .update({ user_id: null, team_id: clubId, vacated_from_team_id: null })
+      .eq('id', slot.id)
+
+    // Restamp live references back to the real club (a no-op when the seat
+    // already showed it); played fixtures keep whoever actually played.
+    await db
+      .from('standings')
+      .update({ team_id: clubId })
+      .eq('tournament_id', slot.tournament_id)
+      .eq('participant_id', slot.id)
+    await db
+      .from('group_standings')
+      .update({ team_id: clubId })
+      .eq('tournament_id', slot.tournament_id)
+      .eq('participant_id', slot.id)
+    await db
+      .from('fixtures')
+      .update({ home_team_id: clubId })
+      .in('home_participant_id', [slot.id])
+      .in('status', pendingStatuses)
+    await db
+      .from('fixtures')
+      .update({ away_team_id: clubId })
+      .in('away_participant_id', [slot.id])
+      .in('status', pendingStatuses)
+  }
+
+  // Auto-decide every remaining fixture for these seats — all round types,
+  // including knockout ties.
+  const seatIds = slotRows.map((s) => s.id)
+  const { data: fixtures } = await db
+    .from('fixtures')
+    .select(
+      'id, tournament_id, round_type, scheduled_date, status, home_participant_id, away_participant_id, home_team_id, away_team_id, results(finalised_by, home_score, away_score)'
+    )
+    .or(seatIds.map((id) => `home_participant_id.eq.${id},away_participant_id.eq.${id}`).join(','))
+    .in('status', autoStatuses)
+    .not('scheduled_date', 'is', null)
+
+  const fixtureRows = (fixtures ?? []) as any[]
+  if (fixtureRows.length === 0) return { seats: seatIds.length, forfeits: 0 }
+
+  // A side is managerless when its seat has no owner. Our own seats were just
+  // cleared to user_id NULL above; any other seat in these fixtures is checked
+  // directly, so a club sacked earlier in the season counts as managerless too.
+  const involvedIds = new Set<string>()
+  for (const fx of fixtureRows) {
+    if (fx.home_participant_id) involvedIds.add(fx.home_participant_id)
+    if (fx.away_participant_id) involvedIds.add(fx.away_participant_id)
+  }
+  const managedSides = new Set<string>()
+  if (involvedIds.size > 0) {
+    const { data: ownedSeats } = await db
+      .from('tournament_participants')
+      .select('id')
+      .in('id', [...involvedIds])
+      .not('user_id', 'is', null)
+    for (const row of (ownedSeats ?? []) as { id: string }[]) managedSides.add(row.id)
+  }
+
+  let forfeits = 0
+  const koForfeited: any[] = []
+
+  for (const fx of fixtureRows) {
+    const res = Array.isArray(fx.results) ? fx.results[0] : fx.results
+    if (res && res.finalised_by) continue
+
+    // Skip fixtures whose sides we cannot resolve — guessing would invent a
+    // result for a side that may well have a manager.
+    if (!fx.home_participant_id || !fx.away_participant_id) continue
+
+    const homeManagerless = !managedSides.has(fx.home_participant_id)
+    const awayManagerless = !managedSides.has(fx.away_participant_id)
+
+    let homeScore: number
+    let awayScore: number
+    let reason: string
+    if (homeManagerless && awayManagerless) {
+      homeScore = 0
+      awayScore = 0
+      reason = 'Both clubs managerless and absent — void (0-0)'
+    } else if (homeManagerless) {
+      homeScore = 0
+      awayScore = 3
+      reason = 'Managerless club absent — automatic 0-3'
+    } else if (awayManagerless) {
+      homeScore = 3
+      awayScore = 0
+      reason = 'Managerless club absent — automatic 3-0'
+    } else {
+      continue
+    }
+
+    await db.from('results').upsert(
+      {
+        fixture_id: fx.id,
+        home_score: homeScore,
+        away_score: awayScore,
+        finalised_by: null,
+        screenshot_url: null,
+        override_reason: reason,
+        is_abandoned: false,
+        abandoned_type: null,
+        pen_home_score: null,
+        pen_away_score: null,
+      },
+      { onConflict: 'fixture_id' }
+    )
+    forfeits++
+
+    if (KO_ROUNDS.includes(fx.round_type ?? '')) {
+      koForfeited.push({ ...fx, home_score: homeScore, away_score: awayScore })
+    }
+  }
+
+  // Advance knockout ties the insert trigger confirmed IMMEDIATELY (due-today or
+  // past). Future-dated ones were deferred to 'confirmed_pending' and are
+  // advanced by the flip-pending cron instead. Which of the two happened is
+  // decided by the trigger using CURRENT_DATE, so the authoritative test is the
+  // fixture's stored status after the write — not a date comparison here.
+  if (koForfeited.length > 0) {
+    const { data: confirmedKo } = await db
+      .from('fixtures')
+      .select('id, tournament_id, round_type, home_team_id, away_team_id, status')
+      .in(
+        'id',
+        koForfeited.map((f) => f.id)
+      )
+      .eq('status', 'confirmed')
+
+    const advanced = new Map<string, any>()
+    for (const fx of (confirmedKo ?? []) as any[]) {
+      const src = koForfeited.find((f) => f.id === fx.id)
+      if (src) advanced.set(fx.id, { ...src, ...fx })
+    }
+
+    if (advanced.size > 0) {
+      const { advanceWinner } = await import('@/lib/tournament-progression')
+      for (const fx of advanced.values()) {
+        try {
+          await advanceWinner(
+            db,
+            fx.tournament_id,
+            fx.id,
+            fx.home_score,
+            fx.away_score,
+            fx.home_team_id ?? null,
+            fx.away_team_id ?? null
+          )
+        } catch (e) {
+          console.error('[slot-utils] KO progression after forfeit failed for fixture:', fx.id, e)
+        }
+      }
+    }
+  }
+
+  return { seats: seatIds.length, forfeits }
+}
+
 // Fill the earliest vacant seat across a season's tournaments. Returns the slot
 // that got filled (or null when the season is full / no team resolvable).
 export async function fillVacantSlot(
@@ -401,6 +628,10 @@ export async function fillVacantSlot(
     .eq('tournament_id', tournamentId)
     .eq('participant_id', participantId)
 
+  // The seat may have been forfeited while managerless; withdraw those results
+  // so the incoming manager plays its remaining fixtures for real.
+  await clearAutoForfeitResults(db, tournamentId, participantId)
+
   return {
     participant_id: participantId,
     tournament_id: tournamentId,
@@ -410,13 +641,14 @@ export async function fillVacantSlot(
 }
 
 // ─── Reclaim a club's seats after a manager assignment ───────────────────────
-// A sack turns the club's seat into a Vacant slot (ownership cleared, team_id
-// swapped to the Vacant placeholder) and the admin assign flow only updates
-// teams.manager_id — so the club "split" into a Vacant seat plus phantom rows
-// from its already-played fixtures. Reclaim finds the club's own free seats in
-// every ACTIVE tournament (either still showing the club, or stamped with
-// vacated_from_team_id when the copy was overwritten) and gives them to the
-// new manager. Called after the manager binding is set in all assign paths.
+// A sack drops the club's seat ownership but leaves the club itself in place
+// (forfeitUnmanagedClubSlots) or, on the older path, relabels the seat as a
+// Vacant placeholder — and the admin assign flow only updates
+// teams.manager_id. Reclaim finds the club's own free seats in every ACTIVE
+// tournament (either still showing the club, or stamped with
+// vacated_from_team_id when the copy was overwritten) and gives them to the new
+// manager. Called after the manager binding is set in all assign paths. Any
+// auto-forfeits stamped while the club was managerless are withdrawn here.
 export async function reclaimManagerSlots(
   db: SupabaseClientLike,
   managerUserId: string,
@@ -469,6 +701,11 @@ export async function reclaimManagerSlots(
         .update({ team_id: clubTeamId })
         .eq('tournament_id', tour.id)
         .eq('participant_id', seat.id)
+
+      // Withdraw the auto-forfeits the managerless state stamped for this seat
+      // so the new manager's club actually plays its remaining fixtures. Without
+      // this the club would inherit a run of 0-3 results it never played.
+      await clearAutoForfeitResults(db, tour.id, seat.id)
 
       reclaimed++
     }
@@ -620,9 +857,10 @@ async function claimVacantSeats(
 }
 
 // Remove auto-generated forfeit results (finalised_by NULL, stamped by
-// `vacateUserSlots`) on a seat's not-yet-played fixtures, and restore any
-// confirmed_pending fixture back to 'scheduled' so it is a normal fixture
-// again. Human-entered results (finalised_by set) are never touched.
+// `vacateUserSlots` or `forfeitUnmanagedClubSlots`) on a seat's not-yet-played
+// fixtures, and restore any confirmed_pending fixture back to 'scheduled' so it
+// is a normal fixture again. Human-entered results (finalised_by set) are never
+// touched.
 export async function clearAutoForfeitResults(
   db: SupabaseClientLike,
   tournamentId: string,
@@ -649,7 +887,7 @@ export async function clearAutoForfeitResults(
   const autoFixtureIds = (candidates ?? [])
     .filter((r: any) => {
       const reason = (r.override_reason ?? '') as string
-      return reason.startsWith('Vacant slot absent') || reason.startsWith('Both slots vacant')
+      return AUTO_FORFEIT_REASON_PREFIXES.some((p) => reason.startsWith(p))
     })
     .map((r: any) => r.fixture_id)
 
