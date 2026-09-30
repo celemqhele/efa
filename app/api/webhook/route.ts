@@ -366,6 +366,26 @@ const msg = messages[0]
           return new NextResponse(null, { status: 200 })
         }
         if (activeSession.backdoor_menu_step === 'screenshot') {
+          // Match-centre deep link already pinned this fixture (matched_fixture_id
+          // is set) — skip the team-name search and go straight to "who is not
+          // responding?".
+          if (activeSession.matched_fixture_id) {
+            await upsertSession({
+              phone_number: from,
+              state: 'awaiting_backdoor',
+              backdoor_menu_step: 'side',
+              backdoor_screenshot_media_id: mediaId,
+            })
+            const { data: fx } = await supabaseCheck
+              .from('fixtures')
+              .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+              .eq('id', activeSession.matched_fixture_id)
+              .single()
+            const h = fixtureTeamName(fx, 'home')
+            const a = fixtureTeamName(fx, 'away')
+            await sendTextMessage(from, `Who is not responding? Type the team name (e.g. ${h} or ${a}). Type CANCEL to stop.`, phoneNumberId)
+            return new NextResponse(null, { status: 200 })
+          }
           if (caption) {
             // User sent screenshot with team names in caption - search directly
             await upsertSession({
@@ -3609,9 +3629,187 @@ async function fixtureMatches(f: any, teamSearches: string[]): Promise<boolean> 
   return match1 || match2
 }
 
+// ─── Match-centre deep links (reminder link: "Hi MC-XXXXXXXX") ─────────────────
+// The admin dashboard embeds a per-fixture code in the reminder link
+// (https://wa.me/<AI-BOT>?text=Hi MC-3D6K689L). When the manager sends the
+// preloaded text, the bot resolves the code to the fixture, verifies the sender
+// is one of the match's two managers, ends any current session (SQL clear) and
+// opens a fresh match-centre menu bound to that fixture. Games outside the 7-day
+// window are refused up front with a fixed unavailable message.
+
+const MATCH_CODE_RE = /\bMC[:\-\s]*([A-Z2-9]{8})\b/i
+
+function extractMatchCode(text: string): string | null {
+  const m = text.match(MATCH_CODE_RE)
+  return m ? m[1].toUpperCase() : null
+}
+
+// Resolves the fixture for a match code, or null when the code is unknown.
+async function fixtureForMatchCode(supabase: any, code: string): Promise<any | null> {
+  const { data: row } = await supabase
+    .from('match_codes')
+    .select('fixture_id')
+    .eq('code', code)
+    .maybeSingle()
+  if (!row) return null
+  const { data: fixture } = await supabase
+    .from('fixtures')
+    .select('id, status, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
+    .eq('id', row.fixture_id)
+    .single()
+  return fixture ?? null
+}
+
+// Match-centre menu, shown fresh on every deep-link open and as the re-prompt
+// when the manager sends something off-menu.
+const MATCH_CENTRE_MENU =
+  'Reply with a number:\n\n' +
+  '1. Submit the game result\n' +
+  '2. Report opponent not responding\n' +
+  '3. Go to main menu'
+
+// True when the sender's number is one of the two managers on this fixture.
+function managerOwnsFixture(manager: LoggedInManager | null, fixture: any): boolean {
+  if (!manager) return false
+  return [fixture.home_team_id, fixture.away_team_id].some(
+    (tid) => manager.teamIds.some((t) => String(t) === String(tid))
+  )
+}
+
+// Entry point for a message carrying a match code. Returns true when the message
+// was consumed by the match-centre flow (valid, invalid, or unavailable).
+async function handleMatchCentreLink(from: string, text: string, phoneNumberId: string): Promise<boolean> {
+  const code = extractMatchCode(text)
+  if (!code) return false
+
+  const supabase = await createAdminClient()
+  const fixture = await fixtureForMatchCode(supabase, code)
+  // "MC-…" matching no stored code is not ours — fall through to normal handling.
+  if (!fixture) return false
+
+  // Only the two managers of this match may open its centre.
+  const manager = await getLoggedInManager(from)
+  if (!managerOwnsFixture(manager, fixture)) {
+    await sendTextMessage(from, 'This match code is not linked to one of your teams. Send "Hi" for the main menu.', phoneNumberId)
+    return true
+  }
+
+  const hName = fixtureTeamName(fixture, 'home')
+  const aName = fixtureTeamName(fixture, 'away')
+
+  // Gate: keep the same 7-day window used everywhere else. Older than 7 days
+  // (or more than 7 days away) fixtures are not submittable from the centre.
+  const dateKey = fixtureDateKey(fixture)
+  if (dateKey && !isInSubmissionWindow(dateKey)) {
+    const todayKey = getSastDateKey()
+    const unavailable = dateKey < todayKey
+      ? `Welcome to the match centre for ${hName} vs ${aName}. Unfortunately this game is unavailable for submission as it is older than 7 days.`
+      : `Welcome to the match centre for ${hName} vs ${aName}. Unfortunately this game is unavailable for submission as it is still more than 7 days away.`
+    await clearSession(from)
+    await sendTextMessage(from, unavailable, phoneNumberId)
+    return true
+  }
+
+  // End any current session (SQL delete) and open a fresh match-centre session.
+  await clearSession(from)
+  await upsertSession({
+    phone_number: from,
+    state: 'match_centre',
+    matched_fixture_id: fixture.id,
+    home_team: hName,
+    away_team: aName,
+  })
+
+  const dateLine = formatFixtureWhen(fixture) ? ` - ${formatFixtureWhen(fixture)}` : ''
+  const tourneyLine = fixtureTournamentName(fixture) ? ` - ${fixtureTournamentName(fixture)}` : ''
+  await sendTextMessage(
+    from,
+    `Welcome to the match centre for ${hName} vs ${aName}${dateLine}${tourneyLine}.\n\n${MATCH_CENTRE_MENU}`,
+    phoneNumberId
+  )
+  return true
+}
+
+// Menu handler for an open match_centre session.
+async function handleMatchCentreMenu(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendTextMessage(from, 'Cancelled. Send "Hi" to start over.', phoneNumberId)
+    return
+  }
+  const num = extractNumber(text)
+  const fixtureId = session.matched_fixture_id
+
+  if (num === 1) {
+    // Submit → reuse the logged-in screenshot step, pre-bound to this fixture.
+    const supabase = await createAdminClient()
+    const { data: fixture } = fixtureId
+      ? await supabase
+          .from('fixtures')
+          .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+          .eq('id', fixtureId)
+          .single()
+      : { data: null }
+    if (!fixture) {
+      await clearSession(from)
+      await sendTextMessage(from, 'Something went wrong. Please start again.', phoneNumberId)
+      return
+    }
+    const hName = fixtureTeamName(fixture, 'home')
+    const aName = fixtureTeamName(fixture, 'away')
+    const dateLine = formatFixtureWhen(fixture) ? ` - ${formatFixtureWhen(fixture)}` : ''
+    const backdoorNote = isFixtureConfirmed(fixture)
+      ? '\n\nThis game currently has a backdoor result. Submitting will replace it with the real score.'
+      : ''
+    await upsertSession({
+      phone_number: from,
+      state: 'loggedin_first_time_screenshot',
+      matched_fixture_id: fixture.id,
+      home_team: hName,
+      away_team: aName,
+      submission_type: 'new',
+      match_stats: null,
+    })
+    await sendTextMessage(from, `${hName} vs ${aName}${dateLine}\n\nSend a screenshot of the result screen.${backdoorNote}`, phoneNumberId)
+    return
+  }
+
+  if (num === 2) {
+    // Backdoor → reuse the backdoor flow, with this fixture pre-set so the
+    // manager skips the team-name search and answers directly.
+    const supabase = await createAdminClient()
+    if (!(await isBackdoorWindowEnabled(supabase))) {
+      await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
+      return
+    }
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_backdoor',
+      backdoor_menu_step: 'screenshot',
+      matched_fixture_id: fixtureId,
+    })
+    await sendTextMessage(from, 'Send a screenshot showing that the opponent did not respond.', phoneNumberId)
+    return
+  }
+
+  if (num === 3) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(from, MATCH_CENTRE_MENU, phoneNumberId)
+}
+
 async function handleText(from: string, msg: { text: { body: string } }, phoneNumberId: string) {
   const text = (msg.text.body || '').trim()
   console.log(`[webhook] text: "${text}"`)
+
+  // Match-centre deep links must reset whatever flow may be open, so this runs
+  // before the session is read: the link's code is enough on its own.
+  if (await handleMatchCentreLink(from, text, phoneNumberId)) {
+    return
+  }
 
   const session = await getSession(from)
   console.log('[handleText] session:', JSON.stringify(session))
@@ -3620,6 +3818,12 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   // mid-flow handler below, so route straight to the welcome menu.
   if (await handleExpiredSession(from, session)) {
     await handleWelcomeMenu(from, text, phoneNumberId)
+    return
+  }
+
+  // ─── Match centre (opened by a reminder link code) ──────────────────────
+  if (session?.state === 'match_centre') {
+    await handleMatchCentreMenu(from, text, session, phoneNumberId)
     return
   }
 

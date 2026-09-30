@@ -20,9 +20,25 @@ interface Props {
 const POSTPONE_POPOVER_W = 300
 
 // The AI WhatsApp bot number (E.164 digits, no spacing) that the reminder link
-// opens. Preloaded text is "Hi" so the bot lands on the welcome menu.
+// opens. Preloaded text carries the per-fixture match code ("Hi MC-XXXXXXXX") so
+// the bot can open the match centre for that specific game; without a code yet
+// it falls back to plain "Hi" (welcome menu).
 const AI_BOT_DIGITS = '27818209406'
-const REMINDER_LINK = `https://wa.me/${AI_BOT_DIGITS}?text=Hi`
+const FALLBACK_REMINDER_LINK = `https://wa.me/${AI_BOT_DIGITS}?text=Hi`
+
+// Same-process cache so admin fixtures pages don't refetch codes per render.
+const matchCodeCache = new Map<string, Promise<string | null>>()
+function fetchMatchCode(fixtureId: string): Promise<string | null> {
+  let p = matchCodeCache.get(fixtureId)
+  if (!p) {
+    p = fetch(`/api/admin/fixtures/${fixtureId}/match-code`)
+      .then((r) => r.json())
+      .then((d) => (typeof d?.code === 'string' ? d.code : null))
+      .catch(() => null)
+    matchCodeCache.set(fixtureId, p)
+  }
+  return p
+}
 
 type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'night'
 
@@ -42,17 +58,17 @@ function getTimeSlot(): TimeSlot {
   return 'night'
 }
 
-function buildReminder(name: string | null | undefined, opponent: string, slot: TimeSlot): string {
+function buildReminder(name: string | null | undefined, opponent: string, slot: TimeSlot, botLink: string): string {
   const n = name ?? 'there'
   switch (slot) {
     case 'morning':
-      return `Hi ${n}! Just a reminder that your fixture vs ${opponent} is scheduled for today. If you already played, submit the score here: ${REMINDER_LINK}`
+      return `Hi ${n}! Just a reminder that your fixture vs ${opponent} is scheduled for today. If you already played, submit the score here: ${botLink}`
     case 'afternoon':
-      return `Hi ${n}! Friendly reminder that your fixture vs ${opponent} is today. If you already played, submit the score here: ${REMINDER_LINK}. If your opponent is not responding, report a backdoor win: ${REMINDER_LINK}`
+      return `Hi ${n}! Friendly reminder that your fixture vs ${opponent} is today. If you already played, submit the score here: ${botLink}. If your opponent is not responding, report a backdoor win: ${botLink}`
     case 'evening':
-      return `Hi ${n}! Your fixture vs ${opponent} is still pending. If your opponent is not responding, report them to the AI here: ${REMINDER_LINK}`
+      return `Hi ${n}! Your fixture vs ${opponent} is still pending. If your opponent is not responding, report them to the AI here: ${botLink}`
     case 'night':
-      return `Hi ${n}! Your result for the fixture vs ${opponent} is still not submitted. Please play or risk a backdoor loss. If your opponent is not responding, submit a backdoor here: ${REMINDER_LINK}`
+      return `Hi ${n}! Your result for the fixture vs ${opponent} is still not submitted. Please play or risk a backdoor loss. If your opponent is not responding, submit a backdoor here: ${botLink}`
   }
 }
 
@@ -72,12 +88,25 @@ export default function DashboardFixtureActions({
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null)
+  const [matchCode, setMatchCode] = useState<string | null>(null)
   const actionsRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
   const isFinished = ['confirmed', 'confirmed_pending', 'completed', 'abandoned'].includes(status)
   const isAwaiting = status === 'awaiting_confirmation'
   const timeSlot = getTimeSlot()
+
+  // Load the fixture's match code so the embedded bot link opens the match
+  // centre for this exact game ("Hi MC-XXXXXXXX").
+  useEffect(() => {
+    let cancelled = false
+    fetchMatchCode(fixtureId).then((code) => {
+      if (!cancelled) setMatchCode(code)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [fixtureId])
 
   useEffect(() => {
     if (!showPostpone) return
@@ -137,8 +166,11 @@ export default function DashboardFixtureActions({
     }
   }
 
-  const homeMsg = buildReminder(homeManagerName, awayTeamName, timeSlot)
-  const awayMsg = buildReminder(awayManagerName, homeTeamName, timeSlot)
+  const reminderLink = matchCode
+    ? `https://wa.me/${AI_BOT_DIGITS}?text=${encodeURIComponent(`Hi MC-${matchCode}`)}`
+    : FALLBACK_REMINDER_LINK
+  const homeMsg = buildReminder(homeManagerName, awayTeamName, timeSlot, reminderLink)
+  const awayMsg = buildReminder(awayManagerName, homeTeamName, timeSlot, reminderLink)
 
   if (isFinished) return null
   if (done) return <span className="text-feedback-warning text-xs font-semibold">Postponed</span>
