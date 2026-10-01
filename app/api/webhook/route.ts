@@ -3687,9 +3687,12 @@ async function handleMatchCentreLink(from: string, text: string, phoneNumberId: 
   // "MC-…" matching no stored code is not ours — fall through to normal handling.
   if (!fixture) return false
 
-  // Only the two managers of this match may open its centre.
+  // Only the two managers of this match may open its centre — except admins,
+  // who can open any match code (same bypass they get on the date window and
+  // the team-pair search elsewhere in the bot).
+  const isAdmin = isAdminPhone(from)
   const manager = await getLoggedInManager(from)
-  if (!managerOwnsFixture(manager, fixture)) {
+  if (!isAdmin && !managerOwnsFixture(manager, fixture)) {
     await sendTextMessage(from, 'This match code is not linked to one of your teams. Send "Hi" for the main menu.', phoneNumberId)
     return true
   }
