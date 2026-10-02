@@ -65,7 +65,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description,
     path: `/fixtures/${id}`,
     subtitle: subtitle || undefined,
-    badge: fixture.is_postponed ? 'POSTPONED' : fixture.round_type === 'final' ? 'FINAL' : round || undefined,
+    badge: fixture.is_postponed
+      ? 'POSTPONED'
+      : fixture.round_type === 'final'
+        ? (fixture.leg ?? 1) > 1 ? 'FINAL — LEG 2' : 'FINAL — LEG 1'
+        : round || undefined,
     home: fixture.home_team?.logo_league_folder && fixture.home_team?.logo_team_slug
       ? { folder: fixture.home_team.logo_league_folder, slug: fixture.home_team.logo_team_slug }
       : undefined,
@@ -219,7 +223,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   let aggregateScore: { home: number; away: number } | null = null
   let penScore: { home: number; away: number } | null = null
   const siblingMd = getSiblingMatchday(fixture.matchday)
-  if (siblingMd && ['qf', 'sf'].includes(fixture.round_type)) {
+  if (siblingMd && ['qf', 'sf', 'final'].includes(fixture.round_type)) {
     const { data: siblingData } = await supabase
       .from('fixtures')
       .select('*, results(*)')

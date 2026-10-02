@@ -287,7 +287,7 @@ export default function ResultSubmitClient({
     if (!selectedFixtureId) return
     const fixture = pendingFixtures.find(f => f.id === selectedFixtureId)
     if (!fixture) return
-    if (fixture.leg !== 2 || !['qf', 'sf'].includes(fixture.round_type)) return
+    if (fixture.leg !== 2 || !['qf', 'sf', 'final'].includes(fixture.round_type)) return
 
     const leg1Md = fixture.matchday - 10
     fetch(`/api/admin/fixtures/sibling?tournament_id=${fixture.tournament_id}&matchday=${leg1Md}`)
@@ -996,7 +996,7 @@ export default function ResultSubmitClient({
               )}
 
               {/* Penalties toggle for 2-leg knockout */}
-              {selectedFixture?.leg === 2 && ['qf', 'sf'].includes(selectedFixture?.round_type ?? '') && (
+              {selectedFixture?.leg === 2 && ['qf', 'sf', 'final'].includes(selectedFixture?.round_type ?? '') && (
                 <div className="mt-4 p-3 bg-bg-surface rounded-lg border border-border">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input

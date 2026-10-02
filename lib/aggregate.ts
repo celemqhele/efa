@@ -8,32 +8,35 @@ export interface SiblingData {
   result: any
 }
 
+// Matchday bands for two-legged knockout rounds. The final is included (301 /
+// 311) because CAF's continental finals are played over two legs.
+const KO_LEG1_MATCHDAYS = [101, 102, 103, 104, 201, 202, 301]
+const KO_LEG2_MATCHDAYS = [111, 112, 113, 114, 211, 212, 311]
+
 export function getSiblingMatchday(matchday: number): number | null {
-  const leg2Matchdays = [111, 112, 113, 114, 211, 212]
-  if (leg2Matchdays.includes(matchday)) return matchday - 10
-  const leg1Matchdays = [101, 102, 103, 104, 201, 202]
-  if (leg1Matchdays.includes(matchday)) return matchday + 10
+  if (KO_LEG2_MATCHDAYS.includes(matchday)) return matchday - 10
+  if (KO_LEG1_MATCHDAYS.includes(matchday)) return matchday + 10
   return null
 }
 
 export function isTwoLegKnockout(roundType: string, matchday: number): boolean {
-  if (!['qf', 'sf'].includes(roundType)) return false
-  return [101, 102, 103, 104, 111, 112, 113, 114, 201, 202, 211, 212].includes(matchday)
+  if (!['qf', 'sf', 'final'].includes(roundType)) return false
+  return [...KO_LEG1_MATCHDAYS, ...KO_LEG2_MATCHDAYS].includes(matchday)
 }
 
 export function isLeg2(matchday: number): boolean {
-  return [111, 112, 113, 114, 211, 212].includes(matchday)
+  return KO_LEG2_MATCHDAYS.includes(matchday)
 }
 
 export function isLeg1(matchday: number): boolean {
-  return [101, 102, 103, 104, 201, 202].includes(matchday)
+  return KO_LEG1_MATCHDAYS.includes(matchday)
 }
 
 export async function fetchSiblingFixture(
   db: any,
   tournamentId: string,
   matchday: number,
-  leg: number
+  _leg: number
 ): Promise<SiblingData | null> {
   const siblingMd = getSiblingMatchday(matchday)
   if (!siblingMd) return null

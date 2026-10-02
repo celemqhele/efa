@@ -70,11 +70,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const when = formatMatchday(fixture?.scheduled_date)
   const round = roundLabel(fixture?.round_type)
 
-  const badge = result.is_abandoned
-    ? 'FORFEIT'
-    : fixture?.round_type === 'final'
-      ? 'FINAL'
-      : round || 'FULL TIME'
+  // A two-legged final (CAF) has two result pages, so the badge has to say which
+  // leg rather than showing "FINAL" for both.
+  const finalBadge =
+    fixture?.round_type === 'final'
+      ? (fixture?.leg ?? 1) > 1 ? 'FINAL — LEG 2' : 'FINAL — LEG 1'
+      : null
+
+  const badge = result.is_abandoned ? 'FORFEIT' : finalBadge ?? round ?? 'FULL TIME'
 
   const subtitle = [tourney, matchday ? `Matchday ${matchday}` : null, when].filter(Boolean).join(' · ')
 
@@ -131,7 +134,7 @@ export default async function ResultDetailPage({ params }: Props) {
   let aggregateScore: { home: number; away: number } | null = null
   let penScore: { home: number; away: number } | null = null
   const siblingMd = fixture?.matchday ? getSiblingMatchday(fixture.matchday) : null
-  if (siblingMd && fixture?.round_type && ['qf', 'sf'].includes(fixture.round_type)) {
+  if (siblingMd && fixture?.round_type && ['qf', 'sf', 'final'].includes(fixture.round_type)) {
     const { data: siblingData } = await supabase
       .from('fixtures')
       .select('*, results(*)')

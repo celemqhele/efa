@@ -67,8 +67,9 @@ export default async function ResultsPage() {
       }))
 
       // Fetch sibling results for 2-leg knockout aggregate display
+      const TWO_LEG_ROUNDS = ['qf', 'sf', 'final']
       const leg2Fixtures = fixturesWithResults.filter(
-        (f: any) => f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f._result
+        (f: any) => f.leg === 2 && TWO_LEG_ROUNDS.includes(f.round_type) && f._result
       )
       if (leg2Fixtures.length > 0) {
         const siblingMds = leg2Fixtures.map((f: any) => f.matchday - 10)
@@ -101,7 +102,7 @@ export default async function ResultsPage() {
         }
 
         for (const f of fixturesWithResults) {
-          if (f.leg === 2 && ['qf', 'sf'].includes(f.round_type) && f._result) {
+          if (f.leg === 2 && TWO_LEG_ROUNDS.includes(f.round_type) && f._result) {
             const leg1Key = `${f.tournament_id}_${f.matchday - 10}`
             const leg1Result = siblingResultsByKey[leg1Key]
             const isLeg2Home = teamIds.includes(f.home_team_id)

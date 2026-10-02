@@ -37,7 +37,7 @@ const STATUS_COLOURS: Record<string, string> = {
 function roundLabel(roundType: string, leg: number): string {
   const base: Record<string, string> = { r32: 'R32', r16: 'R16', qf: 'QF', sf: 'SF', final: 'Final' }
   const label = base[roundType] ?? roundType.toUpperCase()
-  if (leg && roundType !== 'final') return `${label} Leg ${leg}`
+  if (leg) return `${label} Leg ${leg}`
   return label
 }
 

@@ -176,15 +176,20 @@ function buildQualifierOrder(sortedGroups: any[][], numGroups: number, qualifier
   return [...assignHalf(half1), ...assignHalf(half2)]
 }
 
+// Whole days after the bracket's base date, per round. Leg 2 always sits a
+// further legGap days on so a second leg can never share a day with the first.
 const ROUND_STAGE_OFFSET: Record<string, number> = {
   r32: -1, r16: 0, qf: 1, sf: 2, final: 3,
 }
+
+// Minimum gap in days between leg 1 and leg 2 of the same round.
+const LEG_GAP_DAYS = 1
 
 const KO_DAILY_CAP = DAILY_MATCH_CAP
 
 async function assignKnockoutDates(
   db: any,
-  fixtures: Array<{ home_team_id: string | null; away_team_id: string | null; round_type: string }>,
+  fixtures: Array<{ home_team_id: string | null; away_team_id: string | null; round_type: string; leg?: number }>,
   tournamentId: string
 ): Promise<string[]> {
   const { getSlotStateForDate, getDailyCapacity } = await import('./fixture-slots')
@@ -224,12 +229,35 @@ async function assignKnockoutDates(
 
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
   const runDayCount: Record<string, number> = {}
+  // Furthest date used so far. Every later fixture must land after it, otherwise
+  // a full day pushes a round back onto its own successors: the Nedbank Cup's
+  // QF, SF and Final all ended up on the same day because each round's nominal
+  // date had overflowed and the search simply resumed from the same overflow.
+  let floorDate = baseStartDate
+  // Round+leg key of the previous fixture. Fixtures sharing a key may share a
+  // day (subject to KO_DAILY_CAP); crossing to a new key advances a day so a
+  // leg never shares its date with the round that feeds it.
+  let lastKey = ''
 
   const dates: string[] = []
 
   for (const fx of fixtures) {
-    const roundDate = format(addDays(parseISO(baseStartDate), ROUND_STAGE_OFFSET[fx.round_type] ?? 0), 'yyyy-MM-dd')
-    let currentDate = parseISO(roundDate)
+    const stageOffset = ROUND_STAGE_OFFSET[fx.round_type] ?? 0
+    const legGap = (fx.leg ?? 1) === 2 ? LEG_GAP_DAYS : 0
+    const roundDate = format(
+      addDays(parseISO(baseStartDate), stageOffset + legGap),
+      'yyyy-MM-dd'
+    )
+
+    const key = `${fx.round_type}:${fx.leg ?? 1}`
+    // Never earlier than the previous fixture, and strictly later whenever the
+    // round or leg changes — otherwise a round overflow pushes it onto its own
+    // successor's day.
+    const minDate = key === lastKey ? floorDate : format(addDays(parseISO(floorDate), 1), 'yyyy-MM-dd')
+    lastKey = key
+
+    const earliest = roundDate > minDate ? roundDate : minDate
+    let currentDate = parseISO(earliest)
     let assigned = false
 
     for (let safety = 0; safety < 730; safety++) {
@@ -258,6 +286,7 @@ async function assignKnockoutDates(
         runDayCount[dateStr] = (runDayCount[dateStr] ?? 0) + 1
         if (fx.home_team_id) state.teamUsed[fx.home_team_id] = (state.teamUsed[fx.home_team_id] ?? 0) + 1
         if (fx.away_team_id) state.teamUsed[fx.away_team_id] = (state.teamUsed[fx.away_team_id] ?? 0) + 1
+        if (dateStr > floorDate) floorDate = dateStr
         assigned = true
         break
       }
@@ -429,8 +458,12 @@ export async function generateTBCKnockouts(
       koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 211, round_type: 'sf', leg: 2 })
       koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 212, round_type: 'sf', leg: 2 })
     }
-    // Final
+    // Final leg 1
     koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 301, round_type: 'final', leg: 1 })
+    // Final leg 2 (if 2-leg) — CAF's continental finals are played over two legs
+    if (isTwoLeg) {
+      koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 311, round_type: 'final', leg: 2 })
+    }
   } else if (teamCount === 4) {
     // SF leg 1
     koFixtures.push({ home_team_id: finalQualifiers[0], away_team_id: finalQualifiers[1], matchday: 201, round_type: 'sf', leg: 1 })
@@ -440,8 +473,12 @@ export async function generateTBCKnockouts(
       koFixtures.push({ home_team_id: finalQualifiers[1], away_team_id: finalQualifiers[0], matchday: 211, round_type: 'sf', leg: 2 })
       koFixtures.push({ home_team_id: finalQualifiers[3], away_team_id: finalQualifiers[2], matchday: 212, round_type: 'sf', leg: 2 })
     }
-    // Final
+    // Final leg 1
     koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 301, round_type: 'final', leg: 1 })
+    // Final leg 2 (if 2-leg) — CAF's continental finals are played over two legs
+    if (isTwoLeg) {
+      koFixtures.push({ home_team_id: null, away_team_id: null, matchday: 311, round_type: 'final', leg: 2 })
+    }
   } else if (teamCount === 2) {
     koFixtures.push({ home_team_id: finalQualifiers[0], away_team_id: finalQualifiers[1] ?? null, matchday: 301, round_type: 'final', leg: 1 })
   } else {
@@ -477,7 +514,7 @@ function firstResultRow(r: any): any {
   return r ?? null
 }
 
-const NEXT_ROUND_LEG1_MDS = [101, 102, 103, 104, 201, 202]
+const NEXT_ROUND_LEG1_MDS = [101, 102, 103, 104, 201, 202, 301]
 
 async function mirrorLeg2Teams(
   db: any,
@@ -553,7 +590,66 @@ export async function advanceWinner(
   const progression = BRACKET_PROGRESSION[curFx.matchday]
   if (!progression) {
     if (curFx.round_type === 'final') {
-      await awardTrophy(db, tournamentId, homeScore, awayScore, homeTeamId, awayTeamId)
+      // A two-legged final has no progression entry (there is nothing left to
+      // advance into), so it lands here on BOTH legs. Wait until the sibling leg
+      // has a result, then award on the aggregate instead of this leg alone —
+      // otherwise the trophy would be handed out on leg 1.
+      const finalSiblingMd = curFx.leg === 1 ? curFx.matchday + 10 : curFx.matchday - 10
+      const { data: finalSibling } = await db
+        .from('fixtures')
+        .select('id')
+        .eq('tournament_id', tournamentId)
+        .eq('matchday', finalSiblingMd)
+        .eq('round_type', 'final')
+        .maybeSingle()
+
+      let finalWinnerId: string | null = null
+
+      if (finalSibling) {
+        const leg1Md = curFx.leg === 1 ? curFx.matchday : finalSiblingMd
+        const leg2Md = curFx.leg === 1 ? finalSiblingMd : curFx.matchday
+        const { data: leg1Fix } = await db
+          .from('fixtures')
+          .select('*, results(*)')
+          .eq('tournament_id', tournamentId)
+          .eq('matchday', leg1Md)
+          .maybeSingle()
+        const { data: leg2Fix } = await db
+          .from('fixtures')
+          .select('*, results(*)')
+          .eq('tournament_id', tournamentId)
+          .eq('matchday', leg2Md)
+          .maybeSingle()
+        const leg1Result = firstResultRow(leg1Fix?.results)
+        const leg2Result = firstResultRow(leg2Fix?.results)
+
+        // Only the leg that arrives second sees both results; leg 1 returns early
+        // and waits for its sibling so the trophy is never handed out twice.
+        if (!leg1Fix || !leg2Fix || !leg1Result || !leg2Result) {
+          await checkTournamentCompletion(db, tournamentId)
+          return
+        }
+
+        // decideAggregateWinner covers the aggregate, penalties on leg 2 and the
+        // leg 2 result as tiebreaker; only a fully level tie needs the
+        // tournament-wide goal-difference fallback.
+        finalWinnerId = determineAggregateWinner(leg1Fix, leg1Result, leg2Fix, leg2Result)
+          ?? await resolveTournamentGdLeader(
+            db, tournamentId, leg1Fix.home_team_id, leg1Fix.away_team_id
+          )
+
+        if (!finalWinnerId) {
+          await checkTournamentCompletion(db, tournamentId)
+          return
+        }
+      }
+
+      // Single-leg final: awardTrophy derives the winner from this leg's score.
+      // Two-leg final: pass the aggregate winner explicitly, since the two legs
+      // have opposite home/away orientation.
+      await awardTrophy(
+        db, tournamentId, homeScore, awayScore, homeTeamId, awayTeamId, finalWinnerId
+      )
       await checkAndCreateSuperCup(db, tournamentId)
     }
     await checkTournamentCompletion(db, tournamentId)
@@ -821,12 +917,17 @@ export async function awardTrophy(
   homeScore: number,
   awayScore: number,
   homeTeamId: string | null,
-  awayTeamId: string | null
+  awayTeamId: string | null,
+  forcedWinnerId?: string | null
 ): Promise<void> {
-  let winner: string | null = null
-  if (homeScore > awayScore) winner = homeTeamId
-  else if (awayScore > homeScore) winner = awayTeamId
-  else winner = await resolveTournamentGdLeader(db, tournamentId, homeTeamId, awayTeamId)
+  // A two-legged tie supplies the aggregate winner directly: leg 2's own score
+  // says nothing about who lifted the trophy.
+  let winner: string | null = forcedWinnerId ?? null
+  if (!winner) {
+    if (homeScore > awayScore) winner = homeTeamId
+    else if (awayScore > homeScore) winner = awayTeamId
+    else winner = await resolveTournamentGdLeader(db, tournamentId, homeTeamId, awayTeamId)
+  }
   if (!winner) return
 
   const { data: tournament } = await db
@@ -835,12 +936,20 @@ export async function awardTrophy(
     .eq('id', tournamentId)
     .single()
 
-  await db.from('trophies').insert({
+  // Log the insert failure instead of dropping it: a missing Data API grant on
+  // `trophies` silently marked tournaments completed with no winner.
+  const { error: trophyErr } = await db.from('trophies').insert({
     tournament_id: tournamentId,
     team_id: winner,
     trophy_type: (tournament as any)?.type ?? 'league',
     season_id: (tournament as any)?.season_id ?? null,
   })
+  if (trophyErr) {
+    console.error('[awardTrophy] failed to insert trophy', {
+      tournamentId, winner, error: trophyErr.message,
+    })
+    return
+  }
 
   await db.from('tournaments').update({ status: 'completed' }).eq('id', tournamentId)
 }
