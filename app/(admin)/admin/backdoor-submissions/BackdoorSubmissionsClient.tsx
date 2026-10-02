@@ -40,7 +40,7 @@ interface Props {
 
 export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props) {
   const router = useRouter()
-  const [loadingFixtureId, setLoadingFixtureId] = useState<string | null>(null)
+  const [busyKey, setBusyKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const getStatusBadge = (status: string) => {
@@ -65,8 +65,8 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
     )
   }
 
-  const handleAction = async (fixtureId: string, submissionIds: string[], action: 'approve' | 'decline') => {
-    setLoadingFixtureId(fixtureId)
+  const handleAction = async (busy: string, submissionIds: string[], action: 'approve' | 'decline') => {
+    setBusyKey(busy)
     setActionError(null)
 
     const notifyDecision = async (outcome: 'approved' | 'declined') => {
@@ -95,10 +95,13 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('Not authenticated')
 
-        await supabase
+        // Scoped to exactly the ids passed in: declining one manager's claim
+        // must leave the other manager's claim reviewable.
+        const { error: declineErr } = await supabase
           .from('backdoor_submissions')
           .update({ status: 'declined', reviewed_by: user.id, reviewed_at: new Date().toISOString() })
           .in('id', submissionIds)
+        if (declineErr) throw new Error(declineErr.message)
 
         await notifyDecision('declined')
       }
@@ -108,7 +111,7 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
     } catch (err: any) {
       setActionError(err.message || 'Action failed')
     } finally {
-      setLoadingFixtureId(null)
+      setBusyKey(null)
     }
   }
 
@@ -127,10 +130,10 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
         <h2 className="text-xl font-bold text-text-primary">All Submissions ({groupedSubmissions.length} fixtures)</h2>
         <button
           onClick={() => router.refresh()}
-          disabled={!!loadingFixtureId}
+          disabled={busyKey !== null}
           className="btn-outline text-sm"
         >
-          <RefreshCw className={`w-4 h-4 mr-1 ${loadingFixtureId ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 mr-1 ${busyKey ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
@@ -148,6 +151,11 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
           const teams = `${f.home_team.name} vs ${f.away_team.name}`
           const isPending = submissions.some(s => s.status === 'pending')
           const hasScreenshot = submissions.some(s => s.screenshot_url)
+          // Only the still-pending claims count: the page loads every historical
+          // submission for the fixture, and approving a stale one would write a
+          // wrong score.
+          const pendingIds = submissions.filter(s => s.status === 'pending').map(s => s.id)
+          const bothKey = `both:${fixtureId}`
 
           return (
             <div key={fixtureId} className="card p-4 border-l-4 border-l-gold/50">
@@ -160,6 +168,16 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
                 </div>
                 <div className="flex items-center gap-3">
                   {getStatusBadge(submissions[0]?.status || 'pending')}
+                  {pendingIds.length > 1 && (
+                    <button
+                      onClick={() => handleAction(bothKey, pendingIds, 'approve')}
+                      disabled={busyKey !== null}
+                      title="Records the match as a 0-0 draw and marks every pending claim approved"
+                      className="btn-outline text-xs py-1.5 px-3"
+                    >
+                      {busyKey === bothKey ? 'Approving...' : 'Approve both (0-0)'}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -188,23 +206,23 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
                           Submitted: {new Date(sub.created_at).toLocaleString()}
                         </span>
                         {sub.status === 'pending' && (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleAction(fixtureId, submissions.map(s => s.id), 'approve')}
-                              disabled={loadingFixtureId === fixtureId}
-                              className="btn-gold text-xs py-1.5 px-3"
-                            >
-                              {loadingFixtureId === fixtureId ? 'Approving...' : 'Approve'}
-                            </button>
-                            <button
-                              onClick={() => handleAction(fixtureId, submissions.map(s => s.id), 'decline')}
-                              disabled={loadingFixtureId === fixtureId}
-                              className="btn-outline text-xs py-1.5 px-3 text-red-400 border-red-500/30 hover:bg-red-500/10"
-                            >
-                              {loadingFixtureId === fixtureId ? 'Declining...' : 'Decline'}
-                            </button>
-                          </div>
-                        )}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleAction(sub.id, [sub.id], 'approve')}
+                                disabled={busyKey !== null}
+                                className="btn-gold text-xs py-1.5 px-3"
+                              >
+                                {busyKey === sub.id ? 'Approving...' : 'Approve'}
+                              </button>
+                              <button
+                                onClick={() => handleAction(sub.id, [sub.id], 'decline')}
+                                disabled={busyKey !== null}
+                                className="btn-outline text-xs py-1.5 px-3 text-red-400 border-red-500/30 hover:bg-red-500/10"
+                              >
+                                {busyKey === sub.id ? 'Declining...' : 'Decline'}
+                              </button>
+                            </div>
+                          )}
                         {sub.status !== 'pending' && (
                           <span className="text-xs text-text-muted">
                             Reviewed: {sub.reviewed_at ? new Date(sub.reviewed_at).toLocaleString() : 'N/A'}

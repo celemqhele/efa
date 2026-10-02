@@ -2588,28 +2588,61 @@ async function handleBackdoorAdminReview(from: string, text: string, session: Se
     matched_fixture_id: fixtureId
   })
 
-  // Send screenshot URLs to admin
-  for (const s of submissions) {
+  // Send screenshot URLs to admin, numbered so a decision can target one claim.
+  for (let i = 0; i < submissions.length; i++) {
+    const s = submissions[i]
     const side = s.side_claimed === 'home' ? 'Away' : 'Home'
-    await sendTextMessage(from, `Submission by ${s.submitter_phone} (${side} team):\nScreenshot: ${s.screenshot_url}`, phoneNumberId)
+    await sendTextMessage(
+      from,
+      `${i + 1}. Submission by ${s.submitter_phone} (${side} team):\nScreenshot: ${s.screenshot_url}`,
+      phoneNumberId
+    )
   }
 
-  await sendTextMessage(from, 'Approve or decline? Reply "approve" or "decline".', phoneNumberId)
+  // Two managers can both claim the same match for different sides, so a bare
+  // "decline" must not silently decide the other manager's claim too.
+  const hint =
+    submissions.length > 1
+      ? `Reply e.g. "1 approve" or "2 decline" to act on one submission, or "both approve" / "both decline" to decide the whole match.`
+      : 'Approve or decline? Reply "approve" or "decline".'
+  await sendTextMessage(from, hint, phoneNumberId)
 }
 
 async function handleBackdoorAdminDecision(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  const approve = includesWord(text, 'approve')
-  if (!approve && !includesWord(text, 'decline')) {
-    await sendTextMessage(from, 'Reply "approve" or "decline".', phoneNumberId)
+  const pendingIds: string[] = session.backdoor_fixture_ids || []
+  const fixtureId = session.matched_fixture_id
+
+  // Resolve which claims this reply covers. A bare approve/decline applies to the
+  // whole match, which is only unambiguous while a single claim is pending.
+  const isApprove = includesWord(text, 'approve')
+  const isDecline = includesWord(text, 'decline')
+  const wantsBoth = includesWord(text, 'both')
+  const n = extractNumber(text)
+
+  let submissionIds: string[]
+  if (wantsBoth && (isApprove || isDecline)) {
+    submissionIds = pendingIds
+  } else if (n !== null && n >= 1 && n <= pendingIds.length && (isApprove || isDecline)) {
+    submissionIds = [pendingIds[n - 1]]
+  } else if ((isApprove || isDecline) && pendingIds.length === 1) {
+    submissionIds = pendingIds
+  } else {
+    await sendTextMessage(
+      from,
+      pendingIds.length > 1
+        ? 'Reply e.g. "1 approve" or "2 decline" for one submission, or "both approve" / "both decline" for the whole match.'
+        : 'Reply "approve" or "decline".',
+      phoneNumberId
+    )
     return
   }
 
+  const approve = isApprove && !isDecline
+
   const supabase = await createAdminClient()
-  const submissionIds = session.backdoor_fixture_ids || []
-  const fixtureId = session.matched_fixture_id
 
   if (approve) {
-    // Determine outcome based on number of submissions
+    // Determine outcome based on how many claims this decision covers
     const { data: submissions } = await supabase
       .from('backdoor_submissions')
       .select('id, side_claimed')
@@ -2653,6 +2686,15 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
       .from('backdoor_submissions')
       .update({ status: 'approved', reviewed_by: adminUserId, reviewed_at: new Date().toISOString() })
       .in('id', submissionIds)
+
+    // Approving writes a result and confirms the fixture, so any counterpart
+    // claim that was NOT part of this decision must not stay approvable.
+    await supabase
+      .from('backdoor_submissions')
+      .update({ status: 'void_game_played' })
+      .eq('fixture_id', fixtureId)
+      .eq('status', 'pending')
+      .not('id', 'in', `(${submissionIds.join(',')})`)
 
     // Notify the reporting manager(s) (in-app + push) + admins (push)
     try {
