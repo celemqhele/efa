@@ -414,7 +414,11 @@ export async function listFreeManagers(db: Db, excludeIds: string[] = []): Promi
     .from('profiles')
     .select('id, username, sacked_at')
 
-  return ((profiles ?? []) as MgmtManagerOption[])
+  // Map rather than cast: the row comes back as `sacked_at`, but the pickers read
+  // `sackedAt`. A bare cast let the snake_case row through and every cooldown
+  // check silently saw undefined, so the override step never appeared.
+  return ((profiles ?? []) as { id: string; username: string; sacked_at: string | null }[])
+    .map((p) => ({ id: p.id, username: p.username, sackedAt: p.sacked_at ?? null }))
     .filter((p) => !busy.has(p.id))
     .sort((a, b) => a.username.localeCompare(b.username))
 }

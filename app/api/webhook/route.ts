@@ -3649,7 +3649,8 @@ function renderManagerPage(
   const slice = managers.slice(start, start + MGMT_PAGE_SIZE)
 
   const lines = slice.map((m, i) => {
-    const banned = getCooldownEndsAt(m.sackedAt) ? ' (banned)' : ''
+    const cooldownEndsAt = getCooldownEndsAt(m.sackedAt)
+    const banned = cooldownEndsAt ? ` (cooldown until ${formatCooldownDate(cooldownEndsAt)})` : ''
     return `${i + 1}. @${m.username}${banned}`
   })
 
@@ -3984,6 +3985,9 @@ async function mgmtAssignConfirm(from: string, text: string, phoneNumberId: stri
   const supabase = await createAdminClient()
   const adminId = await getAdminProfileIdByPhone(supabase, from)
   const club = (session.mgmt_team_list ?? []).find((c) => c.id === session.mgmt_selected_team_id)
+  const managerName =
+    (session.mgmt_manager_list ?? []).find((m) => m.id === session.mgmt_selected_manager_id)?.username ??
+    'that manager'
 
   const result = await assignManagerToClub(supabase, {
     teamId: session.mgmt_selected_team_id,
@@ -3995,7 +3999,13 @@ async function mgmtAssignConfirm(from: string, text: string, phoneNumberId: stri
   await clearSession(from)
 
   if (!result.ok) {
-    const reason = result.code === 'SACK_COOLDOWN' ? `@${club?.name ?? 'that manager'} is in cooldown.` : result.message
+    // Name the MANAGER, not the club — the club is never the thing in cooldown.
+    // Normally unreachable because the pickers gate first, but a manager sacked
+    // between picking and confirming lands here.
+    const reason =
+      result.code === 'SACK_COOLDOWN'
+        ? `@${managerName} is in cooldown until ${formatCooldownDate(result.cooldownEndsAt)}. Start again and use the override step.`
+        : result.message
     await sendTextMessage(from, `Could not assign: ${reason}`, phoneNumberId)
     return
   }
