@@ -1,6 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { insertNotificationsAndPush } from '@/lib/notify'
-import { forfeitUnmanagedClubSlots } from '@/lib/slot-utils'
+import { sackManagerFromClub } from '@/lib/manager-mgmt'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -15,73 +14,9 @@ export async function POST(request: Request) {
   if (!team_id) return Response.json({ error: 'team_id is required' }, { status: 400 })
 
   const adminSupabase = await createAdminClient()
+  const result = await sackManagerFromClub(adminSupabase, { teamId: team_id, adminId: user.id })
 
-  const { data: team } = await adminSupabase
-    .from('teams')
-    .select('id, name, logo_league_folder, logo_team_slug, manager_id')
-    .eq('id', team_id)
-    .single()
-
-  if (!team) return Response.json({ error: 'Team not found' }, { status: 404 })
-  if (!team.manager_id) return Response.json({ error: 'Team has no manager to remove' }, { status: 400 })
-
-  const sackUserId = team.manager_id
-
-  // Record sack time for the 1-week reassignment cooldown
-  const now = new Date().toISOString()
-  await adminSupabase.from('profiles').update({ sacked_at: now }).eq('id', sackUserId)
-
-  // Find all sibling rows for this club
-  let allClubIds: string[] = [team_id]
-  if (team.logo_league_folder && team.logo_team_slug) {
-    const { data: siblings } = await adminSupabase
-      .from('teams')
-      .select('id')
-      .eq('logo_league_folder', team.logo_league_folder)
-      .eq('logo_team_slug', team.logo_team_slug)
-      .neq('id', team_id)
-    allClubIds = [team_id, ...(siblings ?? []).map((s) => s.id)]
-  }
-
-  // Clear manager_id on all rows for this club
-  const { error: updateErr } = await adminSupabase
-    .from('teams')
-    .update({ manager_id: null })
-    .in('id', allClubIds)
-
-  if (updateErr) return Response.json({ error: updateErr.message }, { status: 500 })
-
-  // The club keeps its identity: its seats drop ownership (no "Vacant"
-  // relabel) and its remaining fixtures auto-forfeit 3-0.
-  const { forfeits } = await forfeitUnmanagedClubSlots(adminSupabase, allClubIds)
-
-  // Close open tenures
-  await adminSupabase
-    .from('manager_tenures' as any)
-    .update({ ended_at: now })
-    .in('team_id', allClubIds)
-    .is('ended_at', null)
-
-  // Notify the sacked manager (in-app + push)
-  try {
-    await insertNotificationsAndPush(adminSupabase, {
-      user_id: sackUserId,
-      type: 'sacking',
-      title: 'You have been sacked',
-      body: `Your management of ${team.name} has ended. You can pick a new team.`,
-      data: { team_id, team_name: team.name },
-    })
-  } catch (e) {
-    console.error('[managers/sack] notify failed:', e)
-  }
-
-  await adminSupabase.from('audit_log').insert({
-    admin_id: user.id,
-    action: 'sack_manager',
-    target_type: 'team',
-    target_id: team_id,
-    details: { team_name: team.name, sacked_user_id: sackUserId, forfeits_scheduled: forfeits },
-  })
+  if (!result.ok) return Response.json({ error: result.message }, { status: 400 })
 
   return Response.json({ success: true })
 }

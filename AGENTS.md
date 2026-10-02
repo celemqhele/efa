@@ -147,6 +147,7 @@ tree as the first step.
 - `link-previews/` — WhatsApp/chat link previews (per-route Open Graph metadata, dynamic `/api/og` image, Satori + Vercel function-size constraints)
 - `mobile-sizing/` — mobile layout pass: token aliases/alpha support, shared shell gutters/padding, per-screen card/grid/tap-target fixes on `/profile`, `/admin/fixtures/manage`, `/admin/results/submit`
 - `match-codes/` — per-fixture match codes for WhatsApp match-centre deep links (generation at fixture creation, backfill, webhook resolution)
+- `whatsapp-manager-mgmt/` — admin manager management on WhatsApp (assign/sack/promote flows, lib/manager-mgmt.ts service, mgmt_* session columns)
 
 ### Naming requirement
 Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's creation date (a new file always uses the current date). A context file is written once and never updated; a later change or fix on the same topic gets a brand-new file with the new date.

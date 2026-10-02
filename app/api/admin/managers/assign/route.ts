@@ -1,6 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { reclaimManagerSlots } from '@/lib/slot-utils'
-import { assignVacantSeatToManager, isVacantPlaceholderTeam } from '@/lib/slot-utils'
+import { assignManagerToClub, resolveOrCreateTeam } from '@/lib/manager-mgmt'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -18,152 +17,55 @@ export async function POST(request: Request) {
 
   const adminSupabase = await createAdminClient()
 
-  let resolvedTeamId = team_id
+  const resolved = await resolveOrCreateTeam(adminSupabase, team_id, {
+    folder: logo_league_folder,
+    slug: logo_team_slug,
+    name,
+  })
+  if (!resolved.ok) return Response.json({ error: resolved.message }, { status: 500 })
 
-  // 1. Resolve team (create if needed)
-  if (!resolvedTeamId) {
-    const { data: existing } = await adminSupabase
-      .from('teams')
-      .select('id')
-      .eq('logo_team_slug', logo_team_slug)
-      .eq('logo_league_folder', logo_league_folder)
-      .maybeSingle()
-
-    if (existing) {
-      resolvedTeamId = existing.id
-    } else {
-      const { data: newTeam, error: createErr } = await adminSupabase
-        .from('teams')
-        .insert({
-          name: name || logo_team_slug,
-          logo_league_folder,
-          logo_team_slug,
-          abandon_count: 0
-        })
-        .select('id')
-        .single()
-      if (createErr || !newTeam) return Response.json({ error: 'Failed to create team: ' + createErr?.message }, { status: 500 })
-      resolvedTeamId = newTeam.id
-    }
-  }
-
-  // Fetch team and target user profile in parallel
-  const [{ data: team }, { data: targetProfile }] = await Promise.all([
-    adminSupabase
-      .from('teams')
-      .select('id, name, logo_league_folder, logo_team_slug, manager_id')
-      .eq('id', resolvedTeamId)
-      .single(),
-    adminSupabase
-      .from('profiles')
-      .select('id, username, sacked_at')
-      .eq('id', user_id)
-      .single(),
-  ])
-
-  if (!team) return Response.json({ error: 'Team not found' }, { status: 404 })
-  if (!targetProfile) return Response.json({ error: 'User not found' }, { status: 404 })
-
-  // Enforce the 1-week reassignment cooldown after a sacking (unless overridden)
-  if (!override && targetProfile.sacked_at) {
-    const SACK_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
-    const cooldownEnds = new Date(new Date(targetProfile.sacked_at).getTime() + SACK_COOLDOWN_MS)
-    if (cooldownEnds.getTime() > Date.now()) {
-      return Response.json({
-        error: `This manager was recently sacked. Wait until ${cooldownEnds.toISOString()} before reassigning.`,
-        code: 'SACK_COOLDOWN',
-        cooldown_ends_at: cooldownEnds.toISOString(),
-      }, { status: 409 })
-    }
-  }
-
-  // Find all sibling rows for this club
-  let allClubIds: string[] = [resolvedTeamId]
-  if (team.logo_league_folder && team.logo_team_slug) {
-    const { data: siblings } = await adminSupabase
-      .from('teams')
-      .select('id')
-      .eq('logo_league_folder', team.logo_league_folder)
-      .eq('logo_team_slug', team.logo_team_slug)
-      .neq('id', resolvedTeamId)
-    allClubIds = [resolvedTeamId, ...(siblings ?? []).map((s) => s.id)]
-  }
-
-  const isVacant = isVacantPlaceholderTeam(team)
-
-  // The Vacant placeholder is not a real club, so it must never be bound to a
-  // manager (no teams.manager_id / tenure). If the assigned user manages their
-  // own club, that club gets handed the Vacant seats via assignVacantSeat-
-  // ToManager; a manager with no club simply takes ownership of the seat
-  // (user_id on the seats) and it resolves on their first real fill.
-  if (!isVacant) {
-    // Assign manager on all rows for this club
-    const { error: updateErr } = await adminSupabase
-      .from('teams')
-      .update({ manager_id: user_id })
-      .in('id', allClubIds)
-
-    if (updateErr) return Response.json({ error: updateErr.message }, { status: 500 })
-
-    const now = new Date().toISOString()
-
-    // Close any existing open tenures for these rows
-    await adminSupabase
-      .from('manager_tenures' as any)
-      .update({ ended_at: now })
-      .in('team_id', allClubIds)
-      .is('ended_at', null)
-
-    // Open new tenures for all rows
-    await adminSupabase
-      .from('manager_tenures' as any)
-      .insert(
-        allClubIds.map((id) => ({
-          team_id: id,
-          manager_id: user_id,
-          manager_username: targetProfile.username,
-          started_at: now,
-        }))
-      )
-  }
-
-  await adminSupabase.from('audit_log').insert({
-    admin_id: user.id,
-    action: 'assign_manager',
-    target_type: 'team',
-    target_id: resolvedTeamId,
-    details: { team_name: team.name, assigned_user_id: user_id, username: targetProfile.username },
+  const result = await assignManagerToClub(adminSupabase, {
+    teamId: resolved.teamId,
+    userId: user_id,
+    adminId: user.id,
+    override: !!override,
   })
 
-  if (isVacant) {
-    // Take over the Vacant seat(s) with the manager's real club (inherits the
-    // seat's stats and clears its auto-forfeit results). A manager with no
-    // club claims the seat (user_id set on the seats) without binding to the
-    // Vacant placeholder.
-    const result = await assignVacantSeatToManager(adminSupabase, user_id, resolvedTeamId)
-    if (result.action === 'claim') {
-      return Response.json({
-        success: true,
-        action: 'claim',
-        filled: result.filled,
-        message: result.filled > 0
-          ? `No club found for @${targetProfile.username} — the seat is claimed (still shows as Vacant) until they get a club.`
-          : `No club found for @${targetProfile.username} and no vacant seats to claim.`,
-      })
+  if (!result.ok) {
+    if (result.code === 'SACK_COOLDOWN') {
+      return Response.json(
+        {
+          error: `This manager was recently sacked. Wait until ${result.cooldownEndsAt} before reassigning.`,
+          code: 'SACK_COOLDOWN',
+          cooldown_ends_at: result.cooldownEndsAt,
+        },
+        { status: 409 }
+      )
     }
+    return Response.json({ error: result.message }, { status: 400 })
+  }
+
+  if (result.action === 'claim') {
+    return Response.json({
+      success: true,
+      action: 'claim',
+      filled: result.filled,
+      message: result.filled > 0
+        ? `No club found for @${result.username} — the seat is claimed (still shows as Vacant) until they get a club.`
+        : `No club found for @${result.username} and no vacant seats to claim.`,
+    })
+  }
+
+  if (result.action === 'fill') {
     return Response.json({
       success: true,
       action: 'fill',
       filled: result.filled,
       club: result.clubName,
       message: result.filled > 0
-        ? `${result.clubName ?? '@' + targetProfile.username} has taken over the vacant seat.`
-        : `No vacant seat was found for ${result.clubName ?? '@' + targetProfile.username} to fill.`,
+        ? `${result.clubName ?? '@' + result.username} has taken over the vacant seat.`
+        : `No vacant seat was found for ${result.clubName ?? '@' + result.username} to fill.`,
     })
-  } else {
-    // Reclaim the club's own seats in active tournaments so a sacked seat is
-    // handed back to the incoming manager instead of staying Vacant.
-    await reclaimManagerSlots(adminSupabase, user_id, resolvedTeamId)
   }
 
   return Response.json({ success: true })

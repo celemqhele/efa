@@ -21,6 +21,19 @@ import { insertNotificationsAndPush } from '@/lib/notify'
 import { parseUserDate } from '@/lib/date-parser'
 import { listOpenSeasons, getSeasonPickableTeams, userInSeason } from '@/lib/season-applications'
 import { reclaimManagerSlots } from '@/lib/slot-utils'
+import {
+  ActiveClub,
+  assignManagerToClub,
+  countPendingFixturesForClub,
+  getCooldownEndsAt,
+  listFreeManagers,
+  listManagedClubsInTournament,
+  listManagerlessClubs,
+  loadActiveClubs,
+  promoteManagerToClub,
+  replaceManagerOnClub,
+  sackManagerFromClub,
+} from '@/lib/manager-mgmt'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { getSastDateKey } from '@/lib/app-time'
@@ -173,9 +186,24 @@ function cleanTeamInput(input: string): string {
 
 // Known commands. Ordered from most specific to most generic so multi-word
 // admin commands match before the generic "backdoor" keyword.
-const COMMAND_PHRASES: [string, 'manager_applications' | 'backdoor_submissions' | 'backdoor_admin' | 'backdoor' | 'check_fixtures' | 'apply' | 'submit_result' | 'tournament_applications' | 'reset_password'][] = [
+type CommandHandler =
+  | 'manager_applications'
+  | 'manage_clubs'
+  | 'backdoor_submissions'
+  | 'backdoor_admin'
+  | 'backdoor'
+  | 'check_fixtures'
+  | 'apply'
+  | 'submit_result'
+  | 'tournament_applications'
+  | 'reset_password'
+
+const COMMAND_PHRASES: [string, CommandHandler][] = [
   ['manager applications', 'manager_applications'],
   ['manager apps', 'manager_applications'],
+  ['manage clubs', 'manage_clubs'],
+  ['manage managers', 'manage_clubs'],
+  ['manager tools', 'manage_clubs'],
 
   ['backdoor submissions', 'backdoor_submissions'],
   ['backdoor admin', 'backdoor_admin'],
@@ -469,6 +497,33 @@ const msg = messages[0]
 
 // ─── Session helpers ─────────────────────────────────────────────────────────────
 
+type MgmtStep =
+  | 'menu'
+  | 'assign_team'
+  | 'assign_manager'
+  | 'assign_cooldown'
+  | 'assign_confirm'
+  | 'sack_tournament'
+  | 'sack_team'
+  | 'sack_action'
+  | 'sack_replace_mode'
+  | 'sack_replacement'
+  | 'sack_replacement_cooldown'
+  | 'sack_confirm'
+  | 'promote_manager'
+  | 'promote_team'
+  | 'promote_confirm'
+  | 'promote_cooldown'
+
+// A club offered for assignment. `seats` is how many active-tournament seats the
+// club holds — the flow assigns the club, not the seat, but the count tells the
+// admin how much is riding on the change.
+type MgmtTeamOption = { id: string; name: string; tournamentName: string; division: number | null; seats: number }
+
+// A manager offered for assignment. Mirrors lib/manager-mgmt's MgmtManagerOption.
+// The session stores the same shape as jsonb.
+type MgmtManagerOption = { id: string; username: string; sackedAt: string | null }
+
 type SessionData = {
   phone_number: string
   state: string
@@ -515,6 +570,19 @@ type SessionData = {
   admin_assign_team_list: { id: string; name: string }[] | null
   admin_assign_selected_applicant_id: string | null
   admin_assign_selected_team_id: string | null
+  // Admin manager-management flow (assign / sack / promote). Separate from the
+  // admin_assign_* columns above: both are reachable from the same admin numbers,
+  // so they must not share a list slot. See migration 088.
+  mgmt_step: MgmtStep | null
+  mgmt_team_list: MgmtTeamOption[] | null
+  mgmt_manager_list: MgmtManagerOption[] | null
+  mgmt_tournament_list: { id: string; name: string; division: number | null }[] | null
+  mgmt_selected_team_id: string | null
+  mgmt_selected_manager_id: string | null
+  mgmt_selected_tournament_id: string | null
+  mgmt_current_manager_id: string | null
+  mgmt_promote_source_team_id: string | null
+  mgmt_page: number
 }
 
 async function getSession(phoneNumber: string): Promise<SessionData | null> {
@@ -596,6 +664,20 @@ function loggedInWelcomeMenu(username: string): string {
     '6. Reset my password'
 }
 
+// Admin variant of the welcome menu. Appended to the manager menu (or the
+// anonymous one, for an admin who has no profile of their own) so the three
+// club-management flows are reachable by number instead of by keyword. Numbers
+// 7-9 are only ever offered here — no other sender is shown them, and every
+// handler behind them re-checks isAdminPhone().
+function adminWelcomeMenu(base: string): string {
+  return (
+    base +
+    '\n\n7. Assign a manager to a club' +
+    '\n8. Sack a manager' +
+    '\n9. Promote a manager to Division 1'
+  )
+}
+
 // A manager whose phone number is on the system (so the bot knows who is texting).
 type LoggedInManager = {
   profileId: string
@@ -631,10 +713,12 @@ async function getLoggedInManager(from: string): Promise<LoggedInManager | null>
 }
 
 // Sends the right welcome menu for the sender: the personalised logged-in menu
-// when their number matches the system, the generic one otherwise.
+// when their number matches the system, the generic one otherwise. Admin numbers
+// get options 7-9 appended to whichever base they would otherwise have seen.
 async function sendWelcomeMenu(from: string, phoneNumberId: string) {
   const manager = await getLoggedInManager(from)
-  await sendTextMessage(from, manager ? loggedInWelcomeMenu(manager.username) : WELCOME_MENU, phoneNumberId)
+  const base = manager ? loggedInWelcomeMenu(manager.username) : WELCOME_MENU
+  await sendTextMessage(from, isAdminPhone(from) ? adminWelcomeMenu(base) : base, phoneNumberId)
 }
 
 // Footer appended to free-text "info-request" prompts (score, team names, date,
@@ -709,6 +793,26 @@ async function handleStartAgain(from: string, text: string, phoneNumberId: strin
 async function handleWelcomeMenu(from: string, text: string, phoneNumberId: string) {
   const num = extractNumber(text)
   const manager = await getLoggedInManager(from)
+
+  // Admin club-management options. Checked before the manager branches so an
+  // admin who also owns a club reaches them, and gated on isAdminPhone so a
+  // non-admin typing 7-9 just gets the menu back.
+  if (num === 7 || num === 8 || num === 9) {
+    if (!isAdminPhone(from)) {
+      await sendWelcomeMenu(from, phoneNumberId)
+      return
+    }
+    if (num === 7) {
+      await startMgmtAssign(from, phoneNumberId)
+      return
+    }
+    if (num === 8) {
+      await startMgmtSack(from, phoneNumberId)
+      return
+    }
+    await startMgmtPromote(from, phoneNumberId)
+    return
+  }
 
   if (manager) {
     if (num === 1) {
@@ -3462,6 +3566,1058 @@ async function applyManagerAssignment(
   return { success: true, message: `@${applicant?.username ?? 'user'} is now the manager of ${team.name}.` }
 }
 
+// ─── Admin: club & manager management (assign / sack / promote) ───────────────
+// Three multi-step flows on one session state (awaiting_admin_mgmt), branched by
+// mgmt_step. Candidate lists are snapshotted into the session as jsonb so the
+// numbering the admin replies to stays fixed even if someone is sacked or
+// assigned mid-flow. All mutations go through lib/manager-mgmt.ts — the same
+// service the web admin routes use — so a WhatsApp action and a dashboard action
+// produce identical seat, tenure, forfeit and audit behaviour.
+
+const MGMT_PAGE_SIZE = 20
+const MGMT_HINT = 'Reply with a number. Type CANCEL to stop.'
+
+// One guard for every step. The menu is admin-only, but the step handlers are
+// reachable from any mid-flow state, so the check is repeated at each one and a
+// non-admin's in-flight session is dropped rather than left half-open.
+async function mgmtGuard(from: string, phoneNumberId: string): Promise<boolean> {
+  if (isAdminPhone(from)) return true
+  await clearSession(from)
+  await sendTextMessage(from, 'Admin only.', phoneNumberId)
+  return false
+}
+
+function renderClubs(clubs: ActiveClub[], header: string): string {
+  const lines = clubs.map((c, i) => {
+    const tour = c.tournaments[0] ? ` [${c.tournaments[0]}]` : ''
+    return `${i + 1}. ${c.name}${tour}`
+  })
+  return `${header}\n\n${lines.join('\n')}\n\n${MGMT_HINT}`
+}
+
+// 20 per page keeps the message inside WhatsApp's limit. Paging uses words, not
+// numbers, because the numbers are already taken by the manager list.
+function renderManagerPage(
+  managers: MgmtManagerOption[],
+  page: number,
+  context: string
+): string {
+  const pages = Math.max(1, Math.ceil(managers.length / MGMT_PAGE_SIZE))
+  const start = page * MGMT_PAGE_SIZE
+  const slice = managers.slice(start, start + MGMT_PAGE_SIZE)
+
+  const lines = slice.map((m, i) => {
+    const banned = getCooldownEndsAt(m.sackedAt) ? ' (banned)' : ''
+    return `${i + 1}. @${m.username}${banned}`
+  })
+
+  const nav: string[] = []
+  if (page > 0) nav.push('PREV')
+  if (start + MGMT_PAGE_SIZE < managers.length) nav.push('NEXT')
+  if (managers.length > MGMT_PAGE_SIZE) nav.push(`type a name to search (page ${page + 1}/${pages})`)
+
+  return (
+    `${context}\n\n${lines.join('\n')}` +
+    (nav.length ? `\n\n${nav.join(' · ')}` : '') +
+    `\n\n${MGMT_HINT}`
+  )
+}
+
+// Resolves a manager reply against the current page: a number picks that entry,
+// NEXT/PREV page, anything else is a username search over the whole list. A
+// search that matches exactly one manager picks them immediately, which makes
+// "jump to dot7" a single message.
+async function resolveManagerPick(
+  session: SessionData,
+  text: string
+): Promise<
+  | { kind: 'picked'; manager: MgmtManagerOption }
+  | { kind: 'page'; page: number }
+  | { kind: 'searched'; matches: MgmtManagerOption[] }
+  | { kind: 'reset' }
+  | { kind: 'narrowed' }
+> {
+  const all = session.mgmt_manager_list ?? []
+  const page = session.mgmt_page ?? 0
+
+  const lower = normalizeText(text).toLowerCase().replace(/^@/, '')
+
+  // A search narrows the stored list, so it needs a way back out.
+  if (lower === 'all' || lower === 'list') return { kind: 'reset' }
+
+  if (lower === 'next' || lower === 'more') {
+    const maxPage = Math.max(0, Math.ceil(all.length / MGMT_PAGE_SIZE) - 1)
+    return { kind: 'page', page: Math.min(maxPage, page + 1) }
+  }
+  if (lower === 'prev' || lower === 'back') {
+    return { kind: 'page', page: Math.max(0, page - 1) }
+  }
+
+  const num = extractNumber(text)
+  if (num !== null && /^\s*\d+\s*$/.test(normalizeText(text))) {
+    const slice = all.slice(page * MGMT_PAGE_SIZE, page * MGMT_PAGE_SIZE + MGMT_PAGE_SIZE)
+    const picked = slice[num - 1]
+    if (picked) return { kind: 'picked', manager: picked }
+    return { kind: 'narrowed' }
+  }
+
+  if (lower.length === 0) return { kind: 'narrowed' }
+
+  const matches = all.filter((m) => m.username.toLowerCase().includes(lower))
+  if (matches.length === 1) return { kind: 'picked', manager: matches[0] }
+  return { kind: 'searched', matches }
+}
+
+function formatCooldownDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Africa/Johannesburg',
+  })
+}
+
+// ─── Flow A: assign a manager to a managerless club ──────────────────────────
+
+async function startMgmtAssign(from: string, phoneNumberId: string) {
+  if (!(await mgmtGuard(from, phoneNumberId))) return
+
+  const supabase = await createAdminClient()
+  const clubs = await listManagerlessClubs(supabase)
+
+  if (clubs.length === 0) {
+    await sendTextMessage(from, 'Every club in an active tournament has a manager right now.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_admin_mgmt',
+    mgmt_step: 'assign_team',
+    mgmt_team_list: clubs.map((c) => ({
+      id: c.teamId,
+      name: c.name,
+      tournamentName: c.tournaments[0] ?? '',
+      division: c.division,
+      seats: c.tournaments.length,
+    })),
+    mgmt_manager_list: null,
+    mgmt_tournament_list: null,
+    mgmt_page: 0,
+    mgmt_selected_team_id: null,
+    mgmt_selected_manager_id: null,
+    mgmt_selected_tournament_id: null,
+    mgmt_current_manager_id: null,
+    mgmt_promote_source_team_id: null,
+  })
+
+  await sendTextMessage(
+    from,
+    renderClubs(
+      clubs.map((c) => ({ ...c, tournaments: c.tournaments.slice(0, 1) })),
+      'Clubs with no manager (active tournaments):'
+    ),
+    phoneNumberId
+  )
+}
+
+async function mgmtAssignTeam(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+  if (isStartAgain(text)) {
+    await startMgmtAssign(from, phoneNumberId)
+    return
+  }
+
+  const clubs = session.mgmt_team_list ?? []
+  const num = extractNumber(text)
+  const club = num !== null ? clubs[num - 1] : undefined
+  if (!club) {
+    await sendTextMessage(from, `Pick a number between 1 and ${clubs.length}. ${MGMT_HINT}`, phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const managers = await listFreeManagers(supabase)
+
+  if (managers.length === 0) {
+    await clearSession(from)
+    await sendTextMessage(from, 'No manager is free right now — everyone already has a club.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    mgmt_step: 'assign_manager',
+    mgmt_selected_team_id: club.id,
+    mgmt_manager_list: managers,
+    mgmt_page: 0,
+  })
+
+  await sendTextMessage(
+    from,
+    renderManagerPage(managers, 0, `Assign a manager to ${club.name}:`),
+    phoneNumberId
+  )
+}
+
+// Both flows share this: a picked manager either goes straight to the confirm
+// step, or — when the week-long post-sack ban applies — through an explicit
+// override step that mirrors the web admin's override button.
+async function mgmtManagerPicked(
+  from: string,
+  session: SessionData,
+  manager: MgmtManagerOption,
+  nextStep: MgmtStep,
+  phoneNumberId: string
+) {
+  const clubs = session.mgmt_team_list ?? []
+  const club = clubs.find((c) => c.id === session.mgmt_selected_team_id)
+  const clubName = club?.name ?? 'the club'
+
+  await upsertSession({ phone_number: from, mgmt_selected_manager_id: manager.id })
+
+  const cooldownEndsAt = getCooldownEndsAt(manager.sackedAt)
+  if (cooldownEndsAt) {
+    await upsertSession({ phone_number: from, mgmt_step: 'assign_cooldown' })
+    await sendTextMessage(
+      from,
+      `Manager in cooldown\n\n` +
+        `@${manager.username} was recently sacked. You can reassign them starting ${formatCooldownDate(cooldownEndsAt)}.\n` +
+        `Club: ${clubName}\n\n` +
+        `1. Override cooldown and assign\n` +
+        `2. Cancel\n\n` +
+        `Reply 1 or 2.`,
+      phoneNumberId
+    )
+    return
+  }
+
+  await upsertSession({ phone_number: from, mgmt_step: nextStep })
+  await sendTextMessage(
+    from,
+    `Assign @${manager.username} to ${clubName}?\n\n1. Yes, assign\n2. Cancel\n\nReply 1 or 2.`,
+    phoneNumberId
+  )
+}
+
+async function mgmtAssignManager(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
+  const resolved = await resolveManagerPick(session, text)
+
+  if (resolved.kind === 'picked') {
+    await mgmtManagerPicked(from, session, resolved.manager, 'assign_confirm', phoneNumberId)
+    return
+  }
+  if (resolved.kind === 'page') {
+    await upsertSession({ phone_number: from, mgmt_page: resolved.page })
+    await sendTextMessage(
+      from,
+      renderManagerPage(session.mgmt_manager_list ?? [], resolved.page, 'Assign a manager:'),
+      phoneNumberId
+    )
+    return
+  }
+  if (resolved.kind === 'searched' && resolved.matches.length > 1) {
+    await upsertSession({ phone_number: from, mgmt_manager_list: resolved.matches, mgmt_page: 0 })
+    await sendTextMessage(
+      from,
+      renderManagerPage(resolved.matches, 0, `${resolved.matches.length} managers match:`),
+      phoneNumberId
+    )
+    return
+  }
+  if (resolved.kind === 'reset') {
+    await mgmtReloadManagers(from, session, 'Assign a manager:', phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(
+    from,
+    'That number is not on this page, and no manager matches that name. Type NEXT for more, a name to search, or ALL to reset.',
+    phoneNumberId
+  )
+}
+
+// Re-queries the unfiltered candidate list after a search narrowed it. The sacked
+// manager stays excluded on the replacement path so they are never offered as
+// their own replacement.
+async function mgmtReloadManagers(
+  from: string,
+  session: SessionData,
+  context: string,
+  phoneNumberId: string
+) {
+  const supabase = await createAdminClient()
+  const exclude =
+    session.mgmt_step === 'sack_replacement' && session.mgmt_current_manager_id
+      ? [session.mgmt_current_manager_id]
+      : []
+  const managers = await listFreeManagers(supabase, exclude)
+
+  if (managers.length === 0) {
+    await clearSession(from)
+    await sendTextMessage(from, 'No manager is free right now.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({ phone_number: from, mgmt_manager_list: managers, mgmt_page: 0 })
+  await sendTextMessage(from, renderManagerPage(managers, 0, context), phoneNumberId)
+}
+
+async function mgmtAssignCooldown(from: string, text: string, phoneNumberId: string) {
+  const num = extractNumber(text)
+  if (num === 2 || isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+  if (num !== 1) {
+    await sendTextMessage(from, 'Reply 1 to override the cooldown, or 2 to cancel.', phoneNumberId)
+    return
+  }
+
+  const session = await getSession(from)
+  if (!session?.mgmt_selected_manager_id || !session.mgmt_selected_team_id) {
+    await clearSession(from)
+    await sendTextMessage(from, 'That flow expired. Send the menu again.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const adminId = await getAdminProfileIdByPhone(supabase, from)
+  const club = (session.mgmt_team_list ?? []).find((c) => c.id === session.mgmt_selected_team_id)
+
+  const result = await assignManagerToClub(supabase, {
+    teamId: session.mgmt_selected_team_id,
+    userId: session.mgmt_selected_manager_id,
+    adminId,
+    override: true,
+  })
+
+  await clearSession(from)
+
+  if (!result.ok) {
+    await sendTextMessage(from, `Could not assign: ${'message' in result ? result.message : 'unknown error'}`, phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(
+    from,
+    `Done. @${result.username} now manages ${club?.name ?? result.teamName} (cooldown overridden).`,
+    phoneNumberId
+  )
+}
+
+async function mgmtAssignConfirm(from: string, text: string, phoneNumberId: string) {
+  const num = extractNumber(text)
+  if (num === 2 || isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+  if (num !== 1) {
+    await sendTextMessage(from, 'Reply 1 to assign, or 2 to cancel.', phoneNumberId)
+    return
+  }
+
+  const session = await getSession(from)
+  if (!session?.mgmt_selected_manager_id || !session.mgmt_selected_team_id) {
+    await clearSession(from)
+    await sendTextMessage(from, 'That flow expired. Send the menu again.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const adminId = await getAdminProfileIdByPhone(supabase, from)
+  const club = (session.mgmt_team_list ?? []).find((c) => c.id === session.mgmt_selected_team_id)
+
+  const result = await assignManagerToClub(supabase, {
+    teamId: session.mgmt_selected_team_id,
+    userId: session.mgmt_selected_manager_id,
+    adminId,
+    override: false,
+  })
+
+  await clearSession(from)
+
+  if (!result.ok) {
+    const reason = result.code === 'SACK_COOLDOWN' ? `@${club?.name ?? 'that manager'} is in cooldown.` : result.message
+    await sendTextMessage(from, `Could not assign: ${reason}`, phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(from, `Done. @${result.username} now manages ${result.teamName}.`, phoneNumberId)
+}
+
+// ─── Flow B: sack a manager ───────────────────────────────────────────────────
+
+async function startMgmtSack(from: string, phoneNumberId: string) {
+  if (!(await mgmtGuard(from, phoneNumberId))) return
+
+  const supabase = await createAdminClient()
+  const { data: tournaments } = await supabase
+    .from('tournaments')
+    .select('id, name, division')
+    .eq('status', 'active')
+    .order('name')
+
+  const tours = (tournaments ?? []) as { id: string; name: string; division: number | null }[]
+  if (tours.length === 0) {
+    await sendTextMessage(from, 'There are no active tournaments right now.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_admin_mgmt',
+    mgmt_step: 'sack_tournament',
+    mgmt_tournament_list: tours,
+    // Every flow start clears the whole selection. Sessions are upserted, not
+    // recreated, so a stale mgmt_selected_manager_id from an earlier flow would
+    // otherwise turn "sack without a replacement" into a silent replacement.
+    mgmt_team_list: null,
+    mgmt_manager_list: null,
+    mgmt_selected_team_id: null,
+    mgmt_selected_manager_id: null,
+    mgmt_selected_tournament_id: null,
+    mgmt_current_manager_id: null,
+    mgmt_promote_source_team_id: null,
+    mgmt_page: 0,
+  })
+
+  const lines = tours.map((t, i) => {
+    const div = t.division !== null ? ` (Division ${t.division})` : ''
+    return `${i + 1}. ${t.name}${div}`
+  })
+
+  await sendTextMessage(from, `Which tournament?\n\n${lines.join('\n')}\n\n${MGMT_HINT}`, phoneNumberId)
+}
+
+async function mgmtSackTournament(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
+  const tours = session.mgmt_tournament_list ?? []
+  const num = extractNumber(text)
+  const tour = num !== null ? tours[num - 1] : undefined
+  if (!tour) {
+    await sendTextMessage(from, `Pick a number between 1 and ${tours.length}. ${MGMT_HINT}`, phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const managed = await listManagedClubsInTournament(supabase, tour.name)
+
+  if (managed.length === 0) {
+    await sendTextMessage(from, `No club in ${tour.name} has a manager right now.`, phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    mgmt_step: 'sack_team',
+    mgmt_selected_tournament_id: tour.id,
+    mgmt_team_list: managed.map((c) => ({
+      id: c.teamId,
+      name: c.name,
+      tournamentName: tour.name,
+      division: c.division,
+      seats: c.tournaments.length,
+    })),
+    mgmt_current_manager_id: null,
+  })
+
+  const lines = managed.map((c, i) => `${i + 1}. ${c.name} — @${c.managerUsername ?? 'unknown'}`)
+
+  await sendTextMessage(
+    from,
+    `Clubs in ${tour.name}:\n\n${lines.join('\n')}\n\n${MGMT_HINT}`,
+    phoneNumberId
+  )
+}
+
+async function mgmtSackTeam(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
+  const clubs = session.mgmt_team_list ?? []
+  const num = extractNumber(text)
+  const club = num !== null ? clubs[num - 1] : undefined
+  if (!club) {
+    await sendTextMessage(from, `Pick a number between 1 and ${clubs.length}. ${MGMT_HINT}`, phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const { data: team } = await supabase
+    .from('teams')
+    .select('manager_id')
+    .eq('id', club.id)
+    .maybeSingle()
+
+  const managerId = team?.manager_id ?? null
+  if (!managerId) {
+    await sendTextMessage(from, `${club.name} has no manager any more. Start again.`, phoneNumberId)
+    return
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', managerId)
+    .maybeSingle()
+
+  await upsertSession({
+    phone_number: from,
+    mgmt_step: 'sack_action',
+    mgmt_selected_team_id: club.id,
+    mgmt_current_manager_id: managerId,
+  })
+
+  await sendTextMessage(
+    from,
+    `${club.name} is managed by @${profile?.username ?? 'unknown'}.\n\n` +
+      `1. Sack this manager\n` +
+      `2. Main menu\n\n` +
+      `Reply 1 or 2.`,
+    phoneNumberId
+  )
+}
+
+async function mgmtSackAction(from: string, text: string, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
+  const num = extractNumber(text)
+  if (num === 2) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+  if (num !== 1) {
+    await sendTextMessage(from, 'Reply 1 to sack, or 2 for the main menu.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({ phone_number: from, mgmt_step: 'sack_replace_mode' })
+  await sendTextMessage(
+    from,
+    `Sack the manager?\n\n` +
+      `1. Sack without a replacement\n` +
+      `2. Sack and give the club a new manager\n\n` +
+      `Reply 1 or 2.`,
+    phoneNumberId
+  )
+}
+
+async function mgmtSackReplaceMode(from: string, text: string, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
+  const num = extractNumber(text)
+
+  if (num === 1) {
+    const session = await getSession(from)
+    if (!session?.mgmt_selected_team_id) {
+      await clearSession(from)
+      await sendTextMessage(from, 'That flow expired. Send the menu again.', phoneNumberId)
+      return
+    }
+    const club = (session.mgmt_team_list ?? []).find((c) => c.id === session.mgmt_selected_team_id)
+    const supabase = await createAdminClient()
+    const pending = await countPendingFixturesForClub(supabase, session.mgmt_selected_team_id)
+
+    // Explicitly drop any replacement: this branch is the no-replacement path and
+    // must never inherit a manager chosen earlier in the same session.
+    await upsertSession({
+      phone_number: from,
+      mgmt_step: 'sack_confirm',
+      mgmt_selected_manager_id: null,
+    })
+    await sendTextMessage(
+      from,
+      `Sack the manager of ${club?.name ?? 'this club'} with no replacement?\n\n` +
+        `The club stays, but it loses its manager and its ${pending} remaining fixture${pending === 1 ? '' : 's'} will be forfeited 3-0.\n\n` +
+        `1. Yes, sack\n` +
+        `2. Cancel\n\n` +
+        `Reply 1 or 2.`,
+      phoneNumberId
+    )
+    return
+  }
+
+  if (num === 2) {
+    const session = await getSession(from)
+    if (!session?.mgmt_selected_team_id || !session.mgmt_current_manager_id) {
+      await clearSession(from)
+      await sendTextMessage(from, 'That flow expired. Send the menu again.', phoneNumberId)
+      return
+    }
+
+    const supabase = await createAdminClient()
+    // The manager being sacked must not be offered as their own replacement.
+    const managers = await listFreeManagers(supabase, [session.mgmt_current_manager_id])
+    const club = (session.mgmt_team_list ?? []).find((c) => c.id === session.mgmt_selected_team_id)
+
+    if (managers.length === 0) {
+      await sendTextMessage(from, 'No other manager is free right now.', phoneNumberId)
+      return
+    }
+
+    await upsertSession({
+      phone_number: from,
+      mgmt_step: 'sack_replacement',
+      mgmt_manager_list: managers,
+      mgmt_page: 0,
+    })
+
+    await sendTextMessage(
+      from,
+      renderManagerPage(managers, 0, `New manager for ${club?.name ?? 'the club'}:`),
+      phoneNumberId
+    )
+    return
+  }
+
+  await sendTextMessage(from, 'Reply 1 to sack without a replacement, or 2 to bring in a new manager.', phoneNumberId)
+}
+
+async function mgmtSackReplacement(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
+  const resolved = await resolveManagerPick(session, text)
+
+  if (resolved.kind === 'picked') {
+    const club = (session.mgmt_team_list ?? []).find((c) => c.id === session.mgmt_selected_team_id)
+    const supabase = await createAdminClient()
+    const { data: current } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', session.mgmt_current_manager_id ?? '')
+      .maybeSingle()
+
+    await upsertSession({ phone_number: from, mgmt_selected_manager_id: resolved.manager.id })
+
+    const cooldownEndsAt = getCooldownEndsAt(resolved.manager.sackedAt)
+    if (cooldownEndsAt) {
+      await upsertSession({ phone_number: from, mgmt_step: 'sack_replacement_cooldown' })
+      await sendTextMessage(
+        from,
+        `Manager in cooldown\n\n` +
+          `@${resolved.manager.username} was recently sacked. You can reassign them starting ${formatCooldownDate(cooldownEndsAt)}.\n` +
+          `Club: ${club?.name ?? 'the club'}\n\n` +
+          `1. Override cooldown and sack with replacement\n` +
+          `2. Cancel\n\n` +
+          `Reply 1 or 2.`,
+        phoneNumberId
+      )
+      return
+    }
+
+    await upsertSession({ phone_number: from, mgmt_step: 'sack_confirm' })
+    await sendTextMessage(
+      from,
+      `Sack @${current?.username ?? 'the current manager'} and replace them with @${resolved.manager.username} on ${club?.name ?? 'the club'}?\n\n` +
+        `1. Yes, do it\n` +
+        `2. Cancel\n\n` +
+        `Reply 1 or 2.`,
+      phoneNumberId
+    )
+    return
+  }
+
+  if (resolved.kind === 'page') {
+    await upsertSession({ phone_number: from, mgmt_page: resolved.page })
+    await sendTextMessage(
+      from,
+      renderManagerPage(session.mgmt_manager_list ?? [], resolved.page, 'New manager:'),
+      phoneNumberId
+    )
+    return
+  }
+
+  if (resolved.kind === 'searched' && resolved.matches.length > 1) {
+    await upsertSession({ phone_number: from, mgmt_manager_list: resolved.matches, mgmt_page: 0 })
+    await sendTextMessage(
+      from,
+      renderManagerPage(resolved.matches, 0, `${resolved.matches.length} managers match:`),
+      phoneNumberId
+    )
+    return
+  }
+  if (resolved.kind === 'reset') {
+    await mgmtReloadManagers(from, session, 'New manager:', phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(
+    from,
+    'That number is not on this page, and no manager matches that name. Type NEXT for more, a name to search, or ALL to reset.',
+    phoneNumberId
+  )
+}
+
+async function mgmtSackConfirm(from: string, text: string, phoneNumberId: string, override: boolean) {
+  const num = extractNumber(text)
+  if (num === 2 || isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+  if (num !== 1) {
+    await sendTextMessage(from, 'Reply 1 to confirm, or 2 to cancel.', phoneNumberId)
+    return
+  }
+
+  const session = await getSession(from)
+  if (!session?.mgmt_selected_team_id) {
+    await clearSession(from)
+    await sendTextMessage(from, 'That flow expired. Send the menu again.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const adminId = await getAdminProfileIdByPhone(supabase, from)
+  const replacement = session.mgmt_selected_manager_id
+
+  await clearSession(from)
+
+  // No replacement chosen: a plain sack. Chosen: sack + assign in one action, so
+  // the club is never left ownerless if the second half fails.
+  const result = replacement
+    ? await replaceManagerOnClub(supabase, {
+        teamId: session.mgmt_selected_team_id,
+        fromUserId: session.mgmt_current_manager_id ?? '',
+        toUserId: replacement,
+        adminId,
+        override,
+      })
+    : await sackManagerFromClub(supabase, { teamId: session.mgmt_selected_team_id, adminId })
+
+  if (!result.ok) {
+    await sendTextMessage(from, `Could not complete: ${result.message}`, phoneNumberId)
+    return
+  }
+
+  if ('sackedUsername' in result) {
+    await sendTextMessage(
+      from,
+      `Done. @${result.sackedUsername} was sacked and @${result.username} now manages ${result.teamName}.`,
+      phoneNumberId
+    )
+    return
+  }
+
+  await sendTextMessage(
+    from,
+    `Done. @${result.username} was sacked from ${result.teamName}. The club stays and its remaining fixtures forfeit.`,
+    phoneNumberId
+  )
+}
+
+// ─── Flow C: promote a Division 2 manager into a Division 1 club ──────────────
+
+async function startMgmtPromote(from: string, phoneNumberId: string) {
+  if (!(await mgmtGuard(from, phoneNumberId))) return
+
+  const supabase = await createAdminClient()
+  const clubs = (await loadActiveClubs(supabase)).filter((c) => c.division === 2 && c.managed)
+
+  if (clubs.length === 0) {
+    await sendTextMessage(from, 'No Division 2 club has a manager to promote right now.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_admin_mgmt',
+    mgmt_step: 'promote_manager',
+    mgmt_team_list: clubs.map((c) => ({
+      id: c.teamId,
+      name: c.name,
+      tournamentName: c.tournaments[0] ?? '',
+      division: c.division,
+      seats: c.tournaments.length,
+    })),
+    mgmt_current_manager_id: null,
+    mgmt_promote_source_team_id: null,
+    mgmt_page: 0,
+  })
+
+  const lines = clubs.map((c, i) => `${i + 1}. @${c.managerUsername ?? 'unknown'} — ${c.name}`)
+
+  await sendTextMessage(
+    from,
+    `Promote which manager from Division 2?\n\n${lines.join('\n')}\n\n${MGMT_HINT}`,
+    phoneNumberId
+  )
+}
+
+async function mgmtPromoteManager(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
+  const clubs = session.mgmt_team_list ?? []
+  const num = extractNumber(text)
+  const club = num !== null ? clubs[num - 1] : undefined
+  if (!club) {
+    await sendTextMessage(from, `Pick a number between 1 and ${clubs.length}. ${MGMT_HINT}`, phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const { data: team } = await supabase.from('teams').select('manager_id').eq('id', club.id).maybeSingle()
+  if (!team?.manager_id) {
+    await sendTextMessage(from, `${club.name} has no manager any more. Start again.`, phoneNumberId)
+    return
+  }
+
+  const targets = await listManagerlessClubs(supabase, { division: 1 })
+  if (targets.length === 0) {
+    await sendTextMessage(from, 'Every Division 1 club already has a manager.', phoneNumberId)
+    return
+  }
+
+  await upsertSession({
+    phone_number: from,
+    mgmt_step: 'promote_team',
+    mgmt_current_manager_id: team.manager_id,
+    mgmt_promote_source_team_id: club.id,
+    mgmt_team_list: targets.map((c) => ({
+      id: c.teamId,
+      name: c.name,
+      tournamentName: c.tournaments[0] ?? '',
+      division: c.division,
+      seats: c.tournaments.length,
+    })),
+  })
+
+  const lines = targets.map((c, i) => `${i + 1}. ${c.name}${c.tournaments[0] ? ` [${c.tournaments[0]}]` : ''}`)
+
+  await sendTextMessage(
+    from,
+    `Move @${club.name}'s manager into which Division 1 club?\n\n${lines.join('\n')}\n\n${MGMT_HINT}`,
+    phoneNumberId
+  )
+}
+
+async function mgmtPromoteTeam(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+
+  const targets = session.mgmt_team_list ?? []
+  const num = extractNumber(text)
+  const target = num !== null ? targets[num - 1] : undefined
+  if (!target) {
+    await sendTextMessage(from, `Pick a number between 1 and ${targets.length}. ${MGMT_HINT}`, phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const pending = await countPendingFixturesForClub(supabase, session.mgmt_promote_source_team_id ?? '')
+
+  await upsertSession({ phone_number: from, mgmt_step: 'promote_confirm', mgmt_selected_team_id: target.id })
+  await sendTextMessage(
+    from,
+    `Promote this manager to ${target.name}?\n\n` +
+      `The old Division 2 club will lose its manager, and its ${pending} remaining fixture${pending === 1 ? '' : 's'} will be forfeited 3-0.\n\n` +
+      `1. Yes, promote\n` +
+      `2. Cancel\n\n` +
+      `Reply 1 or 2.`,
+    phoneNumberId
+  )
+}
+
+async function mgmtPromoteConfirm(
+  from: string,
+  text: string,
+  phoneNumberId: string,
+  override = false
+) {
+  const num = extractNumber(text)
+  if (num === 2 || isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+  if (num !== 1) {
+    await sendTextMessage(from, 'Reply 1 to promote, or 2 to cancel.', phoneNumberId)
+    return
+  }
+
+  const session = await getSession(from)
+  if (!session?.mgmt_selected_team_id || !session.mgmt_promote_source_team_id || !session.mgmt_current_manager_id) {
+    await clearSession(from)
+    await sendTextMessage(from, 'That flow expired. Send the menu again.', phoneNumberId)
+    return
+  }
+
+  const supabase = await createAdminClient()
+  const adminId = await getAdminProfileIdByPhone(supabase, from)
+
+  const result = await promoteManagerToClub(supabase, {
+    fromTeamId: session.mgmt_promote_source_team_id,
+    toTeamId: session.mgmt_selected_team_id,
+    userId: session.mgmt_current_manager_id,
+    adminId,
+    override,
+  })
+
+  // Cooldown is caught before anything is written, so the club is untouched and
+  // the admin gets the same explicit override choice the assign path offers.
+  if (!result.ok && result.code === 'SACK_COOLDOWN') {
+    await upsertSession({
+      phone_number: from,
+      state: 'awaiting_admin_mgmt',
+      mgmt_step: 'promote_cooldown',
+    })
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', session.mgmt_current_manager_id)
+      .maybeSingle()
+    await sendTextMessage(
+      from,
+      `Manager in cooldown\n\n` +
+        `@${profile?.username ?? 'this manager'} was recently sacked. You can promote them starting ${formatCooldownDate(result.cooldownEndsAt)}.\n` +
+        `The old club and its fixtures have NOT been touched yet.\n\n` +
+        `1. Override cooldown and promote\n` +
+        `2. Cancel\n\n` +
+        `Reply 1 or 2.`,
+      phoneNumberId
+    )
+    return
+  }
+
+  await clearSession(from)
+
+  if (!result.ok) {
+    await sendTextMessage(from, `Could not promote: ${result.message}`, phoneNumberId)
+    return
+  }
+
+  await sendTextMessage(
+    from,
+    `Done. @${result.username} now manages ${result.teamName} in Division 1. The old club is managerless and its remaining fixtures forfeit.`,
+    phoneNumberId
+  )
+}
+
+// ─── Cooldown override for the sack-with-replacement path ────────────────────
+// Identical gate to the assign path, but it carries the replacement through.
+async function mgmtSackReplacementCooldown(from: string, text: string, phoneNumberId: string) {
+  const num = extractNumber(text)
+  if (num === 2 || isCancel(text)) {
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
+    return
+  }
+  if (num !== 1) {
+    await sendTextMessage(from, 'Reply 1 to override the cooldown, or 2 to cancel.', phoneNumberId)
+    return
+  }
+  await mgmtSackConfirm(from, '1', phoneNumberId, true)
+}
+
+// Single dispatch point for all three flows.
+async function handleMgmtStep(from: string, text: string, session: SessionData, phoneNumberId: string) {
+  if (!(await mgmtGuard(from, phoneNumberId))) return
+
+  switch (session.mgmt_step) {
+    case 'menu': {
+      if (isCancel(text)) {
+        await clearSession(from)
+        await sendWelcomeMenu(from, phoneNumberId)
+        return
+      }
+      const num = extractNumber(text)
+      if (num === 1) return startMgmtAssign(from, phoneNumberId)
+      if (num === 2) return startMgmtSack(from, phoneNumberId)
+      if (num === 3) return startMgmtPromote(from, phoneNumberId)
+      await sendTextMessage(from, 'Reply 1, 2 or 3 to choose an action.', phoneNumberId)
+      return
+    }
+    case 'assign_team':
+      return mgmtAssignTeam(from, text, session, phoneNumberId)
+    case 'assign_manager':
+      return mgmtAssignManager(from, text, session, phoneNumberId)
+    case 'assign_cooldown':
+      return mgmtAssignCooldown(from, text, phoneNumberId)
+    case 'assign_confirm':
+      return mgmtAssignConfirm(from, text, phoneNumberId)
+    case 'sack_tournament':
+      return mgmtSackTournament(from, text, session, phoneNumberId)
+    case 'sack_team':
+      return mgmtSackTeam(from, text, session, phoneNumberId)
+    case 'sack_action':
+      return mgmtSackAction(from, text, phoneNumberId)
+    case 'sack_replace_mode':
+      return mgmtSackReplaceMode(from, text, phoneNumberId)
+    case 'sack_replacement':
+      return mgmtSackReplacement(from, text, session, phoneNumberId)
+    case 'sack_replacement_cooldown':
+      return mgmtSackReplacementCooldown(from, text, phoneNumberId)
+    case 'sack_confirm':
+      return mgmtSackConfirm(from, text, phoneNumberId, false)
+    case 'promote_manager':
+      return mgmtPromoteManager(from, text, session, phoneNumberId)
+    case 'promote_team':
+      return mgmtPromoteTeam(from, text, session, phoneNumberId)
+    case 'promote_confirm':
+      return mgmtPromoteConfirm(from, text, phoneNumberId)
+    case 'promote_cooldown': {
+      const choice = extractNumber(text)
+      if (choice === 2 || isCancel(text)) {
+        await clearSession(from)
+        await sendWelcomeMenu(from, phoneNumberId)
+        return
+      }
+      if (choice !== 1) {
+        await sendTextMessage(from, 'Reply 1 to override and promote, or 2 to cancel.', phoneNumberId)
+        return
+      }
+      return mgmtPromoteConfirm(from, '1', phoneNumberId, true)
+    }
+    default:
+      await clearSession(from)
+      await sendWelcomeMenu(from, phoneNumberId)
+  }
+}
+
 // ─── Forfeit flow ───────────────────────────────────────────────────────────
 
 async function handleForfeitYes(from: string, session: SessionData, supabase: any, phoneNumberId: string) {
@@ -3865,6 +5021,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     await handleManagerApplicationsConfirm(from, text, session, phoneNumberId)
     return
   }
+  // ─── Admin: club & manager management (assign / sack / promote) ───────────
+  if (session?.state === 'awaiting_admin_mgmt') {
+    await handleMgmtStep(from, text, session, phoneNumberId)
+    return
+  }
 
   // ─── Backdoor admin flow ──────────────────────────────────────────────────
   if (session?.state === 'awaiting_backdoor_admin_review') {
@@ -3979,6 +5140,24 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   // ─── Admin: manager applications command ────────────────────────────────────
   if (command === 'manager_applications') {
     await handleManagerApplicationsStart(from, phoneNumberId)
+    return
+  }
+  // ─── Admin: club & manager management command ──────────────────────────────
+  if (command === 'manage_clubs') {
+    if (!isAdminPhone(from)) {
+      await sendTextMessage(from, 'Admin only.', phoneNumberId)
+      return
+    }
+    await upsertSession({ phone_number: from, state: 'awaiting_admin_mgmt', mgmt_step: 'menu' })
+    await sendTextMessage(
+      from,
+      'Club & manager management:\n\n' +
+        '1. Assign a manager to a club with no manager\n' +
+        '2. Sack a manager\n' +
+        '3. Promote a Division 2 manager to Division 1\n\n' +
+        'Reply 1, 2 or 3. Type CANCEL to stop.',
+      phoneNumberId
+    )
     return
   }
   if (command === 'submit_result') {
