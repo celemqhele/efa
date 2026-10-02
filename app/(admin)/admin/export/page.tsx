@@ -100,6 +100,7 @@ function StandingsTable({
   offset = 0,
   qualifiersPerGroup = 2,
   zones = null,
+  total,
 }: {
   rows: any[]
   mode: 'league' | 'group'
@@ -107,6 +108,9 @@ function StandingsTable({
   offset?: number
   qualifiersPerGroup?: number
   zones?: StandingsZones | null
+  // Full-table row count. Zones are a property of the WHOLE table, so a chunk
+  // must pass the real total rather than letting it default to its own length.
+  total?: number
 }) {
   const rowEven: React.CSSProperties = { background: 'var(--export-row-bg)', borderRadius: '8px' }
   const rowOdd: React.CSSProperties = { background: 'transparent' }
@@ -138,7 +142,7 @@ function StandingsTable({
         const pos = i + offset
         const zone =
           mode === 'league'
-            ? rowZone(zones, pos, rows.length + offset)
+            ? rowZone(zones, pos, total ?? rows.length + offset)
             : null
         const borderColor =
           mode === 'league'
@@ -263,8 +267,45 @@ function StandingsTable({
   )
 }
 
-function StandingsLegend({ zones, style }: { zones: StandingsZones | null; style?: React.CSSProperties }) {
-  const items = zoneLegend(zones)
+// zoneLegend emits labels, but a chunk may only show some of the zones, so the
+// labels are mapped back to their kind to decide which ones to keep.
+const ZONE_LEGEND_KIND: Record<string, NonNullable<ZoneKind>> = {
+  Promotion: 'top_green',
+  'Promotion playoff': 'top_yellow',
+  'Relegation playoff': 'bottom_yellow',
+  Relegation: 'bottom_red',
+}
+
+// Which zone kinds actually land on these rows. Zones are a property of the
+// whole table, so a chunk must be judged against the same total its rows use.
+function zonesPresentInChunk(
+  zones: StandingsZones | null,
+  rows: any[],
+  offset: number,
+  total: number
+): ZoneKind[] {
+  if (!zones || rows.length === 0 || total <= 0) return []
+  const found = new Set<ZoneKind>()
+  for (let i = 0; i < rows.length; i++) {
+    const kind = rowZone(zones, i + offset, total)
+    if (kind) found.add(kind)
+  }
+  return [...found]
+}
+
+function StandingsLegend({
+  zones,
+  style,
+  present,
+}: {
+  zones: StandingsZones | null
+  style?: React.CSSProperties
+  present?: ZoneKind[]
+}) {
+  const presentSet = present ? new Set(present) : null
+  const items = zoneLegend(zones).filter(
+    (item) => !presentSet || presentSet.has(ZONE_LEGEND_KIND[item.label])
+  )
   if (items.length === 0) return null
   return (
     <div style={{ display: 'flex', gap: '16px', ...style }}>
@@ -296,6 +337,7 @@ type CardData = {
     managers?: any[]
     standings?: any[]
     standingsOffset?: number
+    standingsTotal?: number
     fixtures?: any[]
     results?: any[]
   }[]
@@ -471,13 +513,15 @@ export default async function ExportPage({ searchParams }: Props) {
               key: `${tournamentId}-${cardType}-chunk-1`,
               title: 'LEAGUE TABLE (FIRST HALF)',
               standings: leagueStandings.slice(0, halfCount),
-              standingsOffset: 0
+              standingsOffset: 0,
+              standingsTotal: leagueStandings.length
             })
             chunks.push({
               key: `${tournamentId}-${cardType}-chunk-2`,
               title: 'LEAGUE TABLE (SECOND HALF)',
               standings: leagueStandings.slice(halfCount),
-              standingsOffset: halfCount
+              standingsOffset: halfCount,
+              standingsTotal: leagueStandings.length
             })
           }
         }
@@ -684,8 +728,8 @@ export default async function ExportPage({ searchParams }: Props) {
                       {/* Chunk Content: Standings (League) */}
                       {chunk.standings && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                          <StandingsTable rows={chunk.standings} mode="league" accent={accent} offset={chunk.standingsOffset} zones={normalizeStandingsZones(card.tournament?.settings)} />
-                          <StandingsLegend zones={normalizeStandingsZones(card.tournament?.settings)} />
+                          <StandingsTable rows={chunk.standings} mode="league" accent={accent} offset={chunk.standingsOffset} total={chunk.standingsTotal} zones={normalizeStandingsZones(card.tournament?.settings)} />
+                          <StandingsLegend zones={normalizeStandingsZones(card.tournament?.settings)} present={zonesPresentInChunk(normalizeStandingsZones(card.tournament?.settings), chunk.standings, chunk.standingsOffset ?? 0, chunk.standingsTotal ?? (chunk.standings.length + (chunk.standingsOffset ?? 0)))} />
                         </div>
                       )}
 
