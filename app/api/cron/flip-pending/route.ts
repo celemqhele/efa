@@ -8,6 +8,13 @@ import { KO_ROUNDS } from '@/lib/tournament-rounds'
 // Promotes 'confirmed_pending' fixtures whose due date has arrived to
 // 'confirmed', recalculates standings for their tournaments, and advances
 // knockout progression. Scheduled to run daily at 00:00 SAST (22:00 UTC).
+//
+// The day key is SAST (see lib/app-time.ts) and it is passed explicitly into the
+// flip, because fixtures.scheduled_date holds the matchday the manager sees. It
+// used to be derived a second time inside SQL from CURRENT_DATE, which on this
+// UTC database is still the previous day at 22:00 UTC - so the flip matched zero
+// rows and every held result was released a full 24h late. See
+// supabase/migrations/085_confirmed_pending_sast_day.sql.
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('Authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -30,8 +37,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ flipped: 0, tournaments: 0, advanced: 0 })
   }
 
-  // 2. Flip them via the DB function (fires on_fixture_confirmed admin notifications)
-  await supabase.rpc('flip_pending_results')
+  // 2. Flip them via the DB function (fires on_fixture_confirmed admin
+  //    notifications). todayKey is passed in so the flip uses the same day as
+  //    the SELECT above - the two must not disagree. flipped is the function's
+  //    real ROW_COUNT, not the pre-query length: reporting the pre-query length
+  //    hid a 24h-late no-op as a successful flip.
+  const { data: flipped, error: flipError } = await supabase.rpc('flip_pending_results', {
+    p_today: todayKey,
+  })
+  if (flipError) {
+    console.error('[flip-pending] flip_pending_results failed:', flipError)
+    return NextResponse.json({ error: flipError.message, flipped: 0 }, { status: 500 })
+  }
+  const flippedCount = (flipped as number | null) ?? 0
 
   // 3. Recalculate standings for each affected tournament (league + group)
   const tournamentIds = [...new Set(fixtures.map((f) => f.tournament_id).filter(Boolean))] as string[]
@@ -68,7 +86,7 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    flipped: fixtures.length,
+    flipped: flippedCount,
     tournaments: tournamentIds.length,
     recalcFailed,
     advanced,
