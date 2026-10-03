@@ -540,6 +540,11 @@ type SessionData = {
   pending_date: string | null
   team_id: string | null
   fixtures_team_ids: string[] | null
+  // Set when the session was opened from a match-code deep link. While it is in
+  // the future the session is exempt from the idle sweep in
+  // handleExpiredSession, so a manager who takes hours to answer the confirm
+  // prompt keeps their place in the submission flow.
+  pinned_until: string | null
   // Phone-number update fields (result submission mismatch flow)
   phone_update_profile_id: string | null
   phone_update_candidates: { profileId: string; teamName: string }[] | null
@@ -594,8 +599,30 @@ async function getSession(phoneNumber: string): Promise<SessionData | null> {
 
 async function upsertSession(session: Partial<SessionData> & { phone_number: string }) {
   const supabase = await createAdminClient()
-  const { error } = await supabase.from('whatsapp_sessions').upsert({ ...session, updated_at: new Date().toISOString() })
+  // `pinned_until` is deliberately absent from the payload unless the caller asks
+  // for it, so a partial upsert leaves the existing value alone. That matters: the
+  // match-centre flow walks through a dozen states (screenshot > OCR > confirm >
+  // edit score > swap stats) and every one of those upserts must keep the pin, or
+  // a slow manager loses the flow at whichever step happened to drop it.
+  // Starting a genuinely new flow instead goes through clearSession (which deletes
+  // the row and the pin with it) or an explicit unpin.
+  const payload: Record<string, unknown> = { ...session, updated_at: new Date().toISOString() }
+  if ('pinned_until' in session) payload.pinned_until = session.pinned_until
+
+  const { error } = await supabase.from('whatsapp_sessions').upsert(payload)
   if (error) console.error('[webhook] upsertSession failed:', error)
+}
+
+// Drops the idle-sweep exemption without ending the session. Used when a manager
+// abandons a pinned match-centre flow and starts something unrelated, so that
+// unrelated flow cannot inherit the exemption.
+async function unpinSession(phoneNumber: string) {
+  const supabase = await createAdminClient()
+  const { error } = await supabase
+    .from('whatsapp_sessions')
+    .update({ pinned_until: null })
+    .eq('phone_number', phoneNumber)
+  if (error) console.error('[webhook] unpinSession failed:', error)
 }
 
 async function clearSession(phoneNumber: string) {
@@ -609,10 +636,25 @@ async function clearSession(phoneNumber: string) {
 // message after an hour of silence) lands on the fresh welcome menu instead of a
 // stale mid-flow state. Every state-changing upsert touches `updated_at`, so the
 // window is measured from the last activity.
+//
+// Sessions opened from a match-code deep link are exempt while `pinned_until` is
+// in the future. A manager who sends the screenshot at 17:10 and only answers the
+// confirm prompt at 20:12 must not lose the submission, and the flow re-validates
+// the 7-day submission window before writing anything, so the pin cannot be used to
+// dodge that rule. The pin still ages out so a forgotten match centre cannot sit
+// on a stale state and hijack a later "1" from an unrelated conversation.
 const SESSION_MAX_IDLE_MS = 60 * 60 * 1000
+const PINNED_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+function pinExpiryIso(): string {
+  return new Date(Date.now() + PINNED_SESSION_TTL_MS).toISOString()
+}
 
 async function handleExpiredSession(phoneNumber: string, session: SessionData | null): Promise<boolean> {
   if (!session) return false
+  if (session.pinned_until && new Date(session.pinned_until).getTime() > Date.now()) {
+    return false
+  }
   const last = new Date(session.updated_at ?? session.created_at ?? '')
   if (Number.isNaN(last.getTime())) return false
   if (Date.now() - last.getTime() > SESSION_MAX_IDLE_MS) {
@@ -791,6 +833,10 @@ async function handleStartAgain(from: string, text: string, phoneNumberId: strin
 // handled earlier in handleText, so this never re-triggers while the user is
 // choosing options inside an existing flow.
 async function handleWelcomeMenu(from: string, text: string, phoneNumberId: string) {
+  // Reaching the main menu means the manager chose to start something new, so a
+  // pin left over from an abandoned match-centre flow is released here. Otherwise
+  // the unrelated flow they are about to start would inherit the exemption.
+  await unpinSession(from)
   const num = extractNumber(text)
   const manager = await getLoggedInManager(from)
 
@@ -1514,7 +1560,7 @@ async function handleLoggedInScreenshotImage(from: string, msg: { image: { id: s
   const analysis = await analyzeImageBuffer(buffer, mimeType)
 
   if (analysis.invalidReason || analysis.homeScore === null || analysis.awayScore === null) {
-    await sendTextMessage(from, "Sorry, I could not read the score in the screenshot. Please send it again.", phoneNumberId)
+    await sendTextMessage(from, OCR_RETRY_MESSAGE, phoneNumberId)
     return
   }
 
@@ -4959,6 +5005,9 @@ async function handleMatchCentreLink(from: string, text: string, phoneNumberId: 
   }
 
   // End any current session (SQL delete) and open a fresh match-centre session.
+  // The session is pinned: this deep link already proves which fixture the manager
+  // is submitting, so it must survive however long they take to send the
+  // screenshot and answer the confirm prompt.
   await clearSession(from)
   await upsertSession({
     phone_number: from,
@@ -4966,6 +5015,7 @@ async function handleMatchCentreLink(from: string, text: string, phoneNumberId: 
     matched_fixture_id: fixture.id,
     home_team: hName,
     away_team: aName,
+    pinned_until: pinExpiryIso(),
   })
 
   const dateLine = formatFixtureWhen(fixture) ? ` - ${formatFixtureWhen(fixture)}` : ''
@@ -5179,6 +5229,9 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   // ─── Commands (keyword-tolerant: quotes, extra words and punctuation are stripped) ──
   // Ordered most-specific first so multi-word admin commands win over "backdoor".
   const command = findCommandHandler(text)
+  // A command starts a flow unrelated to any open match-centre submission, so
+  // release that flow's pin rather than letting this one inherit it.
+  if (command) await unpinSession(from)
   if (command === 'check_fixtures') {
     await handleCheckFixturesCommand(from, phoneNumberId)
     return
@@ -5951,6 +6004,40 @@ type ImageAnalysis = {
   invalidReason: string | null
 }
 
+const OCR_RETRY_MESSAGE =
+  'Sorry, I could not read a score from that screenshot. Please send the full result screen. ' +
+  'I need the scoreline at the top (team names and the score), not just the stats table.'
+
+// Labels from the eFootball stats table. When a manager screenshots only the
+// bottom of that table there is no scoreboard in the picture at all, and both the
+// vision model and the text LLM tend to grab one of these row labels and report it
+// as a team name. Observed in the wild: "Score extracted: i L Free Kicks 0-3 ?".
+const STAT_ROW_LABELS = [
+  'successful passes', 'shots on target', 'possession', 'shots', 'fouls', 'fould',
+  'offsides', 'offside', 'corner kicks', 'corners', 'free kicks', 'passes',
+  'crosses', 'interceptions', 'tackles', 'saves',
+]
+
+// Individual words that make up those labels. Needed because "Free Kicks" splits
+// into "free" + "kicks", neither of which is a label on its own.
+const STAT_ROW_WORDS = new Set(
+  STAT_ROW_LABELS.flatMap((label) => label.split(' '))
+)
+
+// True when a "team name" is really OCR debris or a stats-table row label. Keeps a
+// cropped screenshot from being confirmed against invented clubs.
+function isImplausibleTeamName(name: string | null | undefined): boolean {
+  if (!name) return false
+  const cleaned = name.replace(/[^a-z ]/gi, ' ').replace(/\s+/g, ' ').trim().toLowerCase()
+  if (cleaned.length < 3) return true
+  if (STAT_ROW_LABELS.includes(cleaned)) return true
+  // Anything left after discarding stat words and single-letter debris ("i L").
+  const meaningful = cleaned
+    .split(' ')
+    .filter((w) => w.length > 2 && !STAT_ROW_WORDS.has(w))
+  return meaningful.length === 0
+}
+
 async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<ImageAnalysis> {
   const startedAt = Date.now()
   let ocrResult: Awaited<ReturnType<typeof parseScreenshot>> | null = null
@@ -5960,6 +6047,11 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
   let homeScore: number | null = null, awayScore: number | null = null
   const matchStats: Record<string, { home: number; away: number }> = {}
   let invalidReason: string | null = null
+  // Provenance of the accepted score, so a weak source cannot overrule a strong
+  // source's rejection. See the guard just before the return.
+  let visionRejected = false
+  let scoreFromVision = false
+  let scoreFromHeaderMatch = false
 
   // Stat writes follow a precedence ladder — tesseract (weakest, sets first),
   // text LLM, vision (strongest, overwrites). A low-confidence read on a key
@@ -5996,10 +6088,12 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
     fillMissingTeams(geminiResult.homeTeam, geminiResult.awayTeam)
     invalidReason = null
     mergeStats(geminiResult.matchStats)
+    scoreFromVision = true
   } else if (geminiResult && geminiResult.valid === false) {
-    // Vision saw no score (menu / live screen). The verdict stands only if the
-    // fallback chain below also fails to find a score.
+    // Vision saw no score (menu / live screen / a crop of the stats table with no
+    // scoreboard). The verdict stands unless a stronger reader finds a real one.
     invalidReason = geminiResult.reason || null
+    visionRejected = true
   }
 
   // 2. FALLBACK: text LLM reads the GARBLED tesseract text. Only consulted when
@@ -6034,6 +6128,7 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
     if (ocrResult.scoreMatched && homeScore === null) {
       homeScore = ocrResult.homeScore
       awayScore = ocrResult.awayScore
+      scoreFromHeaderMatch = true
     }
   }
 
@@ -6041,6 +6136,23 @@ async function analyzeImageBuffer(buffer: Buffer, mimeType: string): Promise<Ima
 
   // If any source found a score, a vision/LLM "invalid" verdict is overruled.
   if (homeScore !== null && awayScore !== null) invalidReason = null
+
+  // ...but not when the ONLY score came from the text LLM reading garbled OCR and
+  // vision had already said there is no scoreboard in the picture. A cropped
+  // screenshot of the stats table produced exactly that: vision correctly rejected
+  // it, the text LLM picked "0-3" out of a stat row, and the blanket overrule above
+  // turned a junk read into a submittable result. Tesseract's header regex is a real
+  // scoreboard hit, so that still overrules.
+  if (visionRejected && !scoreFromVision && !scoreFromHeaderMatch) {
+    invalidReason = invalidReason || 'no scoreboard visible in the screenshot'
+    homeScore = null
+    awayScore = null
+  }
+
+  // A stat-row label masquerading as a team name is not a team. Drop it so the
+  // caller asks for a proper screenshot instead of confirming against fiction.
+  if (isImplausibleTeamName(homeTeam)) homeTeam = null
+  if (isImplausibleTeamName(awayTeam)) awayTeam = null
 
   return { homeTeam, awayTeam, homeScore, awayScore, matchStats: Object.keys(matchStats).length > 0 ? matchStats : null, invalidReason }
 }
@@ -6066,8 +6178,8 @@ async function handleImage(from: string, msg: { image: { id: string; mime_type: 
 
   console.log('[webhook] final - team:', homeTeam, awayTeam, 'score:', homeScore, awayScore, 'statsKeys:', matchStats ? Object.keys(matchStats).join(',') : 'none')
 
-  if (invalidReason) { await sendTextMessage(from, "Sorry, I could not read the screenshot. Please send it again.", phoneNumberId); return }
-  if (homeScore === null || awayScore === null) { await sendTextMessage(from, "Sorry, I could not read the screenshot. Please send it again.", phoneNumberId); return }
+  if (invalidReason) { await sendTextMessage(from, OCR_RETRY_MESSAGE, phoneNumberId); return }
+  if (homeScore === null || awayScore === null) { await sendTextMessage(from, OCR_RETRY_MESSAGE, phoneNumberId); return }
 
   await upsertSession({
     phone_number: from,
