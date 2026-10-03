@@ -1406,14 +1406,6 @@ async function handleLoggedInFirstTimeList(from: string, manager: LoggedInManage
     return
   }
 
-  await upsertSession({
-    phone_number: from,
-    state: 'loggedin_first_time_pick',
-    displayed_fixtures: combined,
-    submission_type: 'new',
-    match_stats: null,
-  })
-
   const grouped = [
     { header: 'Today\'s games:', items: [] as any[] },
     { header: 'Earlier this week:', items: [] as any[] },
@@ -1427,12 +1419,16 @@ async function handleLoggedInFirstTimeList(from: string, manager: LoggedInManage
 
   const lines: string[] = []
   let idx = 0
+  const displayOrder: string[] = []
   for (const g of grouped) {
     lines.push(g.header)
     if (g.items.length === 0) {
       lines.push('· none')
     } else {
-      for (const f of g.items) lines.push(formatFixtureLine(f, idx++))
+      for (const f of g.items) {
+        lines.push(formatFixtureLine(f, idx++))
+        displayOrder.push(f.id)
+      }
     }
     lines.push('')
   }
@@ -1440,8 +1436,19 @@ async function handleLoggedInFirstTimeList(from: string, manager: LoggedInManage
   if (cat2.length === 0) {
     lines.push('· none')
   } else {
-    for (const f of cat2) lines.push(formatFixtureLine(f, idx++))
+    for (const f of cat2) {
+      lines.push(formatFixtureLine(f, idx++))
+      displayOrder.push(f.id)
+    }
   }
+
+  await upsertSession({
+    phone_number: from,
+    state: 'loggedin_first_time_pick',
+    displayed_fixtures: displayOrder,
+    submission_type: 'new',
+    match_stats: null,
+  })
 
   await sendTextMessage(from, `Submit a score for the first time:\n\n${lines.join('\n')}\n\nReply with the number of your match, then send a screenshot of the result screen.${MATCH_LIST_HINT}`, phoneNumberId)
 }
