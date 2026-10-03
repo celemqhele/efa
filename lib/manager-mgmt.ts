@@ -24,6 +24,75 @@ export function getCooldownEndsAt(sackedAt: string | null | undefined): string |
   return ends.getTime() > Date.now() ? ends.toISOString() : null
 }
 
+// ─── Manager applications ─────────────────────────────────────────────────────
+// A pending application is only meaningful while the applicant manages nothing.
+// Once a club is bound to them the application has been fulfilled, so it must
+// leave the pending list instead of lingering as "(no team yet)" forever.
+//
+// This has to run on *every* path that binds a manager to a club, not just the
+// dedicated "manager applications" flow — the WhatsApp manager-management menu
+// and the web admin both call assignManagerToClub directly, and they used to
+// leave the applicant's application pending. The oldest pending application is
+// approved and stamped with the club; the rest are denied, mirroring what the
+// applications flow does by hand.
+//
+// Applications are bookkeeping, never the point of an assignment, so any failure
+// here is logged and swallowed rather than failing the assignment itself.
+export async function closePendingManagerApplications(
+  db: Db,
+  opts: { userId: string; teamId: string; adminId: string | null }
+): Promise<number> {
+  const { userId, teamId, adminId } = opts
+
+  try {
+    const { data: pending, error } = await db
+      .from('manager_applications')
+      .select('id, team_id, created_at')
+      .eq('applicant_id', userId)
+      .eq('status', 'pending')
+
+    if (error || !pending?.length) return 0
+
+    const now = new Date().toISOString()
+    // Oldest first: the application that has been waiting longest is the one the
+    // club answers. A team-less application is preferred over one that named a
+    // different club, since this assignment is what finally gave them a team.
+    const ordered = [...(pending as any[])].sort((a, b) => {
+      const aBlank = a.team_id ? 1 : 0
+      const bBlank = b.team_id ? 1 : 0
+      if (aBlank !== bBlank) return aBlank - bBlank
+      return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime()
+    })
+
+    const keepId = ordered[0].id
+    await db
+      .from('manager_applications')
+      .update({ status: 'approved', team_id: teamId, reviewed_at: now, reviewed_by: adminId })
+      .eq('id', keepId)
+
+    const restIds = ordered.slice(1).map((a) => a.id)
+    if (restIds.length) {
+      await db
+        .from('manager_applications')
+        .update({ status: 'denied', reviewed_at: now, reviewed_by: adminId })
+        .in('id', restIds)
+    }
+
+    // Anyone else waiting on this club has just lost it.
+    await db
+      .from('manager_applications')
+      .update({ status: 'denied', reviewed_at: now, reviewed_by: adminId })
+      .eq('team_id', teamId)
+      .eq('status', 'pending')
+      .neq('applicant_id', userId)
+
+    return ordered.length
+  } catch (e) {
+    console.error('[manager-mgmt] closing pending applications failed:', e)
+    return 0
+  }
+}
+
 // ─── Club resolution ──────────────────────────────────────────────────────────
 // The web admin can add a club the site has never seen by logo, so assignment
 // has to be able to create the row. WhatsApp never does this (it only offers
@@ -147,6 +216,11 @@ export async function assignManagerToClub(
       override_cooldown: override && isCooldownFlagged(targetProfile.sacked_at),
     },
   })
+
+  // The applicant now has a club, so any application they filed is fulfilled:
+  // approve the oldest and deny the rest, which clears them from the pending
+  // applications list whichever entry point the admin used.
+  await closePendingManagerApplications(db, { userId, teamId, adminId })
 
   if (isVacant) {
     const result = await assignVacantSeatToManager(db, userId, teamId)

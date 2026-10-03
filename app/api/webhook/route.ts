@@ -3231,10 +3231,40 @@ async function handleManagerApplicationsStart(from: string, phoneNumberId: strin
     .order('created_at', { ascending: true })
 
   const now = Date.now()
-  const active = (apps ?? []).filter((a: any) => {
+  const notExpired = (apps ?? []).filter((a: any) => {
     if (!a.expires_at) return true
     return new Date(a.expires_at).getTime() > now
   })
+
+  // An applicant who already holds a club has been dealt with, whatever route
+  // gave them it, so their leftover application must not read "(no team yet)".
+  // closePendingManagerApplications clears these at assignment time; this filter
+  // also hides any row that predates it.
+  let active = notExpired
+  const applicantIds = [
+    ...new Set(
+      notExpired
+        .map((a: any) => (Array.isArray(a.applicant) ? a.applicant[0]?.id : a.applicant?.id))
+        .filter((id: any): id is string => typeof id === 'string')
+    ),
+  ]
+
+  if (applicantIds.length) {
+    const { data: ownedTeams } = await supabase
+      .from('teams')
+      .select('manager_id')
+      .in('manager_id', applicantIds)
+
+    const alreadyManaging = new Set(
+      (ownedTeams ?? []).map((t: any) => t.manager_id as string).filter(Boolean)
+    )
+    if (alreadyManaging.size) {
+      active = notExpired.filter((a: any) => {
+        const applicant = Array.isArray(a.applicant) ? a.applicant[0] : a.applicant
+        return !alreadyManaging.has(applicant?.id)
+      })
+    }
+  }
 
   if (active.length === 0) {
     await sendTextMessage(from, 'No pending manager applications right now.', phoneNumberId)
