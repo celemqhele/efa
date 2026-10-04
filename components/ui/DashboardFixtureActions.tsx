@@ -21,11 +21,11 @@ interface Props {
 const POSTPONE_POPOVER_W = 300
 
 // The AI WhatsApp bot number (E.164 digits, no spacing) that the reminder links
-// open. Preloaded text carries the per-fixture match code ("Hi MC-XXXXXXXX") so
-// the bot can open the match centre for that specific game; the backdoor link adds
-// a BQH token ("Hi BQH MC-XXXXXXXX") so the bot jumps straight into the backdoor
-// flow with the opponent already pinned. Without a code yet both fall back to
-// plain "Hi" (welcome menu).
+  // open. Preloaded text carries the per-fixture match code ("MC-XXXXXXXX") so
+  // the bot can open the match centre for that specific game; the backdoor link adds
+  // a BQH token ("BQH MC-XXXXXXXX") so the bot jumps straight into the backdoor
+  // flow with the opponent already pinned. Without a code yet both fall back to
+  // plain "Hi" (welcome menu).
 const AI_BOT_DIGITS = '27818209406'
 const FALLBACK_REMINDER_LINK = `https://wa.me/${AI_BOT_DIGITS}?text=Hi`
 
@@ -43,8 +43,9 @@ function fetchMatchCode(fixtureId: string): Promise<string | null> {
   return p
 }
 
-// One item per line, no paragraphs: managers were not reading past the first
-// sentence of the old four-slot templates. Two links into the AI bot, both
+// One item per line, emoji-led so each line scans on its own: managers were not
+// reading past the first sentence of the old four-slot templates, and the plain
+// label list still looked like a wall of text. Two links into the AI bot, both
 // carrying the fixture's match code — the plain one opens the match centre
 // (submit the result), the BQH one opens the backdoor flow with the opponent
 // already pinned as the non-responding side (no "who is not responding?"
@@ -62,12 +63,12 @@ function buildReminder(params: {
   const name = username ?? 'there'
   const theirNumber = formatPhoneDisplay(opponentPhone) || 'not available'
   return [
-    `Hi ${name}`,
-    `Matches due: ${homeTeam} vs ${awayTeam}`,
-    `Their number: ${theirNumber}`,
-    `Submit result: ${submitLink}`,
-    `Report them not responding: ${reportLink}`,
-    `*WHEN CLICKING LINK JUST HIT SEND, DON'T EDIT TEXT*`,
+    `👋 Hi ${name}`,
+    `⚽ ${homeTeam} vs ${awayTeam}`,
+    `📞 ${theirNumber}`,
+    `✅ Submit: ${submitLink}`,
+    `🚨 Report them: ${reportLink}`,
+    `⚠️ *WHEN CLICKING LINK JUST HIT SEND, DON'T EDIT TEXT*`,
   ].join('\n')
 }
 
@@ -165,11 +166,14 @@ export default function DashboardFixtureActions({
     }
   }
 
+  // The prefill carries only the codes: the bot's deep-link handler matches them
+  // anywhere in the message (and runs before the session is read), so "Hi " is
+  // dead weight that widens the URL by 6 characters in every message.
   const reminderLink = matchCode
-    ? `https://wa.me/${AI_BOT_DIGITS}?text=${encodeURIComponent(`Hi MC-${matchCode}`)}`
+    ? `https://wa.me/${AI_BOT_DIGITS}?text=${encodeURIComponent(`MC-${matchCode}`)}`
     : FALLBACK_REMINDER_LINK
   const backdoorLink = matchCode
-    ? `https://wa.me/${AI_BOT_DIGITS}?text=${encodeURIComponent(`Hi BQH MC-${matchCode}`)}`
+    ? `https://wa.me/${AI_BOT_DIGITS}?text=${encodeURIComponent(`BQH MC-${matchCode}`)}`
     : FALLBACK_REMINDER_LINK
   const homeMsg = buildReminder({
     username: homeManagerName,
