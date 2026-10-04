@@ -5097,6 +5097,8 @@ async function openBackdoorFromCode(
 
   const ownsHome = !!manager?.teamIds.some((t) => String(t) === String(fixture.home_team_id))
   const ownsAway = !!manager?.teamIds.some((t) => String(t) === String(fixture.away_team_id))
+  // `side` is the side that did NOT respond (same meaning as the backdoor
+  // submissions' side_claimed), so it is always the opposite of the sender's team.
   const side: 'home' | 'away' | null = ownsHome && !ownsAway ? 'away' : ownsAway && !ownsHome ? 'home' : null
 
   if (!side) {
@@ -5138,8 +5140,10 @@ async function openBackdoorFromCode(
     pinned_until: pinExpiryIso(),
   })
 
-  const opponent = side === 'home' ? aName : hName
-  await sendTextMessage(from, `Noted: ${opponent} is not responding.\n\nSend a screenshot showing that they did not respond.`, phoneNumberId)
+  // `side` is the non-responding side (the same meaning as backdoor_submissions'
+  // side_claimed), so name that side's team, not the sender's own.
+  const notResponding = side === 'home' ? hName : aName
+  await sendTextMessage(from, `Noted: ${notResponding} is not responding.\n\nSend a screenshot showing that they did not respond.`, phoneNumberId)
 }
 
 // Menu handler for an open match_centre session.
