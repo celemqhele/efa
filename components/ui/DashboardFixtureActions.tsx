@@ -5,6 +5,7 @@ import Link from 'next/link'
 import WhatsAppButton from './WhatsAppButton'
 import { Button } from './Button'
 import ModalPortal from './ModalPortal'
+import { formatPhoneDisplay } from '@/lib/phone'
 
 interface Props {
   fixtureId: string
@@ -19,10 +20,12 @@ interface Props {
 
 const POSTPONE_POPOVER_W = 300
 
-// The AI WhatsApp bot number (E.164 digits, no spacing) that the reminder link
-// opens. Preloaded text carries the per-fixture match code ("Hi MC-XXXXXXXX") so
-// the bot can open the match centre for that specific game; without a code yet
-// it falls back to plain "Hi" (welcome menu).
+// The AI WhatsApp bot number (E.164 digits, no spacing) that the reminder links
+// open. Preloaded text carries the per-fixture match code ("Hi MC-XXXXXXXX") so
+// the bot can open the match centre for that specific game; the backdoor link adds
+// a BQH token ("Hi BQH MC-XXXXXXXX") so the bot jumps straight into the backdoor
+// flow with the opponent already pinned. Without a code yet both fall back to
+// plain "Hi" (welcome menu).
 const AI_BOT_DIGITS = '27818209406'
 const FALLBACK_REMINDER_LINK = `https://wa.me/${AI_BOT_DIGITS}?text=Hi`
 
@@ -40,36 +43,32 @@ function fetchMatchCode(fixtureId: string): Promise<string | null> {
   return p
 }
 
-type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'night'
-
-const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
-  morning: 'Morning',
-  afternoon: 'Afternoon',
-  evening: 'Evening',
-  night: 'Night',
-}
-
-function getTimeSlot(): TimeSlot {
-  const sastHour = new Date().getUTCHours() + 2
-  const h = ((sastHour % 24) + 24) % 24
-  if (h >= 0 && h < 12) return 'morning'
-  if (h >= 12 && h < 18) return 'afternoon'
-  if (h >= 18 && h < 21) return 'evening'
-  return 'night'
-}
-
-function buildReminder(name: string | null | undefined, opponent: string, slot: TimeSlot, botLink: string): string {
-  const n = name ?? 'there'
-  switch (slot) {
-    case 'morning':
-      return `Hi ${n}! Just a reminder that your fixture vs ${opponent} is scheduled for today. If you already played, submit the score here: ${botLink}`
-    case 'afternoon':
-      return `Hi ${n}! Friendly reminder that your fixture vs ${opponent} is today. If you already played, submit the score here: ${botLink}. If your opponent is not responding, report a backdoor win: ${botLink}`
-    case 'evening':
-      return `Hi ${n}! Your fixture vs ${opponent} is still pending. If your opponent is not responding, report them to the AI here: ${botLink}`
-    case 'night':
-      return `Hi ${n}! Your result for the fixture vs ${opponent} is still not submitted. Please play or risk a backdoor loss. If your opponent is not responding, submit a backdoor here: ${botLink}`
-  }
+// One item per line, no paragraphs: managers were not reading past the first
+// sentence of the old four-slot templates. Two links into the AI bot, both
+// carrying the fixture's match code — the plain one opens the match centre
+// (submit the result), the BQH one opens the backdoor flow with the opponent
+// already pinned as the non-responding side (no "who is not responding?"
+// question). `opponentPhone` is the other manager's number, shown so the
+// reminder doubles as a "call your opponent" nudge.
+function buildReminder(params: {
+  username: string | null | undefined
+  homeTeam: string
+  awayTeam: string
+  opponentPhone: string | null | undefined
+  submitLink: string
+  reportLink: string
+}): string {
+  const { username, homeTeam, awayTeam, opponentPhone, submitLink, reportLink } = params
+  const name = username ?? 'there'
+  const theirNumber = formatPhoneDisplay(opponentPhone) || 'not available'
+  return [
+    `Hi ${name}`,
+    `Matches due: ${homeTeam} vs ${awayTeam}`,
+    `Their number: ${theirNumber}`,
+    `Submit result: ${submitLink}`,
+    `Report them not responding: ${reportLink}`,
+    `*WHEN CLICKING LINK JUST HIT SEND, DON'T EDIT TEXT*`,
+  ].join('\n')
 }
 
 export default function DashboardFixtureActions({
@@ -94,10 +93,10 @@ export default function DashboardFixtureActions({
 
   const isFinished = ['confirmed', 'confirmed_pending', 'completed', 'abandoned'].includes(status)
   const isAwaiting = status === 'awaiting_confirmation'
-  const timeSlot = getTimeSlot()
 
-  // Load the fixture's match code so the embedded bot link opens the match
-  // centre for this exact game ("Hi MC-XXXXXXXX").
+  // Load the fixture's match code so both embedded bot links resolve to this
+  // exact game ("Hi MC-XXXXXXXX" for the result, "Hi BQH MC-XXXXXXXX" for the
+  // backdoor report).
   useEffect(() => {
     let cancelled = false
     fetchMatchCode(fixtureId).then((code) => {
@@ -169,8 +168,25 @@ export default function DashboardFixtureActions({
   const reminderLink = matchCode
     ? `https://wa.me/${AI_BOT_DIGITS}?text=${encodeURIComponent(`Hi MC-${matchCode}`)}`
     : FALLBACK_REMINDER_LINK
-  const homeMsg = buildReminder(homeManagerName, awayTeamName, timeSlot, reminderLink)
-  const awayMsg = buildReminder(awayManagerName, homeTeamName, timeSlot, reminderLink)
+  const backdoorLink = matchCode
+    ? `https://wa.me/${AI_BOT_DIGITS}?text=${encodeURIComponent(`Hi BQH MC-${matchCode}`)}`
+    : FALLBACK_REMINDER_LINK
+  const homeMsg = buildReminder({
+    username: homeManagerName,
+    homeTeam: homeTeamName,
+    awayTeam: awayTeamName,
+    opponentPhone: awayManagerPhone,
+    submitLink: reminderLink,
+    reportLink: backdoorLink,
+  })
+  const awayMsg = buildReminder({
+    username: awayManagerName,
+    homeTeam: homeTeamName,
+    awayTeam: awayTeamName,
+    opponentPhone: homeManagerPhone,
+    submitLink: reminderLink,
+    reportLink: backdoorLink,
+  })
 
   if (isFinished) return null
   if (done) return <span className="text-feedback-warning text-xs font-semibold">Postponed</span>
@@ -178,12 +194,7 @@ export default function DashboardFixtureActions({
   return (
     <div className="flex flex-col items-end gap-space-1 shrink-0" ref={actionsRef}>
       <div className="flex items-center gap-space-2 flex-wrap justify-end">
-        {/* Time slot indicator */}
-        <span className="text-[10px] text-text-muted font-medium uppercase tracking-wide">
-          {TIME_SLOT_LABELS[timeSlot]}
-        </span>
-
-        {/* WhatsApp buttons — reminder goes to the player; the link inside it opens the AI bot */}
+        {/* WhatsApp buttons — reminder goes to the player; the links inside it open the AI bot */}
         {homeManagerPhone && (
           <WhatsAppButton phone={homeManagerPhone} message={homeMsg} size="sm" label="H" />
         )}

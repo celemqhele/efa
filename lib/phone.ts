@@ -76,6 +76,18 @@ export function canonicalPhone(phone: string | null | undefined): string {
   return toStoredPhone(countryCode, local)
 }
 
+// Human-readable form for showing a number in a message, always shaped as
+// "+XX XX XXXXXXX" (country code, then 2 digits, then the rest). An SA mobile
+// ("27798115750") therefore reads "+27 79 8115750" — the only format the WhatsApp
+// reminder template uses. Returns '' when there is no number to show, so callers
+// can decide between omitting the line and printing a placeholder.
+export function formatPhoneDisplay(phone: string | null | undefined): string {
+  const { countryCode, local } = parsePhoneParts(phone)
+  if (!countryCode || !local) return ''
+  if (local.length <= 2) return `+${countryCode} ${local}`
+  return `+${countryCode} ${local.slice(0, 2)} ${local.slice(2)}`
+}
+
 // Total international digit-length ranges (country code included) per code,
 // used to reject truncated/mistyped numbers before they are stored. A full SA
 // mobile is exactly 27 + 9 = 11 digits; shortening it breaks WhatsApp identity

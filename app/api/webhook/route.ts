@@ -398,6 +398,22 @@ const msg = messages[0]
           // is set) — skip the team-name search and go straight to "who is not
           // responding?".
           if (activeSession.matched_fixture_id) {
+            // BQH deep link pinned the non-responding side when the manager opened
+            // the link, so there is nothing left to ask: file the report directly.
+            if (activeSession.backdoor_side) {
+              const pinnedSide = activeSession.backdoor_side
+              await upsertSession({
+                phone_number: from,
+                state: 'awaiting_backdoor',
+                backdoor_menu_step: 'screenshot',
+                backdoor_screenshot_media_id: mediaId,
+              })
+              const pinnedSession = await getSession(from)
+              if (pinnedSession) {
+                await submitBackdoorSubmission(from, pinnedSession, pinnedSide, phoneNumberId)
+              }
+              return new NextResponse(null, { status: 200 })
+            }
             await upsertSession({
               phone_number: from,
               state: 'awaiting_backdoor',
@@ -884,7 +900,7 @@ async function handleWelcomeMenu(from: string, text: string, phoneNumberId: stri
         await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
         return
       }
-      await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot' })
+      await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot', backdoor_side: null, matched_fixture_id: null })
       await sendTextMessage(from, 'Send a screenshot showing that the opponent did not respond.', phoneNumberId)
       return
     }
@@ -920,7 +936,7 @@ async function handleWelcomeMenu(from: string, text: string, phoneNumberId: stri
       await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
       return
     }
-    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot' })
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot', backdoor_side: null, matched_fixture_id: null })
     await sendTextMessage(from, 'Send a screenshot showing that the opponent did not respond.', phoneNumberId)
     return
   }
@@ -2085,7 +2101,7 @@ async function handleBackdoorFlow(from: string, text: string, session: SessionDa
         await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
         return
       }
-      await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot' })
+      await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'screenshot', backdoor_side: null, matched_fixture_id: null })
       await sendTextMessage(from, 'Send a screenshot showing that the opponent did not respond.', phoneNumberId)
       return
     }
@@ -2386,6 +2402,22 @@ async function handleBackdoorSideSelect(from: string, text: string, session: Ses
     await sendTextMessage(from, `Type the team that's not responding (e.g. ${h} or ${a}).`, phoneNumberId)
     return
   }
+
+  await submitBackdoorSubmission(from, session, side, phoneNumberId)
+}
+
+// Files the backdoor report for a fixture + side. Shared by the typed-side path
+// (handleBackdoorSideSelect) and the BQH deep link, which already pinned the side
+// when the manager opened the link — so every gate here (backdoor window,
+// duplicate report, fixture still scheduled) runs identically either way.
+// `session` must carry matched_fixture_id and backdoor_screenshot_media_id.
+async function submitBackdoorSubmission(
+  from: string,
+  session: SessionData,
+  side: 'home' | 'away',
+  phoneNumberId: string
+) {
+  const supabase = await createAdminClient()
 
   // Final gate: if the backdoor window has been closed since the flow started, block.
   if (!(await isBackdoorWindowEnabled(supabase))) {
@@ -4921,14 +4953,20 @@ async function fixtureMatches(f: any, teamSearches: string[]): Promise<boolean> 
 }
 
 // ─── Match-centre deep links (reminder link: "Hi MC-XXXXXXXX") ─────────────────
-// The admin dashboard embeds a per-fixture code in the reminder link
+// The admin dashboard embeds a per-fixture code in the reminder links
 // (https://wa.me/<AI-BOT>?text=Hi MC-3D6K689L). When the manager sends the
 // preloaded text, the bot resolves the code to the fixture, verifies the sender
 // is one of the match's two managers, ends any current session (SQL clear) and
 // opens a fresh match-centre menu bound to that fixture. Games outside the 7-day
 // window are refused up front with a fixed unavailable message.
+//
+// The same code carries a BQH token when the reminder's second link is used
+// ("Hi BQH MC-3D6K689L"): instead of the menu it opens the backdoor flow for that
+// fixture with the opponent already pinned as the non-responding side, so the
+// manager never has to answer "who is not responding?".
 
 const MATCH_CODE_RE = /\bMC[:\-\s]*([A-Z2-9]{8})\b/i
+const BQH_TOKEN_RE = /\bBQH\b/i
 
 function extractMatchCode(text: string): string | null {
   const m = text.match(MATCH_CODE_RE)
@@ -4968,7 +5006,8 @@ function managerOwnsFixture(manager: LoggedInManager | null, fixture: any): bool
 }
 
 // Entry point for a message carrying a match code. Returns true when the message
-// was consumed by the match-centre flow (valid, invalid, or unavailable).
+// was consumed by the match-centre flow (valid, invalid, or unavailable) — or by
+// the BQH backdoor variant of the same code.
 async function handleMatchCentreLink(from: string, text: string, phoneNumberId: string): Promise<boolean> {
   const code = extractMatchCode(text)
   if (!code) return false
@@ -5004,6 +5043,14 @@ async function handleMatchCentreLink(from: string, text: string, phoneNumberId: 
     return true
   }
 
+  // Reminder link #2 ("Hi BQH MC-XXXXXXXX"): report the opponent for not
+  // responding. Everything above (code → fixture, ownership, date window) is
+  // identical; only the destination differs.
+  if (BQH_TOKEN_RE.test(text)) {
+    await openBackdoorFromCode(from, fixture, manager, phoneNumberId)
+    return true
+  }
+
   // End any current session (SQL delete) and open a fresh match-centre session.
   // The session is pinned: this deep link already proves which fixture the manager
   // is submitting, so it must survive however long they take to send the
@@ -5026,6 +5073,73 @@ async function handleMatchCentreLink(from: string, text: string, phoneNumberId: 
     phoneNumberId
   )
   return true
+}
+
+// Opens the backdoor flow straight from a "BQH MC-XXXXXXXX" reminder link.
+//
+// The non-responding side is derived from the sender: the bot already knows which
+// of the fixture's two teams the sender manages (getLoggedInManager), so their
+// opponent is the one who did not respond. That side is pinned in the session
+// (`backdoor_side`), which is why the screenshot step no longer asks "who is not
+// responding?" — it files the report against that side directly.
+//
+// When the side can't be derived (admin with no team on this fixture, or a manager
+// who somehow owns both sides) it falls back to the match-centre menu so they
+// still reach the backdoor flow by choosing option 2 themselves.
+async function openBackdoorFromCode(
+  from: string,
+  fixture: any,
+  manager: LoggedInManager | null,
+  phoneNumberId: string
+) {
+  const hName = fixtureTeamName(fixture, 'home')
+  const aName = fixtureTeamName(fixture, 'away')
+
+  const ownsHome = !!manager?.teamIds.some((t) => String(t) === String(fixture.home_team_id))
+  const ownsAway = !!manager?.teamIds.some((t) => String(t) === String(fixture.away_team_id))
+  const side: 'home' | 'away' | null = ownsHome && !ownsAway ? 'away' : ownsAway && !ownsHome ? 'home' : null
+
+  if (!side) {
+    console.log('[webhook] BQH link: side not derivable from sender, opening match centre instead')
+    await clearSession(from)
+    await upsertSession({
+      phone_number: from,
+      state: 'match_centre',
+      matched_fixture_id: fixture.id,
+      home_team: hName,
+      away_team: aName,
+      pinned_until: pinExpiryIso(),
+    })
+    await sendTextMessage(
+      from,
+      `Welcome to the match centre for ${hName} vs ${aName}.\n\n${MATCH_CENTRE_MENU}`,
+      phoneNumberId
+    )
+    return
+  }
+
+  const supabase = await createAdminClient()
+  if (!(await isBackdoorWindowEnabled(supabase))) {
+    await clearSession(from)
+    await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
+    return
+  }
+
+  // Same pin as the match centre: the manager still has to screenshot and the
+  // upload/notify tail runs in a later webhook call, so the session must not be
+  // swept by the 60-minute idle expiry.
+  await clearSession(from)
+  await upsertSession({
+    phone_number: from,
+    state: 'awaiting_backdoor',
+    backdoor_menu_step: 'screenshot',
+    matched_fixture_id: fixture.id,
+    backdoor_side: side,
+    pinned_until: pinExpiryIso(),
+  })
+
+  const opponent = side === 'home' ? aName : hName
+  await sendTextMessage(from, `Noted: ${opponent} is not responding.\n\nSend a screenshot showing that they did not respond.`, phoneNumberId)
 }
 
 // Menu handler for an open match_centre session.
@@ -5254,7 +5368,9 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     return
   }
   if (command === 'backdoor') {
-    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu' })
+    // Fresh user-driven flow: drop any fixture/side a BQH link may have pinned, so
+    // this one always asks which team is not responding.
+    await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu', backdoor_side: null, matched_fixture_id: null })
     await sendTextMessage(from,
       'Opponent not responding (backdoor win)\n\n' +
       '1. Report an opponent who did not respond\n' +
