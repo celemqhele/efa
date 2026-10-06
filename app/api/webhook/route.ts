@@ -276,6 +276,21 @@ export async function POST(request: NextRequest) {
     const value = changes?.value
     const messages = value?.messages
     const metadata = value?.metadata
+    // Delivery receipts for messages THIS app sent (sent/delivered/read/failed).
+    // Without this log the reply pipeline looks healthy even when Meta marks a
+    // reply failed, because sendTextMessage only sees the API acceptance.
+    const statuses = value?.statuses
+    if (statuses?.length) {
+      console.log('[webhook] status:', JSON.stringify(statuses.map((s: any) => ({
+        id: s.id,
+        status: s.status,
+        recipient_id: s.recipient_id,
+        timestamp: s.timestamp,
+        errors: s.errors,
+        conversation: s.conversation?.id,
+      }))))
+      return new NextResponse(null, { status: 200 })
+    }
     if (!messages?.length) return new NextResponse(null, { status: 200 })
 
 const msg = messages[0]

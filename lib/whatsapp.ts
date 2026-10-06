@@ -178,9 +178,15 @@ export async function sendTextMessage(to: string, body: string, phoneNumberId: s
       text: { body },
     }),
   })
+  const payload = await res.text()
   if (!res.ok) {
-    const err = await res.text()
-    console.error('WhatsApp send failed:', err)
+    console.error('WhatsApp send failed:', `status=${res.status}`, payload)
+  } else {
+    let messageId: string | undefined
+    try {
+      messageId = JSON.parse(payload)?.messages?.[0]?.id
+    } catch {}
+    console.log(`[whatsapp] sent ok to=${to} id=${messageId || 'unknown'} len=${body.length}`)
   }
 }
 
@@ -209,9 +215,10 @@ export async function sendContactMessage(
   })
   if (!res.ok) {
     const err = await res.text()
-    console.error('WhatsApp contact send failed:', err)
+    console.error('WhatsApp contact send failed:', `status=${res.status}`, err)
     return false
   }
+  console.log(`[whatsapp] contact sent ok to=${to} name=${contact.formattedName}`)
   return true
 }
 
