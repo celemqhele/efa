@@ -396,7 +396,6 @@ function ResultPanel({
           <input
             type="file"
             accept="image/*"
-            capture="environment"
             disabled={!!block || busy}
             onChange={(e) => {
               setFile(e.target.files?.[0] ?? null)
@@ -504,7 +503,6 @@ function BackdoorPanel({
           <input
             type="file"
             accept="image/*"
-            capture="environment"
             disabled={!!block || busy}
             onChange={(e) => {
               setFile(e.target.files?.[0] ?? null)
