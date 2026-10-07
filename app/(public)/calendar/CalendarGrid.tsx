@@ -8,6 +8,9 @@ interface FixtureSummary {
   id: string
   scheduled_date: string | null
   status: string
+  // Set on a fixture whose postponement was accepted: status reads 'confirmed'
+  // (agreed 3-0 already counted) but the game is still to be played.
+  postponed_confirmed?: boolean
   home_team: { id: string; name: string; logo_league_folder: string; logo_team_slug: string } | null
   away_team: { id: string; name: string; logo_league_folder: string; logo_team_slug: string } | null
   result: { home_score: number; away_score: number } | null
@@ -225,7 +228,9 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
               </div>
 
               {dayFixtures.map((f) => {
-                const hasResult = !!f.result
+                // A postponement placeholder carries a locked agreed score that must
+                // not render as a finished result — the game is still to be played.
+                const hasResult = !!f.result && !f.postponed_confirmed
                 return (
                   <Link
                     key={f.id}
@@ -253,10 +258,14 @@ export default function CalendarGrid({ year, month, fixtures, breaks }: Props) {
                       )}
                       <div
                         className={`text-[9px] px-1.5 py-0.5 rounded mt-0.5 font-semibold ${
-                          STATUS_PILL[f.status] ?? 'bg-border/20 text-text-muted'
+                          f.postponed_confirmed
+                            ? 'bg-feedback-warning/20 text-feedback-warning'
+                            : STATUS_PILL[f.status] ?? 'bg-border/20 text-text-muted'
                         }`}
                       >
-                        {f.status === 'confirmed' ? 'FT' : (f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') ? 'Awaiting' : f.status === 'abandoned' ? 'Abandoned' : 'Scheduled'}
+                        {f.postponed_confirmed
+                          ? 'Postponed'
+                          : f.status === 'confirmed' ? 'FT' : (f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') ? 'Awaiting' : f.status === 'abandoned' ? 'Abandoned' : 'Scheduled'}
                       </div>
                     </div>
 

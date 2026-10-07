@@ -49,8 +49,9 @@ export async function POST(request: Request) {
     // 3. Delete confirmations
     await db.from('result_confirmations').delete().eq('fixture_id', fixture_id)
 
-    // 4. Update fixture status
-    await db.from('fixtures').update({ status: 'scheduled' }).eq('id', fixture_id)
+  // 4. Update fixture status (a reset also releases a postponement lock, so the
+  // fixture is treated as an ordinary scheduled game again)
+  await db.from('fixtures').update({ status: 'scheduled', postponed_confirmed: false }).eq('id', fixture_id)
 
     // 5. Recalculate standings for the tournament
     const recalcResult = await recalculateStandings(fixture.tournament_id)

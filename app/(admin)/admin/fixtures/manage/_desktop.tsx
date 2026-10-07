@@ -233,8 +233,8 @@ export default function Desktop({ data }: { data: any }) {
                             </td>
                             <td className="px-5 py-4">
                               <Link href={`/fixtures/${fx.id}`} className="inline-block" title="View fixture">
-                                <span className={`text-[10px] px-2 py-0.5 rounded border ${statusCls}`}>
-                                  {fx.status.replaceAll('_', ' ')}
+                                <span className={`text-[10px] px-2 py-0.5 rounded border ${fx.postponed_confirmed ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' : statusCls}`}>
+                                  {fx.postponed_confirmed ? 'postponed' : fx.status.replaceAll('_', ' ')}
                                 </span>
                               </Link>
                             </td>
@@ -243,6 +243,7 @@ export default function Desktop({ data }: { data: any }) {
                                 fixtureId={fx.id}
                                 currentDate={fx.scheduled_date}
                                 status={fx.status}
+                                postponedConfirmed={!!fx.postponed_confirmed}
                                 homeTeamId={homeTeam?.id ?? ''}
                                 homeTeamName={cleanTeamName(homeTeam?.name) ?? ''}
                                 awayTeamId={awayTeam?.id ?? ''}

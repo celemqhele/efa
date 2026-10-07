@@ -55,7 +55,9 @@ function FixtureCard({ f, teamIds }: { f: any; teamIds: string[] }) {
 
   const isHome = teamIds.includes(home?.id)
   const opponent = isHome ? away : home
-  const result = f._result
+  // A postponed-confirmed fixture has a locked placeholder score that must not
+  // render as a finished result — the game is still to be played.
+  const result = f.postponed_confirmed ? null : f._result
   const myScore = isHome ? result?.home_score : result?.away_score
   const oppScore = isHome ? result?.away_score : result?.home_score
   const won = result != null && myScore != null && oppScore != null && myScore > oppScore
@@ -111,7 +113,7 @@ function FixtureCard({ f, teamIds }: { f: any; teamIds: string[] }) {
         ) : (
           <>
             <span className="text-sm font-semibold text-accent leading-none">{time ?? 'vs'}</span>
-            <span className="text-[9px] text-text-muted font-medium">Upcoming</span>
+            <span className="text-[9px] text-text-muted font-medium">{f.postponed_confirmed ? 'Postponed' : 'Upcoming'}</span>
           </>
         )}
       </div>

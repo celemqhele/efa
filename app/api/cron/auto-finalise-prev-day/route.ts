@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
     tournaments: 0,
     recalcFailed: 0,
     advanced: 0,
+    postponedCleared: 0,
   }
   const tournamentIds = new Set<string>()
   const advances: { fx: any; homeScore: number; awayScore: number }[] = []
@@ -122,6 +123,49 @@ export async function GET(request: NextRequest) {
       stats.advanced += 1
     } catch (e) {
       console.error('[auto-finalise] knockout progression failed for fixture:', fx.id, e)
+    }
+  }
+
+  // Postponed-confirmed fixtures whose moved date has now passed. The agreed
+  // 3-0 (or a real score submitted on the new day) already counted in the
+  // standings; dropping the flag is what takes the fixture off every upcoming
+  // list and off the admin due-fixture strip. A fixture still waiting for its
+  // moved day is untouched, and a real result already cleared its own flag.
+  const { data: movedPast } = await supabase
+    .from('fixtures')
+    .select('id, tournament_id, round_type, home_team_id, away_team_id')
+    .eq('postponed_confirmed', true)
+    .not('scheduled_date', 'is', null)
+    .lte('scheduled_date', yesterday)
+
+  for (const fx of (movedPast ?? []) as any[]) {
+    try {
+      await supabase.from('fixtures').update({ postponed_confirmed: false }).eq('id', fx.id)
+      stats.postponedCleared += 1
+
+      // Nobody submitted a real score on the moved day: the agreed placeholder
+      // is the final one, so the knockout still needs its winner pushed through.
+      if (KO_ROUNDS.includes(fx.round_type ?? '')) {
+        const { data: result } = await supabase
+          .from('results')
+          .select('home_score, away_score')
+          .eq('fixture_id', fx.id)
+          .maybeSingle()
+        if (result) {
+          await advanceWinner(
+            supabase,
+            fx.tournament_id,
+            fx.id,
+            (result as any).home_score,
+            (result as any).away_score,
+            fx.home_team_id ?? null,
+            fx.away_team_id ?? null
+          )
+          stats.advanced += 1
+        }
+      }
+    } catch (e) {
+      console.error('[auto-finalise] postponed flag clear failed for fixture:', fx.id, e)
     }
   }
 

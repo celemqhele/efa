@@ -149,6 +149,21 @@ export default function Desktop({ data }: { data: any }) {
                   )}
                 </div>
               )}
+              {fixture.postponed_confirmed && (
+                <p className="text-[11px] font-semibold text-feedback-warning uppercase tracking-widest mt-2">
+                  Postponement agreed
+                </p>
+              )}
+              {result.screenshot_url && (
+                <a
+                  href={result.screenshot_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-accent hover:underline mt-2 inline-block"
+                >
+                  View screenshot
+                </a>
+              )}
             </div>
             {awayTeam ? (
               <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-3 hover:opacity-80 transition-opacity group flex-1 max-w-xs">

@@ -398,7 +398,10 @@ export default async function TeamProfilePage({ params }: PageProps) {
       tournament:tournaments(name, type)
     `)
     .or(teamOrFilter)
-    .in('status', ['scheduled', 'awaiting_confirmation'])
+    // Postponed-confirmed fixtures read status 'confirmed' (agreed 3-0 already
+    // counted) but are still to be played on their moved date, so they are
+    // upcoming here too.
+    .or('status.in.(scheduled,awaiting_confirmation),postponed_confirmed.eq.true')
     .order('scheduled_date', { ascending: true })
     .limit(5)
 
@@ -414,6 +417,9 @@ export default async function TeamProfilePage({ params }: PageProps) {
     `)
     .or(teamOrFilter)
     .eq('status', 'confirmed')
+    // Not a postponement placeholder: that agreed 3-0 belongs to a game still to
+    // be played, not to the recent-results list.
+    .neq('postponed_confirmed', true)
     .order('scheduled_date', { ascending: false })
     .limit(6)
 

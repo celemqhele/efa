@@ -37,7 +37,7 @@ export default async function FixturesPage() {
       const { data: fixtures } = await supabase
         .from('fixtures')
         .select(`
-          id, matchday, scheduled_date, status, round_type, leg,
+          id, matchday, scheduled_date, status, postponed_confirmed, round_type, leg,
           tournament:tournaments(id, name, type),
           home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
           away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
@@ -68,7 +68,11 @@ export default async function FixturesPage() {
   }
 
   const upcomingStatuses = new Set(['scheduled', 'awaiting_confirmation'])
-  const upcoming = fixturesWithResults.filter((f: any) => upcomingStatuses.has(f.status))
+  // A postponed-confirmed fixture reads status 'confirmed' (agreed 3-0 already
+  // counted) but is still to be played on its moved date, so it stays upcoming.
+  const upcoming = fixturesWithResults.filter(
+    (f: any) => upcomingStatuses.has(f.status) || !!f.postponed_confirmed
+  )
 
   const grouped: Record<string, any[]> = {}
   for (const f of upcoming) {

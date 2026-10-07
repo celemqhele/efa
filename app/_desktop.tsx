@@ -51,7 +51,7 @@ export default function Desktop({ data }: { data: any }) {
                     </div>
 
                     <div className="text-center min-w-[48px]">
-                      {f.results ? (
+                      {f.results && !f.postponed_confirmed ? (
                         <span className="text-text-primary font-bold text-sm">
                           {f.results.home_score}–{f.results.away_score}
                         </span>
@@ -59,11 +59,13 @@ export default function Desktop({ data }: { data: any }) {
                         <span className="text-xs text-accent font-semibold">vs</span>
                       )}
                       <div className={`text-[10px] mt-0.5 font-medium ${
+                        f.postponed_confirmed ? 'text-feedback-warning' :
                         f.status === 'confirmed' ? 'text-feedback-success' :
                         (f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') ? 'text-feedback-warning' :
                         'text-text-muted'
                       }`}>
-                        {f.status === 'confirmed' ? 'FT' :
+                        {f.postponed_confirmed ? 'Postponed' :
+                         f.status === 'confirmed' ? 'FT' :
                          (f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') ? 'Pending' : ''}
                       </div>
                     </div>

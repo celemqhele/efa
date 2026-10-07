@@ -53,7 +53,9 @@ export default async function HomePage() {
     .from('fixtures')
     .select('scheduled_date')
     .gte('scheduled_date', today)
-    .in('status', ['scheduled', 'awaiting_confirmation'])
+    // Postponed-confirmed fixtures read status 'confirmed' but are still to be
+    // played on their moved date, so they count as upcoming too.
+    .or('status.in.(scheduled,awaiting_confirmation),postponed_confirmed.eq.true')
     .order('scheduled_date', { ascending: true })
     .limit(1)
 
@@ -69,13 +71,13 @@ export default async function HomePage() {
     let batchQuery = supabase
       .from('fixtures')
       .select(`
-        id, matchday, scheduled_date, status, deadline,
+        id, matchday, scheduled_date, status, postponed_confirmed, deadline,
         home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
         away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
         results(home_score, away_score)
       `)
       .eq('scheduled_date', nextDate)
-      .in('status', ['scheduled', 'awaiting_confirmation'])
+      .or('status.in.(scheduled,awaiting_confirmation),postponed_confirmed.eq.true')
       .order('deadline')
 
     if (teamOrFilter) {

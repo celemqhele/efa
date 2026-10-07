@@ -16,6 +16,11 @@ const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   abandoned: { label: 'Abandoned', pill: 'bg-red-500/20 text-red-500 border-red-500/30' },
 }
 
+// Postponement accepted: the fixture reads status 'confirmed' (the agreed 3-0
+// already counted in the standings) but the game is still to be played on its
+// moved date, so it shows as postponed instead of finished.
+const POSTPONED_STYLE = { label: 'Postponed', pill: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' }
+
 const TYPE_STYLES: Record<string, { label: string; colour: string }> = {
   league: { label: 'PL', colour: 'bg-accent/10 text-accent border-accent/25' },
   ucl: { label: 'UCL', colour: 'bg-blue-500/10 text-blue-400 border-blue-500/25' },
@@ -162,12 +167,14 @@ export default function Desktop({ data }: DesktopProps) {
                     const t = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
                     const isHome = teamIds.includes(home?.id)
                     const opponent = isHome ? away : home
-                    const result = f._result
+                    const result = f.postponed_confirmed ? null : f._result
                     const myScore = isHome ? result?.home_score : result?.away_score
                     const oppScore = isHome ? result?.away_score : result?.home_score
                     const tournamentType = t?.type ?? 'unknown'
                     const typeStyle = TYPE_STYLES[tournamentType] ?? { label: t?.name ?? '—', colour: 'bg-slate-500/10 text-text-muted border-slate-500/25' }
-                    const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
+                    const statusInfo = f.postponed_confirmed
+                      ? POSTPONED_STYLE
+                      : STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
 
                     return (
                       <Link

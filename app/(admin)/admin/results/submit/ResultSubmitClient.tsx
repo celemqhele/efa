@@ -24,6 +24,10 @@ interface Fixture {
   tournament_id: string
   scheduled_date: string | null
   status: 'scheduled' | 'awaiting_confirmation' | string
+  // Set on a fixture whose postponement was accepted: status reads 'confirmed'
+  // (agreed 3-0 already counted) but the game is still to be played on the
+  // moved date, so it belongs with the pending list, not the completed one.
+  postponed_confirmed?: boolean
   tournament: { id: string; name: string; type: string } | null
   home_team: Team | null
   away_team: Team | null
@@ -200,7 +204,13 @@ export default function ResultSubmitClient({
   const selectedFixture = pendingFixtures.find((f) => f.id === selectedFixtureId) ?? null
   const existingConfs = selectedFixtureId ? (confirmationsByFixture[selectedFixtureId] ?? []) : []
 
-  const isFinished = selectedFixture ? ['completed', 'confirmed', 'confirmed_pending', 'abandoned'].includes(selectedFixture.status) : false
+  // A postponed-confirmed fixture reads 'confirmed' (the agreed 3-0 already
+  // counted) but the real score is still to come on its moved date, so it stays
+  // editable instead of being treated as finished.
+  const isFinished = selectedFixture
+    ? ['completed', 'confirmed', 'confirmed_pending', 'abandoned'].includes(selectedFixture.status) &&
+      !selectedFixture.postponed_confirmed
+    : false
 
   // Auto-select fixture from URL on mount and when fixtures load
   useEffect(() => {
@@ -224,9 +234,11 @@ export default function ResultSubmitClient({
     if (statusFilter !== 'all') {
       if (statusFilter === 'completed') {
         if (!['confirmed', 'abandoned'].includes(fx.status)) return false
+        if (fx.postponed_confirmed) return false
       } else if (statusFilter === 'scheduled') {
         // "Sched." = submittable fixtures (both scheduled and awaiting_confirmation)
-        if (!['scheduled', 'awaiting_confirmation'].includes(fx.status)) return false
+        // plus postponed-confirmed ones still to be played on their moved date
+        if (!['scheduled', 'awaiting_confirmation'].includes(fx.status) && !fx.postponed_confirmed) return false
       } else if (fx.status !== statusFilter) {
         return false
       }
@@ -598,7 +610,7 @@ export default function ResultSubmitClient({
                       fx.status === 'awaiting_confirmation'
                         ? 'text-yellow-400 bg-yellow-500/10'
                         : 'text-text-muted bg-bg-elevated/10'
-                    }`}>{fx.status.replace('_', ' ')}</span>
+                    }`}>{fx.postponed_confirmed ? 'postponed' : fx.status.replace('_', ' ')}</span>
                     {confs.length > 0 && (
                       <span className="text-xs text-blue-400">{confs.length} conf.</span>
                     )}
@@ -672,7 +684,9 @@ export default function ResultSubmitClient({
                   )}
                 </div>
               </div>
-              <p className="text-xs font-bold text-text-muted mt-4 uppercase tracking-widest break-words">{selectedFixture.status}</p>
+              <p className="text-xs font-bold text-text-muted mt-4 uppercase tracking-widest break-words">
+                {selectedFixture.postponed_confirmed ? 'postponed · confirmed' : selectedFixture.status}
+              </p>
             </div>
 
             <div className="pt-1">

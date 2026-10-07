@@ -82,7 +82,10 @@ export default async function ProfilePage() {
           tournament:tournaments(name, type)
         `)
         .or(teamOrFilter)
-        .eq('status', 'scheduled')
+        // Postponed-confirmed fixtures read status 'confirmed' (agreed 3-0 already
+        // counted) but are still to be played on their moved date, so the manager
+        // still sees them as upcoming.
+        .or('status.eq.scheduled,postponed_confirmed.eq.true')
         .order('scheduled_date', { ascending: true })
         .limit(5)
     : { data: null }

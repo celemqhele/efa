@@ -34,7 +34,7 @@ export default async function FixturesManagePage({
   let query = supabase
     .from('fixtures')
     .select(`
-      id, matchday, round_type, scheduled_date, status, is_postponed, leg, tournament_id,
+      id, matchday, round_type, scheduled_date, status, is_postponed, postponed_confirmed, leg, tournament_id,
       tournament:tournaments(id, name, type),
       home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug),
       away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug),

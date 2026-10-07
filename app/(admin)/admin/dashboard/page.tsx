@@ -43,7 +43,7 @@ export default async function AdminDashboardPage() {
   const koCounts: Record<string, number> = {}
   for (const f of (fixtures ?? []) as any[]) {
     fixtureCounts[f.tournament_id] = (fixtureCounts[f.tournament_id] ?? 0) + 1
-    if (f.status === 'confirmed') {
+    if (f.status === 'confirmed' && !f.postponed_confirmed) {
       completedCounts[f.tournament_id] = (completedCounts[f.tournament_id] ?? 0) + 1
     }
     if (KO_ROUNDS.includes(f.round_type)) {
@@ -54,14 +54,18 @@ export default async function AdminDashboardPage() {
   const todayKey = await getAppTodayKey(supabase)
   const { endIso: todayEnd } = getAppDayUtcRange(todayKey)
 
+  // Due = still to play (scheduled / awaiting confirmation), plus
+  // postponed-confirmed fixtures on their moved date — those carry
+  // status='confirmed' + postponed_confirmed=true but the game itself is still
+  // to be played, so they must stay visible here.
   const { data: dueFixtures } = await (supabase as any)
     .from('fixtures')
     .select(`
-      id, matchday, status, scheduled_date,
+      id, matchday, status, scheduled_date, postponed_confirmed,
       home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone)),
       away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone))
     `)
-    .in('status', ['scheduled', 'awaiting_confirmation'])
+    .or('status.in.(scheduled,awaiting_confirmation),and(status.eq.confirmed,postponed_confirmed.eq.true)')
     .lte('scheduled_date', todayEnd)
     .order('scheduled_date', { ascending: true })
 

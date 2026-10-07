@@ -69,7 +69,7 @@ export default async function TeamFixturesPage({ params }: PageProps) {
   const { data: allFixtures } = await supabase
     .from('fixtures')
     .select(`
-      id, matchday, scheduled_date, status, round_type, leg, home_team_id, away_team_id,
+      id, matchday, scheduled_date, status, postponed_confirmed, round_type, leg, home_team_id, away_team_id,
       tournament:tournaments(id, name, type, status),
       home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
       away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
@@ -90,13 +90,18 @@ export default async function TeamFixturesPage({ params }: PageProps) {
     resultsByFixture[(r as any).fixture_id] = r as any
   }
 
-  // Split into upcoming and past
+  // Split into upcoming and past. A postponed-confirmed fixture reads status
+  // 'confirmed' (agreed 3-0 already counted) but is still to be played on its
+  // moved date, so it stays on the upcoming side.
+  const isUpcoming = (f: any) =>
+    f.status === 'scheduled' || f.status === 'awaiting_confirmation' || !!f.postponed_confirmed
+
   const upcoming = (allFixtures ?? [])
-    .filter((f: any) => f.status === 'scheduled' || f.status === 'awaiting_confirmation')
+    .filter(isUpcoming)
     .reverse()
-  
+
   const past = (allFixtures ?? [])
-    .filter((f: any) => f.status !== 'scheduled' && f.status !== 'awaiting_confirmation')
+    .filter((f: any) => !isUpcoming(f))
 
   const data = { team, siblingIds, upcoming, past, resultsByFixture }
 

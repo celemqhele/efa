@@ -12,6 +12,10 @@ const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   abandoned: { label: 'Abandoned', pill: 'bg-feedback-error/20 text-feedback-error border-feedback-error/30' },
 }
 
+// Postponement accepted: status reads 'confirmed' (the agreed 3-0 already
+// counted) but the game is still to be played on its moved date.
+const POSTPONED_STYLE = { label: 'Postponed', pill: 'bg-feedback-warning/20 text-feedback-warning border-feedback-warning/30' }
+
 const TYPE_LABELS: Record<string, string> = {
   league: 'PL',
   tournament_club: 'Tournament',
@@ -98,7 +102,7 @@ export default function Desktop({ data }: { data: any }) {
                   const isHome = homeTeam ? siblingIds.includes(homeTeam.id) : siblingIds.includes(f.home_team_id)
                   const opponent = isHome ? awayTeam : homeTeam
 
-                  const result = resultsByFixture[f.id]
+                  const result = f.postponed_confirmed ? null : resultsByFixture[f.id]
 
                   const myScore = isHome ? result?.home_score : result?.away_score
                   const oppScore = isHome ? result?.away_score : result?.home_score
@@ -111,7 +115,9 @@ export default function Desktop({ data }: { data: any }) {
                   const tournament = f.tournament
                   const tournamentType = tournament?.type ?? 'unknown'
                   const tournamentLabel = TYPE_LABELS[tournamentType] ?? tournament?.name ?? '—'
-                  const statusInfo = STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
+                  const statusInfo = f.postponed_confirmed
+                    ? POSTPONED_STYLE
+                    : STATUS_STYLES[f.status] ?? STATUS_STYLES['scheduled']
 
                   let resultBadge: React.ReactNode = null
                   if (won) {

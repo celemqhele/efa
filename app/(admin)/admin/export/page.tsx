@@ -403,7 +403,8 @@ export default async function ExportPage({ searchParams }: Props) {
           .eq('tournament_id', tournamentId)
           .gte('scheduled_date', dateStart)
           .lte('scheduled_date', dateEnd)
-          .in('status', ['scheduled', 'awaiting_confirmation'])
+          // Includes postponement placeholders: still to be played on their moved date.
+          .or('status.in.(scheduled,awaiting_confirmation),postponed_confirmed.eq.true')
           .order('scheduled_date', { ascending: true })
         if (fxErr) queryErrors.push(fxErr.message)
         fixtures = data ?? []
@@ -434,6 +435,8 @@ export default async function ExportPage({ searchParams }: Props) {
           )
           .eq('tournament_id', tournamentId)
           .eq('status', 'confirmed')
+          // A postponement placeholder is not a finished result yet.
+          .neq('postponed_confirmed', true)
           .gte('scheduled_date', dateStart)
           .lte('scheduled_date', dateEnd)
           .order('scheduled_date', { ascending: true })
@@ -532,7 +535,7 @@ export default async function ExportPage({ searchParams }: Props) {
           .from('fixtures')
           .select('home_team_id, away_team_id')
           .eq('tournament_id', tournamentId)
-          .eq('status', 'scheduled')
+          .or('status.eq.scheduled,postponed_confirmed.eq.true')
           .gte('scheduled_date', dateStart)
           .lte('scheduled_date', dateEnd)
         if (pfxErr) queryErrors.push(pfxErr.message)

@@ -309,6 +309,7 @@ export default function Desktop({ data }: { data: any }) {
                           <DashboardFixtureActions
                             fixtureId={fx.id}
                             status={fx.status}
+                            postponedConfirmed={!!fx.postponed_confirmed}
                             homeTeamName={cleanTeamName(fx.home_team?.name) ?? ''}
                             awayTeamName={cleanTeamName(fx.away_team?.name) ?? ''}
                             homeManagerName={fx.home_team?.manager?.username}
@@ -326,7 +327,8 @@ export default function Desktop({ data }: { data: any }) {
                 <DueFixturesExportButton
                   fixtures={(dueFixtures ?? []).map((fx: any) => ({
                     id: fx.id, matchday: fx.matchday ?? null,
-                    scheduled_date: fx.scheduled_date ?? null, status: fx.status,
+                    scheduled_date: fx.scheduled_date ?? null,
+                    status: fx.postponed_confirmed ? 'scheduled' : fx.status,
                     home_team_name: cleanTeamName(fx.home_team?.name) ?? null,
                     home_team_folder: fx.home_team?.logo_league_folder ?? null,
                     home_team_slug: fx.home_team?.logo_team_slug ?? null,

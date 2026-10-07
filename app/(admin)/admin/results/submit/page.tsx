@@ -13,22 +13,26 @@ export default async function ResultSubmitPage({
   const resolvedSearchParams = await searchParams
 
   const selectFixture = `
-    id, matchday, round_type, leg, scheduled_date, status, tournament_id,
+    id, matchday, round_type, leg, scheduled_date, status, postponed_confirmed, tournament_id,
     home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager_id),
     away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager_id),
     tournament:tournaments!fixtures_tournament_id_fkey(id, name, type)
   `
 
+  // Still to play: scheduled / awaiting confirmation, plus postponed-confirmed
+  // fixtures on their moved date. Those carry status 'confirmed' (the agreed 3-0
+  // is already in the standings) but the game itself is not played yet.
   const { data: pendingFixtures } = await supabase
     .from('fixtures')
     .select(selectFixture)
-    .in('status', ['scheduled', 'awaiting_confirmation'])
+    .or('status.in.(scheduled,awaiting_confirmation),postponed_confirmed.eq.true')
     .order('scheduled_date', { ascending: true })
 
   const { data: completedFixtures } = await supabase
     .from('fixtures')
     .select(selectFixture)
     .eq('status', 'confirmed')
+    .neq('postponed_confirmed', true)
     .order('scheduled_date', { ascending: false })
     .limit(500)
 

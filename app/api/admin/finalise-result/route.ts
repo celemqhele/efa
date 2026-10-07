@@ -320,6 +320,15 @@ export async function POST(request: Request) {
     }
   }
 
+  // A postponed-confirmed fixture is being finalised for real: drop the flag so
+  // it leaves every upcoming / due list. The standings have already been updated
+  // by the result upsert above.
+  await adminSupabase
+    .from('fixtures')
+    .update({ postponed_confirmed: false })
+    .eq('id', fixture_id)
+    .eq('postponed_confirmed', true)
+
   // Void any pending backdoor submissions for this fixture
   await adminSupabase
     .from('backdoor_submissions')

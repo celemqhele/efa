@@ -409,12 +409,11 @@ const msg = messages[0]
           return new NextResponse(null, { status: 200 })
         }
         if (activeSession.backdoor_menu_step === 'screenshot') {
-          // Match-centre deep link already pinned this fixture (matched_fixture_id
-          // is set) — skip the team-name search and go straight to "who is not
-          // responding?".
+          // Fixture already pinned on this session — skip the team-name search and
+          // go straight to "who is not responding?".
           if (activeSession.matched_fixture_id) {
-            // BQH deep link pinned the non-responding side when the manager opened
-            // the link, so there is nothing left to ask: file the report directly.
+            // Side already pinned too, so there is nothing left to ask: file the
+            // report directly.
             if (activeSession.backdoor_side) {
               const pinnedSide = activeSession.backdoor_side
               await upsertSession({
@@ -571,10 +570,9 @@ type SessionData = {
   pending_date: string | null
   team_id: string | null
   fixtures_team_ids: string[] | null
-  // Set when the session was opened from a match-code deep link. While it is in
-  // the future the session is exempt from the idle sweep in
-  // handleExpiredSession, so a manager who takes hours to answer the confirm
-  // prompt keeps their place in the submission flow.
+  // Legacy: set while a session was pinned. The MC-code deep link that used to
+  // set it now lives on the web portal, but rows may still carry a future value,
+  // so handleExpiredSession keeps honouring it until those sessions age out.
   pinned_until: string | null
   // Phone-number update fields (result submission mismatch flow)
   phone_update_profile_id: string | null
@@ -631,10 +629,8 @@ async function getSession(phoneNumber: string): Promise<SessionData | null> {
 async function upsertSession(session: Partial<SessionData> & { phone_number: string }) {
   const supabase = await createAdminClient()
   // `pinned_until` is deliberately absent from the payload unless the caller asks
-  // for it, so a partial upsert leaves the existing value alone. That matters: the
-  // match-centre flow walks through a dozen states (screenshot > OCR > confirm >
-  // edit score > swap stats) and every one of those upserts must keep the pin, or
-  // a slow manager loses the flow at whichever step happened to drop it.
+  // for it, so a partial upsert leaves the existing value alone — a session that
+  // still carries a legacy pin keeps it through every state change of its flow.
   // Starting a genuinely new flow instead goes through clearSession (which deletes
   // the row and the pin with it) or an explicit unpin.
   const payload: Record<string, unknown> = { ...session, updated_at: new Date().toISOString() }
@@ -645,8 +641,8 @@ async function upsertSession(session: Partial<SessionData> & { phone_number: str
 }
 
 // Drops the idle-sweep exemption without ending the session. Used when a manager
-// abandons a pinned match-centre flow and starts something unrelated, so that
-// unrelated flow cannot inherit the exemption.
+// starts something unrelated to a session a legacy deep link may have pinned, so
+// that unrelated flow cannot inherit the exemption.
 async function unpinSession(phoneNumber: string) {
   const supabase = await createAdminClient()
   const { error } = await supabase
@@ -663,23 +659,15 @@ async function clearSession(phoneNumber: string) {
 
 // ─── Session expiry ─────────────────────────────────────────────────────────────
 // A session that has been silent for longer than SESSION_MAX_IDLE clears itself
-// on the next message. This guarantees a reminder-link "Hi" (or any random
-// message after an hour of silence) lands on the fresh welcome menu instead of a
-// stale mid-flow state. Every state-changing upsert touches `updated_at`, so the
-// window is measured from the last activity.
+// on the next message, so any message after an hour of silence lands on the fresh
+// welcome menu instead of a stale mid-flow state. Every state-changing upsert
+// touches `updated_at`, so the window is measured from the last activity.
 //
-// Sessions opened from a match-code deep link are exempt while `pinned_until` is
-// in the future. A manager who sends the screenshot at 17:10 and only answers the
-// confirm prompt at 20:12 must not lose the submission, and the flow re-validates
-// the 7-day submission window before writing anything, so the pin cannot be used to
-// dodge that rule. The pin still ages out so a forgotten match centre cannot sit
-// on a stale state and hijack a later "1" from an unrelated conversation.
+// Rows that still carry a legacy `pinned_until` in the future stay exempt while
+// it lasts — those sessions are mid-conversation and must not be swept, and the
+// 7-day submission window is re-checked before anything is written. The pin
+// ages out on its own, so a forgotten session cannot hold that state forever.
 const SESSION_MAX_IDLE_MS = 60 * 60 * 1000
-const PINNED_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
-
-function pinExpiryIso(): string {
-  return new Date(Date.now() + PINNED_SESSION_TTL_MS).toISOString()
-}
 
 async function handleExpiredSession(phoneNumber: string, session: SessionData | null): Promise<boolean> {
   if (!session) return false
@@ -865,8 +853,8 @@ async function handleStartAgain(from: string, text: string, phoneNumberId: strin
 // choosing options inside an existing flow.
 async function handleWelcomeMenu(from: string, text: string, phoneNumberId: string) {
   // Reaching the main menu means the manager chose to start something new, so a
-  // pin left over from an abandoned match-centre flow is released here. Otherwise
-  // the unrelated flow they are about to start would inherit the exemption.
+  // pin left over from an abandoned flow is released here. Otherwise the unrelated
+  // flow they are about to start would inherit the exemption.
   await unpinSession(from)
   const num = extractNumber(text)
   const manager = await getLoggedInManager(from)
@@ -1002,8 +990,10 @@ async function handleLoggedInMatchNameSearch(from: string, manager: LoggedInMana
   const { start: windowStart, end: windowEnd } = getSubmissionWindow()
   const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
-    .in('status', ['scheduled'])
+    .select('id, home_team_id, away_team_id, status, postponed_confirmed, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    // 'scheduled' plus an agreed postponement (status 'confirmed' but only the
+    // placeholder score exists) - the real result is still owed on the new date.
+    .or('status.eq.scheduled,and(status.eq.confirmed,postponed_confirmed.eq.true)')
     .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
     .gte('scheduled_date', windowStart)
     .lte('scheduled_date', windowEnd)
@@ -1074,7 +1064,7 @@ if (isCancel(text)) {
 
   const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .select('id, status, postponed_confirmed, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
     .in('status', ['scheduled', 'confirmed', 'confirmed_pending', 'awaiting_confirmation', 'completed', 'abandoned'])
     .order('scheduled_date', { ascending: true })
     .order('matchday', { ascending: true })
@@ -1149,13 +1139,15 @@ async function handleBackdoorFixture(from: string, text: string, phoneNumberId: 
   const supabase = await createAdminClient()
   const { data } = await supabase
     .from('fixtures')
-    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .select('id, status, postponed_confirmed, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
     .eq('id', fixtureId)
     .single()
   const h = fixtureTeamName(data, 'home')
   const a = fixtureTeamName(data, 'away')
   const result = data ? (Array.isArray(data.results) ? data.results[0] : data.results) : null
-  const alreadyApplied = !!data && !!result && (data.status === 'confirmed' || data.status === 'confirmed_pending' || data.status === 'awaiting_confirmation' || data.status === 'completed')
+  const alreadyApplied =
+    !!data && !!result && !data.postponed_confirmed &&
+    (data.status === 'confirmed' || data.status === 'confirmed_pending' || data.status === 'awaiting_confirmation' || data.status === 'completed')
 
   if (alreadyApplied) {
     await upsertSession({
@@ -1247,7 +1239,7 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
   // Detect if this is an override of an already-confirmed backdoor result
   const { data: existingFix } = await supabase
     .from('fixtures')
-    .select('id, status, tournament_id, round_type, home_team_id, away_team_id, results!results_fixture_id_fkey(home_score, away_score)')
+    .select('id, status, postponed_confirmed, tournament_id, round_type, home_team_id, away_team_id, results!results_fixture_id_fkey(home_score, away_score)')
     .eq('id', session.matched_fixture_id)
     .single()
   const existingResult = existingFix ? (Array.isArray(existingFix.results) ? existingFix.results[0] : existingFix.results) : null
@@ -1423,9 +1415,10 @@ async function handleLoggedInFirstTimeList(from: string, manager: LoggedInManage
     .join(',')
   const { data: windowFixtures } = await supabase
     .from('fixtures')
-    .select('id, status, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .select('id, status, postponed_confirmed, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
     .or(orParts)
-    .eq('status', 'scheduled')
+    // 'scheduled' plus an agreed postponement (still owes its real result).
+    .or('status.eq.scheduled,and(status.eq.confirmed,postponed_confirmed.eq.true)')
     .order('matchday', { ascending: true })
   const cat1 = ((windowFixtures as any[]) || [])
     .filter(f => {
@@ -1548,7 +1541,7 @@ async function handleLoggedInFirstTimePick(from: string, text: string, session: 
   const supabase = await createAdminClient()
   const { data: fixture } = await supabase
     .from('fixtures')
-    .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .select('id, status, postponed_confirmed, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
     .eq('id', fixtureId)
     .single()
   if (!fixture) {
@@ -1624,7 +1617,7 @@ async function handleLoggedInScreenshotImage(from: string, msg: { image: { id: s
   const supabase = await createAdminClient()
   const { data: fixture } = await supabase
     .from('fixtures')
-    .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .select('id, status, postponed_confirmed, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
     .eq('id', fixtureId)
     .single()
   const isAlreadyConfirmed = isFixtureConfirmed(fixture as any)
@@ -1838,15 +1831,19 @@ async function sendFixturesForTeams(from: string, teamIds: string[], teamNames: 
 
   const { data: fixtures } = await supabase
     .from('fixtures')
-    .select('id, status, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    .select('id, status, postponed_confirmed, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
     .or(orParts)
     .in('status', ['scheduled', 'confirmed', 'confirmed_pending'])
     .order('matchday', { ascending: true })
     .order('scheduled_date', { ascending: true })
 
   const allFixtures = (fixtures as any[]) || []
-  const scheduled = allFixtures.filter(f => f.status === 'scheduled')
-  const confirmed = allFixtures.filter(f => f.status === 'confirmed' || f.status === 'confirmed_pending')
+  // An agreed postponement keeps status 'confirmed' but only holds the locked
+  // 3-0 placeholder - the game is still to be played, so it stays in the
+  // Scheduled bucket and is printed as "Home vs Away".
+  const isPlaceholder = (f: any) => !!f.postponed_confirmed
+  const scheduled = allFixtures.filter(f => f.status === 'scheduled' || isPlaceholder(f))
+  const confirmed = allFixtures.filter(f => !isPlaceholder(f) && (f.status === 'confirmed' || f.status === 'confirmed_pending'))
 
   if (allFixtures.length === 0) {
     await upsertSession({ phone_number: from, pending_date: useDate })
@@ -2177,7 +2174,7 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
 
   let query = supabase
     .from('fixtures')
-    .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score, override_reason)')
+    .select('id, home_team_id, away_team_id, status, postponed_confirmed, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score, override_reason)')
     .in('status', ['scheduled', 'confirmed', 'confirmed_pending', 'awaiting_confirmation', 'completed', 'abandoned'])
   if (!isAdmin) {
     query = query.gte('scheduled_date', start).lte('scheduled_date', end)
@@ -2244,6 +2241,14 @@ if (teamSearches.length === 0) {
     // steering the user into the "who is not responding?" step, where the side
     // selector would dead-end on "This fixture is no longer available for backdoor."
     if (f.status !== 'scheduled') {
+      // An agreed postponement is not a finished game: the score on file is
+      // only the locked 3-0 placeholder and the match is still to be played.
+      if (f.postponed_confirmed) {
+        const when = formatFixtureWhen(f) ? ` on ${formatFixtureWhen(f)}` : ''
+        await sendTextMessage(from, `This match was postponed${when} and is still to be played. Nothing to report yet.`, phoneNumberId)
+        await clearSession(from)
+        return
+      }
       const result = Array.isArray(f.results) ? f.results[0] : f.results
       if (result) {
         const reason = result.override_reason ? ` (${result.override_reason})` : ''
@@ -2422,9 +2427,9 @@ async function handleBackdoorSideSelect(from: string, text: string, session: Ses
 }
 
 // Files the backdoor report for a fixture + side. Shared by the typed-side path
-// (handleBackdoorSideSelect) and the BQH deep link, which already pinned the side
-// when the manager opened the link — so every gate here (backdoor window,
-// duplicate report, fixture still scheduled) runs identically either way.
+// (handleBackdoorSideSelect) and the fixture-pinned path that skips the team-name
+// search, so every gate here (backdoor window, duplicate report, fixture still
+// scheduled) runs identically either way.
 // `session` must carry matched_fixture_id and backdoor_screenshot_media_id.
 async function submitBackdoorSubmission(
   from: string,
@@ -2459,11 +2464,18 @@ async function submitBackdoorSubmission(
   // Check fixture still scheduled
   const { data: fixture } = await supabase
     .from('fixtures')
-    .select('status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score, override_reason)')
+    .select('status, postponed_confirmed, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score, override_reason)')
     .eq('id', session.matched_fixture_id)
     .single()
 
   if (!fixture || fixture.status !== 'scheduled') {
+    // Agreed postponement: the stored 3-0 is only a placeholder, the game is
+    // still to be played on its moved date.
+    if (fixture?.postponed_confirmed) {
+      await sendTextMessage(from, 'This match was postponed and is still to be played. Nothing to report yet.', phoneNumberId)
+      await clearSession(from)
+      return
+    }
     const res = Array.isArray(fixture?.results) ? fixture.results[0] : fixture?.results
     if (res) {
       const hName = fixtureTeamName(fixture, 'home')
@@ -4876,16 +4888,27 @@ function formatFixtureLine(f: any, index: number): string {
   const date = formatFixtureWhen(f)
   const tournament = fixtureTournamentName(f)
   const result = Array.isArray(f.results) ? f.results[0] : f.results
+  // A postponement that was accepted stores an agreed 3-0 placeholder under
+  // status 'confirmed' - the game itself is still to be played, so it must be
+  // listed as un-submitted, never as "(SUBMITTED) 3 - 0".
+  const settled =
+    !!result &&
+    !f.postponed_confirmed &&
+    (f.status === 'confirmed' || f.status === 'confirmed_pending' || f.status === 'awaiting_confirmation')
   let line: string
-  if (result && (f.status === 'confirmed' || f.status === 'confirmed_pending' || f.status === 'awaiting_confirmation')) {
+  if (settled) {
     line = `${index + 1}. ${hN} ${result.home_score} - ${result.away_score} ${aN}`
   } else {
     line = `${index + 1}. ${hN} vs ${aN}`
   }
-  return `${line}${date ? ` - ${date}` : ''}${tournament ? ` - ${tournament}` : ''}${result && (f.status === 'confirmed' || f.status === 'confirmed_pending' || f.status === 'awaiting_confirmation') ? ' (SUBMITTED)' : ''}`
+  return `${line}${date ? ` - ${date}` : ''}${tournament ? ` - ${tournament}` : ''}${settled ? ' (SUBMITTED)' : ''}`
 }
 
+// true = the fixture already carries a settled result. postponed_confirmed is
+// deliberately excluded: that status only hides an agreed placeholder, so the
+// real result is still owed.
 function isFixtureConfirmed(f: any): boolean {
+  if (f.postponed_confirmed) return false
   return f.status === 'confirmed' || f.status === 'confirmed_pending' || f.status === 'awaiting_confirmation'
 }
 
@@ -4967,280 +4990,9 @@ async function fixtureMatches(f: any, teamSearches: string[]): Promise<boolean> 
   return match1 || match2
 }
 
-// ─── Match-centre deep links (reminder link: "Hi MC-XXXXXXXX") ─────────────────
-// The admin dashboard embeds a per-fixture code in the reminder links
-// (https://wa.me/<AI-BOT>?text=Hi MC-3D6K689L). When the manager sends the
-// preloaded text, the bot resolves the code to the fixture, verifies the sender
-// is one of the match's two managers, ends any current session (SQL clear) and
-// opens a fresh match-centre menu bound to that fixture. Games outside the 7-day
-// window are refused up front with a fixed unavailable message.
-//
-// The same code carries a BQH token when the reminder's second link is used
-// ("Hi BQH MC-3D6K689L"): instead of the menu it opens the backdoor flow for that
-// fixture with the opponent already pinned as the non-responding side, so the
-// manager never has to answer "who is not responding?".
-
-const MATCH_CODE_RE = /\bMC[:\-\s]*([A-Z2-9]{8})\b/i
-const BQH_TOKEN_RE = /\bBQH\b/i
-
-function extractMatchCode(text: string): string | null {
-  const m = text.match(MATCH_CODE_RE)
-  return m ? m[1].toUpperCase() : null
-}
-
-// Resolves the fixture for a match code, or null when the code is unknown.
-async function fixtureForMatchCode(supabase: any, code: string): Promise<any | null> {
-  const { data: row } = await supabase
-    .from('match_codes')
-    .select('fixture_id')
-    .eq('code', code)
-    .maybeSingle()
-  if (!row) return null
-  const { data: fixture } = await supabase
-    .from('fixtures')
-    .select('id, status, scheduled_date, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name)')
-    .eq('id', row.fixture_id)
-    .single()
-  return fixture ?? null
-}
-
-// Match-centre menu, shown fresh on every deep-link open and as the re-prompt
-// when the manager sends something off-menu.
-const MATCH_CENTRE_MENU =
-  'Reply with a number:\n\n' +
-  '1. Submit the game result\n' +
-  '2. Report opponent not responding\n' +
-  '3. Go to main menu'
-
-// True when the sender's number is one of the two managers on this fixture.
-function managerOwnsFixture(manager: LoggedInManager | null, fixture: any): boolean {
-  if (!manager) return false
-  return [fixture.home_team_id, fixture.away_team_id].some(
-    (tid) => manager.teamIds.some((t) => String(t) === String(tid))
-  )
-}
-
-// Entry point for a message carrying a match code. Returns true when the message
-// was consumed by the match-centre flow (valid, invalid, or unavailable) — or by
-// the BQH backdoor variant of the same code.
-async function handleMatchCentreLink(from: string, text: string, phoneNumberId: string): Promise<boolean> {
-  const code = extractMatchCode(text)
-  if (!code) return false
-
-  const supabase = await createAdminClient()
-  const fixture = await fixtureForMatchCode(supabase, code)
-  // "MC-…" matching no stored code is not ours — fall through to normal handling.
-  if (!fixture) return false
-
-  // Only the two managers of this match may open its centre — except admins,
-  // who can open any match code (same bypass they get on the date window and
-  // the team-pair search elsewhere in the bot).
-  const isAdmin = isAdminPhone(from)
-  const manager = await getLoggedInManager(from)
-  if (!isAdmin && !managerOwnsFixture(manager, fixture)) {
-    await sendTextMessage(from, 'This match code is not linked to one of your teams. Send "Hi" for the main menu.', phoneNumberId)
-    return true
-  }
-
-  const hName = fixtureTeamName(fixture, 'home')
-  const aName = fixtureTeamName(fixture, 'away')
-
-  // Gate: keep the same 7-day window used everywhere else. Older than 7 days
-  // (or more than 7 days away) fixtures are not submittable from the centre.
-  const dateKey = fixtureDateKey(fixture)
-  if (dateKey && !isInSubmissionWindow(dateKey)) {
-    const todayKey = getSastDateKey()
-    const unavailable = dateKey < todayKey
-      ? `Welcome to the match centre for ${hName} vs ${aName}. Unfortunately this game is unavailable for submission as it is older than 7 days.`
-      : `Welcome to the match centre for ${hName} vs ${aName}. Unfortunately this game is unavailable for submission as it is still more than 7 days away.`
-    await clearSession(from)
-    await sendTextMessage(from, unavailable, phoneNumberId)
-    return true
-  }
-
-  // Reminder link #2 ("Hi BQH MC-XXXXXXXX"): report the opponent for not
-  // responding. Everything above (code → fixture, ownership, date window) is
-  // identical; only the destination differs.
-  if (BQH_TOKEN_RE.test(text)) {
-    await openBackdoorFromCode(from, fixture, manager, phoneNumberId)
-    return true
-  }
-
-  // End any current session (SQL delete) and open a fresh match-centre session.
-  // The session is pinned: this deep link already proves which fixture the manager
-  // is submitting, so it must survive however long they take to send the
-  // screenshot and answer the confirm prompt.
-  await clearSession(from)
-  await upsertSession({
-    phone_number: from,
-    state: 'match_centre',
-    matched_fixture_id: fixture.id,
-    home_team: hName,
-    away_team: aName,
-    pinned_until: pinExpiryIso(),
-  })
-
-  const dateLine = formatFixtureWhen(fixture) ? ` - ${formatFixtureWhen(fixture)}` : ''
-  const tourneyLine = fixtureTournamentName(fixture) ? ` - ${fixtureTournamentName(fixture)}` : ''
-  await sendTextMessage(
-    from,
-    `Welcome to the match centre for ${hName} vs ${aName}${dateLine}${tourneyLine}.\n\n${MATCH_CENTRE_MENU}`,
-    phoneNumberId
-  )
-  return true
-}
-
-// Opens the backdoor flow straight from a "BQH MC-XXXXXXXX" reminder link.
-//
-// The non-responding side is derived from the sender: the bot already knows which
-// of the fixture's two teams the sender manages (getLoggedInManager), so their
-// opponent is the one who did not respond. That side is pinned in the session
-// (`backdoor_side`), which is why the screenshot step no longer asks "who is not
-// responding?" — it files the report against that side directly.
-//
-// When the side can't be derived (admin with no team on this fixture, or a manager
-// who somehow owns both sides) it falls back to the match-centre menu so they
-// still reach the backdoor flow by choosing option 2 themselves.
-async function openBackdoorFromCode(
-  from: string,
-  fixture: any,
-  manager: LoggedInManager | null,
-  phoneNumberId: string
-) {
-  const hName = fixtureTeamName(fixture, 'home')
-  const aName = fixtureTeamName(fixture, 'away')
-
-  const ownsHome = !!manager?.teamIds.some((t) => String(t) === String(fixture.home_team_id))
-  const ownsAway = !!manager?.teamIds.some((t) => String(t) === String(fixture.away_team_id))
-  // `side` is the side that did NOT respond (same meaning as the backdoor
-  // submissions' side_claimed), so it is always the opposite of the sender's team.
-  const side: 'home' | 'away' | null = ownsHome && !ownsAway ? 'away' : ownsAway && !ownsHome ? 'home' : null
-
-  if (!side) {
-    console.log('[webhook] BQH link: side not derivable from sender, opening match centre instead')
-    await clearSession(from)
-    await upsertSession({
-      phone_number: from,
-      state: 'match_centre',
-      matched_fixture_id: fixture.id,
-      home_team: hName,
-      away_team: aName,
-      pinned_until: pinExpiryIso(),
-    })
-    await sendTextMessage(
-      from,
-      `Welcome to the match centre for ${hName} vs ${aName}.\n\n${MATCH_CENTRE_MENU}`,
-      phoneNumberId
-    )
-    return
-  }
-
-  const supabase = await createAdminClient()
-  if (!(await isBackdoorWindowEnabled(supabase))) {
-    await clearSession(from)
-    await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
-    return
-  }
-
-  // Same pin as the match centre: the manager still has to screenshot and the
-  // upload/notify tail runs in a later webhook call, so the session must not be
-  // swept by the 60-minute idle expiry.
-  await clearSession(from)
-  await upsertSession({
-    phone_number: from,
-    state: 'awaiting_backdoor',
-    backdoor_menu_step: 'screenshot',
-    matched_fixture_id: fixture.id,
-    backdoor_side: side,
-    pinned_until: pinExpiryIso(),
-  })
-
-  // `side` is the non-responding side (the same meaning as backdoor_submissions'
-  // side_claimed), so name that side's team, not the sender's own.
-  const notResponding = side === 'home' ? hName : aName
-  await sendTextMessage(from, `Noted: ${notResponding} is not responding.\n\nSend a screenshot showing that they did not respond.`, phoneNumberId)
-}
-
-// Menu handler for an open match_centre session.
-async function handleMatchCentreMenu(from: string, text: string, session: SessionData, phoneNumberId: string) {
-  if (isCancel(text)) {
-    await clearSession(from)
-    await sendTextMessage(from, 'Cancelled. Send "Hi" to start over.', phoneNumberId)
-    return
-  }
-  const num = extractNumber(text)
-  const fixtureId = session.matched_fixture_id
-
-  if (num === 1) {
-    // Submit → reuse the logged-in screenshot step, pre-bound to this fixture.
-    const supabase = await createAdminClient()
-    const { data: fixture } = fixtureId
-      ? await supabase
-          .from('fixtures')
-          .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
-          .eq('id', fixtureId)
-          .single()
-      : { data: null }
-    if (!fixture) {
-      await clearSession(from)
-      await sendTextMessage(from, 'Something went wrong. Please start again.', phoneNumberId)
-      return
-    }
-    const hName = fixtureTeamName(fixture, 'home')
-    const aName = fixtureTeamName(fixture, 'away')
-    const dateLine = formatFixtureWhen(fixture) ? ` - ${formatFixtureWhen(fixture)}` : ''
-    const backdoorNote = isFixtureConfirmed(fixture)
-      ? '\n\nThis game currently has a backdoor result. Submitting will replace it with the real score.'
-      : ''
-    await upsertSession({
-      phone_number: from,
-      state: 'loggedin_first_time_screenshot',
-      matched_fixture_id: fixture.id,
-      home_team: hName,
-      away_team: aName,
-      submission_type: 'new',
-      match_stats: null,
-    })
-    await sendTextMessage(from, `${hName} vs ${aName}${dateLine}\n\nSend a screenshot of the result screen.${backdoorNote}`, phoneNumberId)
-    return
-  }
-
-  if (num === 2) {
-    // Backdoor → reuse the backdoor flow, with this fixture pre-set so the
-    // manager skips the team-name search and answers directly.
-    const supabase = await createAdminClient()
-    if (!(await isBackdoorWindowEnabled(supabase))) {
-      await sendTextMessage(from, BACKDOOR_DISABLED_MESSAGE, phoneNumberId)
-      return
-    }
-    await upsertSession({
-      phone_number: from,
-      state: 'awaiting_backdoor',
-      backdoor_menu_step: 'screenshot',
-      matched_fixture_id: fixtureId,
-    })
-    await sendTextMessage(from, 'Send a screenshot showing that the opponent did not respond.', phoneNumberId)
-    return
-  }
-
-  if (num === 3) {
-    await clearSession(from)
-    await sendWelcomeMenu(from, phoneNumberId)
-    return
-  }
-
-  await sendTextMessage(from, MATCH_CENTRE_MENU, phoneNumberId)
-}
-
 async function handleText(from: string, msg: { text: { body: string } }, phoneNumberId: string) {
   const text = (msg.text.body || '').trim()
   console.log(`[webhook] text: "${text}"`)
-
-  // Match-centre deep links must reset whatever flow may be open, so this runs
-  // before the session is read: the link's code is enough on its own.
-  if (await handleMatchCentreLink(from, text, phoneNumberId)) {
-    return
-  }
 
   const session = await getSession(from)
   console.log('[handleText] session:', JSON.stringify(session))
@@ -5252,9 +5004,13 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     return
   }
 
-  // ─── Match centre (opened by a reminder link code) ──────────────────────
+  // ─── Legacy match-centre sessions (MC-code flow now lives on the web portal) ─
+  // The bot no longer opens a match centre from a reminder link, so an old
+  // session pinned to one — or a stray "MC-…" message — resets to the welcome
+  // menu instead of holding a state nothing handles.
   if (session?.state === 'match_centre') {
-    await handleMatchCentreMenu(from, text, session, phoneNumberId)
+    await clearSession(from)
+    await sendWelcomeMenu(from, phoneNumberId)
     return
   }
 
@@ -5362,8 +5118,8 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   // ─── Commands (keyword-tolerant: quotes, extra words and punctuation are stripped) ──
   // Ordered most-specific first so multi-word admin commands win over "backdoor".
   const command = findCommandHandler(text)
-  // A command starts a flow unrelated to any open match-centre submission, so
-  // release that flow's pin rather than letting this one inherit it.
+  // A command starts a flow unrelated to any open submission, so release that
+  // flow's pin rather than letting this one inherit it.
   if (command) await unpinSession(from)
   if (command === 'check_fixtures') {
     await handleCheckFixturesCommand(from, phoneNumberId)
@@ -5387,8 +5143,8 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     return
   }
   if (command === 'backdoor') {
-    // Fresh user-driven flow: drop any fixture/side a BQH link may have pinned, so
-    // this one always asks which team is not responding.
+    // Fresh user-driven flow: drop any fixture/side still pinned on the session,
+    // so this one always asks which team is not responding.
     await upsertSession({ phone_number: from, state: 'awaiting_backdoor', backdoor_menu_step: 'menu', backdoor_side: null, matched_fixture_id: null })
     await sendTextMessage(from,
       'Opponent not responding (backdoor win)\n\n' +
@@ -5460,13 +5216,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     // "inter milan 3-2 liverpool" and we only match on team names
     const stripped = searchInput.replace(/\d+\s*[-:]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
 
-    // Determine status filter based on submission type
-    let statusFilter: string[]
-    if (session.submission_type === 'fix') {
-      statusFilter = ['confirmed', 'confirmed_pending', 'awaiting_confirmation']
-    } else {
-      statusFilter = ['scheduled']
-    }
+    // Statuses this search covers. An agreed postponement keeps status
+    // 'confirmed' but only holds the locked 3-0 placeholder: a first-time
+    // submission must still find it (the real score is owed), while the fix
+    // flow must not list it (its stored score is not a real result).
+    const isFixSubmission = session.submission_type === 'fix'
 
     const vsParts = stripped.split(/\s+vs\.?\s+/i)
     let teamSearches: string[]
@@ -5519,9 +5273,11 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     const { start: windowStart, end: windowEnd } = getSubmissionWindow()
     let query = supabase
       .from('fixtures')
-      .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
-      .in('status', statusFilter)
-      .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
+      .select('id, home_team_id, away_team_id, status, postponed_confirmed, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+    query = isFixSubmission
+      ? query.in('status', ['confirmed', 'confirmed_pending', 'awaiting_confirmation']).neq('postponed_confirmed', true)
+      : query.or('status.eq.scheduled,and(status.eq.confirmed,postponed_confirmed.eq.true)')
+    query = query.or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
     if (!isAdmin) {
       query = query.gte('scheduled_date', windowStart).lte('scheduled_date', windowEnd)
     }
@@ -5538,7 +5294,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     if (matchedFixtures.length === 0 && session.submission_type === 'new') {
       let alreadyQuery = supabase
         .from('fixtures')
-        .select('id, home_team_id, away_team_id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score, match_stats:match_stats(*))')
+        .select('id, home_team_id, away_team_id, status, postponed_confirmed, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score, match_stats:match_stats(*))')
         .in('status', ['confirmed', 'confirmed_pending', 'awaiting_confirmation', 'completed', 'abandoned'])
         .or(`and(home_team_id.eq.${id1},away_team_id.eq.${id2}),and(home_team_id.eq.${id2},away_team_id.eq.${id1})`)
       if (!isAdmin) {
@@ -5855,7 +5611,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
 
     const { data: dateFixtures } = await supabase
       .from('fixtures')
-      .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+      .select('id, status, postponed_confirmed, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
       .eq('scheduled_date', dateKey)
       .in('status', ['scheduled', 'awaiting_confirmation', 'confirmed', 'confirmed_pending'])
       .order('matchday', { ascending: true })
@@ -5892,7 +5648,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
       const chosenId = session.displayed_fixtures[num - 1]
       const { data: chosenFixture } = await supabase
         .from('fixtures')
-        .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+        .select('id, status, postponed_confirmed, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
         .eq('id', chosenId)
         .single()
 
@@ -5953,7 +5709,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         const chosenId = fixtureIds[num - 1]
         const { data: chosenFixture } = await supabase
           .from('fixtures')
-          .select('id, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
+          .select('id, status, postponed_confirmed, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), results!results_fixture_id_fkey(home_score, away_score)')
           .eq('id', chosenId)
           .single()
 
@@ -6017,7 +5773,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         if (fixtureIds && fixtureIds.length > 0) {
           const { data: candidateFixtures } = await supabase
             .from('fixtures')
-            .select('id, status, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
+            .select('id, status, postponed_confirmed, scheduled_date, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), tournament:tournaments(name), results!results_fixture_id_fkey(home_score, away_score)')
             .in('id', fixtureIds)
 
           const matches = ((candidateFixtures as any[]) || []).filter((f: any) => {

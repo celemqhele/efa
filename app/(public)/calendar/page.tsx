@@ -82,7 +82,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
   let fixtureQuery = supabase
     .from('fixtures')
     .select(`
-      id, matchday, scheduled_date, status,
+      id, matchday, scheduled_date, status, postponed_confirmed,
       home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
       away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug),
       result:results(home_score, away_score)
@@ -117,7 +117,9 @@ export default async function CalendarPage({ searchParams }: PageProps) {
       home_team:teams!home_team_id(id, name, logo_league_folder, logo_team_slug),
       away_team:teams!away_team_id(id, name, logo_league_folder, logo_team_slug)
     `)
-    .eq('status', 'scheduled')
+    // Upcoming includes postponement placeholders: status reads 'confirmed' but
+    // the game is still to be played on its moved date.
+    .or('status.eq.scheduled,postponed_confirmed.eq.true')
     .gte('scheduled_date', today)
     .order('scheduled_date', { ascending: true })
     .limit(1)

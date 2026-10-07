@@ -227,6 +227,21 @@ export default function Mobile({ data }: { data: any }) {
                 )}
               </div>
             )}
+            {fixture.postponed_confirmed && (
+              <p className="text-[10px] font-semibold text-feedback-warning uppercase tracking-widest text-center">
+                Postponement agreed
+              </p>
+            )}
+            {result.screenshot_url && (
+              <a
+                href={result.screenshot_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-accent hover:underline text-center min-h-[44px] inline-flex items-center"
+              >
+                View screenshot
+              </a>
+            )}
 
             {awayTeam ? (
               <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">

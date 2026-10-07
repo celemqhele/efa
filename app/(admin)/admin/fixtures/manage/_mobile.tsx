@@ -218,6 +218,7 @@ export default function Mobile({ data }: { data: any }) {
                           fixtureId={fx.id}
                           currentDate={fx.scheduled_date}
                           status={fx.status}
+                          postponedConfirmed={!!fx.postponed_confirmed}
                           homeTeamId={homeTeam?.id ?? ''}
                           homeTeamName={cleanTeamName(homeTeam?.name) ?? ''}
                           awayTeamId={awayTeam?.id ?? ''}

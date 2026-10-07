@@ -46,7 +46,10 @@ export async function runNotificationCron(
       away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id)
     `)
     .eq('scheduled_date', targetDate)
-    .in('status', ['scheduled', 'awaiting_confirmation'])
+    // Postponed-confirmed fixtures carry status 'confirmed' (the agreed 3-0 is
+    // already in the standings) but are still to be played on their moved date,
+    // so they need the same reminders as anything scheduled.
+    .or('status.in.(scheduled,awaiting_confirmation),postponed_confirmed.eq.true')
 
   if (error) {
     console.error('[notification-cron] fixture query error:', error.message)

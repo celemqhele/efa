@@ -1,9 +1,10 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// Returns the match-centre code for a fixture (matching the code the webhook
-// resolves when the manager sends "Hi MC-XXXXXXXX"). null when the fixture has
-// no code yet (only possible for fixtures that predate the match_codes trigger).
+// Returns the fixture's match code — the last path segment of its submission
+// portal link (https://efa-fxyk.vercel.app/submit-match/<code>). null when the
+// fixture has no code yet (only possible for fixtures that predate the
+// match_codes trigger).
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 

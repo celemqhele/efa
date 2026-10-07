@@ -7,6 +7,10 @@ interface Props {
   fixtureId: string
   currentDate: string | null
   status: string
+  // Postponement accepted: status reads 'confirmed' (agreed 3-0 already counted)
+  // but the game is still to be played on its moved date, so it keeps its Submit
+  // button and loses its Postpone button.
+  postponedConfirmed?: boolean
   homeTeamId: string
   homeTeamName: string
   awayTeamId: string
@@ -17,6 +21,7 @@ export default function FixtureActions({
   fixtureId,
   currentDate,
   status,
+  postponedConfirmed = false,
   homeTeamId,
   homeTeamName,
   awayTeamId,
@@ -137,7 +142,7 @@ export default function FixtureActions({
           `min-h-[44px]` + `inline-flex items-center justify-center` replaces
           the old `py-1`, which rendered a ~28px tap target. */}
       <div className="flex items-center gap-2 flex-wrap">
-        {!isFinished && (
+        {!isFinished && !postponedConfirmed && (
           <button
             onClick={() => {
               setShowPostpone(!showPostpone)
@@ -148,7 +153,7 @@ export default function FixtureActions({
             Postpone
           </button>
         )}
-        {!isFinished && (
+        {!isFinished && !postponedConfirmed && (
           <button
             onClick={() => {
               setShowBatch(!showBatch)
@@ -160,7 +165,7 @@ export default function FixtureActions({
           </button>
         )}
         {/* FIX: Shows the button for both 'scheduled' and 'awaiting_confirmation' and sets the text to 'Submit' */}
-        {['scheduled', 'awaiting_confirmation'].includes(status) && (
+        {(['scheduled', 'awaiting_confirmation'].includes(status) || postponedConfirmed) && (
           <a href={`/admin/results/submit?fixture=${fixtureId}`} className="btn-gold text-xs px-2.5 min-h-[44px] flex-1 min-w-[8.5rem] inline-flex items-center justify-center">
             Submit
           </a>

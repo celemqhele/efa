@@ -85,6 +85,7 @@ function FixtureDueCard({ fx }: { fx: any }) {
         <DashboardFixtureActions
           fixtureId={fx.id}
           status={fx.status}
+          postponedConfirmed={!!fx.postponed_confirmed}
           homeTeamName={cleanTeamName(fx.home_team?.name) ?? ''}
           awayTeamName={cleanTeamName(fx.away_team?.name) ?? ''}
           homeManagerName={fx.home_team?.manager?.username}

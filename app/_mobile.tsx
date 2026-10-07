@@ -73,7 +73,7 @@ export default function Mobile({ data }: { data: any }) {
                     </div>
 
                     <div className="text-center shrink-0 min-w-[36px] sm:min-w-[60px]">
-                      {f.results ? (
+                      {f.results && !f.postponed_confirmed ? (
                         <span className="text-text-primary font-bold text-xs sm:text-sm">
                           {f.results.home_score}–{f.results.away_score}
                         </span>
@@ -81,11 +81,13 @@ export default function Mobile({ data }: { data: any }) {
                         <span className="text-[11px] sm:text-xs text-accent font-medium">vs</span>
                       )}
                       <div className={`text-[9px] sm:text-[10px] mt-0.5 ${
+                        f.postponed_confirmed ? 'text-feedback-warning' :
                         f.status === 'confirmed' ? 'text-feedback-success' :
                         (f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') ? 'text-feedback-warning' :
                         'text-text-muted'
                       }`}>
-                        {f.status === 'confirmed' ? 'FT' :
+                        {f.postponed_confirmed ? 'Postponed' :
+                         f.status === 'confirmed' ? 'FT' :
                          (f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending') ? 'Pending' : ''}
                       </div>
                     </div>

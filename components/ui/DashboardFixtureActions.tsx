@@ -10,6 +10,7 @@ import { formatPhoneDisplay } from '@/lib/phone'
 interface Props {
   fixtureId: string
   status: string
+  postponedConfirmed?: boolean
   homeTeamName?: string
   awayTeamName?: string
   homeManagerName?: string | null
@@ -20,14 +21,13 @@ interface Props {
 
 const POSTPONE_POPOVER_W = 300
 
-// The AI WhatsApp bot number (E.164 digits, no spacing) that the reminder links
-  // open. Preloaded text carries the per-fixture match code ("MC-XXXXXXXX") so
-  // the bot can open the match centre for that specific game; the backdoor link adds
-  // a BQH token ("BQH MC-XXXXXXXX") so the bot jumps straight into the backdoor
-  // flow with the opponent already pinned. Without a code yet both fall back to
-  // plain "Hi" (welcome menu).
+// Fallback reminder target when the fixture has no match code yet: plain "Hi"
+// opens the bot's welcome menu. With a code the two links below go straight to
+// the web submission portal (https://efa-fxyk.vercel.app/submit-match/<code>),
+// option 1 = submit the result, ?action=backdoor = report the opponent.
 const AI_BOT_DIGITS = '27818209406'
 const FALLBACK_REMINDER_LINK = `https://wa.me/${AI_BOT_DIGITS}?text=Hi`
+const PORTAL_BASE = 'https://efa-fxyk.vercel.app/submit-match'
 
 // Same-process cache so admin fixtures pages don't refetch codes per render.
 const matchCodeCache = new Map<string, Promise<string | null>>()
@@ -44,13 +44,10 @@ function fetchMatchCode(fixtureId: string): Promise<string | null> {
 }
 
 // One item per line, emoji-led so each line scans on its own: managers were not
-// reading past the first sentence of the old four-slot templates, and the plain
-// label list still looked like a wall of text. Two links into the AI bot, both
-// carrying the fixture's match code — the plain one opens the match centre
-// (submit the result), the BQH one opens the backdoor flow with the opponent
-// already pinned as the non-responding side (no "who is not responding?"
-// question). `opponentPhone` is the other manager's number, shown so the
-// reminder doubles as a "call your opponent" nudge.
+// reading past the first sentence of the old four-slot templates. Both links go
+// to the web submission portal for this exact fixture (same match code, so the
+// login bounce lands on the right match); `opponentPhone` is the other manager's
+// number, shown so the reminder doubles as a "call your opponent" nudge.
 function buildReminder(params: {
   username: string | null | undefined
   homeTeam: string
@@ -68,13 +65,13 @@ function buildReminder(params: {
     `📞 ${theirNumber}`,
     `✅ Submit: ${submitLink}`,
     `🚨 Report them: ${reportLink}`,
-    `⚠️ *WHEN CLICKING LINK JUST HIT SEND, DON'T EDIT TEXT*`,
   ].join('\n')
 }
 
 export default function DashboardFixtureActions({
   fixtureId,
   status,
+  postponedConfirmed = false,
   homeTeamName = '',
   awayTeamName = '',
   homeManagerName,
@@ -92,12 +89,15 @@ export default function DashboardFixtureActions({
   const actionsRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
-  const isFinished = ['confirmed', 'confirmed_pending', 'completed', 'abandoned'].includes(status)
+  // A postponed-confirmed fixture is 'confirmed' in the database but still due on
+  // its moved date, so it keeps its reminder buttons — only the postpone action
+  // closes (the game already has one agreed move).
+  const isFinished =
+    ['confirmed', 'confirmed_pending', 'completed', 'abandoned'].includes(status) && !postponedConfirmed
   const isAwaiting = status === 'awaiting_confirmation'
 
-  // Load the fixture's match code so both embedded bot links resolve to this
-  // exact game ("Hi MC-XXXXXXXX" for the result, "Hi BQH MC-XXXXXXXX" for the
-  // backdoor report).
+  // Load the fixture's match code so both reminder links resolve to this exact
+  // game's portal page (the code is the last path segment of the URL).
   useEffect(() => {
     let cancelled = false
     fetchMatchCode(fixtureId).then((code) => {
@@ -166,15 +166,12 @@ export default function DashboardFixtureActions({
     }
   }
 
-  // The prefill carries only the codes: the bot's deep-link handler matches them
-  // anywhere in the message (and runs before the session is read), so "Hi " is
-  // dead weight that widens the URL by 6 characters in every message.
-  const reminderLink = matchCode
-    ? `https://wa.me/${AI_BOT_DIGITS}?text=${encodeURIComponent(`MC-${matchCode}`)}`
-    : FALLBACK_REMINDER_LINK
-  const backdoorLink = matchCode
-    ? `https://wa.me/${AI_BOT_DIGITS}?text=${encodeURIComponent(`BQH MC-${matchCode}`)}`
-    : FALLBACK_REMINDER_LINK
+  // Portal URLs for this fixture. The bot's MC-code match centre is gone, so the
+  // reminder now hands over a normal link: no preloaded WhatsApp text, nothing to
+  // send untouched, it just opens the match page (and logs the login, so admin
+  // can see who submitted).
+  const reminderLink = matchCode ? `${PORTAL_BASE}/${matchCode}` : FALLBACK_REMINDER_LINK
+  const backdoorLink = matchCode ? `${PORTAL_BASE}/${matchCode}?action=backdoor` : FALLBACK_REMINDER_LINK
   const homeMsg = buildReminder({
     username: homeManagerName,
     homeTeam: homeTeamName,
@@ -198,7 +195,7 @@ export default function DashboardFixtureActions({
   return (
     <div className="flex flex-col items-end gap-space-1 shrink-0" ref={actionsRef}>
       <div className="flex items-center gap-space-2 flex-wrap justify-end">
-        {/* WhatsApp buttons — reminder goes to the player; the links inside it open the AI bot */}
+        {/* WhatsApp buttons — the reminder text carries both portal links */}
         {homeManagerPhone && (
           <WhatsAppButton phone={homeManagerPhone} message={homeMsg} size="sm" label="H" />
         )}
@@ -217,7 +214,9 @@ export default function DashboardFixtureActions({
         <Button
           variant="secondary"
           onClick={togglePostpone}
-          className="text-xs px-space-3 py-space-1"
+          disabled={postponedConfirmed}
+          title={postponedConfirmed ? 'Already postponed to a confirmed date' : undefined}
+          className={`text-xs px-space-3 py-space-1 ${postponedConfirmed ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           Postpone
         </Button>
