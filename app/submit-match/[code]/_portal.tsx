@@ -374,6 +374,7 @@ function ResultPanel({
   const [file, setFile] = useState<File | null>(null)
   const [home, setHome] = useState('')
   const [away, setAway] = useState('')
+  const [noFileError, setNoFileError] = useState(false)
 
   return (
     <Card>
@@ -383,6 +384,11 @@ function ResultPanel({
         className="mt-4 space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
+          if (!file) {
+            setNoFileError(true)
+            return
+          }
+          setNoFileError(false)
           onSubmit(formFor('result', { homeScore: home, awayScore: away, screenshot: file }))
         }}
       >
@@ -392,11 +398,17 @@ function ResultPanel({
             accept="image/*"
             capture="environment"
             disabled={!!block || busy}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null)
+              setNoFileError(false)
+            }}
             className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary"
           />
           {file && <span className="block truncate text-xs text-accent">{file.name}</span>}
         </Field>
+        {noFileError && (
+          <p className="text-sm text-feedback-warning">Upload the result screenshot above first — it is kept as proof.</p>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <Field label={homeName}>
@@ -427,7 +439,7 @@ function ResultPanel({
           </Field>
         </div>
 
-        <Button type="submit" variant="primary" isLoading={busy} disabled={busy || !!block || !file || home === '' || away === ''} className="w-full">
+        <Button type="submit" variant="primary" isLoading={busy} disabled={busy || !!block || home === '' || away === ''} className="w-full">
           Submit result
         </Button>
       </form>
@@ -457,6 +469,7 @@ function BackdoorPanel({
   const [file, setFile] = useState<File | null>(null)
   // Managers always report the opposite side; admins pick one.
   const [side, setSide] = useState<'home' | 'away'>(viewer.side === 'home' ? 'away' : viewer.side === 'away' ? 'home' : 'away')
+  const [noFileError, setNoFileError] = useState(false)
 
   return (
     <Card>
@@ -466,6 +479,11 @@ function BackdoorPanel({
         className="mt-4 space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
+          if (!file) {
+            setNoFileError(true)
+            return
+          }
+          setNoFileError(false)
           onSubmit(formFor('backdoor', { side, screenshot: file }))
         }}
       >
@@ -488,13 +506,19 @@ function BackdoorPanel({
             accept="image/*"
             capture="environment"
             disabled={!!block || busy}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null)
+              setNoFileError(false)
+            }}
             className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary"
           />
           {file && <span className="block truncate text-xs text-accent">{file.name}</span>}
         </Field>
+        {noFileError && (
+          <p className="text-sm text-feedback-warning">Upload the proof screenshot above first.</p>
+        )}
 
-        <Button type="submit" variant="primary" isLoading={busy} disabled={busy || !!block || !file} className="w-full">
+        <Button type="submit" variant="primary" isLoading={busy} disabled={busy || !!block} className="w-full">
           Submit report
         </Button>
       </form>
