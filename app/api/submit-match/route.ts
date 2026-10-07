@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getSastDateKey } from '@/lib/app-time'
 import { recalculateStandings } from '@/lib/standings-engine'
@@ -6,6 +6,8 @@ import { insertNotificationsAndPush, notifyAllAdmins } from '@/lib/notify'
 import { notifyBackdoorSubmitted } from '@/lib/backdoor-notify'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
+import { analyzeImageBuffer, matchStatsToDbColumns } from '@/lib/ocr'
+import { normalizeToLandscape } from '@/lib/whatsapp'
 import { APP_BASE, buildState, dateKeyOf, homeSide, awaySide, labelDate, loadFixture, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 const MAX_POSTPONE_DAYS = 7
@@ -222,6 +224,50 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   } catch (e) {
     console.error('[submit-match] admin notify failed:', e)
   }
+
+  // OCR the proof screenshot in the background (after the response) so the
+  // manager is not kept waiting. The typed score gates the stats: a screenshot
+  // showing the identical scoreline keeps stats as-is; a reversed scoreline
+  // (manager typed 2-3 but the screenshot reads 3-2) means the two sides are
+  // swapped on screen, so home/away stats are flipped to match the typed sides;
+  // any other mismatch means no stats are written at all.
+  const shotBuffer = Buffer.from(await shot.arrayBuffer())
+  const mimeType = shot.type || 'image/jpeg'
+  after(async () => {
+    try {
+      const analysis = await analyzeImageBuffer(await normalizeToLandscape(shotBuffer), mimeType)
+      const ocrHome = analysis.homeScore
+      const ocrAway = analysis.awayScore
+      const ocrStats = analysis.matchStats
+      if (ocrHome == null || ocrAway == null || !ocrStats) return
+
+      let stats = ocrStats
+      if (ocrHome === homeScore && ocrAway === awayScore) {
+        // exact match — keep stats as read
+      } else if (ocrHome === awayScore && ocrAway === homeScore) {
+        // scoreline is swapped: flip every stat so home/away line up with the
+        // typed (manager) sides
+        stats = {}
+        for (const [key, val] of Object.entries(ocrStats)) {
+          stats[key] = { home: val.away, away: val.home }
+        }
+      } else {
+        // no match — no stats
+        return
+      }
+
+      const dbStats = matchStatsToDbColumns(stats)
+      if (!dbStats) return
+
+      // Wipe any previous stats for this fixture (e.g. a replaced placeholder)
+      // then write the OCR result, mirroring the finalise-result flow.
+      await admin.from('match_stats').delete().eq('result_id', resultRow.id)
+      const { error: statsErr } = await admin.from('match_stats').insert({ result_id: resultRow.id, ...dbStats })
+      if (statsErr) console.error('[submit-match] background match_stats insert failed:', statsErr.message)
+    } catch (e) {
+      console.error('[submit-match] background OCR failed:', e)
+    }
+  })
 
   return NextResponse.json({
     ok: true,
