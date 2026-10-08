@@ -2,7 +2,7 @@
 import { MarkAllReadButton, NotificationRow, TeamChangeRequestRow } from './NotificationActions'
 import {
   Bell, Trophy, CalendarClock, Swords, AlertTriangle,
-  UserPlus, CheckCircle, X, Info, Star, Ban, RefreshCw,
+  UserPlus, CheckCircle, X, Info, Star, Ban, RefreshCw, TrendingUp, ArrowDown,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
@@ -23,6 +23,11 @@ const NOTIFICATION_ICON: Record<string, ReactNode> = {
   backdoor_submitted: <UserPlus className="w-4 h-4" />,
   backdoor_approved: <CheckCircle className="w-4 h-4" />,
   backdoor_declined: <X className="w-4 h-4" />,
+  division_champion: <Trophy className="w-4 h-4" />,
+  promotion: <TrendingUp className="w-4 h-4" />,
+  relegation: <ArrowDown className="w-4 h-4" />,
+  relegation_playoff: <Swords className="w-4 h-4" />,
+  promotion_playoff: <Swords className="w-4 h-4" />,
 }
 
 function getIcon(type: string): ReactNode {

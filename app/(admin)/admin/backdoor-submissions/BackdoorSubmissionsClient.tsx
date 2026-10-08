@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle2, XCircle, ExternalLink, RefreshCw, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, XCircle, ExternalLink, RefreshCw, AlertTriangle, Hourglass, CircleSlash, Clock, Scale } from 'lucide-react'
 import WhatsAppButton from '@/components/ui/WhatsAppButton'
 
 const supabase = createClient()
@@ -45,6 +45,14 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  const STATUS_META: Record<string, { label: string; Icon: typeof CheckCircle2 }> = {
+    pending: { label: 'Pending', Icon: Hourglass },
+    approved: { label: 'Approved', Icon: CheckCircle2 },
+    declined: { label: 'Declined', Icon: XCircle },
+    void_game_played: { label: 'Void - Game Played', Icon: CircleSlash },
+    expired: { label: 'Expired', Icon: Clock },
+  }
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
@@ -53,16 +61,12 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
       void_game_played: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
       expired: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
     }
-    const labels: Record<string, string> = {
-      pending: '⏳ Pending',
-      approved: '✅ Approved',
-      declined: '❌ Declined',
-      void_game_played: '🕳️ Void - Game Played',
-      expired: '⏰ Expired',
-    }
+    const meta = STATUS_META[status] ?? { label: status, Icon: CircleSlash }
+    const Icon = meta.Icon
     return (
-      <span className={`px-2 py-0.5 rounded text-xs font-medium border ${styles[status] || styles.pending}`}>
-        {labels[status] || status}
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${styles[status] || styles.pending}`}>
+        <Icon className="w-3 h-3 shrink-0" />
+        {meta.label}
       </span>
     )
   }
@@ -175,13 +179,14 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
                 <div className="flex items-center gap-3">
                   {hasDispute && (
                     <span
-                      className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${
                         disputePending
                           ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 animate-pulse'
                           : 'bg-indigo-500/10 text-indigo-300/70 border-indigo-500/30'
                       }`}
                     >
-                      ⚖️ Dispute review
+                      <Scale className="w-3 h-3 mr-1" />
+                      Dispute review
                     </span>
                   )}
                   {getStatusBadge(submissions[0]?.status || 'pending')}
@@ -211,8 +216,9 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center gap-3">
                         {sub.is_dispute && (
-                          <span className="px-2 py-0.5 rounded text-xs font-bold border bg-indigo-500/20 text-indigo-300 border-indigo-500/40">
-                            ⚖️ Dispute
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border bg-indigo-500/20 text-indigo-300 border-indigo-500/40">
+                            <Scale className="w-3 h-3 mr-1" />
+                            Dispute
                           </span>
                         )}
                         <span className="font-medium text-text-primary">

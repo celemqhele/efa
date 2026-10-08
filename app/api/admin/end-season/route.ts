@@ -129,7 +129,7 @@ export async function POST(request: Request) {
         notifs.push({
           user_id: managerId,
           type: 'division_champion',
-          title: 'Division 1 Champions 🏆',
+          title: 'Division 1 Champions',
           body: `${row.teams?.name} finished P1 — EFA Premier League champions!`,
           data: { season_id, division: 1, position },
         })
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
         notifs.push({
           user_id: managerId,
           type: 'promotion',
-          title: 'Promoted to Division 1 🎉',
+          title: 'Promoted to Division 1',
           body: `${row.teams?.name} finished P${position} in the EFA Championship — promoted to the Premier League!`,
           data: { season_id, division: 2, position },
         })

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { pickLockState } from '@/lib/poll-pick-lock'
+import { Ban } from 'lucide-react'
 
 interface TeamEntry {
   slug: string
@@ -174,7 +175,7 @@ export default function Mobile({ data }: { data: any }) {
 
       {user && isEligible === false && (
         <Card className="p-5 text-center bg-feedback-error/5 border-feedback-error/30">
-          <p className="text-2xl mb-2">🚫</p>
+          <Ban className="w-9 h-9 mx-auto mb-2 text-feedback-error" />
           <p className="text-text-primary font-semibold text-sm">This poll is restricted to tournament managers</p>
           <p className="text-text-muted text-xs mt-1">
             Only managers ranked in the EFA International Cup placement are eligible to pick a team here.

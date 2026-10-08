@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Check } from 'lucide-react'
 
 type Panel = 'home' | 'result' | 'backdoor' | 'details' | 'postpone'
 
@@ -401,7 +402,14 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
                 <p className="mt-1 break-all text-xs text-text-secondary">{done.shareLink}</p>
                 <div className="mt-2 flex gap-2">
                   <Button variant="secondary" onClick={copyShareLink} className="!px-3 !py-1.5 !text-xs">
-                    {copied ? 'Copied ✓' : 'Copy link'}
+                    {copied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 mr-1 inline-block align-[-2px]" />
+                        Copied
+                      </>
+                    ) : (
+                      'Copy link'
+                    )}
                   </Button>
                   <a
                     href={`https://wa.me/?text=${encodeURIComponent(`${done.shareText ?? ''} ${done.shareLink}`)}`}

@@ -9,7 +9,7 @@ import type { ManagerNote } from '@/lib/manager-notes'
 import TeamManagerAdmin from './TeamManagerAdmin'
 import MessageManagerButton from '@/components/ui/MessageManagerButton'
 import { Card } from '@/components/ui/Card'
-import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History } from 'lucide-react'
+import { Trophy, Star, Globe, Medal, Crown, Drama, Zap, Brain, Shield, Dumbbell, ArrowLeftRight, Triangle, Crosshair, Scale, ClipboardList, Calendar, Flag, BarChart3, TrendingUp, User, Swords, History, Check, AlertTriangle } from 'lucide-react'
 
 const TROPHY_ICON: Record<string, string> = {
   league: 'trophy',
@@ -193,7 +193,7 @@ export default function Mobile({ data }: { data: any }) {
                 {dnaDescription.tendencies.map((t: string, i: number) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
                     <span className={`${isCurrentManager ? 'text-green-500' : 'text-blue-400'} shrink-0 mt-0.5`}>
-                      {isCurrentManager ? '✓' : '›'}
+                      {isCurrentManager ? <Check className="w-3.5 h-3.5" /> : '›'}
                     </span>
                     {isCurrentManager ? t : perspectivize(t)}
                   </li>
@@ -211,7 +211,9 @@ export default function Mobile({ data }: { data: any }) {
               <ul className="space-y-1.5">
                 {dnaDescription.weaknesses.map((w: string, i: number) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                    <span className="text-red-400 shrink-0 mt-0.5">{isCurrentManager ? '⚠' : '⚡'}</span>
+                    <span className="text-red-400 shrink-0 mt-0.5">
+                      {isCurrentManager ? <AlertTriangle className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
+                    </span>
                     {isCurrentManager ? w : perspectivize(w)}
                   </li>
                 ))}

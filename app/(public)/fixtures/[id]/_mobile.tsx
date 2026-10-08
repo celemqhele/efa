@@ -8,7 +8,7 @@ import ReactionsPanel from '@/components/ui/ReactionsPanel'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import {
   Gamepad2, Home, Plane, BarChart3, Swords, Dna, TrendingUp,
-  MessageSquare, CheckCircle, Hourglass, Zap, Check, X, ChevronDown,
+  MessageSquare, CheckCircle, Hourglass, Zap, Check, X, ChevronDown, AlertTriangle,
   Crown, Drama, Brain, Shield, Dumbbell,
   ArrowLeftRight, Triangle, Crosshair, Scale,
 } from 'lucide-react'
@@ -406,7 +406,7 @@ export default function Mobile({ data }: { data: any }) {
                           <ul className="space-y-1">
                             {homeCoachNote.opponent_will_exploit.map((p: string, i: number) => (
                               <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                                <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
                                 {p}
                               </li>
                             ))}
@@ -451,7 +451,7 @@ export default function Mobile({ data }: { data: any }) {
                           <ul className="space-y-1">
                             {awayCoachNote.opponent_will_exploit.map((p: string, i: number) => (
                               <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary">
-                                <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
                                 {p}
                               </li>
                             ))}

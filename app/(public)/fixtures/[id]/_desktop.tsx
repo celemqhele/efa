@@ -8,7 +8,7 @@ import ReactionsPanel from '@/components/ui/ReactionsPanel'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import {
   Gamepad2, Home, Plane, BarChart3, Swords, Dna, TrendingUp,
-  MessageSquare, CheckCircle, Hourglass, Zap, Check, X,
+  MessageSquare, CheckCircle, Hourglass, Zap, Check, X, AlertTriangle,
   Crown, Drama, Brain, Shield, Dumbbell,
   ArrowLeftRight, Triangle, Crosshair, Scale,
 } from 'lucide-react'
@@ -289,7 +289,7 @@ export default function Desktop({ data }: { data: any }) {
                         <h4 className="text-xs font-semibold text-feedback-error uppercase tracking-wider mb-1.5">{awayTeam.name} will exploit</h4>
                         <ul className="space-y-1">
                           {homeCoachNote.opponent_will_exploit.map((p: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary"><span className="text-feedback-error shrink-0 mt-0.5">⚠</span>{p}</li>
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary"><AlertTriangle className="w-3.5 h-3.5 text-feedback-error shrink-0 mt-0.5" />{p}</li>
                           ))}
                         </ul>
                       </div>
@@ -318,7 +318,7 @@ export default function Desktop({ data }: { data: any }) {
                         <h4 className="text-xs font-semibold text-feedback-error uppercase tracking-wider mb-1.5">{homeTeam.name} will exploit</h4>
                         <ul className="space-y-1">
                           {awayCoachNote.opponent_will_exploit.map((p: string, i: number) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary"><span className="text-feedback-error shrink-0 mt-0.5">⚠</span>{p}</li>
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-text-secondary"><AlertTriangle className="w-3.5 h-3.5 text-feedback-error shrink-0 mt-0.5" />{p}</li>
                           ))}
                         </ul>
                       </div>

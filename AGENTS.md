@@ -145,6 +145,7 @@ tree as the first step.
 - `efa-news/` — EFA comedy/satire news + Leonardo AI poster generation workflow
 - `knockout-bracket-poster/` — tournament knockout bracket posters (2K PNG generation via react-pdf + Ghostscript)
 - `link-previews/` — WhatsApp/chat link previews (per-route Open Graph metadata, dynamic `/api/og` image, Satori + Vercel function-size constraints)
+- `lucide-icons/` — emoji → lucide-react sweeps in website UI (replacement mapping, scope exclusions, PowerShell codepoint-scan tricks)
 - `mobile-sizing/` — mobile layout pass: token aliases/alpha support, shared shell gutters/padding, per-screen card/grid/tap-target fixes on `/profile`, `/admin/fixtures/manage`, `/admin/results/submit`
 - `match-codes/` — per-fixture match codes for WhatsApp match-centre deep links (generation at fixture creation, backfill, webhook resolution)
 - `whatsapp-manager-mgmt/` — admin manager management on WhatsApp (assign/sack/promote flows, lib/manager-mgmt.ts service, mgmt_* session columns)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { Scale } from 'lucide-react'
 
 export interface ForfeitBalanceItem {
   id: string
@@ -37,7 +38,7 @@ export default function ForfeitBalanceBadge({ managerId, balances, onUse }: Prop
     <div ref={ref} className="relative inline-flex">
       {managerBalances.length === 0 ? (
         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-navy-border text-text-muted opacity-60">
-          <span>⚖</span>
+          <Scale className="w-3 h-3 shrink-0" />
           <span>0</span>
         </span>
       ) : (
@@ -45,7 +46,7 @@ export default function ForfeitBalanceBadge({ managerId, balances, onUse }: Prop
           onClick={() => setOpen(!open)}
           className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-orange-500/20 border-orange-500/40 text-orange-400 hover:bg-orange-500/30 transition-colors"
         >
-          <span>⚖</span>
+          <Scale className="w-3 h-3 shrink-0" />
           <span>{total} forfeit{total !== 1 ? 's' : ''}</span>
         </button>
       )}

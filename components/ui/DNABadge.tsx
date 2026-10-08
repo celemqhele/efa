@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { LEVEL_LABELS, type PersonalizedDescription } from '@/lib/dna-engine'
 import {
   Crown, Drama, Zap, Brain, Swords, Shield, Dumbbell,
-  ArrowLeftRight, Triangle, Crosshair, Scale,
+  ArrowLeftRight, Triangle, Crosshair, Scale, Check, AlertTriangle,
 } from 'lucide-react'
 import { Button } from './Button'
 
@@ -138,7 +138,7 @@ export default function DNABadge({ label, iconName, color, level, isOwnTeam, per
                         <ul className="space-y-1.5">
                           {personalized.tendencies.map((t, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                              <span className="text-green-500 shrink-0 mt-0.5">✓</span>
+                              <Check className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />
                               {t}
                             </li>
                           ))}
@@ -155,7 +155,7 @@ export default function DNABadge({ label, iconName, color, level, isOwnTeam, per
                         <ul className="space-y-1.5">
                           {personalized.weaknesses.map((w, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                              <span className="text-red-400 shrink-0 mt-0.5">⚠</span>
+                              <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
                               {w}
                             </li>
                           ))}
@@ -181,7 +181,7 @@ export default function DNABadge({ label, iconName, color, level, isOwnTeam, per
                         <ul className="space-y-1.5">
                           {personalized.weaknesses.map((w, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                              <span className="text-red-400 shrink-0 mt-0.5">⚡</span>
+                              <Zap className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
                               {perspectivize(w, false)}
                             </li>
                           ))}

@@ -114,7 +114,7 @@ export async function runNotificationCron(
           : `You have ${count} fixtures remaining (${list}). Submit before 14:00 SAST to avoid a walkover.`
         break
       case 'deadline':
-        title = '⏰ 1 hour left!'
+        title = '1 hour left!'
         body = count === 1
           ? `${list} is still pending! Play now to avoid an automatic loss.`
           : `${count} fixtures still pending! Play now to avoid an automatic loss.`

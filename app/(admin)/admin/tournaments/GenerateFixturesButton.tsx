@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import BottomSheet from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
 import { addDays, format } from 'date-fns'
+import { Check } from 'lucide-react'
 import { CARD_ACTION_BTN } from './card-action-classes'
 
 interface Props {
@@ -54,7 +55,8 @@ export default function GenerateFixturesButton({ tournamentId, tournamentName, t
         className={`${className} pointer-events-none border-green-500/40 bg-green-500/10 text-green-400`}
         title={`Fixtures already generated for ${tournamentName}`}
       >
-        Fixtures Generated ✓
+        <Check className="w-3.5 h-3.5 mr-1.5 inline-block align-[-2px]" />
+        Fixtures Generated
       </span>
     )
   }

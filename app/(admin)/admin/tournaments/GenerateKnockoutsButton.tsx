@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { notify } from '@/lib/notifications'
+import { Check } from 'lucide-react'
 import { CARD_ACTION_BTN } from './card-action-classes'
 
 interface Qualifier {
@@ -46,7 +47,8 @@ export default function GenerateKnockoutsButton({ tournamentId, tournamentName, 
         className={`${className} pointer-events-none border-green-500/40 bg-green-500/10 text-green-400`}
         title={`Knockouts already generated for ${tournamentName}`}
       >
-        Knockouts Generated ✓
+        <Check className="w-3.5 h-3.5 mr-1.5 inline-block align-[-2px]" />
+        Knockouts Generated
       </span>
     )
   }

@@ -7,7 +7,7 @@ import TeamLogo from '@/components/ui/TeamLogo'
 import {
   Bell, Trophy, AlertTriangle, UserPlus, X,
   CheckCircle, Swords, CalendarClock, Star,
-  Flag, RefreshCw, Ban, Info,
+  Flag, RefreshCw, Ban, Info, TrendingUp, ArrowDown,
 } from 'lucide-react'
 
 interface PopupNotification {
@@ -40,6 +40,11 @@ const NOTIF_ICONS: Record<string, React.ReactNode> = {
   backdoor_submitted: <UserPlus className="w-5 h-5" />,
   backdoor_approved: <CheckCircle className="w-5 h-5" />,
   backdoor_declined: <X className="w-5 h-5" />,
+  division_champion: <Trophy className="w-5 h-5" />,
+  promotion: <TrendingUp className="w-5 h-5" />,
+  relegation: <ArrowDown className="w-5 h-5" />,
+  relegation_playoff: <Swords className="w-5 h-5" />,
+  promotion_playoff: <Swords className="w-5 h-5" />,
 }
 
 function notifIcon(type: string): React.ReactNode {

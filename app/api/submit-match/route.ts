@@ -310,7 +310,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   return NextResponse.json({
     ok: true,
     title: isReplacing ? 'Result updated' : 'Result submitted',
-    message: `${matchLabel} ✓${isResubmit ? ' This overrides the previous score.' : isBackdoorResult ? ' This replaces the backdoor result.' : isReplacing ? ' The placeholder result has been replaced.' : ''}${
+    message: `${matchLabel}${isResubmit ? ' This overrides the previous score.' : isBackdoorResult ? ' This replaces the backdoor result.' : isReplacing ? ' The placeholder result has been replaced.' : ''}${
       isFuture ? ' Saved as pending until ' + labelDate(dateKey) + '.' : ''
     }`,
     shareLink: `${APP_BASE}/submit-match/${code}`,

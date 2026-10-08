@@ -5,7 +5,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TeamLogo from '@/components/ui/TeamLogo'
-import { Loader2, CheckCircle } from 'lucide-react'
+import { Loader2, CheckCircle, Check } from 'lucide-react'
 import ModalPortal from '@/components/ui/ModalPortal'
 
 interface Season {
@@ -296,7 +296,7 @@ export default function CreateTournamentClient({ seasons, users }: Props) {
                     <span className="block text-[10px] text-text-muted truncate">{user.club.name}</span>
                   </span>
                   {isSelected && (
-                    <span className="ml-auto text-green-400 text-xs shrink-0">✓</span>
+                    <Check className="ml-auto text-green-400 text-xs shrink-0 w-4 h-4" />
                   )}
                 </button>
               )
@@ -375,7 +375,7 @@ export default function CreateTournamentClient({ seasons, users }: Props) {
                     <span className="block text-xs font-medium truncate text-foreground-primary">{user.username}</span>
                     <span className="block text-[10px] text-text-muted truncate">{user.club.name}</span>
                   </span>
-                  {isSelected && <span className="ml-auto text-green-400 text-xs shrink-0">✓</span>}
+                  {isSelected && <Check className="ml-auto text-green-400 text-xs shrink-0 w-4 h-4" />}
                 </button>
               )
             })}
