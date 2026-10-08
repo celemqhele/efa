@@ -47,7 +47,9 @@ function fetchMatchCode(fixtureId: string): Promise<string | null> {
 // reading past the first sentence of the old four-slot templates. Both links go
 // to the web submission portal for this exact fixture (same match code, so the
 // login bounce lands on the right match); `opponentPhone` is the other manager's
-// number, shown so the reminder doubles as a "call your opponent" nudge.
+// number, labelled in bold so it reads as the number to message rather than a
+// stray digit (managers kept asking for the opponent's number despite it being
+// in the reminder).
 function buildReminder(params: {
   username: string | null | undefined
   homeTeam: string
@@ -62,7 +64,7 @@ function buildReminder(params: {
   return [
     `👋 Hi ${name}`,
     `⚽ ${homeTeam} vs ${awayTeam}`,
-    `📞 ${theirNumber}`,
+    `📞 *MESSAGE YOUR OPPONENT: ${theirNumber}*`,
     `✅ Submit: ${submitLink}`,
     `🚨 Report them: ${reportLink}`,
   ].join('\n')
