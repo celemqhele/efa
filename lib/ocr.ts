@@ -1,8 +1,8 @@
-'use server'
-
 // Server-only OCR: vision-first pipeline + match_stats column mapping.
 // Shared by the WhatsApp webhook and the submit-match portal so both run the
-// exact same battle-tested reader.
+// exact same battle-tested reader. Must NOT be marked 'use server': it exports
+// sync helpers too, and Next.js would reject every non-async export as an
+// invalid server action.
 
 import { analyzeScreenshot, cleanOcrText, cleanOcrWithGroq } from '@/lib/whatsapp'
 import { parseScreenshot } from '@/lib/screenshot-parser'
