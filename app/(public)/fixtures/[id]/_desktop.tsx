@@ -75,7 +75,7 @@ export default function Desktop({ data }: { data: any }) {
     id, fixture, result, matchStats, adjustedScore, homeTeam, awayTeam, tournament,
     homeManager, awayManager, user, isHomeManager, isAwayManager, isManager,
     probability, h2hList, homeDNA, awayDNA, homeStanding, awayStanding,
-    confirmationStatus, conf1, conf2, hasResult, waitingReports,
+    confirmationStatus, conf1, conf2, hasResult, waitingReports, postponeRequest,
     reactionCounts, userReactionEmojis, comments, topLevel, replies,
     homeCoachNote, awayCoachNote,
   } = data
@@ -237,6 +237,36 @@ export default function Desktop({ data }: { data: any }) {
           </div>
         )}
       </div>
+
+      {/* ── POSTPONEMENT STATUS ──────────────────────────────────────────── */}
+      {postponeRequest && (
+        <div className="bg-bg-surface border border-border rounded-2xl p-6 shadow-[0_0.5px_1px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-2 mb-4">
+            <Hourglass className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Postponement</h2>
+          </div>
+          {fixture.postponed_confirmed ? (
+            <div className="p-4 rounded-xl bg-feedback-warning/10 border border-feedback-warning/30 text-feedback-warning text-sm font-medium">
+              <p>
+                Postponed · confirmed
+                {postponeRequest.requester?.username ? ` — requested by @${postponeRequest.requester.username}` : ''}
+                {postponeRequest.responder?.username ? ` · accepted by @${postponeRequest.responder.username}` : ''}
+              </p>
+              <p className="mt-1 text-xs text-text-muted">
+                Moved to {formatFixtureDate(postponeRequest.new_date)}
+                {postponeRequest.reason ? ` — ${postponeRequest.reason}` : ''}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-text-secondary">
+              Postponement {postponeRequest.status} — new date{' '}
+              <strong className="text-text-primary">{formatFixtureDate(postponeRequest.new_date)}</strong>
+              {postponeRequest.requester?.username ? ` requested by @${postponeRequest.requester.username}` : ''}
+              {postponeRequest.responder?.username ? ` · responded by @${postponeRequest.responder.username}` : ''}
+            </p>
+          )}
+        </div>
+      )}
 
       {!hasResult && homeTeam && awayTeam && (
         <>
@@ -652,4 +682,15 @@ export default function Desktop({ data }: { data: any }) {
       </div>
     </div>
   )
+}
+
+function formatFixtureDate(dateKey: string) {
+  const d = new Date(`${String(dateKey).slice(0, 10)}T00:00:00.000Z`)
+  if (Number.isNaN(d.getTime())) return String(dateKey)
+  return d.toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  })
 }

@@ -5,6 +5,7 @@ import { advanceWinner } from '@/lib/tournament-progression'
 import { notifyBackdoorDecision } from '@/lib/backdoor-notify'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { getSastDateKey } from '@/lib/app-time'
+import { postponeWindow } from '@/lib/submit-match'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 // Daily at 02:00 SAST (00:00 UTC): any match due on a previous matchday that is
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const targets = ((fixtures ?? []) as any[]).filter((f) => {
+  let targets = ((fixtures ?? []) as any[]).filter((f) => {
     const results = Array.isArray(f.results) ? f.results : f.results ? [f.results] : []
     return (
       results.length === 0 &&
@@ -60,6 +61,40 @@ export async function GET(request: NextRequest) {
       !vacantIds.has(f.away_team_id)
     )
   })
+
+  // A postponement request in flight keeps the fixture open for its whole
+  // 7-day-after-deadline window (reviewer can still accept or decline). Inside
+  // the window we skip auto-finalise; a stale request past the window is
+  // expired (deleted) so the fixture still gets finalised.
+  const skippedPendingRequest: string[] = []
+  const expiredPendingRequest: string[] = []
+  if (targets.length > 0) {
+    const { data: pendingPostpone } = await supabase
+      .from('postpone_requests')
+      .select('id, fixture_id')
+      .eq('status', 'pending')
+      .in('fixture_id', targets.map((t) => t.id))
+    const staleIds: string[] = []
+    const byFixture = new Map<string, string[]>()
+    for (const p of (pendingPostpone ?? []) as any[]) {
+      const fid = String(p.fixture_id)
+      const bucket = byFixture.get(fid) ?? []
+      bucket.push(String(p.id))
+      byFixture.set(fid, bucket)
+    }
+    for (const fid of byFixture.keys()) {
+      const fx = targets.find((t) => String(t.id) === fid)
+      const dateKey = fx?.scheduled_date ? String(fx.scheduled_date).slice(0, 10) : ''
+      if (fx && (!dateKey || postponeWindow(dateKey) === null)) skippedPendingRequest.push(fid)
+      else staleIds.push(...(byFixture.get(fid) ?? []))
+    }
+    if (staleIds.length > 0) {
+      await supabase.from('postpone_requests').delete().in('id', staleIds)
+      expiredPendingRequest.push(...staleIds)
+    }
+    const skippedSet = new Set(skippedPendingRequest)
+    targets = targets.filter((t) => !skippedSet.has(String(t.id)))
+  }
 
   const stats = {
     finalised: 0,
@@ -69,6 +104,8 @@ export async function GET(request: NextRequest) {
     recalcFailed: 0,
     advanced: 0,
     postponedCleared: 0,
+    skippedPendingRequest: 0,
+    expiredPendingRequest: 0,
   }
   const tournamentIds = new Set<string>()
   const advances: { fx: any; homeScore: number; awayScore: number }[] = []
@@ -98,6 +135,8 @@ export async function GET(request: NextRequest) {
       console.error('[auto-finalise] fixture failed:', fx.id, e)
     }
   }
+  stats.skippedPendingRequest = skippedPendingRequest.length
+  stats.expiredPendingRequest = expiredPendingRequest.length
 
   for (const tid of tournamentIds) {
     try {

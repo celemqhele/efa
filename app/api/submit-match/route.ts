@@ -8,9 +8,7 @@ import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { analyzeImageBuffer, matchStatsToDbColumns } from '@/lib/ocr'
 import { normalizeToLandscape } from '@/lib/whatsapp'
-import { APP_BASE, buildState, dateKeyOf, homeSide, awaySide, labelDate, loadFixture, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
-
-const MAX_POSTPONE_DAYS = 7
+import { APP_BASE, MAX_POSTPONE_DAYS, buildState, dateKeyOf, homeSide, awaySide, isRealResult, labelDate, loadFixture, postponeWindow, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 function parseScore(value: FormDataEntryValue | null): number | null {
   if (value === null) return null
@@ -426,7 +424,14 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
   if (reason.length < 3) return error('Give a short reason for the postponement.')
   if (reason.length > 300) return error('Reason is too long (max 300 characters).')
 
-  if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation') {
+  // Managers have 7 days after the deadline to complete a postponement. The
+  // status may already be 'confirmed' from auto-finalise (0-0 void / auto-approved
+  // backdoor, finalised_by NULL) — that placeholder is still overridable inside
+  // the window. A real played result (finalised_by set or screenshot) is final.
+  const windowBlockMsg = postponeWindow(dateKeyOf(fixture))
+  if (windowBlockMsg) return error(windowBlockMsg)
+  if (isRealResult(fixture.result)) return error('This match already has a result and is now over the deadline — it can no longer be postponed.')
+  if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation' && !fixture.result) {
     return error('This match can no longer be postponed.')
   }
   if (fixture.postponed_confirmed) return error('This match was already postponed.')
@@ -519,6 +524,10 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
     .eq('status', 'pending')
     .maybeSingle()
   if (!request) return error('There is no postponement waiting for a decision.')
+  const windowBlockMsg = postponeWindow(dateKeyOf(fixture))
+  if (windowBlockMsg) {
+    return error('The 7-day window to answer this postponement has closed. Contact the admin if you still want to move this match.')
+  }
   if (String(request.requested_by) === viewer.userId) {
     return error('You raised this request — your opponent has to accept or decline.')
   }

@@ -192,6 +192,21 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     .select('*')
     .eq('fixture_id', id)
 
+  // Postpone requests (latest) so the page can show who requested and whether
+  // the opponent accepted/declined — not just a bare "Postponement agreed".
+  const { data: _postponeRequests } = await supabase
+    .from('postpone_requests')
+    .select(
+      `*,
+      requester:profiles!postpone_requests_requested_by_fkey(id, username),
+      responder:profiles!postpone_requests_responded_by_fkey(id, username)`
+    )
+    .eq('fixture_id', id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const postponeRequest = _postponeRequests as any
+
   // Reactions
   const { data: _reactionsRaw } = await supabase
     .from('reactions')
@@ -307,6 +322,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     conf2,
     hasResult,
     waitingReports,
+    postponeRequest,
     reactionCounts,
     userReactionEmojis,
     comments,

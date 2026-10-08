@@ -8,6 +8,31 @@ import { getSastDateKey } from '@/lib/app-time'
 
 export const APP_BASE = 'https://efa-fxyk.vercel.app'
 
+// How far a new postponement date may be moved (future side) and how long the
+// two managers still have past the deadline to complete one (request by the
+// requester, accept/decline by the reviewer).
+export const MAX_POSTPONE_DAYS = 7
+
+// The postpone option Stays open for MAX_POSTPONE_DAYS after the deadline
+// (the fixture's scheduled date). Only the lower bound matters here — the
+// future side is governed by MAX_POSTPONE_DAYS on the proposed new date.
+export function postponeWindow(dateKey: string, now = new Date()): string | null {
+  if (!dateKey) return null
+  const startKey = getSastDateKey(now, -MAX_POSTPONE_DAYS)
+  if (dateKey < startKey) {
+    return 'This match is more than 7 days past its deadline, so it can no longer be postponed.'
+  }
+  return null
+}
+
+// A result is 'real' when someone actually recorded the game (a manager proof
+// upload or an admin decision). Auto-finalised outcomes (0-0 void / auto-approved
+// backdoor) have no finalised_by or screenshot and can still be replaced by an
+// agreed postponement inside the 7-day-after-deadline window.
+export function isRealResult(result: any): boolean {
+  return !!result && (!!result.finalised_by || !!result.screenshot_url)
+}
+
 export type Viewer = {
   userId: string
   username: string | null
@@ -73,7 +98,7 @@ export async function loadFixture(admin: any, code: string): Promise<any | null>
       home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id),
       away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id),
       tournament:tournaments(name),
-      result:results!results_fixture_id_fkey(id, home_score, away_score, screenshot_url, override_reason, created_at, is_abandoned)
+      result:results!results_fixture_id_fkey(id, home_score, away_score, screenshot_url, override_reason, created_at, is_abandoned, finalised_by)
     `)
     .eq('id', codeRow.fixture_id)
     .single()
@@ -190,12 +215,24 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   }
 
   // 4. Postpone
+  // Managers have MAX_POSTPONE_DAYS (7) after the deadline to complete a
+  // postponement: the requester can still file, and the reviewer can still
+  // accept or decline. Auto-finalised placeholders (0-0 void / auto-approved
+  // backdoor, finalised_by NULL) are still overridable inside the window; a
+  // real played result (finalised_by set or screenshot proof) is final.
   let postponeBlock: string | null = null
   if (viewer.side === null && !viewer.isAdmin) postponeBlock = 'Only the two managers can request a postponement.'
   else if (isPlaceholder) postponeBlock = 'This match was already postponed. The postpone option is closed.'
-  else if (fixture.result) postponeBlock = 'This match already has a result.'
-  else if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation') postponeBlock = 'This match can no longer be postponed.'
-  else if (viewer.isAdmin && viewer.side === null) postponeBlock = 'Managers request postponements from their own login.'
+  else {
+    const winBlock = postponeWindow(dateKey)
+    if (winBlock) postponeBlock = winBlock
+    else if (isRealResult(fixture.result)) postponeBlock = 'This match already has a result and is now over the deadline — it can no longer be postponed.'
+    else if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation' && !fixture.result) {
+      postponeBlock = 'This match can no longer be postponed.'
+    } else if (viewer.isAdmin && viewer.side === null) {
+      postponeBlock = 'Managers request postponements from their own login.'
+    }
+  }
 
   // 2. Backdoor
   let backdoorBlock: string | null = null
@@ -206,13 +243,33 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
     backdoorBlock = 'This match is no longer open for opponent-not-responding reports.'
   }
 
+  // Names behind the postpone request so the status is readable for any viewer
+  // (admins who open a manager's link see who asked and who answered).
+  const postponeRequest = requestRow
+    ? {
+        id: requestRow.id,
+        status: requestRow.status,
+        newDate: String(requestRow.new_date).slice(0, 10),
+        reason: requestRow.reason,
+        requestedBy: requestRow.requested_by,
+        requestedByName: requestRow.requested_by
+          ? await usernameLabel(String(requestRow.requested_by))
+          : null,
+        mine: String(requestRow.requested_by) === viewer.userId,
+        respondedBy: requestRow.responded_by ?? null,
+        respondedByName: requestRow.responded_by
+          ? await usernameLabel(String(requestRow.responded_by))
+          : null,
+      }
+    : null
+
   let respondTo: any = null
   if (pendingRequest && viewer.side !== null && !requestFromViewer) {
     respondTo = {
       id: pendingRequest.id,
       newDate: String(pendingRequest.new_date).slice(0, 10),
       reason: pendingRequest.reason,
-      fromName: await usernameLabel(String(pendingRequest.requested_by)),
+      fromName: postponeRequest?.requestedByName ?? 'Your opponent',
       mine: false,
     }
   }
@@ -247,17 +304,7 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       createdAt: b.created_at,
       mine: isMineSubmission(b, viewer),
     })),
-    postponeRequest: requestRow
-      ? {
-          id: requestRow.id,
-          status: requestRow.status,
-          newDate: String(requestRow.new_date).slice(0, 10),
-          reason: requestRow.reason,
-          requestedBy: requestRow.requested_by,
-          mine: String(requestRow.requested_by) === viewer.userId,
-          respondedBy: requestRow.responded_by ?? null,
-        }
-      : null,
+    postponeRequest,
     respondTo,
     viewer: {
       userId: viewer.userId,

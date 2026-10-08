@@ -135,6 +135,7 @@ export default function Mobile({ data }: { data: any }) {
     conf2,
     hasResult,
     waitingReports,
+    postponeRequest,
     reactionCounts,
     userReactionEmojis,
     comments,
@@ -340,6 +341,35 @@ export default function Mobile({ data }: { data: any }) {
           </div>
         )}
       </div>
+
+      {/* ── POSTPONEMENT STATUS ──────────────────────────────────────────── */}
+      {postponeRequest && (
+        <div className="bg-bg-surface border border-border rounded-xl p-5">
+          <h2 className="section-header">
+            <Hourglass className="w-5 h-5 text-accent" /> Postponement
+          </h2>
+          {fixture.postponed_confirmed ? (
+            <div className="p-4 rounded-lg bg-feedback-warning/10 border border-feedback-warning/30 text-feedback-warning text-sm font-medium">
+              <p>
+                Postponed · confirmed
+                {postponeRequest.requester?.username ? ` — requested by @${postponeRequest.requester.username}` : ''}
+                {postponeRequest.responder?.username ? ` · accepted by @${postponeRequest.responder.username}` : ''}
+              </p>
+              <p className="mt-1 text-xs text-text-muted">
+                Moved to {formatFixtureDate(postponeRequest.new_date)}
+                {postponeRequest.reason ? ` — ${postponeRequest.reason}` : ''}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-text-secondary">
+              Postponement {postponeRequest.status} — new date{' '}
+              <strong className="text-foreground-primary">{formatFixtureDate(postponeRequest.new_date)}</strong>
+              {postponeRequest.requester?.username ? ` requested by @${postponeRequest.requester.username}` : ''}
+              {postponeRequest.responder?.username ? ` · responded by @${postponeRequest.responder.username}` : ''}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── PRE-MATCH SECTIONS ───────────────────────────────────────────── */}
       {!hasResult && homeTeam && awayTeam && (
@@ -926,4 +956,15 @@ export default function Mobile({ data }: { data: any }) {
       </div>
     </div>
   )
+}
+
+function formatFixtureDate(dateKey: string) {
+  const d = new Date(`${String(dateKey).slice(0, 10)}T00:00:00.000Z`)
+  if (Number.isNaN(d.getTime())) return String(dateKey)
+  return d.toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  })
 }

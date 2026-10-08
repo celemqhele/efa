@@ -124,6 +124,13 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
 
   // ── Pending postponement aimed at me ────────────────────────────────────────
   const respondTo = state.respondTo
+  const req = state.postponeRequest as null | {
+    status: string
+    newDate: string
+    reason: string
+    requestedByName: string | null
+    respondedByName: string | null
+  }
 
   // ── Home: match header + four options ───────────────────────────────────────
   const menu: { key: Panel; num: string; label: string; sub: string; block?: string | null }[] = [
@@ -178,6 +185,37 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           <p className="mt-2 inline-flex rounded-md bg-feedback-warning/15 px-2 py-1 text-[11px] font-bold leading-tight text-feedback-warning">
             {state.rules.resultNote}
           </p>
+        )}
+
+        {!respondTo && state.postponedConfirmed && (
+          <div className="mt-2 rounded-lg border border-feedback-warning/40 bg-feedback-warning/10 px-3 py-2 text-xs text-feedback-warning">
+            <p className="font-bold uppercase tracking-wide">
+              Postponed · confirmed{req?.requestedByName ? ` — requested by ${req.requestedByName}` : ''}
+            </p>
+            {req?.newDate && (
+              <p className="mt-1 text-text-secondary">
+                Moved to <strong className="text-text-primary">{formatDate(req.newDate)}</strong>
+                {req.respondedByName ? ` · accepted by ${req.respondedByName}` : ''}.
+              </p>
+            )}
+          </div>
+        )}
+
+        {!respondTo && req && req.status === 'pending' && (
+          <div className="mt-2 rounded-lg border border-feedback-warning/40 bg-feedback-warning/10 px-3 py-2 text-xs text-text-secondary">
+            Postponement requested by{' '}
+            <strong className="text-feedback-warning">{req.requestedByName ?? 'a manager'}</strong> to{' '}
+            <strong className="text-text-primary">{formatDate(req.newDate)}</strong>. Waiting on the opponent's answer.
+            {req.reason ? ` Reason: ${req.reason}` : ''}
+          </div>
+        )}
+
+        {!respondTo && req && req.status === 'declined' && (
+          <div className="mt-2 rounded-lg border border-border bg-bg-base px-3 py-2 text-xs text-text-secondary">
+            Postponement to <strong className="text-text-primary">{formatDate(req.newDate)}</strong> was declined
+            {req.respondedByName ? ` by ${req.respondedByName}` : ''}.
+            {req.reason ? ` Reason given: ${req.reason}` : ''}
+          </div>
         )}
 
         {state.result && (
@@ -618,7 +656,9 @@ function DetailsPanel({ state }: { state: any }) {
       {state.postponeRequest && (
         <div className="mt-4 rounded-xl border border-border bg-bg-base px-3 py-2.5 text-xs text-text-secondary">
           Postponement {state.postponeRequest.status} — new date {formatDate(state.postponeRequest.newDate)}.
-          Reason: {state.postponeRequest.reason}
+          {state.postponeRequest.requestedByName ? ` Requested by ${state.postponeRequest.requestedByName}.` : ''}
+          {state.postponeRequest.respondedByName ? ` Responded by ${state.postponeRequest.respondedByName}.` : ''}
+          {state.postponeRequest.reason ? ` Reason: ${state.postponeRequest.reason}` : ''}
         </div>
       )}
     </Card>
