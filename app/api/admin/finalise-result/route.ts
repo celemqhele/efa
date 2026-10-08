@@ -6,7 +6,7 @@ import {
 import { recalculateStandings } from '@/lib/standings-engine'
 import { forfeitUnmanagedClubSlots } from '@/lib/slot-utils'
 import type { Database } from '@/lib/supabase/types'
-import { insertNotificationsAndPush } from '@/lib/notify'
+import { insertNotificationsAndPush, notifyAllAdmins } from '@/lib/notify'
 import { notifyAdminsOfResult } from '@/lib/backdoor-notify'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
@@ -58,6 +58,13 @@ async function checkAndAutoSack(
 
   const sackUserId = team.manager_id
 
+  const { data: sackProfile } = await db
+    .from('profiles')
+    .select('username')
+    .eq('id', sackUserId)
+    .maybeSingle()
+  const sackUsername = (sackProfile as any)?.username ?? 'A manager'
+
   let allClubIds: string[] = [teamId]
   if (team.logo_league_folder && team.logo_team_slug) {
     const { data: siblings } = await db
@@ -104,6 +111,26 @@ async function checkAndAutoSack(
       forfeits_scheduled: forfeits,
     },
   })
+
+  // The sacked manager already got their row above — admins used to hear about
+  // an auto-sack only by noticing the club page was empty. In-app rows + web
+  // push for every admin, clicking through to the club page.
+  try {
+    await notifyAllAdmins(db, {
+      type: 'manager_sacked',
+      title: 'Manager Auto-Sacked',
+      body: `${sackUsername} was removed as manager of ${team.name} after ${threshold} consecutive absences.`,
+      data: {
+        team_id: teamId,
+        team_name: team.name,
+        sacked_user_id: sackUserId,
+        reason: 'consecutive_absences',
+      },
+      push_url: `/teams/${teamId}`,
+    })
+  } catch (e) {
+    console.error('[finalise-result] auto-sack admin notify failed:', e)
+  }
 }
 
 // ─── Standings helpers ────────────────────────────────────────────────────────
