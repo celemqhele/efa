@@ -206,6 +206,15 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           <Pill status={fx.status} postponedConfirmed={fx.postponedConfirmed} />
         </div>
 
+        {state.rules.graceEnded && (
+          <div className="mt-2 rounded-lg border border-feedback-error/40 bg-feedback-error/10 px-3 py-2 text-xs text-feedback-error">
+            <p className="font-bold uppercase tracking-wide">
+              This match&apos;s 7 day grace period has ended
+            </p>
+            <p className="mt-1">It can no longer be changed or postponed.</p>
+          </div>
+        )}
+
         {state.rules.resultNote && (
           <p className="mt-2 inline-flex rounded-md bg-feedback-warning/15 px-2 py-1 text-[11px] font-bold leading-tight text-feedback-warning">
             {state.rules.resultNote}

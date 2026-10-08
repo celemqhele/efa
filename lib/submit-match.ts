@@ -395,6 +395,9 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       backdoorBlock,
       backdoorMenuBlock,
       disputeBlock,
+      // Past the deadline by more than MAX_POSTPONE_DAYS — the 7-day grace
+      // period is over and the match can't be changed or postponed anymore.
+      graceEnded: postponeWindow(dateKey) !== null,
       canPostpone: !postponeBlock,
       canRequest: !pendingRequest && !postponeBlock,
       canRespond: !!respondTo,
