@@ -44,9 +44,9 @@ function fetchMatchCode(fixtureId: string): Promise<string | null> {
 }
 
 // One item per line, emoji-led so each line scans on its own: managers were not
-// reading past the first sentence of the old four-slot templates. Both links go
-// to the web submission portal for this exact fixture (same match code, so the
-// login bounce lands on the right match); `opponentPhone` is the other manager's
+// reading past the first sentence of the old four-slot templates. A single link
+// (the web submission portal for this exact fixture opening the result form) so
+// there is exactly one CTA, in bold; `opponentPhone` is the other manager's
 // number, labelled in bold so it reads as the number to message rather than a
 // stray digit (managers kept asking for the opponent's number despite it being
 // in the reminder).
@@ -56,17 +56,15 @@ function buildReminder(params: {
   awayTeam: string
   opponentPhone: string | null | undefined
   submitLink: string
-  reportLink: string
 }): string {
-  const { username, homeTeam, awayTeam, opponentPhone, submitLink, reportLink } = params
+  const { username, homeTeam, awayTeam, opponentPhone, submitLink } = params
   const name = username ?? 'there'
   const theirNumber = formatPhoneDisplay(opponentPhone) || 'not available'
   return [
     `👋 Hi ${name}`,
     `⚽ ${homeTeam} vs ${awayTeam}`,
     `📞 *MESSAGE YOUR OPPONENT: ${theirNumber}*`,
-    `✅ Submit: ${submitLink}`,
-    `🚨 Report them: ${reportLink}`,
+    `✅ *Submit for this match: ${submitLink}*`,
   ].join('\n')
 }
 
@@ -168,19 +166,17 @@ export default function DashboardFixtureActions({
     }
   }
 
-  // Portal URLs for this fixture. The bot's MC-code match centre is gone, so the
+  // Portal URL for this fixture. The bot's MC-code match centre is gone, so the
   // reminder now hands over a normal link: no preloaded WhatsApp text, nothing to
   // send untouched, it just opens the match page (and logs the login, so admin
   // can see who submitted).
   const reminderLink = matchCode ? `${PORTAL_BASE}/${matchCode}` : FALLBACK_REMINDER_LINK
-  const backdoorLink = matchCode ? `${PORTAL_BASE}/${matchCode}?action=backdoor` : FALLBACK_REMINDER_LINK
   const homeMsg = buildReminder({
     username: homeManagerName,
     homeTeam: homeTeamName,
     awayTeam: awayTeamName,
     opponentPhone: awayManagerPhone,
     submitLink: reminderLink,
-    reportLink: backdoorLink,
   })
   const awayMsg = buildReminder({
     username: awayManagerName,
@@ -188,7 +184,6 @@ export default function DashboardFixtureActions({
     awayTeam: awayTeamName,
     opponentPhone: homeManagerPhone,
     submitLink: reminderLink,
-    reportLink: backdoorLink,
   })
 
   if (isFinished) return null
