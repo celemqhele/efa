@@ -69,11 +69,11 @@ export async function loadFixture(admin: any, code: string): Promise<any | null>
     .from('fixtures')
     .select(`
       id, tournament_id, round_type, status, scheduled_date, postponed_from,
-      is_postponed, postponed_confirmed, home_team_id, away_team_id,
+      is_postponed, postponed_confirmed, whatsapp_reset_count, home_team_id, away_team_id,
       home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id),
       away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id),
       tournament:tournaments(name),
-      result:results!results_fixture_id_fkey(home_score, away_score, screenshot_url, override_reason, created_at, is_abandoned)
+      result:results!results_fixture_id_fkey(id, home_score, away_score, screenshot_url, override_reason, created_at, is_abandoned)
     `)
     .eq('id', codeRow.fixture_id)
     .single()
@@ -162,7 +162,13 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   const requestFromViewer = pendingRequest ? String(pendingRequest.requested_by) === viewer.userId : false
 
   // 1. Submit result
+  // The WhatsApp bot lets a manager override an already-submitted score up to
+  // MAX_WHATSAPP_RESETS (2) times via fixtures.whatsapp_reset_count, and lets a
+  // backdoor result be replaced by the real score within 7 days. Mirror both.
+  const resetCount = fixture.whatsapp_reset_count ?? 0
+  const hasApprovedBackdoor = (backdoorRows ?? []).some((b: any) => b.status === 'approved')
   let resultBlock: string | null = null
+  let resultNote: string | null = null
   if (viewer.side === null && !viewer.isAdmin) resultBlock = 'Only the two managers can submit a result.'
   else if (fixture.postponed_confirmed && dateKey > todayKey) {
     resultBlock = `This match was postponed to ${labelDate(dateKey)}. The real result can only be submitted on or after that day.`
@@ -170,7 +176,16 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
     const winBlock = windowBlock(dateKey)
     if (winBlock) resultBlock = winBlock
     else if (fixture.result && !fixture.postponed_confirmed) {
-      resultBlock = `This match already has a result (${teamName(fixture.home_team)} ${fixture.result.home_score}-${fixture.result.away_score} ${teamName(fixture.away_team)}).`
+      if (hasApprovedBackdoor) {
+        resultNote =
+          'A backdoor result is on file for this game. You can still submit the real score here — it replaces the backdoor result. Open up to 7 days after the deadline.'
+      } else if (viewer.isAdmin) {
+        resultNote = 'This match already has a result. Submitting replaces it (admins are not limited by the change count).'
+      } else if (resetCount >= 2) {
+        resultBlock = 'This result has already been changed twice. Ask an admin to change it for you.'
+      } else {
+        resultNote = `A result is already on file. Submitting replaces it — you have used ${resetCount} of 2 allowed changes.`
+      }
     }
   }
 
@@ -252,6 +267,7 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
     },
     rules: {
       resultBlock,
+      resultNote,
       postponeBlock,
       backdoorBlock,
       canPostpone: !postponeBlock,

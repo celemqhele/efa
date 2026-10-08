@@ -174,6 +174,12 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           <Pill status={fx.status} postponedConfirmed={fx.postponedConfirmed} />
         </div>
 
+        {state.rules.resultNote && (
+          <p className="mt-2 inline-flex rounded-md bg-feedback-warning/15 px-2 py-1 text-[11px] font-bold leading-tight text-feedback-warning">
+            {state.rules.resultNote}
+          </p>
+        )}
+
         {state.result && (
           <div className="mt-4 flex items-center justify-between rounded-xl bg-bg-base border border-border px-3 py-2.5">
             <span className="text-sm font-semibold text-text-secondary">
@@ -277,7 +283,17 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
         </div>
       )}
 
-      {panel === 'result' && <ResultPanel busy={busy} onSubmit={send} homeName={homeName} awayName={awayName} block={state.rules.resultBlock} formFor={formFor} />}
+      {panel === 'result' && (
+        <ResultPanel
+          busy={busy}
+          onSubmit={send}
+          homeName={homeName}
+          awayName={awayName}
+          block={state.rules.resultBlock}
+          note={state.rules.resultNote}
+          formFor={formFor}
+        />
+      )}
 
       {panel === 'backdoor' && (
         <BackdoorPanel
@@ -362,6 +378,7 @@ function ResultPanel({
   homeName,
   awayName,
   block,
+  note,
   formFor,
 }: {
   busy: boolean
@@ -369,6 +386,7 @@ function ResultPanel({
   homeName: string
   awayName: string
   block: string | null
+  note: string | null
   formFor: (action: string, fields?: Record<string, string | File | null>) => FormData
 }) {
   const [file, setFile] = useState<File | null>(null)
@@ -380,6 +398,7 @@ function ResultPanel({
     <Card>
       <h2 className="text-base font-black text-text-primary">1. Submit the result</h2>
       {block && <p className="mt-2 text-sm text-feedback-warning">{block}</p>}
+      {note && <p className="mt-2 text-sm text-feedback-warning">{note}</p>}
       <form
         className="mt-4 space-y-4"
         onSubmit={(e) => {

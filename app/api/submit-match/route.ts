@@ -118,12 +118,34 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   if (fixture.postponed_confirmed && dateKey > todayKey) {
     return error(`This match was postponed to ${labelDate(dateKey)}. Submit the real result on or after that day.`)
   }
-  if (fixture.result && !fixture.postponed_confirmed) {
-    return error(
-      `This match already has a result (${teamName(fixture.home_team)} ${fixture.result.home_score}-${fixture.result.away_score} ${teamName(fixture.away_team)}).`
-    )
-  }
   if (fixture.status === 'abandoned') return error('This match has been abandoned.')
+
+  // ── Resubmission / replacement handling (mirrors the bot's resetAndResubmit) ──
+  // A postponed-placeholder is a first-time submission. A finished result can be
+  // overridden up to MAX_WHATSAPP_RESETS (2) times via whatsapp_reset_count, and
+  // a backdoor result can always be replaced by the real score (bot category 2:
+  // real score within 7 days is a first-time submission — not counted).
+  const { data: activeBackdoor } = await admin
+    .from('backdoor_submissions')
+    .select('id')
+    .eq('fixture_id', fixture.id)
+    .eq('status', 'approved')
+    .maybeSingle()
+  const isBackdoorResult = !!activeBackdoor
+  const isResubmit = !!fixture.result && !fixture.postponed_confirmed && !isBackdoorResult
+  if (isResubmit) {
+    const resetCount = fixture.whatsapp_reset_count || 0
+    if (resetCount >= 2 && !viewer.isAdmin) {
+      return error('This result has already been changed twice. Contact the admin to change it for you.')
+    }
+  }
+  // Any replacement of an already-on-file (non-placeholder) score wipes the old
+  // result's stats + confirmations first so the corrected score is the only one
+  // on file (mirrors restoreAndResubmit steps 1-2 in the bot).
+  if (fixture.result && !fixture.postponed_confirmed) {
+    await admin.from('match_stats').delete().eq('result_id', fixture.result.id)
+    await admin.from('result_confirmations').delete().eq('fixture_id', fixture.id)
+  }
 
   let screenshotUrl: string
   try {
@@ -135,6 +157,13 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   }
 
   const isReplacing = !!fixture.result
+  const overrideReason = isReplacing
+    ? fixture.postponed_confirmed
+      ? 'postponement placeholder replaced'
+      : isResubmit
+        ? 'result resubmitted by manager'
+        : 'backdoor result replaced by real score'
+    : null
 
   // Confirmation row (mirrors writeResultToDb) so the fixture page's "both
   // managers submitted" panel sees this score too.
@@ -153,7 +182,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         away_score: awayScore,
         screenshot_url: screenshotUrl,
         finalised_by: viewer.userId,
-        ...(isReplacing ? { override_reason: 'postponement placeholder replaced' } : {}),
+        ...(overrideReason ? { override_reason: overrideReason } : {}),
       },
       { onConflict: 'fixture_id' }
     )
@@ -167,7 +196,11 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   const isFuture = dateKey > todayKey
   const { error: fixErr } = await admin
     .from('fixtures')
-    .update({ status: isFuture ? 'confirmed_pending' : 'confirmed', postponed_confirmed: false })
+    .update({
+      status: isFuture ? 'confirmed_pending' : 'confirmed',
+      postponed_confirmed: false,
+      ...(isResubmit ? { whatsapp_reset_count: (fixture.whatsapp_reset_count || 0) + 1 } : {}),
+    })
     .eq('id', fixture.id)
   if (fixErr) {
     console.error('[submit-match] fixture status update failed:', fixErr.message)
@@ -209,7 +242,8 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   await audit(admin, viewer.userId, 'portal_result_submitted', fixture.id, {
     home_score: homeScore,
     away_score: awayScore,
-    replaced_postponement_placeholder: isReplacing,
+    is_replacement: isReplacing,
+    why: overrideReason ?? 'first submission',
     side: viewer.side,
   })
 
@@ -271,8 +305,10 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
 
   return NextResponse.json({
     ok: true,
-    title: 'Result submitted',
-    message: `${matchLabel}${isFuture ? '. Saved as pending until ' + labelDate(dateKey) + '.' : ' ✓'}`,
+    title: isReplacing ? 'Result updated' : 'Result submitted',
+    message: `${matchLabel} ✓${isResubmit ? ' This overrides the previous score.' : isBackdoorResult ? ' This replaces the backdoor result.' : isReplacing ? ' The placeholder result has been replaced.' : ''}${
+      isFuture ? ' Saved as pending until ' + labelDate(dateKey) + '.' : ''
+    }`,
     shareLink: `${APP_BASE}/submit-match/${code}`,
     shareText: `My result for ${matchLabel} is in. Confirm it here:`,
   })
