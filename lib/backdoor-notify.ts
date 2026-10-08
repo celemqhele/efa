@@ -35,6 +35,31 @@ export async function notifyBackdoorSubmitted(
   })
 }
 
+// Dispute filed (portal) → browser notification + push for every admin.
+// The dispute carries its own screenshot + written explanation, so the admin
+// review page is where the two screenshots get compared.
+export async function notifyBackdoorDisputed(
+  supabase: SupabaseClient,
+  args: {
+    submissionId: string
+    fixtureId: string
+    disputingSide: 'home' | 'away'
+    homeName: string
+    awayName: string
+    note: string
+  }
+) {
+  const { submissionId, fixtureId, disputingSide, homeName, awayName, note } = args
+  const disputingName = disputingSide === 'home' ? homeName : awayName
+  await notifyAllAdmins(supabase, {
+    type: 'backdoor_submitted',
+    title: 'Backdoor Dispute',
+    body: `${homeName} vs ${awayName} — ${disputingName} disputed the report against them: ${note}`,
+    data: { fixture_id: fixtureId, submission_id: submissionId, url: '/admin/backdoor-submissions' },
+    push_url: '/admin/backdoor-submissions',
+  })
+}
+
 // Backdoor approved/declined → notify the reporting manager only.
 // The submitter answers "who is NOT responding" (side_claimed), so the reporter is
 // always the manager of the team OPPOSITE side_claimed.
@@ -47,7 +72,7 @@ export async function notifyBackdoorDecision(
 
   const { data: submissions } = await supabase
     .from('backdoor_submissions')
-    .select('id, fixture_id, side_claimed')
+    .select('id, fixture_id, side_claimed, is_dispute')
     .in('id', submissionIds) as any
 
   if (!submissions?.length) return
@@ -81,6 +106,26 @@ export async function notifyBackdoorDecision(
       body: `${homeName} vs ${awayName} — your backdoor claim was ${outcome}.`,
       data: { fixture_id: s.fixture_id },
     })
+
+    // A dispute has a second stakeholder: the manager whose original report is
+    // being contested (the side the dispute names as not responding). To them
+    // the outcome is the mirror image of the disputing manager's.
+    if (s.is_dispute) {
+      const originalReporterId =
+        s.side_claimed === 'home' ? teamManagerId(f.home_team) : teamManagerId(f.away_team)
+      if (originalReporterId) {
+        rows.push({
+          user_id: originalReporterId,
+          type: outcome === 'approved' ? 'backdoor_declined' : 'backdoor_approved',
+          title: outcome === 'approved' ? 'Backdoor Report Overturned' : 'Backdoor Report Stands',
+          body:
+            outcome === 'approved'
+              ? `${homeName} vs ${awayName} — your opponent's dispute was upheld, so your report did not stand.`
+              : `${homeName} vs ${awayName} — the dispute against your report was declined. Your report stands.`,
+          data: { fixture_id: s.fixture_id },
+        })
+      }
+    }
   }
 
   if (rows.length) {

@@ -145,7 +145,7 @@ export async function uploadToBucket(bucket: string, fileName: string, file: Fil
   return data.signedUrl as string
 }
 
-function isMineSubmission(row: any, viewer: Viewer): boolean {
+export function isMineSubmission(row: any, viewer: Viewer): boolean {
   if (viewer.phone && row.submitter_phone) {
     const a = String(row.submitter_phone).replace(/\D/g, '')
     const b = viewer.phone.replace(/\D/g, '')
@@ -170,10 +170,29 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
 
   const { data: backdoorRows } = await admin
     .from('backdoor_submissions')
-    .select('id, side_claimed, status, screenshot_url, submitter_phone, created_at')
+    .select('id, side_claimed, status, screenshot_url, submitter_phone, created_at, reviewed_at, is_dispute, dispute_note')
     .eq('fixture_id', fixture.id)
     .neq('status', 'expired')
     .order('created_at', { ascending: false })
+
+  // Row-derived views used by the backdoor panel: the viewer's own live claim
+  // (so the panel can show a status card instead of the empty form again) and
+  // every report filed AGAINST the viewer's side (transparency + dispute entry).
+  const LIVE_BD = ['pending', 'approved', 'declined']
+  const myBackdoorRow =
+    (backdoorRows ?? []).find((b: any) => LIVE_BD.includes(b.status) && isMineSubmission(b, viewer)) ?? null
+  const reportsAgainstMe = viewer.side
+    ? (backdoorRows ?? []).filter(
+        (b: any) =>
+          (b.status === 'pending' || b.status === 'approved') &&
+          !isMineSubmission(b, viewer) &&
+          b.side_claimed === viewer.side
+      )
+    : []
+  // Only a report that has actually been APPLIED (approved → the backdoor
+  // result is on file) can be disputed: while it is still pending there is
+  // nothing to appeal, the admin has not decided yet.
+  const disputableReports = reportsAgainstMe.filter((b: any) => b.status === 'approved')
 
   const { data: requestRow } = await admin
     .from('postpone_requests')
@@ -243,6 +262,37 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
     backdoorBlock = 'This match is no longer open for opponent-not-responding reports.'
   }
 
+  // 2b. Dispute — an APPEAL against a backdoor that has already been applied to
+  // this match. Only an approved report creates something to appeal, so this
+  // deliberately ignores backdoorBlock (the report action itself is closed).
+  let disputeBlock: string | null = null
+  if (viewer.side === null) disputeBlock = 'Only the two managers can dispute a report.'
+  else if (isPlaceholder) disputeBlock = 'This match was postponed and is still to be played. Dispute once the new date has passed.'
+  else if (fixture.status === 'abandoned') disputeBlock = 'This match has been abandoned.'
+  else if (!reportsAgainstMe.length) disputeBlock = 'There is no open report against you in this match, so there is nothing to dispute.'
+  else if (!disputableReports.length)
+    disputeBlock = 'The report against you is still waiting for review. You can only dispute once the backdoor has been applied.'
+  else if (myBackdoorRow?.is_dispute)
+    disputeBlock =
+      myBackdoorRow.status === 'pending'
+        ? 'You have already disputed the applied backdoor. The admin is reviewing both screenshots.'
+        : myBackdoorRow.status === 'approved'
+          ? 'Your dispute was upheld — the result was changed to a 3-0 win for you.'
+          : 'Your dispute was declined, so the applied backdoor result stands.'
+  else if (myBackdoorRow?.status === 'pending')
+    disputeBlock = 'You already have your own report on this match. Cancel it first if you want to dispute instead.'
+  else if (myBackdoorRow)
+    disputeBlock = 'Your own report on this match is already decided, so there is nothing further for you to file.'
+  else if (disputableReports.every((b: any) => b.is_dispute))
+    disputeBlock = 'You have already disputed this backdoor.'
+
+  // The menu entry stays clickable whenever there is a live claim to read or a
+  // dispute to file — otherwise a confirmed (backdoor-decided) fixture would
+  // hide the status the manager came to check.
+  const backdoorMenuBlock =
+    backdoorBlock && !myBackdoorRow && disputeBlock ? backdoorBlock : null
+
+
   // Names behind the postpone request so the status is readable for any viewer
   // (admins who open a manager's link see who asked and who answered).
   const postponeRequest = requestRow
@@ -303,6 +353,32 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       screenshotUrl: b.screenshot_url ?? null,
       createdAt: b.created_at,
       mine: isMineSubmission(b, viewer),
+      isDispute: !!b.is_dispute,
+      disputeNote: b.dispute_note ?? null,
+    })),
+    // The viewer's own live claim (report or dispute) — drives the status card
+    // that replaces the form once something has been submitted.
+    myBackdoor: myBackdoorRow
+      ? {
+          id: myBackdoorRow.id,
+          side: myBackdoorRow.side_claimed,
+          status: myBackdoorRow.status,
+          screenshotUrl: myBackdoorRow.screenshot_url ?? null,
+          createdAt: myBackdoorRow.created_at,
+          reviewedAt: myBackdoorRow.reviewed_at ?? null,
+          isDispute: !!myBackdoorRow.is_dispute,
+          disputeNote: myBackdoorRow.dispute_note ?? null,
+        }
+      : null,
+    // Reports filed against the viewer's own team (the opponent's claim).
+    reportsAgainstMe: reportsAgainstMe.map((b: any) => ({
+      id: b.id,
+      side: b.side_claimed,
+      status: b.status,
+      screenshotUrl: b.screenshot_url ?? null,
+      createdAt: b.created_at,
+      isDispute: !!b.is_dispute,
+      disputeNote: b.dispute_note ?? null,
     })),
     postponeRequest,
     respondTo,
@@ -317,9 +393,12 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       resultNote,
       postponeBlock,
       backdoorBlock,
+      backdoorMenuBlock,
+      disputeBlock,
       canPostpone: !postponeBlock,
       canRequest: !pendingRequest && !postponeBlock,
       canRespond: !!respondTo,
+      canDispute: !disputeBlock,
     },
   }
 }

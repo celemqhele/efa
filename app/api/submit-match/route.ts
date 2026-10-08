@@ -3,12 +3,12 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getSastDateKey } from '@/lib/app-time'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { insertNotificationsAndPush, notifyAllAdmins } from '@/lib/notify'
-import { notifyBackdoorSubmitted } from '@/lib/backdoor-notify'
+import { notifyBackdoorSubmitted, notifyBackdoorDisputed } from '@/lib/backdoor-notify'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { analyzeImageBuffer, matchStatsToDbColumns } from '@/lib/ocr'
 import { normalizeToLandscape } from '@/lib/whatsapp'
-import { APP_BASE, MAX_POSTPONE_DAYS, buildState, dateKeyOf, homeSide, awaySide, isRealResult, labelDate, loadFixture, postponeWindow, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
+import { APP_BASE, MAX_POSTPONE_DAYS, buildState, dateKeyOf, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeWindow, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 function parseScore(value: FormDataEntryValue | null): number | null {
   if (value === null) return null
@@ -87,6 +87,10 @@ export async function POST(request: NextRequest) {
       return submitResult(admin, fixture, viewer, form, code)
     case 'backdoor':
       return submitBackdoor(admin, fixture, viewer, form, code)
+    case 'backdoorCancel':
+      return cancelBackdoor(admin, fixture, viewer, form, code)
+    case 'backdoorDispute':
+      return disputeBackdoor(admin, fixture, viewer, form, code)
     case 'postpone':
       return requestPostpone(admin, fixture, viewer, form, code)
     case 'postponeRespond':
@@ -123,13 +127,15 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   // overridden up to MAX_WHATSAPP_RESETS (2) times via whatsapp_reset_count, and
   // a backdoor result can always be replaced by the real score (bot category 2:
   // real score within 7 days is a first-time submission — not counted).
+  // limit(1) — a mutual report pair (or an upheld dispute) can leave TWO
+  // approved rows on the fixture, and maybeSingle() errors on more than one row.
   const { data: activeBackdoor } = await admin
     .from('backdoor_submissions')
     .select('id')
     .eq('fixture_id', fixture.id)
     .eq('status', 'approved')
-    .maybeSingle()
-  const isBackdoorResult = !!activeBackdoor
+    .limit(1)
+  const isBackdoorResult = !!(activeBackdoor && activeBackdoor.length)
   const isResubmit = !!fixture.result && !fixture.postponed_confirmed && !isBackdoorResult
   if (isResubmit) {
     const resetCount = fixture.whatsapp_reset_count || 0
@@ -410,6 +416,163 @@ async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
     message: 'Thanks. Admin will review and get back to you.',
     shareLink: `${APP_BASE}/submit-match/${code}`,
     shareText: `I reported ${side === 'home' ? teamName(fixture.home_team) : teamName(fixture.away_team)} as not responding:`,
+  })
+}
+
+// ─── 2b. Cancel a still-pending report, or dispute the report against you ────
+
+async function cancelBackdoor(admin: any, fixture: any, viewer: Viewer, form: FormData, _code: string) {
+  const id = String(form.get('submissionId') ?? '')
+  if (!id) return error('Missing report id.')
+
+  const { data: rows } = await admin
+    .from('backdoor_submissions')
+    .select('id, status, submitter_phone, is_dispute')
+    .eq('fixture_id', fixture.id)
+  const row = (rows ?? []).find((r: any) => r.id === id && isMineSubmission(r, viewer))
+  if (!row) return error('That report is not yours to cancel.')
+  if (row.status !== 'pending') return error('That report has already been reviewed, so it can no longer be cancelled.')
+
+  const { error: delErr } = await admin
+    .from('backdoor_submissions')
+    .delete()
+    .eq('id', id)
+    .eq('status', 'pending')
+  if (delErr) {
+    console.error('[submit-match] backdoor cancel failed:', delErr.message)
+    return error('Failed to cancel. Try again.', 500)
+  }
+
+  await audit(admin, viewer.userId, row.is_dispute ? 'portal_dispute_cancelled' : 'portal_backdoor_cancelled', fixture.id, {
+    submission_id: id,
+    side: viewer.side,
+  })
+
+  return NextResponse.json({
+    ok: true,
+    title: row.is_dispute ? 'Dispute cancelled' : 'Report cancelled',
+    message: row.is_dispute
+      ? 'Your dispute has been removed. You can file it again while the report against you is still open.'
+      : 'Your report has been removed. You can submit a new one while the match is still open.',
+  })
+}
+
+async function disputeBackdoor(admin: any, fixture: any, viewer: Viewer, form: FormData, code: string) {
+  const shot = form.get('screenshot')
+  const note = String(form.get('explanation') ?? '').trim()
+
+  if (viewer.side === null) return error('Only the two managers can dispute a report.')
+  if (!(shot instanceof File) || shot.size === 0) return error('Upload a screenshot to support your dispute.')
+  if (shot.size > 8 * 1024 * 1024) return error('Screenshot is too large (max 8MB).')
+  if (note.length < 5) return error('Explain why the report is wrong (at least 5 characters).')
+  if (note.length > 500) return error('Explanation is too long (max 500 characters).')
+  if (fixture.postponed_confirmed) {
+    return error('This match was postponed and is still to be played. Dispute once the new date has passed.')
+  }
+  if (fixture.status === 'abandoned') return error('This match has been abandoned.')
+
+  const { data: rows } = await admin
+    .from('backdoor_submissions')
+    .select('id, status, side_claimed, submitter_phone, is_dispute')
+    .eq('fixture_id', fixture.id)
+    .neq('status', 'expired')
+  const all = rows ?? []
+  const isLive = (r: any) => ['pending', 'approved', 'declined'].includes(r.status)
+  // The appeal only exists once the report has actually been APPLIED: the
+  // opponent's report naming MY side as not responding, already approved.
+  const reportsAgainstMe = all.filter(
+    (r: any) => r.side_claimed === viewer.side && !isMineSubmission(r, viewer)
+  )
+  const appliedAgainstMe = reportsAgainstMe.filter((r: any) => r.status === 'approved')
+  if (!reportsAgainstMe.length) return error('Nobody has reported you in this match, so there is nothing to dispute.')
+  if (!appliedAgainstMe.length) {
+    return error('The report against you is still waiting for review. You can only dispute once the backdoor has been applied.')
+  }
+  if (all.some((r: any) => r.is_dispute && isMineSubmission(r, viewer) && isLive(r))) {
+    return error('You have already disputed this backdoor.')
+  }
+  if (all.some((r: any) => !r.is_dispute && isMineSubmission(r, viewer) && isLive(r))) {
+    return error('You already have your own report on this match. Cancel it first to dispute.')
+  }
+
+  let screenshotUrl: string
+  try {
+    screenshotUrl = await uploadToBucket('backdoor-screenshots', `dispute-${Date.now()}.jpg`, shot)
+  } catch (e) {
+    console.error('[submit-match] dispute screenshot upload failed:', e)
+    return error('Screenshot upload failed. Try again.', 500)
+  }
+
+  // The dispute claims the OPPOSITE side is the one not responding — that is
+  // the original reporter — so approving it hands that side the 0-3 loss
+  // through the existing backdoor approve logic.
+  const side = viewer.side === 'home' ? 'away' : 'home'
+
+  // Same expiry as a normal report (next Tuesday 23:59:59) so a stale dispute
+  // cannot sit pending forever.
+  const expiresAt = new Date()
+  const daysUntilTuesday = (2 - expiresAt.getDay() + 7) % 7 || 7
+  expiresAt.setDate(expiresAt.getDate() + daysUntilTuesday)
+  expiresAt.setHours(23, 59, 59, 999)
+
+  const { data: submission, error: insertErr } = await admin
+    .from('backdoor_submissions')
+    .insert({
+      fixture_id: fixture.id,
+      submitter_phone: viewer.phone ?? viewer.userId,
+      side_claimed: side,
+      screenshot_url: screenshotUrl,
+      expires_at: expiresAt.toISOString(),
+      is_dispute: true,
+      dispute_note: note,
+    })
+    .select('id')
+    .single()
+  if (insertErr) {
+    console.error('[submit-match] dispute insert failed:', insertErr.message)
+    return error('Failed to submit the dispute. Try again.', 500)
+  }
+
+  const matchLabel = `${teamName(fixture.home_team)} vs ${teamName(fixture.away_team)}`
+  try {
+    await notifyBackdoorDisputed(admin, {
+      submissionId: submission.id,
+      fixtureId: fixture.id,
+      disputingSide: viewer.side,
+      homeName: teamName(fixture.home_team),
+      awayName: teamName(fixture.away_team),
+      note,
+    })
+  } catch (e) {
+    console.error('[submit-match] dispute admin notify failed:', e)
+  }
+
+  // The original reporter should know their claim is being contested.
+  try {
+    const opponent = viewer.side === 'home' ? awaySide(fixture) : homeSide(fixture)
+    if (opponent.managerId) {
+      await insertNotificationsAndPush(admin, {
+        user_id: opponent.managerId,
+        type: 'backdoor_submitted',
+        title: 'Backdoor report disputed',
+        body: `${matchLabel} — your opponent disputed your report. The admin will review both screenshots.`,
+        data: { fixture_id: fixture.id, url: `${APP_BASE}/submit-match/${code}` },
+      })
+    }
+  } catch (e) {
+    console.error('[submit-match] dispute opponent notify failed:', e)
+  }
+
+  await audit(admin, viewer.userId, 'portal_backdoor_disputed', fixture.id, {
+    submission_id: submission.id,
+    side_claimed: side,
+    side: viewer.side,
+  })
+
+  return NextResponse.json({
+    ok: true,
+    title: 'Dispute submitted',
+    message: 'The admin will compare your screenshot and explanation with the report already on file and get back to you.',
   })
 }
 

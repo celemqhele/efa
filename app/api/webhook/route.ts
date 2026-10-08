@@ -2558,7 +2558,7 @@ async function showUserBackdoorApplications(from: string, phoneNumberId: string)
 
   const { data: submissions } = await supabase
     .from('backdoor_submissions')
-    .select('id, fixture_id, side_claimed, status, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date, tournament:tournaments(name))')
+    .select('id, fixture_id, side_claimed, status, is_dispute, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date, tournament:tournaments(name))')
     .eq('submitter_phone', from)
     .neq('status', 'expired')
     .order('created_at', { ascending: false })
@@ -2581,7 +2581,7 @@ async function showUserBackdoorApplications(from: string, phoneNumberId: string)
       void_game_played: '🕳️ Void - game already played',
       expired: '⏰ Expired'
     }[status] || s.status
-    const parts = [`${i + 1}. ${teams}`]
+    const parts = [`${i + 1}. ${s.is_dispute ? '⚖️ Dispute - ' : ''}${teams}`]
     if (f.scheduled_date) parts.push(f.scheduled_date)
     if (fixtureTournamentName(f)) parts.push(fixtureTournamentName(f))
     parts.push(`(${statusLabel})`)
@@ -2615,7 +2615,7 @@ async function showBackdoorSubmissionsForReview(from: string, phoneNumberId: str
   const supabase = await createAdminClient()
   const { data: pending } = await supabase
     .from('backdoor_submissions')
-    .select('id, fixture_id, submitter_phone, side_claimed, screenshot_url, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date, tournament:tournaments(name))')
+    .select('id, fixture_id, submitter_phone, side_claimed, screenshot_url, is_dispute, created_at, fixtures!inner(home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name), scheduled_date, tournament:tournaments(name))')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
@@ -2643,6 +2643,9 @@ async function showBackdoorSubmissionsForReview(from: string, phoneNumberId: str
     const meta = [f.scheduled_date, fixtureTournamentName(f)].filter(Boolean).join(' - ')
     if (subs.length === 2) {
       lines.push(`${idx}. ${teams}${meta ? ` - ${meta}` : ''} - backdoor submitted by both teams`)
+    } else if (subs[0].is_dispute) {
+      const side = subs[0].side_claimed === 'home' ? awayName : homeName
+      lines.push(`${idx}. ${teams}${meta ? ` - ${meta}` : ''} - DISPUTE filed by ${side}`)
     } else {
       const side = subs[0].side_claimed === 'home' ? awayName : homeName
       lines.push(`${idx}. ${teams}${meta ? ` - ${meta}` : ''} - backdoor submitted by ${side}`)
@@ -2679,7 +2682,7 @@ async function handleBackdoorAdminReview(from: string, text: string, session: Se
 
   const { data: submissions } = await supabase
     .from('backdoor_submissions')
-    .select('id, submitter_phone, side_claimed, screenshot_url')
+    .select('id, submitter_phone, side_claimed, screenshot_url, is_dispute, dispute_note')
     .eq('fixture_id', fixtureId)
     .eq('status', 'pending')
 
@@ -2701,9 +2704,11 @@ async function handleBackdoorAdminReview(from: string, text: string, session: Se
   for (let i = 0; i < submissions.length; i++) {
     const s = submissions[i]
     const side = s.side_claimed === 'home' ? 'Away' : 'Home'
+    const kind = s.is_dispute ? 'DISPUTE' : 'Submission'
+    const note = s.is_dispute ? `\nExplanation: ${s.dispute_note || '—'}` : ''
     await sendTextMessage(
       from,
-      `${i + 1}. Submission by ${s.submitter_phone} (${side} team):\nScreenshot: ${s.screenshot_url}`,
+      `${i + 1}. ${kind} by ${s.submitter_phone} (${side} team):${note}\nScreenshot: ${s.screenshot_url}`,
       phoneNumberId
     )
   }
@@ -2754,7 +2759,7 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
     // Determine outcome based on how many claims this decision covers
     const { data: submissions } = await supabase
       .from('backdoor_submissions')
-      .select('id, side_claimed')
+      .select('id, side_claimed, is_dispute')
       .in('id', submissionIds)
 
     let homeScore = 0, awayScore = 0
@@ -2774,12 +2779,15 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
     // Call finalise-result logic
     const adminUserId = await getAdminUserId(supabase)
 
-    await supabase.from('result_confirmations').insert({
+    // result_confirmations is UNIQUE (fixture_id, submitted_by): the same admin
+    // can approve twice on one fixture (report first, then an upheld dispute),
+    // so upsert to keep the second decision off the constraint.
+    await supabase.from('result_confirmations').upsert({
       fixture_id: fixtureId,
       home_score: homeScore,
       away_score: awayScore,
       submitted_by: adminUserId,
-    })
+    }, { onConflict: 'fixture_id,submitted_by' })
 
     await supabase.from('results').upsert({
       fixture_id: fixtureId,
@@ -2804,6 +2812,17 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
       .eq('fixture_id', fixtureId)
       .eq('status', 'pending')
       .not('id', 'in', `(${submissionIds.join(',')})`)
+
+    // An upheld dispute overturns the report it answers — a report that was
+    // already approved (appeal after the decision) must not stand alongside it.
+    if (submissions?.some((s: any) => s.is_dispute)) {
+      await supabase
+        .from('backdoor_submissions')
+        .update({ status: 'declined', reviewed_by: adminUserId, reviewed_at: new Date().toISOString() })
+        .eq('fixture_id', fixtureId)
+        .eq('is_dispute', false)
+        .eq('status', 'approved')
+    }
 
     // Notify the reporting manager(s) (in-app + push) + admins (push)
     try {

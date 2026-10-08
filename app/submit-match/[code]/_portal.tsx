@@ -27,6 +27,22 @@ const STATUS_LABEL: Record<string, string> = {
   abandoned: 'Abandoned',
 }
 
+// Status of the viewer's own backdoor report / dispute (portal panel 2).
+const BD_STATUS: Record<string, { label: string; tone: string }> = {
+  pending: {
+    label: 'Under review',
+    tone: 'bg-feedback-warning/15 text-feedback-warning border-feedback-warning/30',
+  },
+  approved: {
+    label: 'Approved',
+    tone: 'bg-feedback-success/15 text-feedback-success border-feedback-success/30',
+  },
+  declined: {
+    label: 'Declined',
+    tone: 'bg-feedback-error/15 text-feedback-error border-feedback-error/30',
+  },
+}
+
 function Pill({ status, postponedConfirmed }: { status: string; postponedConfirmed: boolean }) {
   const label = postponedConfirmed ? 'Postponed · confirmed' : STATUS_LABEL[status] ?? status
   const tone = postponedConfirmed
@@ -133,6 +149,10 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
   }
 
   // ── Home: match header + four options ───────────────────────────────────────
+  const myBd = state.myBackdoor as null | {
+    status: string
+    isDispute: boolean
+  }
   const menu: { key: Panel; num: string; label: string; sub: string; block?: string | null }[] = [
     {
       key: 'result',
@@ -145,8 +165,12 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       key: 'backdoor',
       num: '2',
       label: 'Report opponent not responding',
-      sub: `Screenshot proof that ${opponentName} did not respond`,
-      block: state.rules.backdoorBlock,
+      sub: myBd
+        ? `Your ${myBd.isDispute ? 'dispute' : 'report'}: ${BD_STATUS[myBd.status]?.label ?? myBd.status}`
+        : state.rules.disputeBlock === null
+          ? `${opponentName} reported you — view the proof and dispute it`
+          : `Screenshot proof that ${opponentName} did not respond`,
+      block: state.rules.backdoorMenuBlock,
     },
     { key: 'details', num: '3', label: 'Match details', sub: 'Teams, date, result and proof already on file' },
     {
@@ -341,6 +365,9 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           viewer={state.viewer}
           fixture={fx}
           block={state.rules.backdoorBlock}
+          disputeBlock={state.rules.disputeBlock}
+          myBackdoor={state.myBackdoor}
+          reportsAgainstMe={state.reportsAgainstMe ?? []}
           formFor={formFor}
         />
       )}
@@ -512,6 +539,9 @@ function BackdoorPanel({
   viewer,
   fixture,
   block,
+  disputeBlock,
+  myBackdoor,
+  reportsAgainstMe,
   formFor,
 }: {
   busy: boolean
@@ -520,12 +550,186 @@ function BackdoorPanel({
   viewer: any
   fixture: any
   block: string | null
+  disputeBlock: string | null
+  myBackdoor: any
+  reportsAgainstMe: any[]
   formFor: (action: string, fields?: Record<string, string | File | null>) => FormData
 }) {
   const [file, setFile] = useState<File | null>(null)
   // Managers always report the opposite side; admins pick one.
   const [side, setSide] = useState<'home' | 'away'>(viewer.side === 'home' ? 'away' : viewer.side === 'away' ? 'home' : 'away')
   const [noFileError, setNoFileError] = useState(false)
+  const [disputeMode, setDisputeMode] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [disputeFile, setDisputeFile] = useState<File | null>(null)
+  const [explanation, setExplanation] = useState('')
+  const [disputeFileError, setDisputeFileError] = useState(false)
+
+  const reports = reportsAgainstMe ?? []
+
+  // ── Dispute (appeal) form — only reachable once a backdoor has been applied ─
+  if (disputeMode) {
+    return (
+      <Card>
+        <h2 className="text-base font-black text-text-primary">Dispute the applied backdoor</h2>
+        <p className="mt-1 text-xs text-text-muted">
+          The admin applied a backdoor result against you. Send your own screenshot and explain why the report is
+          wrong — e.g. that the screenshot is fake. The admin reviews both screenshots side by side. If your dispute
+          is upheld you get the 3-0 win; if not, the result stays as it is.
+        </p>
+
+        <ReportedNote
+          reports={reports}
+          opponentName={opponentName}
+          canDispute={false}
+          disputeBlock={disputeBlock}
+          onDispute={() => {}}
+          busy={busy}
+        />
+
+        <form
+          className="mt-4 space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!disputeFile) {
+              setDisputeFileError(true)
+              return
+            }
+            setDisputeFileError(false)
+            onSubmit(formFor('backdoorDispute', { screenshot: disputeFile, explanation }))
+          }}
+        >
+          <Field label="Your screenshot" hint="Proof that the report against you is wrong.">
+            <input
+              type="file"
+              accept="image/*"
+              disabled={busy}
+              onChange={(e) => {
+                setDisputeFile(e.target.files?.[0] ?? null)
+                setDisputeFileError(false)
+              }}
+              className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary"
+            />
+            {disputeFile && <span className="block truncate text-xs text-accent">{disputeFile.name}</span>}
+          </Field>
+          {disputeFileError && (
+            <p className="text-sm text-feedback-warning">Upload your screenshot above first.</p>
+          )}
+
+          <Field label="Explanation" hint="Why is the report against you wrong? Max 500 characters.">
+            <textarea
+              value={explanation}
+              onChange={(e) => setExplanation(e.target.value)}
+              rows={4}
+              maxLength={500}
+              disabled={busy}
+              placeholder="e.g. That screenshot is fake — the chat was doctored, I did respond."
+              className={inputClass}
+            />
+          </Field>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={busy}
+              disabled={busy || !disputeFile || explanation.trim().length < 5}
+            >
+              Submit dispute
+            </Button>
+            <Button variant="ghost" disabled={busy} onClick={() => setDisputeMode(false)}>
+              Back
+            </Button>
+          </div>
+        </form>
+      </Card>
+    )
+  }
+
+  // ── Status card: one of my own claims is already on file ────────────────────
+  if (myBackdoor) {
+    const st = BD_STATUS[myBackdoor.status] ?? {
+      label: myBackdoor.status,
+      tone: 'bg-bg-elevated text-text-secondary border-border',
+    }
+    const kind = myBackdoor.isDispute ? 'dispute' : 'report'
+    const outcomeLine = myBackdoor.isDispute
+      ? myBackdoor.status === 'pending'
+        ? 'Your dispute is with the admin. They will review both screenshots and get back to you.'
+        : myBackdoor.status === 'approved'
+          ? 'Your dispute was upheld — the 3-0 has been awarded to you instead.'
+          : 'Your dispute was declined — the backdoor result stands.'
+      : myBackdoor.status === 'pending'
+        ? 'Your report is with the admin. They will review the screenshots and get back to you.'
+        : myBackdoor.status === 'approved'
+          ? 'Your report was approved. A 3-0 has been applied.'
+          : 'Your report was declined.'
+
+    return (
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-base font-black text-text-primary">2. Report opponent not responding</h2>
+          <span
+            className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${st.tone}`}
+          >
+            {st.label}
+          </span>
+        </div>
+
+        <p className="mt-2 text-sm text-text-secondary">{outcomeLine}</p>
+        <p className="mt-1 text-xs text-text-muted">Submitted {formatDateTime(myBackdoor.createdAt)}.</p>
+
+        {myBackdoor.isDispute && myBackdoor.disputeNote && (
+          <p className="mt-2 rounded-xl border border-border bg-bg-base px-3 py-2 text-xs text-text-secondary">
+            Your explanation: {myBackdoor.disputeNote}
+          </p>
+        )}
+
+        {myBackdoor.screenshotUrl && (
+          <a
+            href={myBackdoor.screenshotUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-block text-xs font-bold text-accent hover:underline"
+          >
+            View your screenshot
+          </a>
+        )}
+
+        {myBackdoor.status === 'pending' && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {!confirmCancel ? (
+              <Button variant="secondary" disabled={busy} onClick={() => setConfirmCancel(true)}>
+                Cancel {kind}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="primary"
+                  disabled={busy}
+                  onClick={() => onSubmit(formFor('backdoorCancel', { submissionId: myBackdoor.id }))}
+                >
+                  Yes, cancel the {kind}
+                </Button>
+                <Button variant="ghost" disabled={busy} onClick={() => setConfirmCancel(false)}>
+                  Keep it
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        <ReportedNote
+          reports={reports}
+          opponentName={opponentName}
+          canDispute={disputeBlock === null}
+          disputeBlock={disputeBlock}
+          onDispute={() => setDisputeMode(true)}
+          busy={busy}
+        />
+      </Card>
+    )
+  }
 
   return (
     <Card>
@@ -577,7 +781,82 @@ function BackdoorPanel({
           Submit report
         </Button>
       </form>
+
+      <ReportedNote
+        reports={reports}
+        opponentName={opponentName}
+        canDispute={disputeBlock === null}
+        disputeBlock={disputeBlock}
+        onDispute={() => setDisputeMode(true)}
+        busy={busy}
+      />
     </Card>
+  )
+}
+
+// ─── The opponent has filed against you: warning + their proof + Dispute ──────
+// Sits at the bottom of panel 2 so the reported manager sees exactly what the
+// admin was shown, and can appeal once the backdoor has been applied.
+
+function ReportedNote({
+  reports,
+  opponentName,
+  canDispute,
+  disputeBlock,
+  onDispute,
+  busy,
+}: {
+  reports: any[]
+  opponentName: string
+  canDispute: boolean
+  disputeBlock: string | null
+  onDispute: () => void
+  busy: boolean
+}) {
+  if (!reports.length) return null
+  return (
+    <div className="mt-4 space-y-2">
+      {reports.map((r) => {
+        const applied = r.status === 'approved'
+        const headline = r.isDispute
+          ? r.status === 'approved'
+            ? `${opponentName}'s dispute was upheld — your report was overturned`
+            : `${opponentName} disputed your report · waiting for review`
+          : r.status === 'approved'
+            ? `${opponentName} has reported you as not responding · applied`
+            : `${opponentName} has reported you as not responding · waiting for review`
+        const warning = r.isDispute
+          ? r.status === 'approved'
+            ? 'The result has been changed against you.'
+            : 'Your result is under appeal — the admin is comparing both screenshots.'
+          : 'Contact your opponent immediately to avoid a loss.'
+        return (
+          <div key={r.id} className="rounded-xl border border-feedback-error/40 bg-feedback-error/10 px-3 py-2.5 text-xs">
+            <p className="font-bold uppercase tracking-wide text-feedback-error">{headline}</p>
+            <p className="mt-1.5 font-bold text-feedback-error">{warning}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {r.screenshotUrl && (
+                <a
+                  href={r.screenshotUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg bg-bg-base px-2.5 py-1.5 font-bold text-accent hover:underline"
+                >
+                  View screenshot
+                </a>
+              )}
+              {applied && canDispute ? (
+                <Button variant="secondary" disabled={busy} onClick={onDispute} className="!px-3 !py-1.5 !text-xs">
+                  Dispute
+                </Button>
+              ) : disputeBlock ? (
+                <span className="text-[11px] font-semibold text-feedback-error/90">{disputeBlock}</span>
+              ) : null}
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -637,15 +916,21 @@ function DetailsPanel({ state }: { state: any }) {
           <p className="text-xs font-bold uppercase tracking-wide text-text-muted">Opponent-not-responding reports</p>
           <ul className="mt-2 space-y-1.5">
             {state.backdoor.map((b: any) => (
-              <li key={b.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-base px-3 py-2 text-xs">
-                <span className="text-text-secondary">
-                  {b.side === 'home' ? fx.home.name : fx.away.name} not responding · {b.status}
-                  {b.mine ? ' · yours' : ''}
+              <li key={b.id} className="rounded-xl border border-border bg-bg-base px-3 py-2 text-xs">
+                <span className="flex items-center justify-between gap-3">
+                  <span className="text-text-secondary">
+                    {b.isDispute ? 'Dispute · ' : ''}
+                    {b.side === 'home' ? fx.home.name : fx.away.name} not responding · {b.status}
+                    {b.mine ? ' · yours' : ''}
+                  </span>
+                  {b.screenshotUrl && (
+                    <a href={b.screenshotUrl} target="_blank" rel="noreferrer" className="shrink-0 font-bold text-accent hover:underline">
+                      View screenshot
+                    </a>
+                  )}
                 </span>
-                {b.screenshotUrl && (
-                  <a href={b.screenshotUrl} target="_blank" rel="noreferrer" className="font-bold text-accent hover:underline">
-                    View screenshot
-                  </a>
+                {b.isDispute && b.disputeNote && (
+                  <span className="mt-1 block text-text-muted">Explanation: {b.disputeNote}</span>
                 )}
               </li>
             ))}
@@ -760,4 +1045,10 @@ function formatDate(dateKey: string) {
   const d = new Date(`${String(dateKey).slice(0, 10)}T00:00:00.000Z`)
   if (Number.isNaN(d.getTime())) return String(dateKey)
   return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+}
+
+function formatDateTime(iso: string) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return String(iso)
+  return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }

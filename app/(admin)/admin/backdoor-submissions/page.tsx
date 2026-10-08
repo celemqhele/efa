@@ -19,6 +19,8 @@ export default async function BackdoorSubmissionsPage() {
       side_claimed,
       screenshot_url,
       status,
+      is_dispute,
+      dispute_note,
       created_at,
       expires_at,
       reviewed_at,

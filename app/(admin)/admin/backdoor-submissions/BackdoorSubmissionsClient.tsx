@@ -15,6 +15,8 @@ interface Submission {
   side_claimed: 'home' | 'away'
   screenshot_url: string
   status: 'pending' | 'approved' | 'declined' | 'void_game_played' | 'expired'
+  is_dispute: boolean
+  dispute_note: string | null
   created_at: string
   expires_at: string
   reviewed_at: string | null
@@ -154,8 +156,12 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
           // Only the still-pending claims count: the page loads every historical
           // submission for the fixture, and approving a stale one would write a
           // wrong score.
-          const pendingIds = submissions.filter(s => s.status === 'pending').map(s => s.id)
+          // Only plain reports pair up into the 0-0 "approve both" decision —
+          // a dispute is always its own 3-0 / keep-the-result call.
+          const pendingIds = submissions.filter(s => s.status === 'pending' && !s.is_dispute).map(s => s.id)
           const bothKey = `both:${fixtureId}`
+          const hasDispute = submissions.some(s => s.is_dispute)
+          const disputePending = submissions.some(s => s.is_dispute && s.status === 'pending')
 
           return (
             <div key={fixtureId} className="card p-4 border-l-4 border-l-gold/50">
@@ -167,6 +173,17 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
+                  {hasDispute && (
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                        disputePending
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 animate-pulse'
+                          : 'bg-indigo-500/10 text-indigo-300/70 border-indigo-500/30'
+                      }`}
+                    >
+                      ⚖️ Dispute review
+                    </span>
+                  )}
                   {getStatusBadge(submissions[0]?.status || 'pending')}
                   {pendingIds.length > 1 && (
                     <button
@@ -183,9 +200,21 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
 
               <div className="mt-4 space-y-3">
                 {submissions.map((sub) => (
-                  <div key={sub.id} className="bg-navy-light rounded-lg p-4 border border-navy-border">
+                  <div
+                    key={sub.id}
+                    className={`rounded-lg p-4 border ${
+                      sub.is_dispute
+                        ? 'bg-navy-light border-indigo-500/40 border-l-4 border-l-indigo-400'
+                        : 'bg-navy-light border-navy-border'
+                    }`}
+                  >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center gap-3">
+                        {sub.is_dispute && (
+                          <span className="px-2 py-0.5 rounded text-xs font-bold border bg-indigo-500/20 text-indigo-300 border-indigo-500/40">
+                            ⚖️ Dispute
+                          </span>
+                        )}
                         <span className="font-medium text-text-primary">
                           {sub.submitter_phone} ({sub.side_claimed === 'home' ? 'Away' : 'Home'} team)
                         </span>
@@ -212,17 +241,25 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
                                 disabled={busyKey !== null}
                                 className="btn-gold text-xs py-1.5 px-3"
                               >
-                                {busyKey === sub.id ? 'Approving...' : 'Approve'}
+                                {busyKey === sub.id
+                                  ? 'Saving...'
+                                  : sub.is_dispute
+                                    ? 'Uphold dispute (3-0)'
+                                    : 'Approve'}
                               </button>
                               <button
                                 onClick={() => handleAction(sub.id, [sub.id], 'decline')}
                                 disabled={busyKey !== null}
                                 className="btn-outline text-xs py-1.5 px-3 text-red-400 border-red-500/30 hover:bg-red-500/10"
                               >
-                                {busyKey === sub.id ? 'Declining...' : 'Decline'}
+                                {busyKey === sub.id
+                                  ? 'Saving...'
+                                  : sub.is_dispute
+                                    ? 'Reject · keep result'
+                                    : 'Decline'}
                               </button>
                             </div>
-                          )}
+                        )}
                         {sub.status !== 'pending' && (
                           <span className="text-xs text-text-muted">
                             Reviewed: {sub.reviewed_at ? new Date(sub.reviewed_at).toLocaleString() : 'N/A'}
@@ -230,6 +267,21 @@ export default function BackdoorSubmissionsClient({ groupedSubmissions }: Props)
                         )}
                       </div>
                     </div>
+
+                    {sub.is_dispute && (
+                      <div className="mt-2 rounded border border-indigo-500/20 bg-indigo-500/5 px-3 py-2">
+                        <p className="text-xs text-text-primary">
+                          <span className="font-bold text-indigo-300">Dispute explanation:</span>{' '}
+                          {sub.dispute_note || '—'}
+                        </p>
+                        {sub.status === 'pending' && (
+                          <p className="mt-1 text-xs text-text-muted">
+                            Upholding gives the disputer a 3-0 win and overturns the report they are appealing.
+                            Rejecting leaves the result exactly as it stands.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

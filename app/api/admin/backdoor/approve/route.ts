@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
   const { data: submissions, error: subErr } = await db
     .from('backdoor_submissions')
-    .select('id, fixture_id, side_claimed')
+    .select('id, fixture_id, side_claimed, is_dispute')
     .in('id', submissionIds)
 
   if (subErr) return Response.json({ error: subErr.message }, { status: 500 })
@@ -60,12 +60,15 @@ export async function POST(request: Request) {
     }
   }
 
-  const { error: rcErr } = await db.from('result_confirmations').insert({
+  // result_confirmations is UNIQUE (fixture_id, submitted_by) — a dispute is
+  // approved AFTER the report it answers already wrote a row, so upsert instead
+  // of insert to keep the second decision from blowing up on the constraint.
+  const { error: rcErr } = await db.from('result_confirmations').upsert({
     fixture_id: fixtureId,
     home_score: homeScore,
     away_score: awayScore,
     submitted_by: user.id,
-  })
+  }, { onConflict: 'fixture_id,submitted_by' })
   if (rcErr) return Response.json({ error: rcErr.message }, { status: 500 })
 
   const { error: resErr } = await db.from('results').upsert({
@@ -97,6 +100,18 @@ export async function POST(request: Request) {
     .eq('fixture_id', fixtureId)
     .eq('status', 'pending')
     .not('id', 'in', `(${submissionIds.join(',')})`)
+
+  // An upheld dispute overturns the report it answers. If that report was
+  // already approved (the dispute was filed as an appeal after the decision),
+  // it must not stay approved next to the dispute — only one outcome stands.
+  if (submissions.some((s: any) => s.is_dispute)) {
+    await db
+      .from('backdoor_submissions')
+      .update({ status: 'declined', reviewed_by: user.id, reviewed_at: new Date().toISOString() })
+      .eq('fixture_id', fixtureId)
+      .eq('is_dispute', false)
+      .eq('status', 'approved')
+  }
 
   if (fixture.tournament_id) {
     try { await recalculateStandings(fixture.tournament_id) } catch (e) {}
