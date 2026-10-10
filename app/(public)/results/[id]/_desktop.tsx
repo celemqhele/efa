@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { AlertTriangle, BarChart3, Camera, ArrowLeft, ChevronRight } from 'lucide-react'
 
 export default function Desktop({ data }: { data: any }) {
-  const { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore, adjustedScore } = data
+  const { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore, adjustedScore, homeMatchManager, awayMatchManager } = data
 
   const statDefs = [
     { key: 'possession', label: 'Possession %', h: stats?.home_possession, a: stats?.away_possession, unit: '%' },
@@ -35,7 +35,7 @@ export default function Desktop({ data }: { data: any }) {
             <div className="flex items-center gap-5 flex-1 justify-end">
               <div className="text-right">
                 <Link href={`/teams/${home?.id}`} className="text-lg font-bold text-text-primary hover:text-accent transition-colors block">{home?.name}</Link>
-                <p className="text-xs text-text-muted">{home?.manager?.username ?? 'NO MANAGER'}</p>
+                <p className="text-xs text-text-muted">{homeMatchManager?.username ?? 'NO MANAGER'}</p>
               </div>
               {home?.logo_league_folder && (
                 <TeamLogo leagueFolder={home.logo_league_folder} teamSlug={home.logo_team_slug} context="match_detail_hero" alt={home.name} className="w-16 h-16 shrink-0" />
@@ -96,7 +96,7 @@ export default function Desktop({ data }: { data: any }) {
               )}
               <div>
                 <Link href={`/teams/${away?.id}`} className="text-lg font-bold text-text-primary hover:text-accent transition-colors block">{away?.name}</Link>
-                <p className="text-xs text-text-muted">{away?.manager?.username ?? 'NO MANAGER'}</p>
+                <p className="text-xs text-text-muted">{awayMatchManager?.username ?? 'NO MANAGER'}</p>
               </div>
             </div>
           </div>

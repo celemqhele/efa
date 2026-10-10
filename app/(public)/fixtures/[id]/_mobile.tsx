@@ -120,6 +120,8 @@ export default function Mobile({ data }: { data: any }) {
     tournament,
     homeManager,
     awayManager,
+    homeMatchManager,
+    awayMatchManager,
     user,
     isHomeManager,
     isAwayManager,
@@ -192,7 +194,7 @@ export default function Mobile({ data }: { data: any }) {
                 />
                 <div className="text-center">
                   <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
-                  <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
+                  <p className="text-xs text-text-muted">{homeMatchManager?.username ?? '—'}</p>
                 </div>
               </Link>
             ) : (
@@ -275,7 +277,7 @@ export default function Mobile({ data }: { data: any }) {
                 />
                 <div className="text-center">
                   <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
-                  <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
+                  <p className="text-xs text-text-muted">{awayMatchManager?.username ?? '—'}</p>
                 </div>
               </Link>
             ) : (
@@ -301,7 +303,7 @@ export default function Mobile({ data }: { data: any }) {
                 />
                 <div className="text-center">
                   <p className="font-bold text-foreground-primary text-sm">{homeTeam.name}</p>
-                  <p className="text-xs text-text-muted">{homeManager?.username ?? '—'}</p>
+                  <p className="text-xs text-text-muted">{homeMatchManager?.username ?? '—'}</p>
                 </div>
               </Link>
             ) : (
@@ -349,7 +351,7 @@ export default function Mobile({ data }: { data: any }) {
                 />
                 <div className="text-center">
                   <p className="font-bold text-foreground-primary text-sm">{awayTeam.name}</p>
-                  <p className="text-xs text-text-muted">{awayManager?.username ?? '—'}</p>
+                  <p className="text-xs text-text-muted">{awayMatchManager?.username ?? '—'}</p>
                 </div>
               </Link>
             ) : (

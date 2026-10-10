@@ -7,6 +7,7 @@ import { getTeamDNAFromDB } from '@/lib/dna-engine'
 import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
 import { parseForfeitAdjusted } from '@/lib/forfeit-note'
 import { gracePeriodEnded } from '@/lib/submit-match'
+import { resolveMatchManagers } from '@/lib/match-manager'
 import { ogMeta, formatMatchday, roundLabel } from '@/lib/og'
 import Shell from './_shell'
 
@@ -278,6 +279,14 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const awayManager = awayTeam?.manager
   const hasResult = !!result
 
+  // Who was actually in charge on this match's date (keeps a sacked manager's
+  // name on the games they played). Permissions, matchroom and score
+  // confirmations keep using the CURRENT manager above.
+  const [homeMatchManager, awayMatchManager] = await resolveMatchManagers(supabase, [
+    { teamId: fixture.home_team_id, matchDate: fixture.scheduled_date },
+    { teamId: fixture.away_team_id, matchDate: fixture.scheduled_date },
+  ])
+
   const isHomeManager = user?.id && homeManager?.id === user.id
   const isAwayManager = user?.id && awayManager?.id === user.id
   const isManager = isHomeManager || isAwayManager
@@ -328,6 +337,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     tournament,
     homeManager,
     awayManager,
+    homeMatchManager,
+    awayMatchManager,
     user,
     isHomeManager,
     isAwayManager,

@@ -73,7 +73,7 @@ function ProbabilityBar({ home, draw, away, homeName, awayName }: { home: number
 export default function Desktop({ data }: { data: any }) {
   const {
     id, fixture, result, matchStats, adjustedScore, homeTeam, awayTeam, tournament,
-    homeManager, awayManager, user, isHomeManager, isAwayManager, isManager,
+    homeManager, awayManager, homeMatchManager, awayMatchManager, user, isHomeManager, isAwayManager, isManager,
     probability, h2hList, homeDNA, awayDNA, homeStanding, awayStanding,
     confirmationStatus, conf1, conf2, hasResult, waitingReports, postponeRequest,
     reactionCounts, userReactionEmojis, comments, topLevel, replies,
@@ -117,7 +117,7 @@ export default function Desktop({ data }: { data: any }) {
                 <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="match_detail_hero" alt={homeTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
                 <div className="text-center">
                   <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
-                  <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
+                  <p className="text-sm text-text-muted">{homeMatchManager?.username ?? '—'}</p>
                 </div>
               </Link>
             ) : (
@@ -190,7 +190,7 @@ export default function Desktop({ data }: { data: any }) {
                 <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="match_detail_hero" alt={awayTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
                 <div className="text-center">
                   <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
-                  <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
+                  <p className="text-sm text-text-muted">{awayMatchManager?.username ?? '—'}</p>
                 </div>
               </Link>
             ) : (
@@ -210,7 +210,7 @@ export default function Desktop({ data }: { data: any }) {
                 <TeamLogo leagueFolder={homeTeam.logo_league_folder} teamSlug={homeTeam.logo_team_slug} context="match_detail_hero" alt={homeTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
                 <div className="text-center">
                   <p className="font-bold text-text-primary text-lg">{homeTeam.name}</p>
-                  <p className="text-sm text-text-muted">{homeManager?.username ?? '—'}</p>
+                  <p className="text-sm text-text-muted">{homeMatchManager?.username ?? '—'}</p>
                 </div>
               </Link>
             ) : (
@@ -250,7 +250,7 @@ export default function Desktop({ data }: { data: any }) {
                 <TeamLogo leagueFolder={awayTeam.logo_league_folder} teamSlug={awayTeam.logo_team_slug} context="match_detail_hero" alt={awayTeam.name} className="w-16 h-16 group-hover:scale-105 transition-transform" />
                 <div className="text-center">
                   <p className="font-bold text-text-primary text-lg">{awayTeam.name}</p>
-                  <p className="text-sm text-text-muted">{awayManager?.username ?? '—'}</p>
+                  <p className="text-sm text-text-muted">{awayMatchManager?.username ?? '—'}</p>
                 </div>
               </Link>
             ) : (

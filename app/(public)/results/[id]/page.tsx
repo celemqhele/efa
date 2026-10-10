@@ -5,6 +5,7 @@ import type { Metadata } from 'next'
 import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
 import { parseForfeitAdjusted } from '@/lib/forfeit-note'
 import { ogMeta, formatMatchday, roundLabel } from '@/lib/og'
+import { resolveMatchManagers } from '@/lib/match-manager'
 import Shell from './_shell'
 
 export const dynamic = 'force-dynamic'
@@ -130,6 +131,13 @@ export default async function ResultDetailPage({ params }: Props) {
   const away = fixture?.away_team
   const tournament = fixture?.tournament
 
+  // Attribute each side to the manager who was in charge on the match date, so
+  // a sacked/replaced manager keeps their own results (see lib/match-manager).
+  const [homeMatchManager, awayMatchManager] = await resolveMatchManagers(supabase, [
+    { teamId: home?.id ?? null, matchDate: fixture?.scheduled_date ?? null },
+    { teamId: away?.id ?? null, matchDate: fixture?.scheduled_date ?? null },
+  ])
+
   // Sibling fixture for 2-leg aggregate display
   let aggregateScore: { home: number; away: number } | null = null
   let penScore: { home: number; away: number } | null = null
@@ -170,7 +178,7 @@ export default async function ResultDetailPage({ params }: Props) {
     tournament?.type === 'tournament_international' ? 'text-green-400' :
     'text-text-muted'
 
-  const data = { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore, adjustedScore }
+  const data = { result, stats, fixture, home, away, tournament, tournamentColor, aggregateScore, penScore, adjustedScore, homeMatchManager, awayMatchManager }
 
   return <Shell data={data} />
 }
