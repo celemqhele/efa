@@ -6,6 +6,7 @@ import { DISCONNECT_RULES, OFFICIAL_RULES } from '@/lib/disconnect-rules'
 import MatchroomCode from '@/components/ui/MatchroomCode'
 import ReactionsPanel from '@/components/ui/ReactionsPanel'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
+import { parseForfeitNotes } from '@/lib/forfeit-note'
 import {
   Gamepad2, Home, Plane, BarChart3, Swords, Dna, TrendingUp,
   MessageSquare, CheckCircle, Hourglass, Zap, Check, X, AlertTriangle,
@@ -278,20 +279,18 @@ export default function Desktop({ data }: { data: any }) {
         )}
 
         {(() => {
-          let forfeitNotice: { text: string; fixtureId: string } | null = null
-          if (result?.override_reason && result.override_reason.startsWith('forfeit_note:')) {
-            const parts = result.override_reason.slice('forfeit_note:'.length).split(':')
-            const fId = parts[0]
-            const text = parts.slice(1).join(':')
-            if (fId && text) forfeitNotice = { text, fixtureId: fId }
-          }
-          if (!forfeitNotice) return null
+          const forfeitNotes = parseForfeitNotes(result?.override_reason)
+          if (forfeitNotes.length === 0) return null
           return (
-            <div className="mt-4 rounded-xl border border-feedback-warning/40 bg-feedback-warning/10 px-4 py-3 text-xs text-feedback-warning text-center">
-              <span>{forfeitNotice.text}</span>{' '}
-              <Link href={`/fixtures/${forfeitNotice.fixtureId}`} className="font-bold text-accent underline ml-1">
-                Open the match
-              </Link>
+            <div className="mt-4 rounded-xl border border-feedback-warning/40 bg-feedback-warning/10 px-4 py-3 text-xs text-feedback-warning text-center space-y-1">
+              {forfeitNotes.map((n, i) => (
+                <p key={i}>
+                  <span>{n.text}</span>{' '}
+                  <Link href={`/fixtures/${n.fixtureId}`} className="font-bold text-accent underline ml-1">
+                    Open the match
+                  </Link>
+                </p>
+              ))}
             </div>
           )
         })()}

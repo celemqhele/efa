@@ -225,6 +225,9 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
       if (balances && balances.length > 0) {
         const hName = teamName(fixture.home_team)
         const aName = teamName(fixture.away_team)
+        // Every applied balance gets its own `forfeit_note:` line so all source
+        // matches are cited on the result/fixture page, not just the last one.
+        const forfeitNotes: string[] = []
         for (const bal of balances) {
           const forfeitingIsHome = bal.forfeiting_manager_id === fixture.home_team?.manager_id
           const forfScore = bal.forfeiting_score ?? 0
@@ -241,8 +244,9 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
           const forfeiterTeam = forfeitingIsHome ? hName : aName
           const winnerTeam = forfeitingIsHome ? aName : hName
           const noteSentence = `${forfeiterTeam} forfeited a match that ended in ${bal.opponent_score}-${bal.forfeiting_score}, so this ${homeScore}-${awayScore} win became ${finalHomeScore}-${finalAwayScore} in favour of ${winnerTeam}.`
-          overrideReason = `forfeit_note:${bal.fixture_id}:${noteSentence}`
+          forfeitNotes.push(`forfeit_note:${bal.fixture_id}:${noteSentence}`)
         }
+        if (forfeitNotes.length > 0) overrideReason = forfeitNotes.join('\n')
       }
     }
   }
