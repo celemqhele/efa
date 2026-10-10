@@ -2,6 +2,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { notifyBackdoorDecision } from '@/lib/backdoor-notify'
+import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 export async function POST(request: Request) {
@@ -40,13 +41,16 @@ export async function POST(request: Request) {
 
   const { data: fixture, error: fxErr } = await db
     .from('fixtures')
-    .select('id, tournament_id, round_type, status, home_team_id, away_team_id')
+    .select('id, tournament_id, round_type, status, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id), away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id)')
     .eq('id', fixtureId)
     .single()
 
   if (fxErr || !fixture) return Response.json({ error: 'Fixture not found' }, { status: 404 })
 
   const isOverride = ['confirmed', 'awaiting_confirmation', 'completed'].includes(fixture.status ?? '')
+
+  const homeTeam: any = Array.isArray((fixture as any).home_team) ? (fixture as any).home_team[0] : (fixture as any).home_team
+  const awayTeam: any = Array.isArray((fixture as any).away_team) ? (fixture as any).away_team[0] : (fixture as any).away_team
 
   let homeScore = 0
   let awayScore = 0
@@ -59,6 +63,23 @@ export async function POST(request: Request) {
       homeScore = 3; awayScore = 0
     }
   }
+
+  // Absorb carry-over forfeit balances for either manager (the same scores a
+  // normally played match would take on), then record one citation line each.
+  const carry = await applyCarryOverBalances(db, {
+    fixtureId,
+    homeManagerId: homeTeam?.manager_id ?? null,
+    awayManagerId: awayTeam?.manager_id ?? null,
+    homeTeamName: homeTeam?.name ?? 'Home',
+    awayTeamName: awayTeam?.name ?? 'Away',
+  }, homeScore, awayScore)
+  homeScore = carry.homeScore
+  awayScore = carry.awayScore
+
+  const overrideParts: string[] = []
+  if (isOverride) overrideParts.push('backdoor override')
+  overrideParts.push(...carry.noteLines)
+  const overrideReason = overrideParts.length > 0 ? overrideParts.join('\n') : null
 
   // result_confirmations is UNIQUE (fixture_id, submitted_by) — a dispute is
   // approved AFTER the report it answers already wrote a row, so upsert instead
@@ -76,7 +97,7 @@ export async function POST(request: Request) {
     home_score: homeScore,
     away_score: awayScore,
     finalised_by: user.id,
-    ...(isOverride ? { override_reason: 'backdoor override' } : {}),
+    ...(overrideReason ? { override_reason: overrideReason } : {}),
   }, { onConflict: 'fixture_id' })
   if (resErr) return Response.json({ error: resErr.message }, { status: 500 })
 

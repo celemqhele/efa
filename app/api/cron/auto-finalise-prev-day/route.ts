@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { notifyBackdoorDecision } from '@/lib/backdoor-notify'
+import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { getSastDateKey } from '@/lib/app-time'
 import { postponeWindow } from '@/lib/submit-match'
@@ -327,6 +328,18 @@ async function autoApprove(supabase: any, fx: any, submissions: any[], dryRun: b
     return { homeScore, awayScore }
   }
 
+  // Absorb carry-over forfeit balances for either manager, mirroring a normally
+  // played match (the admin approve route does the same).
+  const carry = await applyCarryOverBalances(supabase, {
+    fixtureId: fx.id,
+    homeManagerId: teamManagerId(fx.home_team),
+    awayManagerId: teamManagerId(fx.away_team),
+    homeTeamName: teamName(fx.home_team) ?? 'Home',
+    awayTeamName: teamName(fx.away_team) ?? 'Away',
+  }, homeScore, awayScore)
+  homeScore = carry.homeScore
+  awayScore = carry.awayScore
+
   await supabase.from('result_confirmations').insert({
     fixture_id: fx.id,
     home_score: homeScore,
@@ -342,6 +355,7 @@ async function autoApprove(supabase: any, fx: any, submissions: any[], dryRun: b
         home_score: homeScore,
         away_score: awayScore,
         finalised_by: null,
+        ...(carry.noteLines.length > 0 ? { override_reason: carry.noteLines.join('\n') } : {}),
       },
       { onConflict: 'fixture_id' }
     )
