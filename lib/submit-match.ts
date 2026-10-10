@@ -29,6 +29,20 @@ export function postponeWindow(dateKey: string, now = new Date()): string | null
 // upload or an admin decision). Auto-finalised outcomes (0-0 void / auto-approved
 // backdoor) have no finalised_by or screenshot and can still be replaced by an
 // agreed postponement inside the 7-day-after-deadline window.
+// A match's deadline is its scheduled (match) day. Once that day has passed:
+// - a manager can no longer POSTPONE a match that didn't happen, and
+// - a manager can no longer CHANGE an already-settled (real) result.
+// Completing a result for the first time (replacing a 0-0 void or an
+// auto-approved backdoor placeholder) stays open inside the 7-day submission
+// window — that is a first submission, not an edit of a settled score.
+export function deadlineBlock(dateKey: string, now = new Date()): string | null {
+  if (!dateKey) return null
+  if (dateKey < getSastDateKey(now)) {
+    return 'This match is past its deadline, so it can no longer be changed or postponed.'
+  }
+  return null
+}
+
 export function isRealResult(result: any): boolean {
   return !!result && (!!result.finalised_by || !!result.screenshot_url)
 }
@@ -263,7 +277,12 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
     const winBlock = windowBlock(dateKey)
     if (winBlock) resultBlock = winBlock
     else if (fixture.result && !fixture.postponed_confirmed) {
-      if (hasApprovedBackdoor) {
+      // A settled (real) result is final once the deadline passes: no score
+      // changes, no backdoor-replacement edits — only an admin can still change it.
+      if (deadlineBlock(dateKey) && isRealResult(fixture.result) && !viewer.isAdmin) {
+        resultBlock =
+          'This match is past its deadline, so its result can no longer be changed. Ask an admin if something went wrong.'
+      } else if (hasApprovedBackdoor) {
         resultNote =
           'A backdoor result is on file for this game. You can still submit the real score here — it replaces the backdoor result. Open up to 7 days after the deadline.'
       } else if (viewer.isAdmin) {
@@ -277,18 +296,18 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   }
 
   // 4. Postpone
-  // Managers have MAX_POSTPONE_DAYS (7) after the deadline to complete a
-  // postponement: the requester can still file, and the reviewer can still
-  // accept or decline. Auto-finalised placeholders (0-0 void / auto-approved
-  // backdoor, finalised_by NULL) are still overridable inside the window; a
-  // real played result (finalised_by set or screenshot proof) is final.
+  // Managers can only request a postponement up to the match's deadline (its
+  // scheduled day). Once the day has passed the match is final as-is: it may be
+  // a real played result, or it will be auto-finalised and replaced with a real
+  // first submission inside the 7-day window. Completing an already-pending
+  // request (accept/decline) stays open for the responder.
   let postponeBlock: string | null = null
   if (viewer.side === null && !viewer.isAdmin) postponeBlock = 'Only the two managers can request a postponement.'
   else if (isPlaceholder) postponeBlock = 'This match was already postponed. The postpone option is closed.'
   else {
-    const winBlock = postponeWindow(dateKey)
-    if (winBlock) postponeBlock = winBlock
-    else if (isRealResult(fixture.result)) postponeBlock = 'This match already has a result and is now over the deadline — it can no longer be postponed.'
+    const dlBlock = deadlineBlock(dateKey)
+    if (dlBlock) postponeBlock = 'This match is past its deadline, so it can no longer be postponed.'
+    else if (isRealResult(fixture.result)) postponeBlock = 'This match already has a result, so it can no longer be postponed.'
     else if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation' && !fixture.result) {
       postponeBlock = 'This match can no longer be postponed.'
     } else if (viewer.isAdmin && viewer.side === null) {
@@ -449,9 +468,9 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       backdoorBlock,
       backdoorMenuBlock,
       disputeBlock,
-      // Past the deadline by more than MAX_POSTPONE_DAYS — the 7-day grace
-      // period is over and the match can't be changed or postponed anymore.
-      graceEnded: postponeWindow(dateKey) !== null,
+      // Past the deadline — the match day is gone, so no more changes or
+      // postponements for managers.
+      graceEnded: deadlineBlock(dateKey) !== null,
       canPostpone: !postponeBlock,
       canRequest: !pendingRequest && !postponeBlock,
       canRespond: !!respondTo,

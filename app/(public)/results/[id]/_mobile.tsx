@@ -104,6 +104,25 @@ export default function Mobile({ data }: { data: any }) {
               {new Date(fixture.scheduled_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
             </div>
           )}
+
+          {(() => {
+            let forfeitNotice: { text: string; fixtureId: string } | null = null
+            if (result?.override_reason && result.override_reason.startsWith('forfeit_note:')) {
+              const parts = result.override_reason.slice('forfeit_note:'.length).split(':')
+              const fId = parts[0]
+              const text = parts.slice(1).join(':')
+              if (fId && text) forfeitNotice = { text, fixtureId: fId }
+            }
+            if (!forfeitNotice) return null
+            return (
+              <div className="mt-3 rounded-xl border border-feedback-warning/40 bg-feedback-warning/10 px-3 py-2 text-xs text-feedback-warning text-center">
+                <span>{forfeitNotice.text}</span>{' '}
+                <Link href={`/fixtures/${forfeitNotice.fixtureId}`} className="font-bold text-accent underline ml-1">
+                  Open the match
+                </Link>
+              </div>
+            )
+          })()}
         </div>
       </div>
 

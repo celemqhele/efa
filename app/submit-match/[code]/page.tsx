@@ -3,20 +3,19 @@ import Link from 'next/link'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { APP_BASE, buildState, loadFixture, resolveViewer } from '@/lib/submit-match'
 import SubmitPortal from './_portal'
+import PageWrapper from '@/components/ui/PageWrapper'
 
 export const dynamic = 'force-dynamic'
 
-// Login gate for the web submission portal. A logged-out manager lands here,
-// logs in, and is bounced straight back to this match (the login page honours
-// ?redirect=), so the login stays a single hop instead of a detour.
-
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-bg-base flex items-center justify-center px-5 py-10">
-      <div className="w-full max-w-md bg-bg-surface border border-border rounded-2xl p-6 text-center space-y-4">
-        {children}
+    <PageWrapper>
+      <div className="min-h-[60vh] flex items-center justify-center px-5 py-10">
+        <div className="w-full max-w-md bg-bg-surface border border-border rounded-2xl p-6 text-center space-y-4">
+          {children}
+        </div>
       </div>
-    </main>
+    </PageWrapper>
   )
 }
 
@@ -78,13 +77,13 @@ export default async function SubmitMatchPage({
   const state = await buildState(admin, fixture, viewer, code)
 
   return (
-    <main className="min-h-screen bg-bg-base px-4 py-6 sm:px-6">
-      <div className="mx-auto w-full max-w-2xl">
+    <PageWrapper>
+      <div className="mx-auto w-full max-w-2xl py-6 px-4">
         <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
           EFA match submission
         </p>
         <SubmitPortal initialState={state} initialAction={sp.action ?? null} appBase={APP_BASE} />
       </div>
-    </main>
+    </PageWrapper>
   )
 }

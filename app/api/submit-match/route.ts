@@ -8,7 +8,7 @@ import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { analyzeImageBuffer, matchStatsToDbColumns } from '@/lib/ocr'
 import { normalizeToLandscape } from '@/lib/whatsapp'
-import { APP_BASE, MAX_POSTPONE_DAYS, buildState, dateKeyOf, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeWindow, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
+import { APP_BASE, MAX_POSTPONE_DAYS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeWindow, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 function parseScore(value: FormDataEntryValue | null): number | null {
   if (value === null) return null
@@ -31,7 +31,7 @@ function error(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status })
 }
 
-// ─── GET: portal state (used by the client to refresh after a mutation) ──────
+// ????????? GET: portal state (used by the client to refresh after a mutation) ??????????????????
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
   const state = await buildState(admin, fixture, viewer, code)
   return NextResponse.json({ ok: true, ...state })
 }
-// ─── POST: mutations ──────────────────────────────────────────────────────────
+// ????????? POST: mutations ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ─── 1. Submit result ─────────────────────────────────────────────────────────
+// ????????? 1. Submit result ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 async function submitResult(admin: any, fixture: any, viewer: Viewer, form: FormData, code: string) {
   const dateKey = dateKeyOf(fixture)
@@ -108,6 +108,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   const homeScore = parseScore(form.get('homeScore'))
   const awayScore = parseScore(form.get('awayScore'))
   const shot = form.get('screenshot')
+  const forfeit = String(form.get('forfeit') ?? '').trim()
 
   if (homeScore === null || awayScore === null) return error('Type both scores as numbers (e.g. 2 and 1).')
   if (!(shot instanceof File) || shot.size === 0) return error('Upload the result screenshot as proof.')
@@ -122,12 +123,12 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   }
   if (fixture.status === 'abandoned') return error('This match has been abandoned.')
 
-  // ── Resubmission / replacement handling (mirrors the bot's resetAndResubmit) ──
+  // ?????? Resubmission / replacement handling (mirrors the bot's resetAndResubmit) ??????
   // A postponed-placeholder is a first-time submission. A finished result can be
   // overridden up to MAX_WHATSAPP_RESETS (2) times via whatsapp_reset_count, and
   // a backdoor result can always be replaced by the real score (bot category 2:
-  // real score within 7 days is a first-time submission — not counted).
-  // limit(1) — a mutual report pair (or an upheld dispute) can leave TWO
+  // real score within 7 days is a first-time submission ??? not counted).
+  // limit(1) ??? a mutual report pair (or an upheld dispute) can leave TWO
   // approved rows on the fixture, and maybeSingle() errors on more than one row.
   const { data: activeBackdoor } = await admin
     .from('backdoor_submissions')
@@ -137,6 +138,14 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
     .limit(1)
   const isBackdoorResult = !!(activeBackdoor && activeBackdoor.length)
   const isResubmit = !!fixture.result && !fixture.postponed_confirmed && !isBackdoorResult
+
+  // Deadline rule (mirrors buildState): once the match's scheduled day has
+  // passed, a settled (real) result is final for managers ??? no score changes
+  // and no backdoor-replacement edits. Admin can still correct any score.
+  if (!viewer.isAdmin && deadlineBlock(dateKey) && isRealResult(fixture.result) && !fixture.postponed_confirmed) {
+    return error('This match is past its deadline, so its result can no longer be changed.')
+  }
+
   if (isResubmit) {
     const resetCount = fixture.whatsapp_reset_count || 0
     if (resetCount >= 2 && !viewer.isAdmin) {
@@ -161,7 +170,8 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   }
 
   const isReplacing = !!fixture.result
-  const overrideReason = isReplacing
+  const isFuture = dateKey > todayKey
+  let overrideReason = isReplacing
     ? fixture.postponed_confirmed
       ? 'postponement placeholder replaced'
       : isResubmit
@@ -169,10 +179,78 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         : 'backdoor result replaced by real score'
     : null
 
+  let finalHomeScore = homeScore
+  let finalAwayScore = awayScore
+  let isAbandoned = false
+  let abandonedType: 'home' | 'away' | null = null
+  const isForfeit = forfeit === 'yes' || forfeit === 'true'
+
+  if (isForfeit) {
+    if (homeScore === awayScore) {
+      return error('A forfeited match needs a clear loser — the scores cannot be level.')
+    }
+    const homeForfeit = homeScore < awayScore
+    const origHome = homeScore
+    const origAway = awayScore
+    if (homeForfeit) {
+      finalAwayScore += 3
+    } else {
+      finalHomeScore += 3
+    }
+    isAbandoned = true
+    abandonedType = homeForfeit ? 'home' : 'away'
+    overrideReason = 'match marked as forfeit'
+
+    const forfeitingManagerId = homeForfeit ? fixture.home_team?.manager_id : fixture.away_team?.manager_id
+    const opponentTeamId = homeForfeit ? fixture.away_team_id : fixture.home_team_id
+    if (forfeitingManagerId) {
+      await admin.from('forfeit_balances').insert({
+        fixture_id: fixture.id,
+        forfeiting_manager_id: forfeitingManagerId,
+        opponent_team_id: opponentTeamId,
+        opponent_score: homeForfeit ? finalAwayScore : finalHomeScore,
+        forfeiting_score: homeForfeit ? finalHomeScore : finalAwayScore,
+        half_time_note: `Forfeit: ${finalHomeScore}-${finalAwayScore} (adjusted from ${origHome}-${origAway})`,
+      })
+    }
+  } else if (!isFuture && fixture.home_team_id && fixture.away_team_id) {
+    const managerIds = [fixture.home_team?.manager_id, fixture.away_team?.manager_id].filter(Boolean)
+    if (managerIds.length > 0) {
+      const { data: balances } = await admin
+        .from('forfeit_balances')
+        .select('id, forfeiting_score, opponent_score, forfeiting_manager_id, opponent_team_id, fixture_id')
+        .in('forfeiting_manager_id', managerIds)
+        .gt('remaining', 0)
+
+      if (balances && balances.length > 0) {
+        const hName = teamName(fixture.home_team)
+        const aName = teamName(fixture.away_team)
+        for (const bal of balances) {
+          const forfeitingIsHome = bal.forfeiting_manager_id === fixture.home_team?.manager_id
+          const forfScore = bal.forfeiting_score ?? 0
+          const oppScore = bal.opponent_score ?? 0
+          if (forfeitingIsHome) {
+            finalHomeScore += forfScore
+            finalAwayScore += oppScore
+          } else {
+            finalAwayScore += forfScore
+            finalHomeScore += oppScore
+          }
+          await admin.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
+
+          const forfeiterTeam = forfeitingIsHome ? hName : aName
+          const winnerTeam = forfeitingIsHome ? aName : hName
+          const noteSentence = `${forfeiterTeam} forfeited a match that ended in ${bal.opponent_score}-${bal.forfeiting_score}, so this ${homeScore}-${awayScore} win became ${finalHomeScore}-${finalAwayScore} in favour of ${winnerTeam}.`
+          overrideReason = `forfeit_note:${bal.fixture_id}:${noteSentence}`
+        }
+      }
+    }
+  }
+
   // Confirmation row (mirrors writeResultToDb) so the fixture page's "both
   // managers submitted" panel sees this score too.
   const { error: confErr } = await admin.from('result_confirmations').upsert(
-    { fixture_id: fixture.id, submitted_by: viewer.userId, home_score: homeScore, away_score: awayScore },
+    { fixture_id: fixture.id, submitted_by: viewer.userId, home_score: finalHomeScore, away_score: finalAwayScore },
     { onConflict: 'rc_unique_fixture_submitted' }
   )
   if (confErr) console.error('[submit-match] confirmation upsert failed:', confErr.message)
@@ -182,10 +260,12 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
     .upsert(
       {
         fixture_id: fixture.id,
-        home_score: homeScore,
-        away_score: awayScore,
+        home_score: finalHomeScore,
+        away_score: finalAwayScore,
         screenshot_url: screenshotUrl,
         finalised_by: viewer.userId,
+        is_abandoned: isAbandoned,
+        ...(abandonedType ? { abandoned_type: abandonedType } : {}),
         ...(overrideReason ? { override_reason: overrideReason } : {}),
       },
       { onConflict: 'fixture_id' }
@@ -197,7 +277,6 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
     return error('Failed to save the result. Try again or ask the admin.', 500)
   }
 
-  const isFuture = dateKey > todayKey
   const { error: fixErr } = await admin
     .from('fixtures')
     .update({
@@ -281,7 +360,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
 
       let stats = ocrStats
       if (ocrHome === homeScore && ocrAway === awayScore) {
-        // exact match — keep stats as read
+        // exact match ??? keep stats as read
       } else if (ocrHome === awayScore && ocrAway === homeScore) {
         // scoreline is swapped: flip every stat so home/away line up with the
         // typed (manager) sides
@@ -290,7 +369,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
           stats[key] = { home: val.away, away: val.home }
         }
       } else {
-        // no match — no stats
+        // no match ??? no stats
         return
       }
 
@@ -318,7 +397,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   })
 }
 
-// ─── 2. Report opponent not responding (backdoor) ─────────────────────────────
+// ????????? 2. Report opponent not responding (backdoor) ???????????????????????????????????????????????????????????????????????????????????????
 
 async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: FormData, code: string) {
   const side = String(form.get('side') ?? '')
@@ -332,7 +411,7 @@ async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
   // A manager always reports their opponent: the side is pinned server-side so
   // the form can be pre-selected and can't be pointed at the wrong team.
   if (viewer.side !== null && side === viewer.side) {
-    return error('Report the other team — the side that is not responding.')
+    return error('Report the other team ??? the side that is not responding.')
   }
 
   if (fixture.postponed_confirmed) {
@@ -420,7 +499,7 @@ async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
   })
 }
 
-// ─── 2b. Cancel a still-pending report, or dispute the report against you ────
+// ????????? 2b. Cancel a still-pending report, or dispute the report against you ????????????
 
 async function cancelBackdoor(admin: any, fixture: any, viewer: Viewer, form: FormData, _code: string) {
   const id = String(form.get('submissionId') ?? '')
@@ -504,8 +583,8 @@ async function disputeBackdoor(admin: any, fixture: any, viewer: Viewer, form: F
     return error('Screenshot upload failed. Try again.', 500)
   }
 
-  // The dispute claims the OPPOSITE side is the one not responding — that is
-  // the original reporter — so approving it hands that side the 0-3 loss
+  // The dispute claims the OPPOSITE side is the one not responding ??? that is
+  // the original reporter ??? so approving it hands that side the 0-3 loss
   // through the existing backdoor approve logic.
   const side = viewer.side === 'home' ? 'away' : 'home'
 
@@ -557,7 +636,7 @@ async function disputeBackdoor(admin: any, fixture: any, viewer: Viewer, form: F
         user_id: opponent.managerId,
         type: 'backdoor_submitted',
         title: 'Backdoor report disputed',
-        body: `${matchLabel} — your opponent disputed your report. The admin will review both screenshots.`,
+        body: `${matchLabel} ??? your opponent disputed your report. The admin will review both screenshots.`,
         data: { fixture_id: fixture.id, url: `${APP_BASE}/submit-match/${code}` },
       })
     }
@@ -578,7 +657,7 @@ async function disputeBackdoor(admin: any, fixture: any, viewer: Viewer, form: F
   })
 }
 
-// ─── 3. Request a postponement ────────────────────────────────────────────────
+// ????????? 3. Request a postponement ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: FormData, code: string) {
   const newDate = String(form.get('newDate') ?? '').trim()
@@ -589,13 +668,14 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
   if (reason.length < 3) return error('Give a short reason for the postponement.')
   if (reason.length > 300) return error('Reason is too long (max 300 characters).')
 
-  // Managers have 7 days after the deadline to complete a postponement. The
-  // status may already be 'confirmed' from auto-finalise (0-0 void / auto-approved
-  // backdoor, finalised_by NULL) — that placeholder is still overridable inside
-  // the window. A real played result (finalised_by set or screenshot) is final.
-  const windowBlockMsg = postponeWindow(dateKeyOf(fixture))
-  if (windowBlockMsg) return error(windowBlockMsg)
-  if (isRealResult(fixture.result)) return error('This match already has a result and is now over the deadline — it can no longer be postponed.')
+  // Managers can only request a postponement up to the match's deadline (its
+  // scheduled day). Once the day has passed the match is final as-is: it may be
+  // a real played result, or it will be auto-finalised and a real first
+  // submission replaces the placeholder inside the 7-day window. Completing an
+  // already-pending request (accept/decline) keeps the 7-day response window.
+  const dlBlock = deadlineBlock(dateKeyOf(fixture))
+  if (dlBlock) return error('This match is past its deadline, so it can no longer be postponed.')
+  if (isRealResult(fixture.result)) return error('This match already has a result, so it can no longer be postponed.')
   if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation' && !fixture.result) {
     return error('This match can no longer be postponed.')
   }
@@ -640,7 +720,7 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
       user_id: opponent.managerId,
       type: 'fixture_postponed',
       title: 'Postponement requested',
-      body: `${matchLabel} moved to ${labelDate(newDate)} — open the match link to accept or decline.`,
+      body: `${matchLabel} moved to ${labelDate(newDate)} ??? open the match link to accept or decline.`,
       data: { fixture_id: fixture.id, postpone_request_id: row.id, url: shareLink },
     })
   }
@@ -655,7 +735,7 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
     await notifyAllAdmins(admin, {
       type: 'fixture_postponed',
       title: 'Postponement requested',
-      body: `${matchLabel} → ${labelDate(newDate)} (${reason})`,
+      body: `${matchLabel} ??? ${labelDate(newDate)} (${reason})`,
       data: { fixture_id: fixture.id },
     })
   } catch (e) {
@@ -677,7 +757,7 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
   })
 }
 
-// ─── 4. Accept / decline a postponement ───────────────────────────────────────
+// ????????? 4. Accept / decline a postponement ?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 
 async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form: FormData, code: string) {
   const accept = String(form.get('accept') ?? '') === '1'
@@ -694,7 +774,7 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
     return error('The 7-day window to answer this postponement has closed. Contact the admin if you still want to move this match.')
   }
   if (String(request.requested_by) === viewer.userId) {
-    return error('You raised this request — your opponent has to accept or decline.')
+    return error('You raised this request ??? your opponent has to accept or decline.')
   }
   if (viewer.side === null && !viewer.isAdmin) return error('Only the two managers can answer this.')
 
@@ -822,6 +902,7 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
     title: 'Postponement accepted',
     message: `${matchLabel} moved to ${labelDate(newDate)}. Result locked ${homeScore}-${awayScore} to ${winner} (${loser} loses the 3-0).`,
     shareLink,
-    shareText: `Postponement accepted for ${matchLabel} — moved to ${labelDate(newDate)}:`,
+    shareText: `Postponement accepted for ${matchLabel} ??? moved to ${labelDate(newDate)}:`,
   })
 }
+

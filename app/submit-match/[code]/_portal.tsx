@@ -477,6 +477,7 @@ function ResultPanel({
   const [file, setFile] = useState<File | null>(null)
   const [home, setHome] = useState('')
   const [away, setAway] = useState('')
+  const [forfeit, setForfeit] = useState('no')
   const [noFileError, setNoFileError] = useState(false)
 
   return (
@@ -493,7 +494,7 @@ function ResultPanel({
             return
           }
           setNoFileError(false)
-          onSubmit(formFor('result', { homeScore: home, awayScore: away, screenshot: file }))
+          onSubmit(formFor('result', { homeScore: home, awayScore: away, screenshot: file, forfeit }))
         }}
       >
         <Field label="Result screenshot" hint="Upload the final score screen — it is kept as proof on this match.">
@@ -512,6 +513,18 @@ function ResultPanel({
         {noFileError && (
           <p className="text-sm text-feedback-warning">Upload the result screenshot above first — it is kept as proof.</p>
         )}
+
+        <Field label="Mark as forfeit?" hint="Select yes if the opponent didn't show or forfeited (+3 goals added to winner).">
+          <select
+            value={forfeit}
+            onChange={(e) => setForfeit(e.target.value)}
+            disabled={!!block || busy}
+            className={inputClass}
+          >
+            <option value="no">No — played normally</option>
+            <option value="yes">Yes — forfeited (+3 goals to winner)</option>
+          </select>
+        </Field>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label={homeName}>

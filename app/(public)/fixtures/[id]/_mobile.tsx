@@ -243,6 +243,16 @@ export default function Mobile({ data }: { data: any }) {
                 View screenshot
               </a>
             )}
+            {data.canSubmitMatch && data.matchCode && (
+              <div className="text-center mt-1">
+                <Link
+                  href={`/submit-match/${data.matchCode}`}
+                  className="inline-flex items-center justify-center rounded-xl bg-accent px-3 py-1.5 text-xs font-bold text-bg-surface hover:opacity-90 transition-opacity min-h-[44px]"
+                >
+                  Change score
+                </Link>
+              </div>
+            )}
 
             {awayTeam ? (
               <Link href={`/teams/${awayTeam.id}`} className="flex flex-col items-center gap-2 hover:opacity-80 transition-opacity min-h-[48px]">
@@ -296,6 +306,16 @@ export default function Mobile({ data }: { data: any }) {
 
             <div className="text-center">
               <span className="text-3xl font-black text-foreground-muted">VS</span>
+              {data.canSubmitMatch && data.matchCode && (
+                <div className="mt-2 text-center">
+                  <Link
+                    href={`/submit-match/${data.matchCode}`}
+                    className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-xs font-bold text-bg-surface hover:opacity-90 transition-opacity min-h-[44px]"
+                  >
+                    Submit for this match
+                  </Link>
+                </div>
+              )}
             </div>
 
             {awayTeam ? (
@@ -340,6 +360,25 @@ export default function Mobile({ data }: { data: any }) {
             </div>
           </div>
         )}
+
+        {(() => {
+          let forfeitNotice: { text: string; fixtureId: string } | null = null
+          if (result?.override_reason && result.override_reason.startsWith('forfeit_note:')) {
+            const parts = result.override_reason.slice('forfeit_note:'.length).split(':')
+            const fId = parts[0]
+            const text = parts.slice(1).join(':')
+            if (fId && text) forfeitNotice = { text, fixtureId: fId }
+          }
+          if (!forfeitNotice) return null
+          return (
+            <div className="mt-4 rounded-xl border border-feedback-warning/40 bg-feedback-warning/10 px-4 py-3 text-xs text-feedback-warning text-center">
+              <span>{forfeitNotice.text}</span>{' '}
+              <Link href={`/fixtures/${forfeitNotice.fixtureId}`} className="font-bold text-accent underline ml-1">
+                Open the match
+              </Link>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── POSTPONEMENT STATUS ──────────────────────────────────────────── */}

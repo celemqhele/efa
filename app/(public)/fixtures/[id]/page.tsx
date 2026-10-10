@@ -281,6 +281,20 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   const isAwayManager = user?.id && awayManager?.id === user.id
   const isManager = isHomeManager || isAwayManager
 
+  let isAdmin = false
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    isAdmin = profile?.role === 'admin'
+  }
+  const canSubmitMatch = isAdmin || isManager
+
+  const { data: codeRow } = await supabase
+    .from('match_codes')
+    .select('code')
+    .eq('fixture_id', id)
+    .maybeSingle()
+  const matchCode = codeRow?.code ?? null
+
   const conf1 = confirmations?.find((c) => c.submitted_by === homeManager?.id)
   const conf2 = confirmations?.find((c) => c.submitted_by === awayManager?.id)
   const bothSubmitted = conf1 && conf2
@@ -311,6 +325,8 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     isHomeManager,
     isAwayManager,
     isManager,
+    canSubmitMatch,
+    matchCode,
     probability,
     h2hList,
     homeDNA,
