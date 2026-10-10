@@ -17,6 +17,12 @@ interface Props {
   homeManagerPhone?: string | null
   awayManagerName?: string | null
   awayManagerPhone?: string | null
+  // A pending postponement request on this match: which side asked for it and
+  // the proposed date, so the reminder can tell each side what is happening.
+  postponeRequest?: { requesterSide: 'home' | 'away'; newDateLabel: string | null } | null
+  // Live backdoor reports on this match (reportedSide = the side claimed to have
+  // not responded). The reminder adds a status line per side.
+  backdoorReports?: Array<{ reportedSide: 'home' | 'away'; screenshotUrl: string | null }>
 }
 
 const POSTPONE_POPOVER_W = 300
@@ -50,22 +56,51 @@ function fetchMatchCode(fixtureId: string): Promise<string | null> {
 // number, labelled in bold so it reads as the number to message rather than a
 // stray digit (managers kept asking for the opponent's number despite it being
 // in the reminder).
+//
+// When the match has a pending postponement or a backdoor report, `postpone` /
+// `backdoor` add a status line for THAT side (requester vs reviewer, submitter
+// vs reported) so the reminder acknowledges the process instead of reading like
+// nothing happened. The opponent number and the single submit CTA are always
+// kept, so the recipient still has everything they need to act.
 function buildReminder(params: {
   username: string | null | undefined
   homeTeam: string
   awayTeam: string
   opponentPhone: string | null | undefined
   submitLink: string
+  postpone?: { role: 'requester' | 'reviewer'; newDateLabel: string | null } | null
+  backdoor?: { role: 'submitter' | 'reported'; screenshotUrl: string | null } | null
 }): string {
-  const { username, homeTeam, awayTeam, opponentPhone, submitLink } = params
+  const { username, homeTeam, awayTeam, opponentPhone, submitLink, postpone, backdoor } = params
   const name = username ?? 'there'
   const theirNumber = formatPhoneDisplay(opponentPhone) || 'not available'
-  return [
+  const lines = [
     `👋 Hi ${name}`,
     `⚽ ${homeTeam} vs ${awayTeam}`,
-    `📞 *MESSAGE YOUR OPPONENT: ${theirNumber}*`,
-    `✅ *Submit for this match: ${submitLink}*`,
-  ].join('\n')
+  ]
+  if (postpone?.role === 'requester') {
+    lines.push(
+      `⏳ *Your postponement request is being processed.* Waiting for your opponent to accept${postpone.newDateLabel ? ` (asked for ${postpone.newDateLabel})` : ''}.`
+    )
+  } else if (postpone?.role === 'reviewer') {
+    lines.push(
+      `⚠️ *Your opponent asked to postpone this match${postpone.newDateLabel ? ` to ${postpone.newDateLabel}` : ''}.*`
+    )
+    lines.push(`👉 *Accept or decline the request before the deadline.*`)
+  }
+  if (backdoor?.role === 'submitter') {
+    lines.push(`⏳ *Your backdoor report is being processed.* The admin will review it.`)
+  } else if (backdoor?.role === 'reported') {
+    lines.push(`❗ *Your opponent reported you as not responding for this match.*`)
+    lines.push(
+      backdoor.screenshotUrl
+        ? `📸 *View their screenshot: ${backdoor.screenshotUrl}*`
+        : `📸 Open the match to view their screenshot: ${submitLink}`
+    )
+  }
+  lines.push(`📞 *MESSAGE YOUR OPPONENT: ${theirNumber}*`)
+  lines.push(`✅ *Submit for this match: ${submitLink}*`)
+  return lines.join('\n')
 }
 
 export default function DashboardFixtureActions({
@@ -78,6 +113,8 @@ export default function DashboardFixtureActions({
   homeManagerPhone,
   awayManagerName,
   awayManagerPhone,
+  postponeRequest = null,
+  backdoorReports = [],
 }: Props) {
   const [showPostpone, setShowPostpone] = useState(false)
   const [newDate, setNewDate] = useState('')
@@ -171,12 +208,31 @@ export default function DashboardFixtureActions({
   // send untouched, it just opens the match page (and logs the login, so admin
   // can see who submitted).
   const reminderLink = matchCode ? `${PORTAL_BASE}/${matchCode}` : FALLBACK_REMINDER_LINK
+
+  // Resolve the postponement / backdoor status for a given side so each message
+  // only tells that manager what is relevant to them.
+  function postponeForSide(side: 'home' | 'away') {
+    if (!postponeRequest) return null
+    return postponeRequest.requesterSide === side
+      ? { role: 'requester' as const, newDateLabel: postponeRequest.newDateLabel }
+      : { role: 'reviewer' as const, newDateLabel: postponeRequest.newDateLabel }
+  }
+  function backdoorForSide(side: 'home' | 'away') {
+    const againstMe = backdoorReports.find((r) => r.reportedSide === side)
+    if (againstMe) return { role: 'reported' as const, screenshotUrl: againstMe.screenshotUrl }
+    const mine = backdoorReports.find((r) => r.reportedSide !== side)
+    if (mine) return { role: 'submitter' as const, screenshotUrl: null }
+    return null
+  }
+
   const homeMsg = buildReminder({
     username: homeManagerName,
     homeTeam: homeTeamName,
     awayTeam: awayTeamName,
     opponentPhone: awayManagerPhone,
     submitLink: reminderLink,
+    postpone: postponeForSide('home'),
+    backdoor: backdoorForSide('home'),
   })
   const awayMsg = buildReminder({
     username: awayManagerName,
@@ -184,6 +240,8 @@ export default function DashboardFixtureActions({
     awayTeam: awayTeamName,
     opponentPhone: homeManagerPhone,
     submitLink: reminderLink,
+    postpone: postponeForSide('away'),
+    backdoor: backdoorForSide('away'),
   })
 
   if (isFinished) return null

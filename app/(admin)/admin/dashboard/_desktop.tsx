@@ -316,6 +316,8 @@ export default function Desktop({ data }: { data: any }) {
                             homeManagerPhone={fx.home_team?.manager?.phone}
                             awayManagerName={fx.away_team?.manager?.username}
                             awayManagerPhone={fx.away_team?.manager?.phone}
+                            postponeRequest={fx._postpone ?? null}
+                            backdoorReports={fx._backdoors ?? []}
                           />
                         </td>
                       </tr>

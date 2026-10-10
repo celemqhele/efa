@@ -7,6 +7,17 @@ import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 export const revalidate = 0
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+// 'YYYY-MM-DD' → 'Fri 17 Oct' for the reminder's postponement line.
+function formatDateLabel(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number)
+  if (!y || !m || !d) return dateKey
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  return `${WEEKDAYS[dt.getUTCDay()]} ${d} ${MONTHS[m - 1]}`
+}
+
 export default async function AdminDashboardPage() {
   const supabase = await createAdminClient()
 
@@ -68,6 +79,49 @@ export default async function AdminDashboardPage() {
     .or('status.in.(scheduled,awaiting_confirmation),and(status.eq.confirmed,postponed_confirmed.eq.true)')
     .lte('scheduled_date', todayEnd)
     .order('scheduled_date', { ascending: true })
+
+  // Pending postponement requests + live backdoor reports on the due fixtures,
+  // so each reminder can acknowledge a postponement / "not responding" report
+  // instead of reading like nothing happened. Annotated onto the fixture rows.
+  const dueIds = ((dueFixtures ?? []) as any[]).map((f) => f.id)
+  const { data: pendingPostpones } = dueIds.length
+    ? await supabase
+        .from('postpone_requests')
+        .select('fixture_id, requested_by, new_date')
+        .eq('status', 'pending')
+        .in('fixture_id', dueIds)
+    : { data: [] }
+  const { data: liveBackdoors } = dueIds.length
+    ? await supabase
+        .from('backdoor_submissions')
+        .select('fixture_id, side_claimed, screenshot_url')
+        .eq('status', 'pending')
+        .in('fixture_id', dueIds)
+    : { data: [] }
+
+  const postponeMap = new Map<string, any>()
+  for (const p of (pendingPostpones ?? []) as any[]) postponeMap.set(p.fixture_id, p)
+  const backdoorMap = new Map<string, any[]>()
+  for (const b of (liveBackdoors ?? []) as any[]) {
+    const list = backdoorMap.get(b.fixture_id) ?? []
+    list.push(b)
+    backdoorMap.set(b.fixture_id, list)
+  }
+
+  for (const fx of (dueFixtures ?? []) as any[]) {
+    const homeManagerId = fx.home_team?.manager?.id ?? null
+    const postpone = postponeMap.get(fx.id)
+    fx._postpone = postpone
+      ? {
+          requesterSide: homeManagerId && postpone.requested_by === homeManagerId ? 'home' : 'away',
+          newDateLabel: postpone.new_date ? formatDateLabel(String(postpone.new_date).slice(0, 10)) : null,
+        }
+      : null
+    fx._backdoors = (backdoorMap.get(fx.id) ?? []).map((b: any) => ({
+      reportedSide: b.side_claimed === 'home' ? 'home' : 'away',
+      screenshotUrl: b.screenshot_url ?? null,
+    }))
+  }
 
   const { data: allConfirmations } = await supabase
     .from('result_confirmations')
