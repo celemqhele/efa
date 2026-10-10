@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import TeamLogo from '@/components/ui/TeamLogo'
-import Link from 'next/link'
+import Link from '@/components/ui/SmartLink'
 import { usePathname } from 'next/navigation'
 import { goalDifference, normalizeStandingsZones, rowZone, ZONE_BORDER_CLASS, zoneLegend, type StandingsZones } from '@/lib/standings-core'
+import { toAdminHref } from '@/lib/admin-href'
 import { ListCollapse, List } from 'lucide-react'
 
 const ZONE_SWATCH_CLASS: Record<string, string> = {
@@ -20,6 +21,8 @@ function formatGroupTitle(groupName: string) {
 }
 
 function StandingsCard({ rows, mode, qualifiersPerGroup = 2, extended, zones }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number; extended: boolean; zones?: StandingsZones | null }) {
+  const pathname = usePathname()
+  const isAdmin = pathname?.startsWith('/admin') ?? false
   if (extended) {
     return (
       <div className="overflow-x-auto">
@@ -51,7 +54,7 @@ function StandingsCard({ rows, mode, qualifiersPerGroup = 2, extended, zones }: 
                 <tr
                   key={row.id ?? `${row.team_id}-${index}`}
                   className={`border-l-4 ${borderColor} ${index % 2 === 0 ? 'bg-bg-surface' : 'bg-bg-base'}`}
-                  onClick={() => window.location.href = `/teams/${row.team_id}`}
+                  onClick={() => window.location.href = toAdminHref(`/teams/${row.team_id}`, isAdmin)}
                 >
                   <td className={`text-center font-bold px-1.5 py-1.5 tabular-nums text-xs ${isTopThree ? 'text-accent' : 'text-text-muted'}`}>{index + 1}</td>
                   <td className="px-1.5 py-1.5 min-w-0">

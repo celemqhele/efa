@@ -1,7 +1,9 @@
 'use client'
-import Link from 'next/link'
+import Link from '@/components/ui/SmartLink'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { ChevronLeft } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { toAdminHref } from '@/lib/admin-href'
 
 const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
   scheduled: { label: 'Scheduled', pill: 'bg-text-muted/20 text-text-muted border-text-muted/30' },
@@ -41,6 +43,8 @@ function formatWhen(dateStr: string | null): string {
 
 export default function Desktop({ data }: { data: any }) {
   const { team, siblingIds, upcoming, past, resultsByFixture } = data
+  const pathname = usePathname()
+  const isAdmin = pathname?.startsWith('/admin') ?? false
 
   const allFixtures = [
     ...upcoming.map((f: any) => ({ ...f, _section: 'upcoming' as const })),
@@ -132,7 +136,7 @@ export default function Desktop({ data }: { data: any }) {
                     <tr
                       key={f.id}
                       className="border-b border-border/20 transition-colors hover:bg-accent/5 cursor-pointer"
-                      onClick={() => window.location.href = result ? `/results/${result.id}` : `/fixtures/${f.id}`}
+                      onClick={() => window.location.href = toAdminHref(result ? `/results/${result.id}` : `/fixtures/${f.id}`, isAdmin)}
                     >
                       <td className="py-4 px-6 whitespace-nowrap">
                         <span className="text-xs text-text-muted font-mono tabular-nums">{formatWhen(f.scheduled_date)}</span>

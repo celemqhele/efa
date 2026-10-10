@@ -3,6 +3,7 @@
 import TeamLogo from '@/components/ui/TeamLogo'
 import { usePathname, useRouter } from 'next/navigation'
 import { goalDifference, normalizeStandingsZones, rowZone, ZONE_BORDER_CLASS, zoneLegend, type StandingsZones } from '@/lib/standings-core'
+import { toAdminHref } from '@/lib/admin-href'
 
 const ZONE_SWATCH_CLASS: Record<string, string> = {
   green: 'bg-emerald-500',
@@ -17,6 +18,8 @@ function formatGroupTitle(groupName: string) {
 }
 
 function StandingsTable({ rows, mode, qualifiersPerGroup = 2, zones }: { rows: any[]; mode: 'league' | 'group'; qualifiersPerGroup?: number; zones?: StandingsZones | null }) {
+  const pathname = usePathname()
+  const isAdmin = pathname?.startsWith('/admin') ?? false
   return (
     <div className="overflow-hidden rounded-xl border border-border shadow-sm">
       <table className="w-full text-sm">
@@ -47,7 +50,7 @@ function StandingsTable({ rows, mode, qualifiersPerGroup = 2, zones }: { rows: a
               <tr
                 key={row.id ?? `${row.team_id}-${index}`}
                 className={`${index % 2 === 0 ? 'bg-bg-surface' : 'bg-bg-base'} hover:bg-accent/5 transition-colors cursor-pointer`}
-                onClick={() => window.location.href = `/teams/${row.team_id}`}
+                onClick={() => window.location.href = toAdminHref(`/teams/${row.team_id}`, isAdmin)}
               >
                 {/* The zone border must live on a <td>, not the <tr>: Tailwind's
                     preflight sets `border-collapse: collapse` on tables and browsers

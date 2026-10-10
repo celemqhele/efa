@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/components/ui/SmartLink'
 import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
 import { format, parseISO } from 'date-fns'
 import FixtureActions from './FixtureActions'

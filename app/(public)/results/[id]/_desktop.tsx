@@ -1,5 +1,5 @@
 'use client'
-import Link from 'next/link'
+import Link from '@/components/ui/SmartLink'
 import TeamLogo from '@/components/ui/TeamLogo'
 import ForfeitBadge from '@/components/ui/ForfeitBadge'
 import { Card } from '@/components/ui/Card'

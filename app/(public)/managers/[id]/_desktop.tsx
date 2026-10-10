@@ -1,6 +1,6 @@
 'use client'
 import Image from 'next/image'
-import Link from 'next/link'
+import Link from '@/components/ui/SmartLink'
 import TeamLogo from '@/components/ui/TeamLogo'
 import { Card } from '@/components/ui/Card'
 import { ClipboardList, BarChart3, Shirt, Binoculars, Shield, UserRound, Trophy } from 'lucide-react'

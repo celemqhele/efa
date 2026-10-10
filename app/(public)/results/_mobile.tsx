@@ -1,7 +1,7 @@
 'use client'
 
 import TeamLogo, { TBCBadge } from '@/components/ui/TeamLogo'
-import Link from 'next/link'
+import Link from '@/components/ui/SmartLink'
 import { usePathname } from 'next/navigation'
 import { parseISO } from 'date-fns'
 import { APP_TIME_ZONE } from '@/lib/app-time'
