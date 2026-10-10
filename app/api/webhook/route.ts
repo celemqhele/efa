@@ -2526,15 +2526,22 @@ async function submitBackdoorSubmission(
   try {
     const { data: fx } = await supabase
       .from('fixtures')
-      .select('home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+      .select('home_team:teams!fixtures_home_team_id_fkey(name, manager:profiles!teams_manager_id_fkey(username)), away_team:teams!fixtures_away_team_id_fkey(name, manager:profiles!teams_manager_id_fkey(username))')
       .eq('id', session.matched_fixture_id)
       .single()
+    // The reporter is the manager of the OPPOSITE team to the one named as not
+    // responding (side), so the admin notification names who filed the report.
+    const fxAny = fx as any
+    const submitterSide = side === 'home' ? fxAny?.away_team : fxAny?.home_team
+    const submitterManager = Array.isArray(submitterSide) ? submitterSide[0]?.manager : submitterSide?.manager
+    const submitterManagerArr = Array.isArray(submitterManager) ? submitterManager[0] : submitterManager
     await notifyBackdoorSubmitted(supabase, {
       submissionId: submission.id,
       fixtureId: session.matched_fixture_id!,
       nonRespondingSide: side,
       homeName: fixtureTeamName(fx, 'home'),
       awayName: fixtureTeamName(fx, 'away'),
+      submitterName: submitterManagerArr?.username ?? null,
     })
   } catch (e) {
     console.error('[backdoor] admin notify failed:', e)

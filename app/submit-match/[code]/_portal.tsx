@@ -253,27 +253,30 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
         )}
 
         {state.result && (
-          <div className="mt-4 flex items-center justify-between rounded-xl bg-bg-base border border-border px-3 py-2.5">
-            <span className="text-sm font-semibold text-text-secondary">
-              {homeName} <span className="text-lg font-black text-text-primary tabular-nums">{state.result.homeScore}</span>
-              {' - '}
-              <span className="text-lg font-black text-text-primary tabular-nums">{state.result.awayScore}</span> {awayName}
-              {state.postponedConfirmed && (
-                <span className="ml-2 rounded bg-feedback-warning/15 px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-feedback-warning">
-                  placeholder
-                </span>
+          <div className="mt-4 rounded-xl bg-bg-base border border-border px-3 py-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-text-secondary">
+                {homeName} <span className="text-lg font-black text-text-primary tabular-nums">{state.result.homeScore}</span>
+                {' - '}
+                <span className="text-lg font-black text-text-primary tabular-nums">{state.result.awayScore}</span> {awayName}
+                {state.postponedConfirmed && (
+                  <span className="ml-2 rounded bg-feedback-warning/15 px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-feedback-warning">
+                    placeholder
+                  </span>
+                )}
+              </span>
+              {state.result.screenshotUrl && (
+                <a
+                  href={state.result.screenshotUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-bold text-accent hover:underline"
+                >
+                  View screenshot
+                </a>
               )}
-            </span>
-            {state.result.screenshotUrl && (
-              <a
-                href={state.result.screenshotUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs font-bold text-accent hover:underline"
-              >
-                View screenshot
-              </a>
-            )}
+            </div>
+            <p className="mt-1 text-[11px] font-medium text-text-muted">{resultActorLabel(state.result)}</p>
           </div>
         )}
       </Card>
@@ -694,7 +697,12 @@ function BackdoorPanel({
         </div>
 
         <p className="mt-2 text-sm text-text-secondary">{outcomeLine}</p>
-        <p className="mt-1 text-xs text-text-muted">Submitted {formatDateTime(myBackdoor.createdAt)}.</p>
+        <p className="mt-1 text-xs text-text-muted">
+          Submitted{myBackdoor.submitterName ? ` by ${myBackdoor.submitterName}` : ''} {formatDateTime(myBackdoor.createdAt)}
+          {myBackdoor.reviewedByName &&
+            ` · ${myBackdoor.status === 'declined' ? 'declined' : 'approved'} by ${myBackdoor.reviewedByName}`}
+          .
+        </p>
 
         {myBackdoor.isDispute && myBackdoor.disputeNote && (
           <p className="mt-2 rounded-xl border border-border bg-bg-base px-3 py-2 text-xs text-text-secondary">
@@ -835,13 +843,14 @@ function ReportedNote({
     <div className="mt-4 space-y-2">
       {reports.map((r) => {
         const applied = r.status === 'approved'
+        const reporter = r.submitterName ?? opponentName
         const headline = r.isDispute
           ? r.status === 'approved'
-            ? `${opponentName}'s dispute was upheld — your report was overturned`
-            : `${opponentName} disputed your report · waiting for review`
+            ? `${reporter}'s dispute was upheld — your report was overturned`
+            : `${reporter} disputed your report · waiting for review`
           : r.status === 'approved'
-            ? `${opponentName} has reported you as not responding · applied`
-            : `${opponentName} has reported you as not responding · waiting for review`
+            ? `${reporter} has reported you as not responding · applied`
+            : `${reporter} has reported you as not responding · waiting for review`
         const warning = r.isDispute
           ? r.status === 'approved'
             ? 'The result has been changed against you.'
@@ -911,18 +920,23 @@ function DetailsPanel({ state }: { state: any }) {
             <dt className="text-xs font-bold uppercase tracking-wide text-text-muted">
               {state.postponedConfirmed ? 'Placeholder result' : 'Result'}
             </dt>
-            <dd className="flex items-center gap-3 text-right text-sm font-bold text-text-primary">
-              {state.result.homeScore} - {state.result.awayScore}
-              {state.result.screenshotUrl && (
-                <a
-                  href={state.result.screenshotUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-bold text-accent hover:underline"
-                >
-                  View screenshot
-                </a>
-              )}
+            <dd className="text-right">
+              <span className="flex items-center justify-end gap-3 text-sm font-bold text-text-primary">
+                {state.result.homeScore} - {state.result.awayScore}
+                {state.result.screenshotUrl && (
+                  <a
+                    href={state.result.screenshotUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-bold text-accent hover:underline"
+                  >
+                    View screenshot
+                  </a>
+                )}
+              </span>
+              <span className="mt-0.5 block text-[10px] font-semibold text-text-muted">
+                {resultActorLabel(state.result)}
+              </span>
             </dd>
           </div>
         )}
@@ -945,6 +959,11 @@ function DetailsPanel({ state }: { state: any }) {
                       View screenshot
                     </a>
                   )}
+                </span>
+                <span className="mt-1 block text-text-muted">
+                  {b.submitterName ? `Submitted by ${b.submitterName}` : 'Submitted by an unregistered number'}
+                  {b.reviewedByName &&
+                    ` · ${b.status === 'declined' ? 'declined' : 'approved'} by ${b.reviewedByName}`}
                 </span>
                 {b.isDispute && b.disputeNote && (
                   <span className="mt-1 block text-text-muted">Explanation: {b.disputeNote}</span>
@@ -1068,4 +1087,17 @@ function formatDateTime(iso: string) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return String(iso)
   return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+// Who put the result on file: an admin finalised it, a manager submitted it, or
+// the system auto-finalised it (0-0 void / auto-approved backdoor).
+function resultActorLabel(r: any): string {
+  if (!r) return ''
+  if (r.finalisedBy) {
+    const name = r.finalisedByName ?? 'admin'
+    return r.finalisedByRole === 'admin' ? `Approved by ${name}` : `Submitted by ${name}`
+  }
+  if (r.isAbandoned) return 'Abandoned'
+  const reason = r.overrideReason ? ` · ${r.overrideReason}` : ''
+  return `Approved by the system${reason}`
 }

@@ -22,14 +22,18 @@ export async function notifyBackdoorSubmitted(
     nonRespondingSide: 'home' | 'away'
     homeName: string
     awayName: string
+    // Who filed the report (player or admin username) so admins can see at a
+    // glance who to reply to, rather than just "a report is on file".
+    submitterName?: string | null
   }
 ) {
-  const { submissionId, fixtureId, nonRespondingSide, homeName, awayName } = args
+  const { submissionId, fixtureId, nonRespondingSide, homeName, awayName, submitterName } = args
   const nonRespondingName = nonRespondingSide === 'home' ? homeName : awayName
+  const by = submitterName ? ` by ${submitterName}` : ''
   await notifyAllAdmins(supabase, {
     type: 'backdoor_submitted',
     title: 'Backdoor Submission',
-    body: `${homeName} vs ${awayName} — ${nonRespondingName} reported as not responding.`,
+    body: `${homeName} vs ${awayName} — ${nonRespondingName} reported as not responding${by}.`,
     data: { fixture_id: fixtureId, submission_id: submissionId, url: '/admin/backdoor-submissions' },
     push_url: '/admin/backdoor-submissions',
   })
@@ -47,14 +51,17 @@ export async function notifyBackdoorDisputed(
     homeName: string
     awayName: string
     note: string
+    // Who filed the dispute (player or admin username).
+    byName?: string | null
   }
 ) {
-  const { submissionId, fixtureId, disputingSide, homeName, awayName, note } = args
+  const { submissionId, fixtureId, disputingSide, homeName, awayName, note, byName } = args
   const disputingName = disputingSide === 'home' ? homeName : awayName
+  const by = byName ? ` by ${byName}` : ''
   await notifyAllAdmins(supabase, {
     type: 'backdoor_submitted',
     title: 'Backdoor Dispute',
-    body: `${homeName} vs ${awayName} — ${disputingName} disputed the report against them: ${note}`,
+    body: `${homeName} vs ${awayName} — ${disputingName} disputed the report against them${by}: ${note}`,
     data: { fixture_id: fixtureId, submission_id: submissionId, url: '/admin/backdoor-submissions' },
     push_url: '/admin/backdoor-submissions',
   })

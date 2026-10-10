@@ -643,7 +643,13 @@ export default async function ExportPage({ searchParams }: Props) {
             ? 'LEAGUE TABLE'
             : 'GROUP STANDINGS'
 
-        const filename = `efa-${card.type}-${card.tournament.type}-${selectedDate}.png`
+        // Tournament name slug in the filename so two leagues of the same type
+        // (e.g. the two divisions) don't produce colliding download names.
+        const tournamentSlug = card.tournament.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+        const filename = `efa-${card.type}-${tournamentSlug}-${selectedDate}.png`
 
         // If chunked, we render multiple cards and one button for all
         if (card.isChunked && card.chunks) {

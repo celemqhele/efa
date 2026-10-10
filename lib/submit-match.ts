@@ -160,6 +160,41 @@ export async function usernameLabel(userId: string): Promise<string> {
   return data?.username ?? 'Your opponent'
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Look up an actor's display name + role by user id (uuid) or phone number
+// (digits-normalised). backdoor_submissions.submitter_phone stores whichever the
+// submitter used: a WhatsApp number via the bot, or a profile id via the portal.
+export function actorOf(
+  actors: Map<string, { name: string; role: string | null }>,
+  key: string | null | undefined
+): { name: string; role: string | null } | null {
+  if (!key) return null
+  const raw = String(key)
+  if (UUID_RE.test(raw)) return actors.get(raw) ?? null
+  const digits = raw.replace(/\D/g, '')
+  return digits ? actors.get(digits) ?? null : null
+}
+
+// Resolve display names (+ roles) for every identity key behind a fixture's
+// records in one batched fetch, so the UI can say who submitted / approved /
+// declined what (player, admin, or system).
+export async function loadActorNames(
+  admin: any,
+  keys: (string | null | undefined)[]
+): Promise<Map<string, { name: string; role: string | null }>> {
+  const actors = new Map<string, { name: string; role: string | null }>()
+  if (!keys.some(Boolean)) return actors
+  const { data: profiles } = await admin.from('profiles').select('id, username, role, phone')
+  for (const p of (profiles ?? []) as any[]) {
+    if (!p.username) continue
+    const actor = { name: p.username, role: p.role ?? null }
+    actors.set(String(p.id), actor)
+    if (p.phone) actors.set(String(p.phone).replace(/\D/g, ''), actor)
+  }
+  return actors
+}
+
 // Everything the portal page needs to render: fixture, existing result, backdoor
 // reports, any live postponement request, and which of the four actions this
 // viewer is allowed to touch right now.
@@ -170,10 +205,18 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
 
   const { data: backdoorRows } = await admin
     .from('backdoor_submissions')
-    .select('id, side_claimed, status, screenshot_url, submitter_phone, created_at, reviewed_at, is_dispute, dispute_note')
+    .select('id, side_claimed, status, screenshot_url, submitter_phone, created_at, reviewed_at, reviewed_by, is_dispute, dispute_note')
     .eq('fixture_id', fixture.id)
     .neq('status', 'expired')
     .order('created_at', { ascending: false })
+
+  // Every actor behind the records shown on this page (the result's finaliser,
+  // each backdoor report's submitter + reviewer) so the UI can attribute them.
+  const actors = await loadActorNames(admin, [
+    ...(backdoorRows ?? []).map((b: any) => b.submitter_phone),
+    ...(backdoorRows ?? []).map((b: any) => b.reviewed_by),
+    fixture.result?.finalised_by,
+  ])
 
   // Row-derived views used by the backdoor panel: the viewer's own live claim
   // (so the panel can show a status card instead of the empty form again) and
@@ -344,6 +387,10 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
           awayScore: fixture.result.away_score,
           screenshotUrl: fixture.result.screenshot_url ?? null,
           overrideReason: fixture.result.override_reason ?? null,
+          isAbandoned: !!fixture.result.is_abandoned,
+          finalisedBy: fixture.result.finalised_by ?? null,
+          finalisedByName: actorOf(actors, fixture.result.finalised_by)?.name ?? null,
+          finalisedByRole: actorOf(actors, fixture.result.finalised_by)?.role ?? null,
         }
       : null,
     backdoor: (backdoorRows ?? []).map((b: any) => ({
@@ -355,6 +402,8 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       mine: isMineSubmission(b, viewer),
       isDispute: !!b.is_dispute,
       disputeNote: b.dispute_note ?? null,
+      submitterName: actorOf(actors, b.submitter_phone)?.name ?? null,
+      reviewedByName: b.reviewed_by ? actorOf(actors, b.reviewed_by)?.name ?? null : null,
     })),
     // The viewer's own live claim (report or dispute) — drives the status card
     // that replaces the form once something has been submitted.
@@ -368,6 +417,10 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
           reviewedAt: myBackdoorRow.reviewed_at ?? null,
           isDispute: !!myBackdoorRow.is_dispute,
           disputeNote: myBackdoorRow.dispute_note ?? null,
+          submitterName: actorOf(actors, myBackdoorRow.submitter_phone)?.name ?? null,
+          reviewedByName: myBackdoorRow.reviewed_by
+            ? actorOf(actors, myBackdoorRow.reviewed_by)?.name ?? null
+            : null,
         }
       : null,
     // Reports filed against the viewer's own team (the opponent's claim).
@@ -379,6 +432,7 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       createdAt: b.created_at,
       isDispute: !!b.is_dispute,
       disputeNote: b.dispute_note ?? null,
+      submitterName: actorOf(actors, b.submitter_phone)?.name ?? null,
     })),
     postponeRequest,
     respondTo,

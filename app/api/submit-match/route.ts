@@ -399,6 +399,7 @@ async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
       nonRespondingSide: side,
       homeName: teamName(fixture.home_team),
       awayName: teamName(fixture.away_team),
+      submitterName: viewer.username,
     })
   } catch (e) {
     console.error('[submit-match] admin notify failed:', e)
@@ -542,6 +543,7 @@ async function disputeBackdoor(admin: any, fixture: any, viewer: Viewer, form: F
       homeName: teamName(fixture.home_team),
       awayName: teamName(fixture.away_team),
       note,
+      byName: viewer.username,
     })
   } catch (e) {
     console.error('[submit-match] dispute admin notify failed:', e)
