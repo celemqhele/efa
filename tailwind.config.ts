@@ -134,6 +134,7 @@ const config: Config = {
         'pulse-gold': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'slide-up': 'slideUp 0.3s ease-out',
         'fade-in': 'fadeIn 0.3s ease-out',
+        'fade-out': 'fadeOut 0.18s ease-in forwards',
       },
       keyframes: {
         slideUp: {
@@ -143,6 +144,10 @@ const config: Config = {
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
         },
       },
     },

@@ -141,7 +141,6 @@ function ResultRow({ n, onClick }: { n: PopupNotification; onClick: () => void }
   const data = n.data ?? {}
   const homeScore = data.home_score ?? ''
   const awayScore = data.away_score ?? ''
-  const fixtureId = data.fixture_id ?? null
 
   // Parse score from body if data missing: "Team A 3–1 Team B"
   const scoreMatch = !homeScore ? n.body.match(/(\d+)[–-](\d+)/) : null
@@ -152,8 +151,7 @@ function ResultRow({ n, onClick }: { n: PopupNotification; onClick: () => void }
   return (
     <button
       onClick={onClick}
-      disabled={!fixtureId}
-      className="w-full flex items-center gap-3 p-3 rounded-xl bg-bg-surface border border-border hover:bg-bg-elevated transition-colors text-left disabled:cursor-default"
+      className="w-full flex items-center gap-3 p-3 rounded-xl bg-bg-surface border border-border hover:bg-bg-elevated active:scale-[0.98] active:bg-bg-elevated transition text-left"
     >
       {data.home_logo_folder && data.home_slug ? (
         <TeamLogo
@@ -184,14 +182,10 @@ function ResultRow({ n, onClick }: { n: PopupNotification; onClick: () => void }
 }
 
 function OtherRow({ n, onClick }: { n: PopupNotification; onClick: () => void }) {
-  const data = n.data ?? {}
-  const fixtureId = data.fixture_id ?? null
-
   return (
     <button
       onClick={onClick}
-      disabled={!fixtureId && !data.team_id}
-      className="w-full flex items-start gap-3 p-3 rounded-xl bg-bg-surface border border-border hover:bg-bg-elevated transition-colors text-left disabled:cursor-default"
+      className="w-full flex items-start gap-3 p-3 rounded-xl bg-bg-surface border border-border hover:bg-bg-elevated active:scale-[0.98] active:bg-bg-elevated transition text-left"
     >
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${notifIconColour(n.type)}`}>
         {notifIcon(n.type)}
@@ -208,10 +202,12 @@ function OtherRow({ n, onClick }: { n: PopupNotification; onClick: () => void })
 
 export default function GlobalNotifications() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const [results, setResults] = useState<PopupNotification[]>([])
   const [others, setOthers] = useState<PopupNotification[]>([])
   const dismissedKeysRef = useRef<Set<string>>(new Set())
   const lastSoundAtRef = useRef(0)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabase = createClient()
   const router = useRouter()
 
@@ -246,6 +242,7 @@ export default function GlobalNotifications() {
 
     return () => {
       clearInterval(interval)
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
       window.removeEventListener('show-notification', handleManualNotif)
       navigator.serviceWorker?.removeEventListener('message', handleSwMessage)
       window.removeEventListener('pointerdown', unlock, { capture: true } as any)
@@ -304,38 +301,89 @@ export default function GlobalNotifications() {
     const newResults = trulyNew.filter(n => RESULT_TYPES.has(n.type))
     const newOthers = trulyNew.filter(n => !RESULT_TYPES.has(n.type))
 
+    // A fresh notification cancels any in-flight close animation.
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    setIsClosing(false)
+
     setResults(prev => [...newResults, ...prev])
     setOthers(prev => [...prev, ...newOthers])
     setIsOpen(true)
   }
 
-  async function handleDismiss() {
-    const all = [...results, ...others]
-
+  // Fire-and-forget: persist read state and refresh the nav badge in the
+  // background. Never block the close animation on network latency.
+  function persistRead(all: PopupNotification[]) {
     const realIds = all
       .map(n => n.id)
       .filter((id): id is string => !!id && id.includes('-'))
 
-    if (realIds.length > 0) {
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .in('id', realIds)
-    }
+    if (realIds.length === 0) return
 
+    void (async () => {
+      try {
+        await supabase.from('notifications').update({ read: true }).in('id', realIds)
+      } catch {
+        // ignore — the badge will reconcile on the next navigation
+      }
+      router.refresh()
+    })()
+  }
+
+  // Animate the popup out, then unmount. Feedback is immediate so the click
+  // never feels dead while the (slow) server refresh happens in the background.
+  function closePopup() {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    setIsClosing(true)
+    closeTimerRef.current = setTimeout(() => {
+      setIsOpen(false)
+      setIsClosing(false)
+      setResults([])
+      setOthers([])
+    }, 180)
+  }
+
+  function dismissAll() {
+    const all = [...results, ...others]
     for (const n of all) dismissedKeysRef.current.add(n.key)
+    closePopup()
+    persistRead(all)
+  }
 
-    setIsOpen(false)
-    setResults([])
-    setOthers([])
-    router.refresh()
+  function handleDismiss() {
+    dismissAll()
   }
 
   function handleItemClick(n: PopupNotification) {
     const data = n.data ?? {}
-    if (data.url) router.push(data.url)
-    else if (data.fixture_id) router.push(`/fixtures/${data.fixture_id}`)
-    else if (data.team_id) router.push(`/teams/${data.team_id}`)
+    const url =
+      data.url ??
+      (data.fixture_id
+        ? `/fixtures/${data.fixture_id}`
+        : data.team_id
+          ? `/teams/${data.team_id}`
+          : null)
+
+    // Close immediately (with animation) and mark the shown items read, then
+    // navigate. Navigation refetches the server tree, so the badge updates
+    // without an extra full router.refresh().
+    const all = [...results, ...others]
+    for (const item of all) dismissedKeysRef.current.add(item.key)
+    closePopup()
+
+    const realIds = all
+      .map(item => item.id)
+      .filter((id): id is string => !!id && id.includes('-'))
+    if (realIds.length > 0) {
+      void (async () => {
+        try {
+          await supabase.from('notifications').update({ read: true }).in('id', realIds)
+        } catch {
+          // ignore — navigation refetches the server tree and reconciles the badge
+        }
+      })()
+    }
+
+    if (url) router.push(url)
   }
 
   if (!isOpen) return null
@@ -348,20 +396,20 @@ export default function GlobalNotifications() {
     <>
       {/* Backdrop — desktop only */}
       <div
-        className="hidden sm:block fixed inset-0 bg-black/60 z-[100] animate-fade-in"
+        className={`hidden sm:block fixed inset-0 bg-black/60 z-[100] ${isClosing ? 'animate-fade-out' : 'animate-fade-in'}`}
         onClick={handleDismiss}
       />
 
       {/* Popup */}
       <div
-        className="
+        className={`
           fixed z-[101]
           inset-x-0 bottom-0 rounded-t-2xl
           sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
           sm:rounded-2xl sm:max-w-md sm:w-[calc(100vw-2rem)]
           bg-bg-elevated border border-border shadow-2xl
-          animate-slide-up
-        "
+          ${isClosing ? 'animate-fade-out' : 'animate-slide-up'}
+        `}
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-5 pt-5 pb-3">
