@@ -92,9 +92,10 @@ export default async function TeamFixturesPage({ params }: PageProps) {
 
   // Split into upcoming and past. A postponed-confirmed fixture reads status
   // 'confirmed' (agreed 3-0 already counted) but is still to be played on its
-  // moved date, so it stays on the upcoming side.
+  // moved date, so it stays on the upcoming side. A future-dated result parked
+  // as 'confirmed_pending' also stays upcoming.
   const isUpcoming = (f: any) =>
-    f.status === 'scheduled' || f.status === 'awaiting_confirmation' || !!f.postponed_confirmed
+    f.status === 'scheduled' || f.status === 'awaiting_confirmation' || f.status === 'confirmed_pending' || !!f.postponed_confirmed
 
   const upcoming = (allFixtures ?? [])
     .filter(isUpcoming)

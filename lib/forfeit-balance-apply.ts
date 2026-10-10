@@ -4,6 +4,10 @@
 // (remaining = 0, consumed_by_fixture_id = this fixture). If only one manager has
 // a balance, only that one is applied.
 //
+// Only the OPPONENT'S (conceded) score carries over — the forfeiting side's own
+// score is discarded. So a forfeited 7-2 starts the aggregate at 7-0 (opponent 7,
+// forfeiter 0), not 7-2.
+//
 // Used by the backdoor application writers (admin approve route + auto-finalise
 // cron) so a backdoor decision (3-0 single claim or 0-0 both claim) absorbs the
 // same carried-over scores a normally played match would.
@@ -54,13 +58,10 @@ export async function applyCarryOverBalances(
 
   for (const bal of (balances ?? []) as any[]) {
     const forfeitingIsHome = bal.forfeiting_manager_id === ctx.homeManagerId
-    const forfScore = bal.forfeiting_score ?? 0
     const oppScore = bal.opponent_score ?? 0
     if (forfeitingIsHome) {
-      homeScore += forfScore
       awayScore += oppScore
     } else {
-      awayScore += forfScore
       homeScore += oppScore
     }
 

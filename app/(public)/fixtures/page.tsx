@@ -67,7 +67,10 @@ export default async function FixturesPage() {
     }
   }
 
-  const upcomingStatuses = new Set(['scheduled', 'awaiting_confirmation'])
+  // A future-dated result submitted ahead of the fixture day is parked as
+  // 'confirmed_pending' (released by the day-of flip); it stays upcoming so the
+  // fixture is still listed under scheduled/confirmed.
+  const upcomingStatuses = new Set(['scheduled', 'awaiting_confirmation', 'confirmed_pending'])
   // A postponed-confirmed fixture reads status 'confirmed' (agreed 3-0 already
   // counted) but is still to be played on its moved date, so it stays upcoming.
   const upcoming = fixturesWithResults.filter(

@@ -6057,13 +6057,10 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
         const forfeitNoteParts: string[] = []
         for (const bal of balances) {
           const forfeitingIsHome = bal.forfeiting_manager_id === fixtureHome?.manager_id
-          const forfeitingScore = bal.forfeiting_score ?? 0
           const opponentScore = bal.opponent_score ?? 0
           if (forfeitingIsHome) {
-            homeScore += forfeitingScore
             awayScore += opponentScore
           } else {
-            awayScore += forfeitingScore
             homeScore += opponentScore
           }
           await supabase.from('forfeit_balances').update({ remaining: 0, consumed_by_fixture_id: session.matched_fixture_id }).eq('id', bal.id)

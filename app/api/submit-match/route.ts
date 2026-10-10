@@ -238,13 +238,10 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         const forfeitNotes: string[] = []
         for (const bal of balances) {
           const forfeitingIsHome = bal.forfeiting_manager_id === fixture.home_team?.manager_id
-          const forfScore = bal.forfeiting_score ?? 0
           const oppScore = bal.opponent_score ?? 0
           if (forfeitingIsHome) {
-            finalHomeScore += forfScore
             finalAwayScore += oppScore
           } else {
-            finalAwayScore += forfScore
             finalHomeScore += oppScore
           }
           await admin.from('forfeit_balances').update({ remaining: 0, consumed_by_fixture_id: fixture.id }).eq('id', bal.id)

@@ -162,20 +162,20 @@ export default function ResultSubmitClient({
     if (!balance || usedBalanceIds.includes(balanceId)) return
 
     const forfeitingIsHome = balance.opponent_team_id === selectedFixture.away_team?.id
-    const forfeitingScore = balance.forfeiting_score ?? 0
     const opponentScore = balance.opponent_score ?? 0
-    const homeAdd = forfeitingIsHome ? forfeitingScore : opponentScore
-    const awayAdd = forfeitingIsHome ? opponentScore : forfeitingScore
+    // Only the opponent's (conceded) score carries over; the forfeiting side's
+    // own score is discarded, so the aggregate starts at opponentScore-0.
+    const homeAdd = forfeitingIsHome ? 0 : opponentScore
+    const awayAdd = forfeitingIsHome ? opponentScore : 0
 
     const newHomeScore = (parseInt(homeScore) || 0) + homeAdd
     const newAwayScore = (parseInt(awayScore) || 0) + awayAdd
     setHomeScore(String(newHomeScore))
     setAwayScore(String(newAwayScore))
 
-    const forfeitingName = forfeitingIsHome ? selectedFixture.home_team?.name : selectedFixture.away_team?.name
     const opponentName = forfeitingIsHome ? selectedFixture.away_team?.name : selectedFixture.home_team?.name
     setForfeitBalanceNote(
-      `Forfeit balance applied: ${forfeitingName} +${forfeitingScore}, ${opponentName} +${opponentScore}. Score now ${newHomeScore}-${newAwayScore}.`
+      `Forfeit balance applied: ${opponentName} +${opponentScore}. Score now ${newHomeScore}-${newAwayScore}.`
     )
     setUsedBalanceIds((prev) => [...prev, balanceId])
     setForfeitBalances((prev) => prev.filter((x: any) => x.id !== balanceId))

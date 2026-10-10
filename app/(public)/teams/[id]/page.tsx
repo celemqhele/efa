@@ -400,8 +400,8 @@ export default async function TeamProfilePage({ params }: PageProps) {
     .or(teamOrFilter)
     // Postponed-confirmed fixtures read status 'confirmed' (agreed 3-0 already
     // counted) but are still to be played on their moved date, so they are
-    // upcoming here too.
-    .or('status.in.(scheduled,awaiting_confirmation),postponed_confirmed.eq.true')
+    // upcoming here too. A future-dated 'confirmed_pending' result also counts.
+    .or('status.in.(scheduled,awaiting_confirmation,confirmed_pending),postponed_confirmed.eq.true')
     .order('scheduled_date', { ascending: true })
     .limit(5)
 

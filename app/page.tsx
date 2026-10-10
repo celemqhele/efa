@@ -54,8 +54,10 @@ export default async function HomePage() {
     .select('scheduled_date')
     .gte('scheduled_date', today)
     // Postponed-confirmed fixtures read status 'confirmed' but are still to be
-    // played on their moved date, so they count as upcoming too.
-    .or('status.in.(scheduled,awaiting_confirmation),postponed_confirmed.eq.true')
+    // played on their moved date, so they count as upcoming too. A future-dated
+    // result submitted ahead of the day is parked as 'confirmed_pending', so it
+    // also stays upcoming.
+    .or('status.in.(scheduled,awaiting_confirmation,confirmed_pending),postponed_confirmed.eq.true')
     .order('scheduled_date', { ascending: true })
     .limit(1)
 
@@ -77,7 +79,7 @@ export default async function HomePage() {
         results(home_score, away_score)
       `)
       .eq('scheduled_date', nextDate)
-      .or('status.in.(scheduled,awaiting_confirmation),postponed_confirmed.eq.true')
+      .or('status.in.(scheduled,awaiting_confirmation,confirmed_pending),postponed_confirmed.eq.true')
       .order('deadline')
 
     if (teamOrFilter) {
