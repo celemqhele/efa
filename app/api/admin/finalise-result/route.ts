@@ -409,7 +409,7 @@ export async function POST(request: Request) {
       if (validIds.length > 0) {
         const { error: consumeErr } = await adminSupabase
           .from('forfeit_balances')
-          .update({ remaining: 0 })
+          .update({ remaining: 0, consumed_by_fixture_id: fixture.id })
           .in('id', validIds)
         if (consumeErr) console.error('[finalise-result] consume forfeit balances failed:', consumeErr.message)
       }

@@ -214,6 +214,14 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
       })
     }
   } else if (!isFuture && fixture.home_team_id && fixture.away_team_id) {
+    // Re-submitting this match (e.g. correcting the score) must keep the
+    // carry-over balances its previous result applied. Re-open any balance this
+    // fixture already consumed so it is counted again in the loop below.
+    await admin
+      .from('forfeit_balances')
+      .update({ remaining: 1, consumed_by_fixture_id: null })
+      .eq('consumed_by_fixture_id', fixture.id)
+
     const managerIds = [fixture.home_team?.manager_id, fixture.away_team?.manager_id].filter(Boolean)
     if (managerIds.length > 0) {
       const { data: balances } = await admin
@@ -239,7 +247,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
             finalAwayScore += forfScore
             finalHomeScore += oppScore
           }
-          await admin.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
+          await admin.from('forfeit_balances').update({ remaining: 0, consumed_by_fixture_id: fixture.id }).eq('id', bal.id)
 
           const forfeiterTeam = forfeitingIsHome ? hName : aName
           const winnerTeam = forfeitingIsHome ? aName : hName

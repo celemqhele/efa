@@ -6026,6 +6026,15 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   // The forfeit score always carries over to the next meeting between the same two teams (per the rules),
   // regardless of who is currently winning. Skip when this is a forfeit confirm — handleForfeitYes already applied the +3.
   if (!isForfeitConfirm && fixture?.home_team_id && fixture?.away_team_id) {
+    // Re-submitting this match (resetAndResubmit deletes the old result then
+    // calls this again) must keep the carry-over balances the previous result
+    // applied. Re-open any balance this fixture already consumed so it is
+    // counted again in the loop below.
+    await supabase
+      .from('forfeit_balances')
+      .update({ remaining: 1, consumed_by_fixture_id: null })
+      .eq('consumed_by_fixture_id', session.matched_fixture_id)
+
     const managerIds = [fixtureHome?.manager_id, fixtureAway?.manager_id].filter(Boolean)
     if (managerIds.length > 0) {
       const { data: balances } = await supabase
@@ -6057,7 +6066,7 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
             awayScore += forfeitingScore
             homeScore += opponentScore
           }
-          await supabase.from('forfeit_balances').update({ remaining: 0 }).eq('id', bal.id)
+          await supabase.from('forfeit_balances').update({ remaining: 0, consumed_by_fixture_id: session.matched_fixture_id }).eq('id', bal.id)
 
           const forfeitTeamName = teamNames[bal.forfeiting_manager_id] || 'Team'
           const oppName = (Array.isArray(bal.opponent_team) ? bal.opponent_team[0]?.name : bal.opponent_team?.name) || 'Opponent'
