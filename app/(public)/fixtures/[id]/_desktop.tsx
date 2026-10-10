@@ -166,12 +166,22 @@ export default function Desktop({ data }: { data: any }) {
               )}
               {data.canSubmitMatch && data.matchCode && (
                 <div className="mt-2 text-center">
-                  <Link
-                    href={`/submit-match/${data.matchCode}`}
-                    className="inline-flex items-center justify-center rounded-xl bg-accent px-3 py-1.5 text-xs font-bold text-bg-surface hover:opacity-90 transition-opacity"
-                  >
-                    Change score
-                  </Link>
+                  {data.submitDisabled ? (
+                    <span
+                      aria-disabled="true"
+                      title="This match's 7 day grace period has ended"
+                      className="inline-flex cursor-not-allowed items-center justify-center rounded-xl border border-border bg-bg-elevated px-3 py-1.5 text-xs font-bold text-text-muted opacity-60"
+                    >
+                      Change score
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/submit-match/${data.matchCode}`}
+                      className="inline-flex items-center justify-center rounded-xl bg-accent px-3 py-1.5 text-xs font-bold text-bg-surface hover:opacity-90 transition-opacity"
+                    >
+                      Change score
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
@@ -216,12 +226,22 @@ export default function Desktop({ data }: { data: any }) {
               <span className="text-5xl font-black text-text-muted tracking-widest">VS</span>
               {data.canSubmitMatch && data.matchCode && (
                 <div className="mt-3 text-center">
-                  <Link
-                    href={`/submit-match/${data.matchCode}`}
-                    className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-xs font-bold text-bg-surface hover:opacity-90 transition-opacity"
-                  >
-                    Submit for this match
-                  </Link>
+                  {data.submitDisabled ? (
+                    <span
+                      aria-disabled="true"
+                      title="This match's 7 day grace period has ended"
+                      className="inline-flex cursor-not-allowed items-center justify-center rounded-xl border border-border bg-bg-elevated px-4 py-2 text-xs font-bold text-text-muted opacity-60"
+                    >
+                      Submit for this match
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/submit-match/${data.matchCode}`}
+                      className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-xs font-bold text-bg-surface hover:opacity-90 transition-opacity"
+                    >
+                      Submit for this match
+                    </Link>
+                  )}
                 </div>
               )}
             </div>

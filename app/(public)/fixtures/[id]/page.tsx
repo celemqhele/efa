@@ -6,6 +6,7 @@ import { calculateProbability } from '@/lib/probability-engine'
 import { getTeamDNAFromDB } from '@/lib/dna-engine'
 import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
 import { parseForfeitAdjusted } from '@/lib/forfeit-note'
+import { gracePeriodEnded } from '@/lib/submit-match'
 import { ogMeta, formatMatchday, roundLabel } from '@/lib/og'
 import Shell from './_shell'
 
@@ -295,6 +296,12 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     .maybeSingle()
   const matchCode = codeRow?.code ?? null
 
+  // Managers lose the ability to submit or change the score once the 7-day
+  // grace period after the match day has lapsed; admins can always correct it.
+  const fixtureDateKey = String((fixture as any)?.scheduled_date ?? '').slice(0, 10)
+  const graceEnded = gracePeriodEnded(fixtureDateKey)
+  const submitDisabled = canSubmitMatch && !isAdmin && graceEnded
+
   const conf1 = confirmations?.find((c) => c.submitted_by === homeManager?.id)
   const conf2 = confirmations?.find((c) => c.submitted_by === awayManager?.id)
   const bothSubmitted = conf1 && conf2
@@ -326,6 +333,7 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     isAwayManager,
     isManager,
     canSubmitMatch,
+    submitDisabled,
     matchCode,
     probability,
     h2hList,

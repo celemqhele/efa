@@ -29,15 +29,21 @@ export function postponeWindow(dateKey: string, now = new Date()): string | null
 // upload or an admin decision). Auto-finalised outcomes (0-0 void / auto-approved
 // backdoor) have no finalised_by or screenshot and can still be replaced by an
 // agreed postponement inside the 7-day-after-deadline window.
-// A match's deadline is its scheduled (match) day. Once that day has passed:
-// - a manager can no longer POSTPONE a match that didn't happen, and
-// - a manager can no longer CHANGE an already-settled (real) result.
-// Completing a result for the first time (replacing a 0-0 void or an
-// auto-approved backdoor placeholder) stays open inside the 7-day submission
-// window — that is a first submission, not an edit of a settled score.
+// The grace period runs for MAX_POSTPONE_DAYS (7) days after the match's
+// scheduled (match) day. While it is open a manager can still POSTPONE the
+// fixture or CHANGE an already-settled (real) result. Once it has lapsed
+// (dateKey strictly before today-7) the match is final for managers — only an
+// admin can still edit it. Completing a result for the first time (replacing a
+// 0-0 void or an auto-approved backdoor placeholder) follows the same 7-day
+// submission window.
+export function gracePeriodEnded(dateKey: string, now = new Date()): boolean {
+  if (!dateKey) return false
+  return dateKey < getSastDateKey(now, -MAX_POSTPONE_DAYS)
+}
+
 export function deadlineBlock(dateKey: string, now = new Date()): string | null {
   if (!dateKey) return null
-  if (dateKey < getSastDateKey(now)) {
+  if (gracePeriodEnded(dateKey, now)) {
     return 'This match is past its deadline, so it can no longer be changed or postponed.'
   }
   return null
@@ -468,9 +474,9 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       backdoorBlock,
       backdoorMenuBlock,
       disputeBlock,
-      // Past the deadline — the match day is gone, so no more changes or
+      // True once the 7-day grace period has lapsed — no more changes or
       // postponements for managers.
-      graceEnded: deadlineBlock(dateKey) !== null,
+      graceEnded: gracePeriodEnded(dateKey),
       canPostpone: !postponeBlock,
       canRequest: !pendingRequest && !postponeBlock,
       canRespond: !!respondTo,
