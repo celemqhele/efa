@@ -535,11 +535,13 @@ function ResultPanel({
                   className="sr-only"
                 />
                 <span
-                  className={`flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${
+                  className={`relative h-4 w-4 rounded-full border-2 transition-colors ${
                     forfeit === opt.value ? 'border-text-primary' : 'border-border'
                   }`}
                 >
-                  {forfeit === opt.value && <span className="h-2 w-2 rounded-full bg-text-primary" />}
+                  {forfeit === opt.value && (
+                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-text-primary" />
+                  )}
                 </span>
                 <span className="text-sm text-text-primary">{opt.label}</span>
               </label>
