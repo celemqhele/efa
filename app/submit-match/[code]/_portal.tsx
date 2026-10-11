@@ -514,17 +514,41 @@ function ResultPanel({
           <p className="text-sm text-feedback-warning">Upload the result screenshot above first — it is kept as proof.</p>
         )}
 
-        <Field label="Mark as forfeit?" hint="Select yes if the opponent didn't show or forfeited (+3 goals added to winner).">
-          <select
-            value={forfeit}
-            onChange={(e) => setForfeit(e.target.value)}
-            disabled={!!block || busy}
-            className={inputClass}
-          >
-            <option value="no">No — played normally</option>
-            <option value="yes">Yes — forfeited (+3 goals to winner)</option>
-          </select>
-        </Field>
+        <div className="space-y-1.5">
+          <span className="text-xs font-bold uppercase tracking-wide text-text-muted">Mark as forfeit?</span>
+          <div className="flex items-center gap-6">
+            {[
+              { value: 'no', label: 'No' },
+              { value: 'yes', label: 'Yes' },
+            ].map((opt) => (
+              <label
+                key={opt.value}
+                className={`inline-flex items-center gap-2 select-none ${block || busy ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+              >
+                <input
+                  type="radio"
+                  name="result-forfeit"
+                  value={opt.value}
+                  checked={forfeit === opt.value}
+                  onChange={() => setForfeit(opt.value)}
+                  disabled={!!block || busy}
+                  className="sr-only"
+                />
+                <span
+                  className={`flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${
+                    forfeit === opt.value ? 'border-text-primary' : 'border-border'
+                  }`}
+                >
+                  {forfeit === opt.value && <span className="h-2 w-2 rounded-full bg-text-primary" />}
+                </span>
+                <span className="text-sm text-text-primary">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+          <span className="block text-xs text-text-muted">
+            Select <span className="font-semibold">Yes</span> if the opponent didn&apos;t show or forfeited (+3 goals added to winner).
+          </span>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label={homeName}>
