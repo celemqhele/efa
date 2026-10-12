@@ -117,10 +117,11 @@ function submissionBlockReason(f: any, now = new Date()): string | null {
 }
 
 // ─── Admin phone numbers ──────────────────────────────────────────────────────────
-const ADMIN_PHONES = ['+27678721810', '+27732509506', '+27734776081']
-function isAdminPhone(phone: string): boolean {
-  const norm = phone.replace(/\D/g, '')
-  return ADMIN_PHONES.some(p => p.replace(/\D/g, '') === norm)
+import { resolveIdentityByPhone } from '@/lib/identity'
+
+async function isAdminPhone(phone: string): Promise<boolean> {
+  const id = await resolveIdentityByPhone(phone)
+  return id.isAdmin
 }
 
 // ─── Input normalization helpers ─────────────────────────────────────────────
