@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateAuthTicket, hashRequest } from '@/lib/auth-ticket'
 import { createAdminClient } from '@/lib/supabase/server'
-import { normalizePhoneDigits } from '@/lib/phone'
+
+function isFishy(sql: string): boolean {
+  const s = sql.toLowerCase()
+  if (s.includes('drop ') || s.includes('truncate ') || s.includes('alter ') || s.includes('create ')) return true
+  if (s.includes('delete ') && !s.includes('where id=')) return true
+  return false
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,10 +25,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, facts: 'league_facts_placeholder' })
     }
     if (tool === 'match_link_get') {
-      const { data } = await supabase
+      const date = args.date || args.scheduled_date
+      const opponent = args.opponent || args.team || ''
+      const today = new Date()
+      const d = date || today.toISOString().slice(0, 10)
+      const q = supabase
         .from('fixtures')
         .select('id, home_team_id, away_team_id, scheduled_date, match_codes(code)')
-        .limit(5)
+        .order('scheduled_date', { ascending: true })
+        .limit(10)
+      const { data } = await q
       return NextResponse.json({ ok: true, fixtures: data })
     }
     if (tool === 'onboarding') {
