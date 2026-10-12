@@ -328,7 +328,7 @@ const msg = messages[0]
     if (maintenance?.enabled) {
       // Check if admin command to disable maintenance
       const text = msg.type === 'text' ? (msg.text?.body || '').trim().toLowerCase() : ''
-      if (text === 'disable maintenance mode' && isAdminPhone(from)) {
+      if (text === 'disable maintenance mode' && await isAdminPhone(from)) {
         await supabaseCheck
           .from('maintenance_mode')
           .update({ enabled: false, disabled_by: (await supabaseCheck.auth.getUser()).data.user?.id, disabled_at: new Date().toISOString() })
@@ -354,7 +354,7 @@ const msg = messages[0]
     // Check for admin enable maintenance command (for any message type)
     if (msg.type === 'text') {
       const text = msg.text?.body?.trim().toLowerCase() || ''
-      if (text === 'enable maintenance mode' && isAdminPhone(from)) {
+      if (text === 'enable maintenance mode' && await isAdminPhone(from)) {
         await supabaseCheck
           .from('maintenance_mode')
           .update({ enabled: true, enabled_by: (await supabaseCheck.auth.getUser()).data.user?.id, enabled_at: new Date().toISOString() })
@@ -367,7 +367,7 @@ const msg = messages[0]
     // Admin commands to open/close the backdoor window (admin only)
     if (msg.type === 'text') {
       const text = msg.text?.body?.trim().toLowerCase() || ''
-      if (text === 'disable backdoor window' && isAdminPhone(from)) {
+      if (text === 'disable backdoor window' && await isAdminPhone(from)) {
         await supabaseCheck
           .from('backdoor_window')
           .update({ enabled: false, disabled_by: (await supabaseCheck.auth.getUser()).data.user?.id, disabled_at: new Date().toISOString() })
@@ -375,7 +375,7 @@ const msg = messages[0]
         await sendTextMessage(from, 'Backdoor window disabled. Backdoor submissions are now blocked.', phoneNumberId)
         return new NextResponse(null, { status: 200 })
       }
-      if (text === 'enable backdoor window' && isAdminPhone(from)) {
+      if (text === 'enable backdoor window' && await isAdminPhone(from)) {
         await supabaseCheck
           .from('backdoor_window')
           .update({ enabled: true, enabled_by: (await supabaseCheck.auth.getUser()).data.user?.id, enabled_at: new Date().toISOString() })
@@ -777,7 +777,7 @@ async function getLoggedInManager(from: string): Promise<LoggedInManager | null>
 async function sendWelcomeMenu(from: string, phoneNumberId: string) {
   const manager = await getLoggedInManager(from)
   const base = manager ? loggedInWelcomeMenu(manager.username) : WELCOME_MENU
-  await sendTextMessage(from, isAdminPhone(from) ? adminWelcomeMenu(base) : base, phoneNumberId)
+  await sendTextMessage(from, await isAdminPhone(from) ? adminWelcomeMenu(base) : base, phoneNumberId)
 }
 
 // Footer appended to free-text "info-request" prompts (score, team names, date,
@@ -861,7 +861,7 @@ async function handleWelcomeMenu(from: string, text: string, phoneNumberId: stri
   // admin who also owns a club reaches them, and gated on isAdminPhone so a
   // non-admin typing 7-9 just gets the menu back.
   if (num === 7 || num === 8 || num === 9) {
-    if (!isAdminPhone(from)) {
+    if (!await isAdminPhone(from)) {
       await sendWelcomeMenu(from, phoneNumberId)
       return
     }
@@ -2167,7 +2167,7 @@ async function handleBackdoorFixtureSearch(from: string, text: string, session: 
   // move to confirmed/awaiting the moment a result lands, and the backdoor flow
   // must still find them to report what happened. Non-admins are limited to the
   // backdoor window (±7 days); admins may search any date.
-  const isAdmin = isAdminPhone(from)
+  const isAdmin = await isAdminPhone(from)
   const { start, end } = getWeekRange()
 
   let query = supabase
@@ -3342,7 +3342,7 @@ async function handleTourneyApplyReply(from: string, text: string, session: Sess
 // ─── Admin: manager applications assignment flow ────────────────────────────
 
 async function handleManagerApplicationsStart(from: string, phoneNumberId: string) {
-  if (!isAdminPhone(from)) {
+  if (!await isAdminPhone(from)) {
     await sendTextMessage(from, 'Admin only.', phoneNumberId)
     return
   }
@@ -3789,7 +3789,7 @@ const MGMT_HINT = 'Reply with a number. Type CANCEL to stop.'
 // reachable from any mid-flow state, so the check is repeated at each one and a
 // non-admin's in-flight session is dropped rather than left half-open.
 async function mgmtGuard(from: string, phoneNumberId: string): Promise<boolean> {
-  if (isAdminPhone(from)) return true
+  if (await isAdminPhone(from)) return true
   await clearSession(from)
   await sendTextMessage(from, 'Admin only.', phoneNumberId)
   return false
@@ -5150,7 +5150,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     return
   }
   if (command === 'backdoor_submissions') {
-    if (!isAdminPhone(from)) {
+    if (!await isAdminPhone(from)) {
       await sendTextMessage(from, 'Admin only.', phoneNumberId)
       return
     }
@@ -5158,7 +5158,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     return
   }
   if (command === 'backdoor_admin') {
-    if (!isAdminPhone(from)) {
+    if (!await isAdminPhone(from)) {
       await sendTextMessage(from, 'Admin only.', phoneNumberId)
       return
     }
@@ -5201,7 +5201,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
   }
   // ─── Admin: club & manager management command ──────────────────────────────
   if (command === 'manage_clubs') {
-    if (!isAdminPhone(from)) {
+    if (!await isAdminPhone(from)) {
       await sendTextMessage(from, 'Admin only.', phoneNumberId)
       return
     }
@@ -5293,7 +5293,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     // submit fixtures on any date. If the pair has fixtures in multiple
     // tournaments/dates, the numbered list below lets the submitter pick the
     // correct one.
-    const isAdmin = isAdminPhone(from)
+    const isAdmin = await isAdminPhone(from)
     const { start: windowStart, end: windowEnd } = getSubmissionWindow()
     let query = supabase
       .from('fixtures')
@@ -5623,7 +5623,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     const { dateKey } = parsed
 
     // Non-admins can only submit games due today or within the last 7 days.
-    if (!isAdminPhone(from) && !isInSubmissionWindow(dateKey)) {
+    if (!await isAdminPhone(from) && !isInSubmissionWindow(dateKey)) {
       const fake = { scheduled_date: dateKey }
       const reason = submissionBlockReason(fake)
       if (reason) {
@@ -5685,7 +5685,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
         const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
 
         // Non-admins cannot submit out-of-window results — block with a clear message.
-        if (!isAdminPhone(from)) {
+        if (!await isAdminPhone(from)) {
           const reason = submissionBlockReason(cf)
           if (reason) {
             await clearSession(from)
@@ -5760,7 +5760,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
           const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
           const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
 
-          if (!isAdminPhone(from)) {
+          if (!await isAdminPhone(from)) {
             const reason = submissionBlockReason(cf)
             if (reason) {
               await clearSession(from)
@@ -5844,7 +5844,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
             const overrideWarning = isAlreadyConfirmed ? '\n\n⚠️ This result is already submitted. Submitting again will override the existing stats.' : ''
             const hint = '\n\nYour fixture isn\'t here? Type "check other date".'
 
-            if (!isAdminPhone(from)) {
+            if (!await isAdminPhone(from)) {
               const reason = submissionBlockReason(chosen)
               if (reason) {
                 await clearSession(from)
@@ -5971,7 +5971,7 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   // Final safety gate: non-admins may only submit results for games due today or
   // within the last 7 days. This prevents any bypass through the direct-bypass or
   // LLM-confirm paths.
-  if (!isAdminPhone(from)) {
+  if (!await isAdminPhone(from)) {
     const { data: gateFix } = await supabase
       .from('fixtures')
       .select('id, scheduled_date')
@@ -6277,7 +6277,7 @@ async function resetAndResubmit(from: string, session: SessionData, supabase: an
 
   // Final safety gate: non-admins may only submit results for games due today or
   // within the last 7 days.
-  if (!isAdminPhone(from)) {
+  if (!await isAdminPhone(from)) {
     const { data: RgateFix } = await supabase
       .from('fixtures')
       .select('id, scheduled_date')
@@ -6306,7 +6306,7 @@ async function resetAndResubmit(from: string, session: SessionData, supabase: an
     return
   }
 
-  if ((fixtureRow.whatsapp_reset_count || 0) >= MAX_WHATSAPP_RESETS && !isAdminPhone(from)) {
+  if ((fixtureRow.whatsapp_reset_count || 0) >= MAX_WHATSAPP_RESETS && !await isAdminPhone(from)) {
     console.log('[webhook] reset limit reached for fixture:', session.matched_fixture_id)
     await clearSession(from)
     await sendTextMessage(from, 'This match has already been reset twice. Contact admin at 0732509506 for further assistance.', phoneNumberId)
