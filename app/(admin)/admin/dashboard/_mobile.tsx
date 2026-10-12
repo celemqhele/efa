@@ -90,8 +90,10 @@ function FixtureDueCard({ fx }: { fx: any }) {
           awayTeamName={cleanTeamName(fx.away_team?.name) ?? ''}
           homeManagerName={fx.home_team?.manager?.username}
           homeManagerPhone={fx.home_team?.manager?.phone}
+          homeManagerOpenToReminders={fx.home_team?.manager?.open_to_reminders !== false}
           awayManagerName={fx.away_team?.manager?.username}
           awayManagerPhone={fx.away_team?.manager?.phone}
+          awayManagerOpenToReminders={fx.away_team?.manager?.open_to_reminders !== false}
           postponeRequest={fx._postpone ?? null}
           backdoorReports={fx._backdoors ?? []}
         />

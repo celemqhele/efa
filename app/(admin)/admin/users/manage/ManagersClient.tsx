@@ -21,6 +21,7 @@ interface Profile {
   avatar_url: string | null
   role: string
   phone?: string | null
+  open_to_reminders?: boolean
 }
 
 interface Props {
@@ -51,6 +52,10 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
   const [waInput, setWaInput] = useState('')
   const [waSaving, setWaSaving] = useState(false)
   const [waError, setWaError] = useState('')
+
+  // "Open to match reminders" toggle state
+  const [remindersSaving, setRemindersSaving] = useState(false)
+  const [remindersError, setRemindersError] = useState('')
 
   // Transfer manager data state
   const [transferOpen, setTransferOpen] = useState(false)
@@ -163,6 +168,30 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
     setWaInput(parts.local)
     setWaError('')
     setEditingWa(true)
+  }
+
+  // Toggle whether this manager is open to WhatsApp match reminders. When off,
+  // the dashboard reminder buttons for them render greyed out.
+  async function handleToggleReminders(userId: string, open: boolean) {
+    setRemindersSaving(true)
+    setRemindersError('')
+    try {
+      const res = await fetch('/api/admin/managers/set-open-to-reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, open }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to save')
+
+      setLocalProfiles((prev) =>
+        prev.map((p) => p.id === userId ? { ...p, open_to_reminders: data.open_to_reminders } : p)
+      )
+    } catch (err: any) {
+      setRemindersError(err.message)
+    } finally {
+      setRemindersSaving(false)
+    }
   }
 
   async function handleTransfer() {
@@ -401,6 +430,37 @@ export default function ManagersClient({ teams, profiles, managedTeamByUser, has
                         )}
                       </div>
                     )}
+                  </div>
+
+                  {/* Match reminders opt-in */}
+                  <div className="pt-2 border-t border-slate-100">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs text-text-muted font-medium">Open to match reminders</p>
+                        <p className="text-[10px] text-text-muted/70">
+                          {managerProfile.open_to_reminders === false
+                            ? 'Off — dashboard WhatsApp reminder buttons are greyed out'
+                            : 'On — dashboard WhatsApp reminder buttons are clickable'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={managerProfile.open_to_reminders !== false}
+                        onClick={() => handleToggleReminders(managerProfile.id, managerProfile.open_to_reminders === false)}
+                        disabled={remindersSaving}
+                        className={`relative w-10 h-6 rounded-full transition-colors shrink-0 disabled:opacity-50 ${
+                          managerProfile.open_to_reminders === false ? 'bg-slate-300' : 'bg-[#25D366]'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                            managerProfile.open_to_reminders === false ? 'translate-x-0' : 'translate-x-4'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    {remindersError && <p className="text-red-400 text-xs mt-1">{remindersError}</p>}
                   </div>
 
                   {/* Availability link */}

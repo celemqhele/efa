@@ -10,7 +10,7 @@ export default async function UsersManagePage() {
   // All profiles
   const { data: _profiles } = await supabase
     .from('profiles')
-    .select('id, username, role, avatar_url, phone, created_at')
+    .select('id, username, role, avatar_url, phone, created_at, open_to_reminders')
     .order('created_at', { ascending: false })
   const profiles = (_profiles ?? []) as any[]
 

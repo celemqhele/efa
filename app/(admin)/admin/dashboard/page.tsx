@@ -73,8 +73,8 @@ export default async function AdminDashboardPage() {
     .from('fixtures')
     .select(`
       id, matchday, status, scheduled_date, postponed_confirmed,
-      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone)),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone))
+      home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone, open_to_reminders)),
+      away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone, open_to_reminders))
     `)
     .or('status.in.(scheduled,awaiting_confirmation),and(status.eq.confirmed,postponed_confirmed.eq.true)')
     .lte('scheduled_date', todayEnd)

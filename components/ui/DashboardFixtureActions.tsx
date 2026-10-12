@@ -15,8 +15,10 @@ interface Props {
   awayTeamName?: string
   homeManagerName?: string | null
   homeManagerPhone?: string | null
+  homeManagerOpenToReminders?: boolean
   awayManagerName?: string | null
   awayManagerPhone?: string | null
+  awayManagerOpenToReminders?: boolean
   // A pending postponement request on this match: which side asked for it and
   // the proposed date, so the reminder can tell each side what is happening.
   postponeRequest?: { requesterSide: 'home' | 'away'; newDateLabel: string | null } | null
@@ -111,8 +113,10 @@ export default function DashboardFixtureActions({
   awayTeamName = '',
   homeManagerName,
   homeManagerPhone,
+  homeManagerOpenToReminders = true,
   awayManagerName,
   awayManagerPhone,
+  awayManagerOpenToReminders = true,
   postponeRequest = null,
   backdoorReports = [],
 }: Props) {
@@ -250,12 +254,28 @@ export default function DashboardFixtureActions({
   return (
     <div className="flex flex-col items-end gap-space-1 shrink-0" ref={actionsRef}>
       <div className="flex items-center gap-space-2 flex-wrap justify-end">
-        {/* WhatsApp buttons — the reminder text carries both portal links */}
+        {/* WhatsApp buttons — the reminder text carries both portal links. A
+            manager who opted out of match reminders (open_to_reminders=false)
+            gets a greyed, non-clickable button. */}
         {homeManagerPhone && (
-          <WhatsAppButton phone={homeManagerPhone} message={homeMsg} size="sm" label="H" />
+          <WhatsAppButton
+            phone={homeManagerPhone}
+            message={homeMsg}
+            size="sm"
+            label="H"
+            disabled={!homeManagerOpenToReminders}
+            disabledTitle="Not open to match reminders"
+          />
         )}
         {awayManagerPhone && (
-          <WhatsAppButton phone={awayManagerPhone} message={awayMsg} size="sm" label="A" />
+          <WhatsAppButton
+            phone={awayManagerPhone}
+            message={awayMsg}
+            size="sm"
+            label="A"
+            disabled={!awayManagerOpenToReminders}
+            disabledTitle="Not open to match reminders"
+          />
         )}
 
         <Button
