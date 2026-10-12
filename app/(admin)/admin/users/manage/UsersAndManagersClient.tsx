@@ -113,9 +113,9 @@ export default function UsersAndManagersClient({ data, variant }: Props) {
                             <td className="py-space-3 pr-space-4">
                               <div className="flex items-center gap-space-2">
                                 {applicant?.avatar_url ? (
-                                  <Image src={applicant.avatar_url} alt="" width={28} height={28} className="rounded-full object-cover" />
+                                  <Image src={applicant.avatar_url} alt="" width={28} height={28} className="shrink-0 rounded-full object-cover" />
                                 ) : (
-                                  <div className="w-7 h-7 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
+                                  <div className="w-[28px] h-[28px] shrink-0 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
                                     {applicant?.username?.[0]?.toUpperCase()}
                                   </div>
                                 )}
@@ -163,9 +163,9 @@ export default function UsersAndManagersClient({ data, variant }: Props) {
                       <div key={app.id} className="bg-bg-elevated/50 border border-border rounded-lg p-space-3 space-y-space-2">
                         <div className="flex items-center gap-space-2">
                           {applicant?.avatar_url ? (
-                            <Image src={applicant.avatar_url} alt="" width={28} height={28} className="rounded-full object-cover" />
+                            <Image src={applicant.avatar_url} alt="" width={28} height={28} className="shrink-0 rounded-full object-cover" />
                           ) : (
-                            <div className="w-7 h-7 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
+                            <div className="w-[28px] h-[28px] shrink-0 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
                               {applicant?.username?.[0]?.toUpperCase()}
                             </div>
                           )}
@@ -224,9 +224,9 @@ export default function UsersAndManagersClient({ data, variant }: Props) {
                           <td className="py-space-3 pr-space-4">
                             <div className="flex items-center gap-space-2">
                               {req.requesting_user?.avatar_url ? (
-                                <Image src={req.requesting_user.avatar_url} alt="" width={28} height={28} className="rounded-full object-cover" />
+                                <Image src={req.requesting_user.avatar_url} alt="" width={28} height={28} className="shrink-0 rounded-full object-cover" />
                               ) : (
-                                <div className="w-7 h-7 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
+                                <div className="w-[28px] h-[28px] shrink-0 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
                                   {req.requesting_user?.username?.[0]?.toUpperCase()}
                                 </div>
                               )}
@@ -259,9 +259,9 @@ export default function UsersAndManagersClient({ data, variant }: Props) {
                     <div key={req.id} className="bg-bg-elevated/50 border border-border rounded-lg p-space-3 space-y-space-2">
                       <div className="flex items-center gap-space-2">
                         {req.requesting_user?.avatar_url ? (
-                          <Image src={req.requesting_user.avatar_url} alt="" width={28} height={28} className="rounded-full object-cover" />
+                          <Image src={req.requesting_user.avatar_url} alt="" width={28} height={28} className="shrink-0 rounded-full object-cover" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
+                          <div className="w-[28px] h-[28px] shrink-0 rounded-full bg-border-subtle flex items-center justify-center text-xs text-text-muted">
                             {req.requesting_user?.username?.[0]?.toUpperCase()}
                           </div>
                         )}
@@ -307,9 +307,9 @@ export default function UsersAndManagersClient({ data, variant }: Props) {
                           <td className="py-space-3 pr-space-4">
                             <div className="flex items-center gap-space-3">
                               {profile.avatar_url ? (
-                                <Image src={profile.avatar_url} alt="" width={36} height={36} className="rounded-full object-cover" />
+                                <Image src={profile.avatar_url} alt="" width={36} height={36} className="shrink-0 rounded-full object-cover" />
                               ) : (
-                                <div className="w-9 h-9 rounded-full bg-border-subtle flex items-center justify-center text-sm font-bold text-text-muted">
+                                <div className="w-[36px] h-[36px] shrink-0 rounded-full bg-border-subtle flex items-center justify-center text-sm font-bold text-text-muted">
                                   {profile.username?.[0]?.toUpperCase()}
                                 </div>
                               )}
@@ -379,9 +379,9 @@ export default function UsersAndManagersClient({ data, variant }: Props) {
                     <div key={profile.id} className="bg-bg-elevated/50 border border-border rounded-lg p-space-3 space-y-space-2">
                       <div className="flex items-center gap-space-3">
                         {profile.avatar_url ? (
-                          <Image src={profile.avatar_url} alt="" width={36} height={36} className="rounded-full object-cover" />
+                          <Image src={profile.avatar_url} alt="" width={36} height={36} className="shrink-0 rounded-full object-cover" />
                         ) : (
-                          <div className="w-9 h-9 rounded-full bg-border-subtle flex items-center justify-center text-sm font-bold text-text-muted">
+                          <div className="w-[36px] h-[36px] shrink-0 rounded-full bg-border-subtle flex items-center justify-center text-sm font-bold text-text-muted">
                             {profile.username?.[0]?.toUpperCase()}
                           </div>
                         )}
