@@ -7,11 +7,16 @@ import ChangePasswordModal from '@/components/ui/ChangePasswordModal'
 /**
  * Global forced password prompt.
  *
- * Any account created from now on is stamped `profiles.must_change_password =
- * true` (migration 101) because it starts on the shared default password. On
- * mount — and on every SIGNED_IN — this checks the signed-in user's flag and,
- * if set, blocks the app with a non-dismissible "set a new password" modal
- * until they change it.
+ * The user is asked to set a new password when either:
+ *   - `profiles.must_change_password` is true (every new account, via the
+ *     migration 101 column default; also an admin override), OR
+ *   - `password_is_default()` returns true (migration 102) — an exact check for
+ *     any account still sitting on the shared default password, which catches
+ *     pre-update accounts and accounts reset back to the default.
+ *
+ * On mount — and on every SIGNED_IN — this checks the signed-in user and, if
+ * either is true, blocks the app with a non-dismissible "set a new password"
+ * modal until they change it.
  *
  * Mounted in the root layout so it appears wherever the user lands after login
  * (the home page is not under the (protected) group).
@@ -25,13 +30,18 @@ export default function FirstLoginPasswordPrompt() {
     let active = true
 
     async function check(userId: string, userEmail: string | undefined) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('must_change_password')
-        .eq('id', userId)
-        .maybeSingle()
+      const [profileRes, defaultRes] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('must_change_password')
+          .eq('id', userId)
+          .maybeSingle(),
+        supabase.rpc('password_is_default'),
+      ])
       if (!active) return
-      setMustChange(!!(data as { must_change_password?: boolean } | null)?.must_change_password)
+      const flagged = !!(profileRes.data as { must_change_password?: boolean } | null)
+        ?.must_change_password
+      setMustChange(flagged || defaultRes.data === true)
       setEmail(userEmail ?? '')
     }
 
