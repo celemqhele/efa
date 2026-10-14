@@ -11,6 +11,12 @@ interface BottomSheetProps {
   children: React.ReactNode
   /** Override the default max-width on desktop (default: max-w-md) */
   desktopMaxWidth?: string
+  /**
+   * When false the sheet cannot be dismissed: no close X, Escape and the
+   * backdrop are ignored. Used by the forced first-login password prompt,
+   * which must be completed before the user continues.
+   */
+  dismissible?: boolean
 }
 
 export default function BottomSheet({
@@ -19,19 +25,20 @@ export default function BottomSheet({
   title,
   children,
   desktopMaxWidth = 'max-w-md',
+  dismissible = true,
 }: BottomSheetProps) {
   const isMobile = useIsMobile()
 
   useEffect(() => {
     if (!open) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape' && dismissible) onClose() }
     window.addEventListener('keydown', handler)
     document.body.style.overflow = 'hidden'
     return () => {
       window.removeEventListener('keydown', handler)
       document.body.style.overflow = ''
     }
-  }, [open, onClose])
+  }, [open, onClose, dismissible])
 
   if (!open) return null
 
@@ -39,19 +46,21 @@ export default function BottomSheet({
   if (!isMobile) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={dismissible ? onClose : undefined} />
         <div
           className={`relative z-10 w-full ${desktopMaxWidth} bg-bg-surface border border-border rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-fast`}
         >
           {title && (
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-lg font-bold text-text-primary">{title}</h2>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              {dismissible && (
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )}
           <div className={title ? '' : 'p-6'}>{children}</div>
@@ -64,7 +73,7 @@ export default function BottomSheet({
   return (
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" onClick={dismissible ? onClose : undefined} />
 
       {/* Sheet */}
       <div
@@ -79,12 +88,14 @@ export default function BottomSheet({
         {title && (
           <div className="flex items-center justify-between px-6 pb-3 pt-1">
             <h2 className="text-lg font-bold text-text-primary">{title}</h2>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {dismissible && (
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         )}
 

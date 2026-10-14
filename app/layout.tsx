@@ -4,6 +4,7 @@ import ThemeProvider from '@/components/ui/ThemeProvider'
 import PushNotificationInit from '@/components/ui/PushNotificationInit'
 import GlobalNotifications from '@/components/ui/GlobalNotifications'
 import UpdateBanner from '@/components/ui/UpdateBanner'
+import FirstLoginPasswordPrompt from '@/components/ui/FirstLoginPasswordPrompt'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://efa-fxyk.vercel.app'),
@@ -56,6 +57,7 @@ export default function RootLayout({
           <PushNotificationInit />
           <GlobalNotifications />
           <UpdateBanner />
+          <FirstLoginPasswordPrompt />
         </ThemeProvider>
         <div id="portal-root" />
       </body>

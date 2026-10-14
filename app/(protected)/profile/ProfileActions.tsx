@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Lock } from 'lucide-react'
-import ChangePasswordModal from './ChangePasswordModal'
+import ChangePasswordModal from '@/components/ui/ChangePasswordModal'
 
 export default function ProfileActions({ userEmail }: { userEmail: string }) {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
