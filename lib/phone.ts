@@ -11,6 +11,7 @@ export const COUNTRY_CODES: Array<{ code: string; label: string }> = [
   { code: '31', label: '+31 Netherlands' },
   { code: '49', label: '+49 Germany' },
   { code: '389', label: '+389 North Macedonia' },
+  { code: '880', label: '+880 Bangladesh' },
 ]
 
 export function normalizePhoneDigits(phone: string | null | undefined): string {
@@ -57,7 +58,12 @@ export function parsePhoneParts(
     return { countryCode: DEFAULT_COUNTRY_CODE, local: digits.slice(1) }
   }
 
-  return { countryCode: DEFAULT_COUNTRY_CODE, local: digits }
+  // Already-international number whose country code we don't have in the list
+  // (e.g. a non-listed non-SA code). Do NOT assume +27 — that mislabelled
+  // every unknown country as South Africa in the reminder template. Hand the
+  // whole digit string back as the local part with no country code; callers
+  // render it as a bare "+<digits>" and re-saving preserves it unchanged.
+  return { countryCode: '', local: digits }
 }
 
 // Combines a selected country code + local input into a stored phone (digits
@@ -83,7 +89,9 @@ export function canonicalPhone(phone: string | null | undefined): string {
 // can decide between omitting the line and printing a placeholder.
 export function formatPhoneDisplay(phone: string | null | undefined): string {
   const { countryCode, local } = parsePhoneParts(phone)
-  if (!countryCode || !local) return ''
+  if (!local) return ''
+  // Unknown country code: show what we actually have rather than inventing +27.
+  if (!countryCode) return `+${local}`
   if (local.length <= 2) return `+${countryCode} ${local}`
   return `+${countryCode} ${local.slice(0, 2)} ${local.slice(2)}`
 }
@@ -103,6 +111,7 @@ const PHONE_DIGIT_LENGTHS: Record<string, { min: number; max: number }> = {
   '31': { min: 11, max: 11 },
   '49': { min: 8, max: 13 },
   '389': { min: 11, max: 11 },
+  '880': { min: 13, max: 13 },
 }
 
 export function phoneDigitLengthBounds(countryCode: string): { min: number; max: number } {
