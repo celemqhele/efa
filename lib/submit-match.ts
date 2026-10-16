@@ -22,6 +22,14 @@ export const MAX_POSTPONE_DAYS = 7
 // it is auto-declined and the match stays on its original date.
 export const POSTPONE_RESPONSE_HOURS = 24
 
+// A manager may only hold ONE postponement request open at a time (across all
+// their matches), and once a request is APPROVED they must wait this many hours
+// before asking for another. Only approved requests start the cooldown — a
+// declined or auto-expired request never does. The one-at-a-time half is also
+// enforced in the database by the partial unique index
+// postpone_requests_pending_requester_idx (migration 103).
+export const POSTPONE_COOLDOWN_HOURS = 24
+
 // A result is 'real' when someone actually recorded the game (a manager proof
 // upload or an admin decision). Auto-finalised outcomes (0-0 void / auto-approved
 // backdoor) have no finalised_by or screenshot and can still be replaced by an
@@ -266,6 +274,28 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   const pendingRequest = requestRow && requestRow.status === 'pending' ? requestRow : null
   const requestFromViewer = pendingRequest ? String(pendingRequest.requested_by) === viewer.userId : false
 
+  // The viewer's own postponement activity, for the "one at a time" + "1-day
+  // cooldown after an approved one" rule. A live request on ANOTHER match blocks
+  // a new request here, and an approved request puts the manager on cooldown.
+  // Declined / auto-expired requests are never returned (only approved count).
+  const { data: myPostponeRows } = await admin
+    .from('postpone_requests')
+    .select('id, fixture_id, status, responded_at, updated_at')
+    .eq('requested_by', viewer.userId)
+    .in('status', ['pending', 'accepted'])
+
+  const myOtherPending = (myPostponeRows ?? []).find(
+    (r: any) => r.status === 'pending' && String(r.fixture_id) !== String(fixture.id)
+  )
+  const myApprovedAtMs = (myPostponeRows ?? [])
+    .filter((r: any) => r.status === 'accepted')
+    .reduce((max: number, r: any) => {
+      const t = new Date(r.responded_at ?? r.updated_at).getTime()
+      return t > max ? t : max
+    }, 0)
+  const myCooldownUntilMs = myApprovedAtMs + POSTPONE_COOLDOWN_HOURS * 60 * 60 * 1000
+  const myCooldownUntil = myApprovedAtMs > 0 && Date.now() < myCooldownUntilMs ? new Date(myCooldownUntilMs) : null
+
   // 1. Submit result
   // The WhatsApp bot lets a manager override an already-submitted score up to
   // MAX_WHATSAPP_RESETS (2) times via fixtures.whatsapp_reset_count, and lets a
@@ -316,6 +346,10 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       postponeBlock = 'This match can no longer be postponed.'
     } else if (viewer.isAdmin && viewer.side === null) {
       postponeBlock = 'Managers request postponements from their own login.'
+    } else if (myOtherPending) {
+      postponeBlock = 'You already have a postponement waiting for an answer. Only one at a time — wait for that one to be resolved.'
+    } else if (myCooldownUntil) {
+      postponeBlock = `You can only postpone one match a day. You can ask again after ${myCooldownUntil.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg' })}.`
     }
   }
 

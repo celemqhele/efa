@@ -179,7 +179,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       key: 'postpone',
       num: '4',
       label: 'Postpone the game',
-      sub: 'Pick a new date up to 7 days away and give a reason',
+      sub: 'Pick a new date up to 7 days away and give a reason (one at a time)',
       block: state.rules.postponeBlock,
     },
   ]
@@ -1102,6 +1102,10 @@ function PostponePanel({
         Your opponent must open this link to accept. They have 24 hours to answer, after which the request is
         declined. If they accept, the result is locked 3-0 in their favour and the match moves to your new date — you
         can still play it and submit the real score there.
+      </p>
+      <p className="mt-1 text-xs text-text-muted">
+        You can only have one postponement open at a time, and after one is approved you must wait a day before asking
+        for another.
       </p>
       <form
         className="mt-4 space-y-4"

@@ -8,7 +8,7 @@ import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { analyzeImageBuffer, matchStatsToDbColumns } from '@/lib/ocr'
 import { normalizeToLandscape } from '@/lib/whatsapp'
-import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
+import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 function parseScore(value: FormDataEntryValue | null): number | null {
   if (value === null) return null
@@ -706,6 +706,43 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
     .maybeSingle()
   if (pending) return error('There is already a postponement request waiting for your opponent.')
 
+  // One at a time per manager: a live request the manager holds on ANY match
+  // blocks a new one (only approved requests are free to be answered again).
+  const { data: myOtherPending } = await admin
+    .from('postpone_requests')
+    .select('id, fixture_id')
+    .eq('requested_by', viewer.userId)
+    .eq('status', 'pending')
+    .neq('fixture_id', fixture.id)
+    .limit(1)
+    .maybeSingle()
+  if (myOtherPending) {
+    return error(
+      'You already have a postponement waiting for an answer. Wait for that one to be resolved before asking to move another match.'
+    )
+  }
+
+  // 1-day cooldown that starts only when a request is APPROVED. A declined or
+  // auto-expired request is free, so it never blocks the next ask.
+  const { data: lastApproved } = await admin
+    .from('postpone_requests')
+    .select('responded_at, updated_at')
+    .eq('requested_by', viewer.userId)
+    .eq('status', 'accepted')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const approvedAtMs = lastApproved
+    ? new Date(lastApproved.responded_at ?? lastApproved.updated_at).getTime()
+    : 0
+  const cooldownUntilMs = approvedAtMs + POSTPONE_COOLDOWN_HOURS * 60 * 60 * 1000
+  if (approvedAtMs > 0 && Date.now() < cooldownUntilMs) {
+    const retry = new Date(cooldownUntilMs)
+    return error(
+      `You can only postpone one match a day. You can ask again after ${retry.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Johannesburg' })}.`
+    )
+  }
+
   const { data: row, error: insertErr } = await admin
     .from('postpone_requests')
     .insert({
@@ -719,7 +756,9 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
     .single()
   if (insertErr) {
     console.error('[submit-match] postpone request insert failed:', insertErr.message)
-    if (String(insertErr.code) === '23505') return error('There is already a postponement request for this match.')
+    if (String(insertErr.code) === '23505') {
+      return error('You or this match already has a postponement request waiting. Only one at a time.')
+    }
     return error('Failed to send the request. Try again.', 500)
   }
 
