@@ -6,7 +6,7 @@ import { notifyBackdoorDecision } from '@/lib/backdoor-notify'
 import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { getSastDateKey } from '@/lib/app-time'
-import { postponeWindow } from '@/lib/submit-match'
+import { GRACE_DAYS, POSTPONE_RESPONSE_HOURS } from '@/lib/submit-match'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 // Daily at 02:00 SAST (00:00 UTC): any match due on a previous matchday that is
@@ -14,6 +14,8 @@ import { KO_ROUNDS } from '@/lib/tournament-rounds'
 //   * no backdoor application  -> confirmed 0-0 (both absent, no points)
 //   * backdoor application(s)  -> auto-approved (single claim: 3-0 to the
 //     claimant; both sides claimed: 0-0), mirroring the admin approve flow.
+// The cutoff sits one day further back than the matchday so the grace window
+// (match day + GRACE_DAYS) always gets its full day before anything is locked.
 // Passing ?dryRun=1 logs the intended outcome per fixture without writing.
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('Authorization')
@@ -24,9 +26,9 @@ export async function GET(request: NextRequest) {
   const dryRun = new URL(request.url).searchParams.get('dryRun') === '1'
   const supabase = await createAdminClient()
 
-  // Previous SAST matchday: at 02:00 SAST this is the day whose fixtures are
-  // due; anything with scheduled_date <= yesterday is overdue/unplayed.
-  const yesterday = getSastDateKey(new Date(), -1)
+  // Overdue cutoff: at 02:00 SAST the fixtures due on or before (yesterday -
+  // GRACE_DAYS) are fully out of their submission window and safe to finalise.
+  const finaliseCutoff = getSastDateKey(new Date(), -(GRACE_DAYS + 1))
 
   // Vacant placeholder team(s) are owned by sweep_vacant_slots (hourly) — skip
   // them so a vacancy resolves to its 0-3/3-0/0-0, never a "both absent" 0-0.
@@ -48,7 +50,7 @@ export async function GET(request: NextRequest) {
     `)
     .eq('status', 'scheduled')
     .not('scheduled_date', 'is', null)
-    .lte('scheduled_date', yesterday)
+    .lte('scheduled_date', finaliseCutoff)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -63,34 +65,38 @@ export async function GET(request: NextRequest) {
     )
   })
 
-  // A postponement request in flight keeps the fixture open for its whole
-  // 7-day-after-deadline window (reviewer can still accept or decline). Inside
-  // the window we skip auto-finalise; a stale request past the window is
-  // expired (deleted) so the fixture still gets finalised.
+  // A postponement request in flight holds the fixture open while its 24-hour
+  // answer window runs (the reviewer can still accept or decline). Inside that
+  // window we skip auto-finalise; a request already past POSTPONE_RESPONSE_HOURS
+  // is declined here as well (the hourly expire cron normally gets there first)
+  // so the fixture still gets finalised instead of hanging forever.
   const skippedPendingRequest: string[] = []
   const expiredPendingRequest: string[] = []
   if (targets.length > 0) {
     const { data: pendingPostpone } = await supabase
       .from('postpone_requests')
-      .select('id, fixture_id')
+      .select('id, fixture_id, created_at')
       .eq('status', 'pending')
       .in('fixture_id', targets.map((t) => t.id))
+    const responseMs = POSTPONE_RESPONSE_HOURS * 60 * 60 * 1000
+    const nowMs = Date.now()
     const staleIds: string[] = []
-    const byFixture = new Map<string, string[]>()
+    const byFixture = new Map<string, { id: string; fresh: boolean }[]>()
     for (const p of (pendingPostpone ?? []) as any[]) {
       const fid = String(p.fixture_id)
-      const bucket = byFixture.get(fid) ?? []
-      bucket.push(String(p.id))
-      byFixture.set(fid, bucket)
+      const fresh = nowMs - new Date(p.created_at).getTime() < responseMs
+      byFixture.set(fid, [...(byFixture.get(fid) ?? []), { id: String(p.id), fresh }])
     }
-    for (const fid of byFixture.keys()) {
-      const fx = targets.find((t) => String(t.id) === fid)
-      const dateKey = fx?.scheduled_date ? String(fx.scheduled_date).slice(0, 10) : ''
-      if (fx && (!dateKey || postponeWindow(dateKey) === null)) skippedPendingRequest.push(fid)
-      else staleIds.push(...(byFixture.get(fid) ?? []))
+    for (const [fid, reqs] of byFixture.entries()) {
+      if (reqs.some((r) => r.fresh)) skippedPendingRequest.push(fid)
+      else staleIds.push(...reqs.map((r) => r.id))
     }
     if (staleIds.length > 0) {
-      await supabase.from('postpone_requests').delete().in('id', staleIds)
+      const nowIso = new Date().toISOString()
+      await supabase
+        .from('postpone_requests')
+        .update({ status: 'declined', responded_at: nowIso, updated_at: nowIso })
+        .in('id', staleIds)
       expiredPendingRequest.push(...staleIds)
     }
     const skippedSet = new Set(skippedPendingRequest)
@@ -176,7 +182,7 @@ export async function GET(request: NextRequest) {
     .select('id, tournament_id, round_type, home_team_id, away_team_id')
     .eq('postponed_confirmed', true)
     .not('scheduled_date', 'is', null)
-    .lte('scheduled_date', yesterday)
+    .lte('scheduled_date', finaliseCutoff)
 
   for (const fx of (movedPast ?? []) as any[]) {
     try {

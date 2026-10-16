@@ -305,8 +305,9 @@ export default async function FixtureDetailPage({ params }: PageProps) {
     .maybeSingle()
   const matchCode = codeRow?.code ?? null
 
-  // Managers lose the ability to submit or change the score once the 7-day
-  // grace period after the match day has lapsed; admins can always correct it.
+  // Managers lose the ability to submit or change the score once the grace
+  // period after the match day (match day + 1 day) has lapsed; admins can
+  // always correct it.
   const fixtureDateKey = String((fixture as any)?.scheduled_date ?? '').slice(0, 10)
   const graceEnded = gracePeriodEnded(fixtureDateKey)
   const submitDisabled = canSubmitMatch && !isAdmin && graceEnded

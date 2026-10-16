@@ -147,6 +147,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
     reason: string
     requestedByName: string | null
     respondedByName: string | null
+    expiresAt: string | null
   }
 
   // ── Home: match header + four options ───────────────────────────────────────
@@ -209,9 +210,12 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
         {state.rules.graceEnded && (
           <div className="mt-2 rounded-lg border border-feedback-error/40 bg-feedback-error/10 px-3 py-2 text-xs text-feedback-error">
             <p className="font-bold uppercase tracking-wide">
-              This match&apos;s 7 day grace period has ended
+              This match&apos;s grace period has ended
             </p>
-            <p className="mt-1">It can no longer be changed or postponed.</p>
+            <p className="mt-1">
+              Results, reports and postponements were only open on the match day and the day after. It can no longer be
+              changed, reported or postponed.
+            </p>
           </div>
         )}
 
@@ -236,10 +240,19 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
         )}
 
         {!respondTo && req && req.status === 'pending' && (
-          <div className="mt-2 rounded-lg border border-feedback-warning/40 bg-feedback-warning/10 px-3 py-2 text-xs text-text-secondary">
+          <div
+            className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+              req.expiresAt && Date.now() > new Date(req.expiresAt).getTime()
+                ? 'border-feedback-error/40 bg-feedback-error/10 text-feedback-error'
+                : 'border-feedback-warning/40 bg-feedback-warning/10 text-text-secondary'
+            }`}
+          >
             Postponement requested by{' '}
             <strong className="text-feedback-warning">{req.requestedByName ?? 'a manager'}</strong> to{' '}
-            <strong className="text-text-primary">{formatDate(req.newDate)}</strong>. Waiting on the opponent's answer.
+            <strong className="text-text-primary">{formatDate(req.newDate)}</strong>.{' '}
+            {req.expiresAt && Date.now() > new Date(req.expiresAt).getTime()
+              ? 'Your opponent did not answer within 24 hours, so this request is being declined and the match stays on its original date.'
+              : "Waiting on the opponent's answer — they have 24 hours, after which the request is declined."}
             {req.reason ? ` Reason: ${req.reason}` : ''}
           </div>
         )}
@@ -291,37 +304,51 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
             New date: <strong>{formatDate(respondTo.newDate)}</strong>
           </p>
           <p className="mt-1 text-sm text-text-secondary">Reason: {respondTo.reason}</p>
+          <p className="mt-1 text-xs font-semibold text-feedback-warning">
+            You have 24 hours to answer — after that the request is declined and the match stays on its original date.
+          </p>
           <p className="mt-2 text-xs text-text-muted">
             Accepting locks the result 3-0 in your favour and the requester loses 0-3. The match stays on the new
             date so it can still be played and submitted for real.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {!confirmAccept ? (
-              <Button variant="primary" onClick={() => setConfirmAccept(true)} disabled={busy}>
-                Accept
-              </Button>
-            ) : (
+          <p className="mt-1 text-xs text-text-muted">
+            If you decline, the match stays on its original date and a not-responding report is filed for you against
+            your opponent.
+          </p>
+          {respondTo.expired ? (
+            <p className="mt-3 rounded-lg border border-feedback-error/40 bg-feedback-error/10 px-3 py-2 text-xs font-semibold text-feedback-error">
+              This request expired after 24 hours without an answer, so it is being declined. The match stays on its
+              original date.
+            </p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {!confirmAccept ? (
+                <Button variant="primary" onClick={() => setConfirmAccept(true)} disabled={busy}>
+                  Accept
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  disabled={busy}
+                  onClick={() => send(formFor('postponeRespond', { accept: '1' }))}
+                >
+                  Yes, lock the 3-0
+                </Button>
+              )}
               <Button
-                variant="primary"
-                disabled={busy}
-                onClick={() => send(formFor('postponeRespond', { accept: '1' }))}
+                variant="secondary"
+                disabled={busy || confirmAccept}
+                onClick={() => send(formFor('postponeRespond', { accept: '0' }))}
               >
-                Yes, lock the 3-0
+                Decline
               </Button>
-            )}
-            <Button
-              variant="secondary"
-              disabled={busy || confirmAccept}
-              onClick={() => send(formFor('postponeRespond', { accept: '0' }))}
-            >
-              Decline
-            </Button>
-            {confirmAccept && (
-              <Button variant="ghost" disabled={busy} onClick={() => setConfirmAccept(false)}>
-                Cancel
-              </Button>
-            )}
-          </div>
+              {confirmAccept && (
+                <Button variant="ghost" disabled={busy} onClick={() => setConfirmAccept(false)}>
+                  Cancel
+                </Button>
+              )}
+            </div>
+          )}
         </Card>
       )}
 
@@ -1045,6 +1072,7 @@ function PostponePanel({
   const max = isoDate(addDays(today, 7))
 
   if (request && request.status === 'pending') {
+    const expired = request.expiresAt ? Date.now() > new Date(request.expiresAt).getTime() : false
     return (
       <Card>
         <h2 className="text-base font-black text-text-primary">4. Postpone the game</h2>
@@ -1052,6 +1080,17 @@ function PostponePanel({
           You already asked to move this game to <strong>{formatDate(request.newDate)}</strong>. Your opponent must
           open this same link to accept or decline.
         </p>
+        {expired ? (
+          <p className="mt-2 rounded-lg border border-feedback-error/40 bg-feedback-error/10 px-3 py-2 text-xs font-semibold text-feedback-error">
+            Your opponent did not answer within 24 hours, so this request is being declined and the match stays on
+            its original date.
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-text-muted">
+            They have 24 hours to answer. If they do not, the request is automatically declined and the match stays on
+            its original date.
+          </p>
+        )}
       </Card>
     )
   }
@@ -1060,8 +1099,9 @@ function PostponePanel({
     <Card>
       <h2 className="text-base font-black text-text-primary">4. Postpone the game</h2>
       <p className="mt-1 text-xs text-text-muted">
-        Your opponent must open this link to accept. If they accept, the result is locked 3-0 in their favour and the
-        match moves to your new date — you can still play it and submit the real score there.
+        Your opponent must open this link to accept. They have 24 hours to answer, after which the request is
+        declined. If they accept, the result is locked 3-0 in their favour and the match moves to your new date — you
+        can still play it and submit the real score there.
       </p>
       <form
         className="mt-4 space-y-4"

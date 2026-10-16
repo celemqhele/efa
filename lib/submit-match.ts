@@ -8,43 +8,39 @@ import { getSastDateKey } from '@/lib/app-time'
 
 export const APP_BASE = 'https://efa-fxyk.vercel.app'
 
-// How far a new postponement date may be moved (future side) and how long the
-// two managers still have past the deadline to complete one (request by the
-// requester, accept/decline by the reviewer).
+// How long after the deadline (the fixture's scheduled match day) a manager may
+// still submit a result / backdoor report or request a postponement: the match
+// day PLUS the next day (1 day of grace). Once lapsed the match is final for
+// managers — only an admin can still edit it.
+export const GRACE_DAYS = 1
+
+// How far ahead a new postponement date may be moved (future side of the
+// proposed date).
 export const MAX_POSTPONE_DAYS = 7
 
-// The postpone option Stays open for MAX_POSTPONE_DAYS after the deadline
-// (the fixture's scheduled date). Only the lower bound matters here — the
-// future side is governed by MAX_POSTPONE_DAYS on the proposed new date.
-export function postponeWindow(dateKey: string, now = new Date()): string | null {
-  if (!dateKey) return null
-  const startKey = getSastDateKey(now, -MAX_POSTPONE_DAYS)
-  if (dateKey < startKey) {
-    return 'This match is more than 7 days past its deadline, so it can no longer be postponed.'
-  }
-  return null
-}
+// How long the opponent has to accept or decline a postponement request before
+// it is auto-declined and the match stays on its original date.
+export const POSTPONE_RESPONSE_HOURS = 24
 
 // A result is 'real' when someone actually recorded the game (a manager proof
 // upload or an admin decision). Auto-finalised outcomes (0-0 void / auto-approved
 // backdoor) have no finalised_by or screenshot and can still be replaced by an
-// agreed postponement inside the 7-day-after-deadline window.
-// The grace period runs for MAX_POSTPONE_DAYS (7) days after the match's
-// scheduled (match) day. While it is open a manager can still POSTPONE the
-// fixture or CHANGE an already-settled (real) result. Once it has lapsed
-// (dateKey strictly before today-7) the match is final for managers — only an
-// admin can still edit it. Completing a result for the first time (replacing a
-// 0-0 void or an auto-approved backdoor placeholder) follows the same 7-day
-// submission window.
+// agreed postponement inside the after-deadline grace window.
+// The grace period runs for GRACE_DAYS (1) after the match's scheduled (match)
+// day. While it is open a manager can still POSTPONE the fixture or CHANGE an
+// already-settled (real) result. Once it has lapsed (dateKey strictly before
+// today-1) the match is final for managers — only an admin can still edit it.
+// Completing a result for the first time (replacing a 0-0 void or an
+// auto-approved backdoor placeholder) follows the same submission window.
 export function gracePeriodEnded(dateKey: string, now = new Date()): boolean {
   if (!dateKey) return false
-  return dateKey < getSastDateKey(now, -MAX_POSTPONE_DAYS)
+  return dateKey < getSastDateKey(now, -GRACE_DAYS)
 }
 
 export function deadlineBlock(dateKey: string, now = new Date()): string | null {
   if (!dateKey) return null
   if (gracePeriodEnded(dateKey, now)) {
-    return 'This match is past its deadline, so it can no longer be changed or postponed.'
+    return 'This match is past its deadline, so it can no longer be changed, reported or postponed.'
   }
   return null
 }
@@ -68,10 +64,12 @@ export function dateKeyOf(fixture: any): string {
   return String(fixture.scheduled_date).slice(0, 10)
 }
 
-// Same window as the bot (webhook route.ts submissionBlockReason): today-7..today+7.
+// Same window as the bot (webhook route.ts submissionBlockReason): today-1..today+7.
+// A match may be submitted on its match day and the day after (GRACE_DAYS), or
+// up to 7 days in the future (held as 'confirmed_pending' until then).
 export function windowBlock(dateKey: string, now = new Date()): string | null {
   if (!dateKey) return null
-  const startKey = getSastDateKey(now, -7)
+  const startKey = getSastDateKey(now, -GRACE_DAYS)
   const endKey = getSastDateKey(now, 7)
   if (dateKey >= startKey && dateKey <= endKey) return null
   if (dateKey > endKey) {
@@ -79,7 +77,7 @@ export function windowBlock(dateKey: string, now = new Date()): string | null {
     const label = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
     return `This game is more than 7 days away, so it can't be submitted yet. Come back on the match day (${label}).`
   }
-  return 'This match is older than 7 days, so it can no longer be submitted here.'
+  return 'This match is older than a day, so it can no longer be submitted here. Send the result on the match day or the day after.'
 }
 
 export function labelDate(dateKey: string): string {
@@ -302,11 +300,11 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   }
 
   // 4. Postpone
-  // Managers can only request a postponement up to the match's deadline (its
-  // scheduled day). Once the day has passed the match is final as-is: it may be
-  // a real played result, or it will be auto-finalised and replaced with a real
-  // first submission inside the 7-day window. Completing an already-pending
-  // request (accept/decline) stays open for the responder.
+  // Managers can request a postponement on the match day or the day after
+  // (GRACE_DAYS). Once that has passed the match is final as-is: it may be a
+  // real played result, or it will be auto-finalised and replaced with a real
+  // first submission. A live request holds the fixture open for its 24-hour
+  // response window, during which the opponent can accept or decline.
   let postponeBlock: string | null = null
   if (viewer.side === null && !viewer.isAdmin) postponeBlock = 'Only the two managers can request a postponement.'
   else if (isPlaceholder) postponeBlock = 'This match was already postponed. The postpone option is closed.'
@@ -326,6 +324,8 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   if (viewer.side === null && !viewer.isAdmin) backdoorBlock = 'Only the two managers can report an opponent.'
   else if (isPlaceholder) {
     backdoorBlock = 'This match was postponed and is still to be played. Report the opponent once the new date has passed.'
+  } else if (deadlineBlock(dateKey)) {
+    backdoorBlock = 'This match is past its deadline, so the opponent can no longer be reported here.'
   } else if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation') {
     backdoorBlock = 'This match is no longer open for opponent-not-responding reports.'
   }
@@ -362,7 +362,11 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
 
 
   // Names behind the postpone request so the status is readable for any viewer
-  // (admins who open a manager's link see who asked and who answered).
+  // (admins who open a manager's link see who asked and who answered). expiresAt
+  // is the end of the opponent's 24-hour answer window.
+  const postponeExpiresAt = requestRow?.created_at
+    ? new Date(new Date(requestRow.created_at).getTime() + POSTPONE_RESPONSE_HOURS * 60 * 60 * 1000).toISOString()
+    : null
   const postponeRequest = requestRow
     ? {
         id: requestRow.id,
@@ -378,8 +382,15 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
         respondedByName: requestRow.responded_by
           ? await usernameLabel(String(requestRow.responded_by))
           : null,
+        createdAt: requestRow.created_at ?? null,
+        expiresAt: postponeExpiresAt,
       }
     : null
+
+  // A pending request whose 24-hour answer window has lapsed is treated as
+  // expired here so the portal stops offering accept/decline in the gap before
+  // the hourly expire cron (or the auto-finalise cron) declines it in the DB.
+  const postponeExpired = !!postponeExpiresAt && Date.now() > new Date(postponeExpiresAt).getTime()
 
   let respondTo: any = null
   if (pendingRequest && viewer.side !== null && !requestFromViewer) {
@@ -388,6 +399,8 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       newDate: String(pendingRequest.new_date).slice(0, 10),
       reason: pendingRequest.reason,
       fromName: postponeRequest?.requestedByName ?? 'Your opponent',
+      expiresAt: postponeExpiresAt,
+      expired: postponeExpired,
       mine: false,
     }
   }
@@ -474,12 +487,12 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       backdoorBlock,
       backdoorMenuBlock,
       disputeBlock,
-      // True once the 7-day grace period has lapsed — no more changes or
-      // postponements for managers.
+      // True once the grace period (match day + 1) has lapsed — no more
+      // changes, reports or postponements for managers.
       graceEnded: gracePeriodEnded(dateKey),
       canPostpone: !postponeBlock,
       canRequest: !pendingRequest && !postponeBlock,
-      canRespond: !!respondTo,
+      canRespond: !!respondTo && !postponeExpired,
       canDispute: !disputeBlock,
     },
   }

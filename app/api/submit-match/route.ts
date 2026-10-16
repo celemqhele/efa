@@ -8,7 +8,7 @@ import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { analyzeImageBuffer, matchStatsToDbColumns } from '@/lib/ocr'
 import { normalizeToLandscape } from '@/lib/whatsapp'
-import { APP_BASE, MAX_POSTPONE_DAYS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeWindow, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
+import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 function parseScore(value: FormDataEntryValue | null): number | null {
   if (value === null) return null
@@ -426,6 +426,9 @@ async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
   if (fixture.postponed_confirmed) {
     return error('This match was postponed and is still to be played. Report the opponent once the new date has passed.')
   }
+  if (deadlineBlock(dateKeyOf(fixture))) {
+    return error('This match is past its deadline, so the opponent can no longer be reported here.')
+  }
   if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation') {
     if (fixture.result) {
       return error(
@@ -677,11 +680,11 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
   if (reason.length < 3) return error('Give a short reason for the postponement.')
   if (reason.length > 300) return error('Reason is too long (max 300 characters).')
 
-  // Managers can only request a postponement up to the match's deadline (its
-  // scheduled day). Once the day has passed the match is final as-is: it may be
-  // a real played result, or it will be auto-finalised and a real first
-  // submission replaces the placeholder inside the 7-day window. Completing an
-  // already-pending request (accept/decline) keeps the 7-day response window.
+  // Managers can only request a postponement on the match day or the day after
+  // (GRACE_DAYS). Once that window has passed the match is final as-is: it may
+  // be a real played result, or it will be auto-finalised and replaced with a
+  // real first submission. The opponent then has POSTPONE_RESPONSE_HOURS (24)
+  // to accept or decline, or the request is auto-declined.
   const dlBlock = deadlineBlock(dateKeyOf(fixture))
   if (dlBlock) return error('This match is past its deadline, so it can no longer be postponed.')
   if (isRealResult(fixture.result)) return error('This match already has a result, so it can no longer be postponed.')
@@ -729,8 +732,10 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
       user_id: opponent.managerId,
       type: 'fixture_postponed',
       title: 'Postponement requested',
-      body: `${matchLabel} moved to ${labelDate(newDate)} — open the match link to accept or decline.`,
+      body: `${matchLabel} moved to ${labelDate(newDate)} — open the match link to accept or decline. You have ${POSTPONE_RESPONSE_HOURS} hours to answer.`,
       data: { fixture_id: fixture.id, postpone_request_id: row.id, url: shareLink },
+      // The browser push must open the portal page where the answer button is.
+      push_url: shareLink,
     })
   }
   if (notifications.length) {
@@ -760,7 +765,7 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
   return NextResponse.json({
     ok: true,
     title: 'Postponement requested',
-    message: `Asked to move ${matchLabel} to ${labelDate(newDate)}. Your opponent must open the same link to accept.`,
+    message: `Asked to move ${matchLabel} to ${labelDate(newDate)}. Your opponent has ${POSTPONE_RESPONSE_HOURS} hours to accept from this same link, or the request is declined and the match stays put.`,
     shareLink,
     shareText: `I asked to postpone ${matchLabel} to ${labelDate(newDate)}. Accept or decline here:`,
   })
@@ -773,14 +778,19 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
 
   const { data: request } = await admin
     .from('postpone_requests')
-    .select('id, requested_by, new_date, reason, status')
+    .select('id, requested_by, new_date, reason, status, created_at')
     .eq('fixture_id', fixture.id)
     .eq('status', 'pending')
     .maybeSingle()
   if (!request) return error('There is no postponement waiting for a decision.')
-  const windowBlockMsg = postponeWindow(dateKeyOf(fixture))
-  if (windowBlockMsg) {
-    return error('The 7-day window to answer this postponement has closed. Contact the admin if you still want to move this match.')
+  // The opponent has POSTPONE_RESPONSE_HOURS (24) from when the request was
+  // filed. The expire-postpone-requests cron declines anything still pending
+  // past that; this guard enforces the same rule in case the cron has not run.
+  const requestAgeMs = Date.now() - new Date(request.created_at).getTime()
+  if (requestAgeMs > POSTPONE_RESPONSE_HOURS * 60 * 60 * 1000) {
+    return error(
+      'This postponement request expired after 24 hours without an answer, so it was declined. The match stays on its original date.'
+    )
   }
   if (String(request.requested_by) === viewer.userId) {
     return error('You raised this request — your opponent has to accept or decline.')
@@ -798,19 +808,78 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
       .eq('id', request.id)
     if (declineErr) return error('Failed to save. Try again.', 500)
 
-    await audit(admin, viewer.userId, 'portal_postpone_declined', fixture.id, { new_date: newDate, reason: request.reason })
+    // The decliner wanted to play on the scheduled day and the requester cannot,
+    // so a not-responding report is auto-filed FOR THE DECLINER against the
+    // requester's side. It carries no screenshot and lands in the admin review
+    // queue as 'pending' like any other report. Skipped if the decliner already
+    // has a live report/dispute on this fixture.
+    let autoBackdoorId: string | null = null
+    if (viewer.side !== null) {
+      const sideClaimed = viewer.side === 'home' ? 'away' : 'home'
+      const submitterKey = viewer.phone ?? viewer.userId
+      const { data: existingReport } = await admin
+        .from('backdoor_submissions')
+        .select('id, status')
+        .eq('submitter_phone', submitterKey)
+        .eq('fixture_id', fixture.id)
+        .in('status', ['pending', 'approved', 'declined'])
+        .maybeSingle()
+      if (!existingReport) {
+        const expiresAt = new Date()
+        const daysUntilTuesday = (2 - expiresAt.getDay() + 7) % 7 || 7
+        expiresAt.setDate(expiresAt.getDate() + daysUntilTuesday)
+        expiresAt.setHours(23, 59, 59, 999)
+        const { data: bd, error: bdErr } = await admin
+          .from('backdoor_submissions')
+          .insert({
+            fixture_id: fixture.id,
+            submitter_phone: submitterKey,
+            side_claimed: sideClaimed,
+            screenshot_url: null,
+            status: 'pending',
+            expires_at: expiresAt.toISOString(),
+          })
+          .select('id')
+          .single()
+        if (bdErr) {
+          console.error('[submit-match] auto backdoor insert failed:', bdErr.message)
+        } else {
+          autoBackdoorId = bd.id
+          try {
+            await notifyBackdoorSubmitted(admin, {
+              submissionId: bd.id,
+              fixtureId: fixture.id,
+              nonRespondingSide: sideClaimed,
+              homeName: teamName(fixture.home_team),
+              awayName: teamName(fixture.away_team),
+              submitterName: viewer.username,
+            })
+          } catch (e) {
+            console.error('[submit-match] auto backdoor admin notify failed:', e)
+          }
+        }
+      }
+    }
+
+    await audit(admin, viewer.userId, 'portal_postpone_declined', fixture.id, {
+      new_date: newDate,
+      reason: request.reason,
+      side: viewer.side,
+      auto_backdoor_submission_id: autoBackdoorId,
+    })
 
     try {
-      // The requester is whoever sits on the other side of the responder.
-      const requesterIsHome = viewer.side !== 'home'
-      const requesterId = requesterIsHome ? homeSide(fixture).managerId : awaySide(fixture).managerId
+      const requesterId = String(request.requested_by)
       if (requesterId) {
         await insertNotificationsAndPush(admin, {
           user_id: requesterId,
-          type: 'fixture_postponed',
-          title: 'Postponement declined',
-          body: `${matchLabel}: your opponent declined the move to ${labelDate(newDate)}.`,
-          data: { fixture_id: fixture.id },
+          type: autoBackdoorId ? 'backdoor_submitted' : 'fixture_postponed',
+          title: autoBackdoorId ? 'Postponement declined — report filed' : 'Postponement declined',
+          body: autoBackdoorId
+            ? `${matchLabel}: your opponent declined the move to ${labelDate(newDate)} and filed a not-responding report against your side.`
+            : `${matchLabel}: your opponent declined the move to ${labelDate(newDate)}.`,
+          data: { fixture_id: fixture.id, url: shareLink },
+          push_url: shareLink,
         })
       }
     } catch (e) {
@@ -820,7 +889,11 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
     return NextResponse.json({
       ok: true,
       title: 'Postponement declined',
-      message: `The match stays on ${labelDate(dateKeyOf(fixture))}.`,
+      message: autoBackdoorId
+        ? `The match stays on ${labelDate(dateKeyOf(fixture))}. A not-responding report for you is now with the admin to review.`
+        : `The match stays on ${labelDate(dateKeyOf(fixture))}.`,
+      shareLink,
+      shareText: `Postponement for ${matchLabel} was declined:`,
     })
   }
 
@@ -900,6 +973,7 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
         title: 'Postponement agreed',
         body: `${matchLabel} moved to ${labelDate(newDate)}. Result locked ${homeScore}-${awayScore} to ${winner}.`,
         data: { fixture_id: fixture.id, url: shareLink },
+        push_url: shareLink,
       }))
     )
   } catch (e) {

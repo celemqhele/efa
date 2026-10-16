@@ -63,15 +63,16 @@ function getWeekRange(): { start: string; end: string } {
   }
 }
 
-// ─── Result submission window: 7 days ago .. 7 days ahead (inclusive) ──────────
+// ─── Result submission window: 1 day ago .. 7 days ahead (inclusive) ──────────
 // Non-admin players may submit results for games due up to 7 days in the FUTURE
-// (captured as 'confirmed_pending' until the fixture date) or within the last
-// 7 days. Admins can submit any fixture regardless of date. `scheduled_date`
-// is compared as YYYY-MM-DD strings keyed on SAST (see lib/app-time.ts).
+// (captured as 'confirmed_pending' until the fixture date), or on the match day
+// and the day after it (GRACE_DAYS = 1). Admins can submit any fixture
+// regardless of date. `scheduled_date` is compared as YYYY-MM-DD strings keyed
+// on SAST (see lib/app-time.ts).
 function getSubmissionWindow(): { start: string; end: string } {
   const now = new Date()
   return {
-    start: getSastDateKey(now, -7),
+    start: getSastDateKey(now, -1),
     end: getSastDateKey(now, 7),
   }
 }
@@ -92,7 +93,7 @@ function fixtureDateKey(f: any): string {
   }
 }
 
-// Is a date key (YYYY-MM-DD) inside the result-submission window (today-7..today)?
+// Is a date key (YYYY-MM-DD) inside the result-submission window (today-1..today+7)?
 function isInSubmissionWindow(dateKey: string): boolean {
   if (!dateKey) return false
   const { start, end } = getSubmissionWindow()
@@ -101,8 +102,9 @@ function isInSubmissionWindow(dateKey: string): boolean {
 
 // Whether a non-admin is currently allowed to submit the given fixture's result.
 // null = allowed; otherwise a human-readable rejection reason relative to `now`.
-// The window is today-7 .. today+7, so a game up to 7 days ahead is allowed
-// (it will be captured as 'confirmed_pending' until the fixture date).
+// The window is today-1 .. today+7, so a game up to 7 days ahead is allowed
+// (it will be captured as 'confirmed_pending' until the fixture date) and a game
+// played on the match day may still be submitted the day after.
 function submissionBlockReason(f: any, now = new Date()): string | null {
   const dateKey = fixtureDateKey(f)
   if (!dateKey) return null
@@ -113,7 +115,7 @@ function submissionBlockReason(f: any, now = new Date()): string | null {
     const label = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
     return `This game is more than 7 days away, so it can't be submitted yet. Please submit the screenshot once the match is within 7 days or on the match day (${label}).`
   }
-  return `This match is older than 7 days, so it can't be submitted here. Please send the screenshot on the match day.`
+  return `This match is older than a day, so it can't be submitted here. Please send the screenshot on the match day or the day after.`
 }
 
 // ─── Admin phone numbers ──────────────────────────────────────────────────────────
@@ -663,7 +665,7 @@ async function clearSession(phoneNumber: string) {
 //
 // Rows that still carry a legacy `pinned_until` in the future stay exempt while
 // it lasts — those sessions are mid-conversation and must not be swept, and the
-// 7-day submission window is re-checked before anything is written. The pin
+// submission window (match day + 1) is re-checked before anything is written. The pin
 // ages out on its own, so a forgotten session cannot hold that state forever.
 const SESSION_MAX_IDLE_MS = 60 * 60 * 1000
 
@@ -5289,7 +5291,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
 
     // Search all fixtures for this exact team pair. Non-admin players are limited
-    // to games due today or within the last 7 days (submission window); admins may
+    // to games due today or the day after (submission window); admins may
     // submit fixtures on any date. If the pair has fixtures in multiple
     // tournaments/dates, the numbered list below lets the submitter pick the
     // correct one.
@@ -5346,7 +5348,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     if (matchedFixtures.length === 0) {
       // For non-admins, the window-gated search found nothing. Check whether the
       // pair exists outside the window so we can show a clear "not released yet" /
-      // "older than 7 days" message instead of "no match found".
+      // "older than a day" message instead of "no match found".
       if (!isAdmin) {
         const { data: anyFixtures } = await supabase
           .from('fixtures')
@@ -5622,7 +5624,7 @@ async function handleText(from: string, msg: { text: { body: string } }, phoneNu
     }
     const { dateKey } = parsed
 
-    // Non-admins can only submit games due today or within the last 7 days.
+    // Non-admins can only submit games due today or the day after.
     if (!await isAdminPhone(from) && !isInSubmissionWindow(dateKey)) {
       const fake = { scheduled_date: dateKey }
       const reason = submissionBlockReason(fake)
@@ -5969,7 +5971,7 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   }
 
   // Final safety gate: non-admins may only submit results for games due today or
-  // within the last 7 days. This prevents any bypass through the direct-bypass or
+  // the day after. This prevents any bypass through the direct-bypass or
   // LLM-confirm paths.
   if (!await isAdminPhone(from)) {
     const { data: gateFix } = await supabase
@@ -6276,7 +6278,7 @@ async function resetAndResubmit(from: string, session: SessionData, supabase: an
   }
 
   // Final safety gate: non-admins may only submit results for games due today or
-  // within the last 7 days.
+  // the day after.
   if (!await isAdminPhone(from)) {
     const { data: RgateFix } = await supabase
       .from('fixtures')
