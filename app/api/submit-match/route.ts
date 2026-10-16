@@ -8,7 +8,7 @@ import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { analyzeImageBuffer, matchStatsToDbColumns } from '@/lib/ocr'
 import { normalizeToLandscape } from '@/lib/whatsapp'
-import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
+import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 function parseScore(value: FormDataEntryValue | null): number | null {
   if (value === null) return null
@@ -31,72 +31,93 @@ function error(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status })
 }
 
+// A throw anywhere inside a portal handler would otherwise bubble out of the
+// route and return Next's HTML 500 page, which the client cannot parse — so the
+// manager sees the useless "Something went wrong. Try again." with no clue. Log
+// the real error for the Vercel logs and hand back a short, reportable JSON
+// message instead, so the flow always speaks a reason.
+function unexpected(context: string, e: unknown) {
+  const detail = e instanceof Error ? e.message : String(e)
+  console.error(`[submit-match] ${context} threw:`, e)
+  return error(`Something went wrong on our side (${context}): ${detail.slice(0, 160)}`, 500)
+}
+
 // — GET: portal state (used by the client to refresh after a mutation) —
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-  if (authError || !user) return error('Please log in first.', 401)
-
   const code = request.nextUrl.searchParams.get('code')?.trim() ?? ''
-  if (!code) return error('Missing match code.')
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) return error('Please log in first.', 401)
 
-  const admin = await createAdminClient()
-  const fixture = await loadFixture(admin, code)
-  if (!fixture) return error('Match code not found.', 404)
+    if (!code) return error('Missing match code.')
 
-  const viewer = await resolveViewer(admin, user.id, fixture)
-  if (!viewer.side && !viewer.isAdmin) return error('You are not one of the two managers for this match.', 403)
+    const admin = await createAdminClient()
+    const fixture = await loadFixture(admin, code)
+    if (!fixture) return error('Match code not found.', 404)
 
-  const state = await buildState(admin, fixture, viewer, code)
-  return NextResponse.json({ ok: true, ...state })
+    const viewer = await resolveViewer(admin, user.id, fixture)
+    if (!viewer.side && !viewer.isAdmin) return error('You are not one of the two managers for this match.', 403)
+
+    const state = await buildState(admin, fixture, viewer, code)
+    return NextResponse.json({ ok: true, ...state })
+  } catch (e) {
+    return unexpected(`load ${code || 'match'}`, e)
+  }
 }
 // — POST: mutations —
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-  if (authError || !user) return error('Please log in first.', 401)
-
-  let form: FormData
+  let action = ''
+  let code = ''
   try {
-    form = await request.formData()
-  } catch {
-    return error('Invalid request.')
-  }
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) return error('Please log in first.', 401)
 
-  const action = String(form.get('action') ?? '')
-  const code = String(form.get('code') ?? '').trim()
-  if (!code) return error('Missing match code.')
+    let form: FormData
+    try {
+      form = await request.formData()
+    } catch {
+      return error('Invalid request.')
+    }
 
-  const admin = await createAdminClient()
-  const fixture = await loadFixture(admin, code)
-  if (!fixture) return error('Match code not found.', 404)
+    action = String(form.get('action') ?? '')
+    code = String(form.get('code') ?? '').trim()
+    if (!code) return error('Missing match code.')
 
-  const viewer = await resolveViewer(admin, user.id, fixture)
-  if (!viewer.side && !viewer.isAdmin) return error('You are not one of the two managers for this match.', 403)
+    const admin = await createAdminClient()
+    const fixture = await loadFixture(admin, code)
+    if (!fixture) return error('Match code not found.', 404)
 
-  switch (action) {
-    case 'result':
-      return submitResult(admin, fixture, viewer, form, code)
-    case 'backdoor':
-      return submitBackdoor(admin, fixture, viewer, form, code)
-    case 'backdoorCancel':
-      return cancelBackdoor(admin, fixture, viewer, form, code)
-    case 'backdoorDispute':
-      return disputeBackdoor(admin, fixture, viewer, form, code)
-    case 'postpone':
-      return requestPostpone(admin, fixture, viewer, form, code)
-    case 'postponeRespond':
-      return respondToPostpone(admin, fixture, viewer, form, code)
-    default:
-      return error('Unknown action.')
+    const viewer = await resolveViewer(admin, user.id, fixture)
+    if (!viewer.side && !viewer.isAdmin) return error('You are not one of the two managers for this match.', 403)
+
+    switch (action) {
+      case 'result':
+        return submitResult(admin, fixture, viewer, form, code)
+      case 'backdoor':
+        return submitBackdoor(admin, fixture, viewer, form, code)
+      case 'backdoorCancel':
+        return cancelBackdoor(admin, fixture, viewer, form, code)
+      case 'backdoorDispute':
+        return disputeBackdoor(admin, fixture, viewer, form, code)
+      case 'postpone':
+        return requestPostpone(admin, fixture, viewer, form, code)
+      case 'postponeRespond':
+        return respondToPostpone(admin, fixture, viewer, form, code)
+      default:
+        return error('Unknown action.')
+    }
+  } catch (e) {
+    return unexpected(`${action || 'save'} on ${code || 'match'}`, e)
   }
 }
 
@@ -260,7 +281,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   // managers submitted" panel sees this score too.
   const { error: confErr } = await admin.from('result_confirmations').upsert(
     { fixture_id: fixture.id, submitted_by: viewer.userId, home_score: finalHomeScore, away_score: finalAwayScore },
-    { onConflict: 'rc_unique_fixture_submitted' }
+    { onConflict: 'fixture_id,submitted_by' }
   )
   if (confErr) console.error('[submit-match] confirmation upsert failed:', confErr.message)
 
@@ -671,6 +692,47 @@ async function disputeBackdoor(admin: any, fixture: any, viewer: Viewer, form: F
 
 // — 3. Request a postponement —
 
+// — 4. Postpone —
+
+// Auto-decline the LAPSED pending requests a manager still holds, and any lapsed
+// pending request on the fixture they are about to re-ask on. Mirrors the daily
+// expire cron (app/api/cron/expire-postpone-requests) but runs on demand, so the
+// partial unique indexes do not reject a legitimate new request and a manager is
+// never blocked by a request whose 24h answer window is already over. Idempotent
+// and cheap (both columns are indexed).
+async function declineLapsedPostponeRequests(admin: any, requestedBy: string, fixtureId: string) {
+  const cutoff = new Date(Date.now() - POSTPONE_RESPONSE_HOURS * 60 * 60 * 1000).toISOString()
+  const { data: lapsed } = await admin
+    .from('postpone_requests')
+    .select('id, fixture_id, requested_by, new_date')
+    .eq('status', 'pending')
+    .lt('created_at', cutoff)
+    .or(`requested_by.eq.${requestedBy},fixture_id.eq.${fixtureId}`)
+  const rows = (lapsed ?? []) as any[]
+  if (!rows.length) return
+
+  const nowIso = new Date().toISOString()
+  const { error: declineErr } = await admin
+    .from('postpone_requests')
+    .update({ status: 'declined', responded_at: nowIso, updated_at: nowIso })
+    .in('id', rows.map((r) => r.id))
+  if (declineErr) {
+    console.error('[submit-match] lapsed postpone decline failed:', declineErr.message)
+    return
+  }
+  console.log(`[submit-match] declined ${rows.length} lapsed postpone request(s) on demand`)
+  for (const r of rows) {
+    await audit(admin, null, 'postpone_request_expired', r.fixture_id, {
+      request_id: r.id,
+      new_date: r.new_date,
+      requested_by: r.requested_by,
+      auto_declined: true,
+      settled_on_demand: true,
+      responded_at: nowIso,
+    })
+  }
+}
+
 async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: FormData, code: string) {
   const newDate = String(form.get('newDate') ?? '').trim()
   const reason = String(form.get('reason') ?? '').trim()
@@ -698,28 +760,37 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
   if (newDate <= todayKey) return error('The new date must be in the future.')
   if (newDate > maxKey) return error(`Pick a date within the next ${MAX_POSTPONE_DAYS} days.`)
 
-  const { data: pending } = await admin
-    .from('postpone_requests')
-    .select('id')
-    .eq('fixture_id', fixture.id)
-    .eq('status', 'pending')
-    .maybeSingle()
-  if (pending) return error('There is already a postponement request waiting for your opponent.')
+  // Retire any LAPSED pending request held by this manager (or already on this
+  // fixture) before the checks below. A lapsed request is dead to managers (the
+  // opponent never answered inside 24h) but may still be 'pending' in the DB
+  // because the auto-decline cron is daily on the Hobby plan — and the partial
+  // unique indexes (one live request per manager / per fixture, migration 103)
+  // would reject a perfectly valid new row with 23505. Mirrors the cron.
+  await declineLapsedPostponeRequests(admin, viewer.userId, fixture.id)
 
-  // One at a time per manager: a live request the manager holds on ANY match
-  // blocks a new one (only approved requests are free to be answered again).
   const { data: myOtherPending } = await admin
     .from('postpone_requests')
-    .select('id, fixture_id')
+    .select('id, fixture_id, created_at, status')
     .eq('requested_by', viewer.userId)
     .eq('status', 'pending')
     .neq('fixture_id', fixture.id)
     .limit(1)
     .maybeSingle()
-  if (myOtherPending) {
+  if (postponeRequestIsLive(myOtherPending)) {
     return error(
       'You already have a postponement waiting for an answer. Wait for that one to be resolved before asking to move another match.'
     )
+  }
+
+  const { data: pending } = await admin
+    .from('postpone_requests')
+    .select('id, created_at, status')
+    .eq('fixture_id', fixture.id)
+    .eq('status', 'pending')
+    .limit(1)
+    .maybeSingle()
+  if (postponeRequestIsLive(pending)) {
+    return error('There is already a postponement request waiting for your opponent.')
   }
 
   // 1-day cooldown that starts only when a request is APPROVED. A declined or
@@ -827,6 +898,10 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
   // past that; this guard enforces the same rule in case the cron has not run.
   const requestAgeMs = Date.now() - new Date(request.created_at).getTime()
   if (requestAgeMs > POSTPONE_RESPONSE_HOURS * 60 * 60 * 1000) {
+    // Settle it for real (declineLapsedPostponeRequests mirrors the daily cron,
+    // which can lag up to a day on the Hobby plan) so the message below is true
+    // and the requester is free to ask again.
+    await declineLapsedPostponeRequests(admin, String(request.requested_by), fixture.id)
     return error(
       'This postponement request expired after 24 hours without an answer, so it was declined. The match stays on its original date.'
     )

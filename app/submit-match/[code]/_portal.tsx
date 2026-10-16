@@ -1067,12 +1067,23 @@ function PostponePanel({
 }) {
   const [date, setDate] = useState('')
   const [reason, setReason] = useState('')
-  const today = new Date()
-  const min = isoDate(addDays(today, 1))
-  const max = isoDate(addDays(today, 7))
+  // Bounds must be the SERVER's matchday keys (SAST = UTC+2 year-round; see
+  // lib/app-time.getSastDateKey). Deriving them from the browser's local date can
+  // offer a date the server then rejects ("The new date must be in the future." /
+  // "Pick a date within the next 7 days.") when the device timezone has already
+  // rolled over (or has not yet) around SAST midnight.
+  const min = sastDateKey(1)
+  const max = sastDateKey(7)
 
-  if (request && request.status === 'pending') {
-    const expired = request.expiresAt ? Date.now() > new Date(request.expiresAt).getTime() : false
+  // A 'pending' request stops the manager re-asking only while its 24h answer
+  // window is still open. Once it lapses it no longer counts — the server treats
+  // it the same way and retires it — so show the form again.
+  const requestLive =
+    !!request &&
+    request.status === 'pending' &&
+    (!request.expiresAt || Date.now() <= new Date(request.expiresAt).getTime())
+
+  if (requestLive) {
     return (
       <Card>
         <h2 className="text-base font-black text-text-primary">4. Postpone the game</h2>
@@ -1080,17 +1091,10 @@ function PostponePanel({
           You already asked to move this game to <strong>{formatDate(request.newDate)}</strong>. Your opponent must
           open this same link to accept or decline.
         </p>
-        {expired ? (
-          <p className="mt-2 rounded-lg border border-feedback-error/40 bg-feedback-error/10 px-3 py-2 text-xs font-semibold text-feedback-error">
-            Your opponent did not answer within 24 hours, so this request is being declined and the match stays on
-            its original date.
-          </p>
-        ) : (
-          <p className="mt-1 text-xs text-text-muted">
-            They have 24 hours to answer. If they do not, the request is automatically declined and the match stays on
-            its original date.
-          </p>
-        )}
+        <p className="mt-1 text-xs text-text-muted">
+          They have 24 hours to answer. If they do not, the request is automatically declined and the match stays on
+          its original date.
+        </p>
       </Card>
     )
   }
@@ -1098,6 +1102,12 @@ function PostponePanel({
   return (
     <Card>
       <h2 className="text-base font-black text-text-primary">4. Postpone the game</h2>
+      {request && request.status === 'pending' && (
+        <p className="mb-2 rounded-lg border border-feedback-warning/40 bg-feedback-warning/10 px-3 py-2 text-xs font-semibold text-feedback-warning">
+          Your earlier request to move this game lapsed after 24 hours without an answer, so it no longer counts. You
+          can ask again below.
+        </p>
+      )}
       <p className="mt-1 text-xs text-text-muted">
         Your opponent must open this link to accept. They have 24 hours to answer, after which the request is
         declined. If they accept, the result is locked 3-0 in their favour and the match moves to your new date — you
@@ -1147,17 +1157,11 @@ function PostponePanel({
 
 // ─── date helpers ─────────────────────────────────────────────────────────────
 
-function addDays(d: Date, days: number) {
-  const copy = new Date(d.getTime())
-  copy.setDate(copy.getDate() + days)
-  return copy
-}
-
-function isoDate(d: Date) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+// SAST date key (UTC+2 year-round, no DST), mirroring lib/app-time.getSastDateKey
+// so the postpone picker's min/max are exactly what the server accepts.
+function sastDateKey(offsetDays: number, from: Date = new Date()) {
+  const shifted = new Date(from.getTime() + 2 * 60 * 60 * 1000 + offsetDays * 24 * 60 * 60 * 1000)
+  return shifted.toISOString().slice(0, 10)
 }
 
 function formatDate(dateKey: string) {

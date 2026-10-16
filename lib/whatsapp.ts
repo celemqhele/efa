@@ -338,7 +338,7 @@ ${ocrText}
   const res = await fetch(GROQ_API, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      Authorization: `Bearer ${process.env.GROQ_API_KEY ?? process.env.GROQ_API}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -449,7 +449,7 @@ export async function conversationalReply(
     const res = await fetch(GROQ_API, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        Authorization: `Bearer ${process.env.GROQ_API_KEY ?? process.env.GROQ_API}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

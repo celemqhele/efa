@@ -30,6 +30,21 @@ export const POSTPONE_RESPONSE_HOURS = 24
 // postpone_requests_pending_requester_idx (migration 103).
 export const POSTPONE_COOLDOWN_HOURS = 24
 
+// Whether a postponement request still holds its answer slot. A 'pending' row
+// whose POSTPONE_RESPONSE_HOURS window has lapsed is dead — the opponent never
+// answered — even if the DB still says 'pending': the auto-decline cron is
+// DAILY on the Vercel Hobby plan, so it can run up to ~24h late. Anything that
+// reads a request must use this instead of testing `status === 'pending'`
+// directly, otherwise a lapsed row blocks a manager from asking again AND the
+// partial unique indexes on postpone_requests (one live request per manager /
+// per fixture, migration 103) reject the replacement row with 23505.
+// Mirrors the cron's cutoff: created_at < now - POSTPONE_RESPONSE_HOURS.
+export function postponeRequestIsLive(row: any, now: number = Date.now()): boolean {
+  if (!row || row.status !== 'pending') return false
+  if (!row.created_at) return true
+  return now - new Date(row.created_at).getTime() <= POSTPONE_RESPONSE_HOURS * 60 * 60 * 1000
+}
+
 // A result is 'real' when someone actually recorded the game (a manager proof
 // upload or an admin decision). Auto-finalised outcomes (0-0 void / auto-approved
 // backdoor) have no finalised_by or screenshot and can still be replaced by an
@@ -277,15 +292,18 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   // The viewer's own postponement activity, for the "one at a time" + "1-day
   // cooldown after an approved one" rule. A live request on ANOTHER match blocks
   // a new request here, and an approved request puts the manager on cooldown.
-  // Declined / auto-expired requests are never returned (only approved count).
+  // Declined / auto-expired requests are never returned (only approved count),
+  // and a 'pending' row whose 24h answer window has lapsed (postponeRequestIsLive)
+  // is treated as gone so it cannot block a fresh ask while the daily
+  // auto-decline cron is still catching up.
   const { data: myPostponeRows } = await admin
     .from('postpone_requests')
-    .select('id, fixture_id, status, responded_at, updated_at')
+    .select('id, fixture_id, status, responded_at, updated_at, created_at')
     .eq('requested_by', viewer.userId)
     .in('status', ['pending', 'accepted'])
 
   const myOtherPending = (myPostponeRows ?? []).find(
-    (r: any) => r.status === 'pending' && String(r.fixture_id) !== String(fixture.id)
+    (r: any) => postponeRequestIsLive(r) && String(r.fixture_id) !== String(fixture.id)
   )
   const myApprovedAtMs = (myPostponeRows ?? [])
     .filter((r: any) => r.status === 'accepted')
