@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
   // A postponement request in flight holds the fixture open while its 24-hour
   // answer window runs (the reviewer can still accept or decline). Inside that
   // window we skip auto-finalise; a request already past POSTPONE_RESPONSE_HOURS
-  // is declined here as well (the hourly expire cron normally gets there first)
+  // is declined here as well (the daily expire cron normally gets there first)
   // so the fixture still gets finalised instead of hanging forever.
   const skippedPendingRequest: string[] = []
   const expiredPendingRequest: string[] = []

@@ -3,7 +3,8 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { APP_BASE, POSTPONE_RESPONSE_HOURS, labelDate } from '@/lib/submit-match'
 
-// Hourly (see vercel.json). Any postponement request still 'pending' after
+// Daily (see vercel.json - the Hobby plan only allows one run per day). Any
+// postponement request still 'pending' after
 // POSTPONE_RESPONSE_HOURS (24) is auto-declined: the match stays on its
 // original date, and the requester gets a browser push + in-app alert so they
 // know the move never happened. No backdoor is filed here — only an explicit
