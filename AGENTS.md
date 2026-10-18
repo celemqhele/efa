@@ -151,6 +151,7 @@ tree as the first step.
 - `whatsapp-manager-mgmt/` — admin manager management on WhatsApp (assign/sack/promote flows, lib/manager-mgmt.ts service, mgmt_* session columns)
 - `whatsapp-delivery/` — WhatsApp send/delivery diagnostics (Graph send logging, Meta status callbacks)
 - `submit-portal/` — `/submit-match/[code]` web submission portal (result, backdoor, postpone, proof screenshots)
+- `housekeeping/` — repo file hygiene: recycling stale scratch/untracked files, dead-file cleanup
 
 ### Naming requirement
 Every context file MUST be named `topic_YYYY-MM-DD.md`, where `YYYY-MM-DD` is the file's creation date (a new file always uses the current date). A context file is written once and never updated; a later change or fix on the same topic gets a brand-new file with the new date.
