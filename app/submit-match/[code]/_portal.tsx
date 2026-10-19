@@ -75,6 +75,69 @@ function Field({ label, children, hint }: { label: string; children: React.React
 const inputClass =
   'w-full rounded-xl border border-border bg-bg-base px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none'
 
+// WhatsApp reminder preference. Same visual control as the "Mark as forfeit?"
+// radio (see .opencode/context/submit-portal/portal-forfeit-radio-control_2026-10-11.md):
+// a heading, a Yes/No row of filled-dot circles, and a hint line. Default Yes;
+// picking No persists on the manager's profile, so the portal comes back with No
+// selected and the admin dashboard greys out their reminder buttons (same
+// open_to_reminders flag).
+function ReminderPrefCard({
+  open,
+  busy,
+  onPick,
+}: {
+  open: boolean
+  busy: boolean
+  onPick: (yes: boolean) => void
+}) {
+  const current = open ? 'yes' : 'no'
+  return (
+    <Card>
+      <span className="text-xs font-bold uppercase tracking-wide text-text-muted">
+        I want to continue getting WhatsApp reminders
+      </span>
+      <div className="mt-2 flex items-center gap-6">
+        {[
+          { value: 'yes', label: 'Yes' },
+          { value: 'no', label: 'No' },
+        ].map((opt) => (
+          <label
+            key={opt.value}
+            className={`inline-flex items-center gap-2 select-none ${
+              busy ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+            }`}
+          >
+            <input
+              type="radio"
+              name="portal-whatsapp-reminders"
+              value={opt.value}
+              checked={current === opt.value}
+              onChange={() => onPick(opt.value === 'yes')}
+              disabled={busy}
+              className="sr-only"
+            />
+            <span
+              className={`relative h-4 w-4 rounded-full border-2 transition-colors ${
+                current === opt.value ? 'border-text-primary' : 'border-border'
+              }`}
+            >
+              {current === opt.value && (
+                <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-text-primary" />
+              )}
+            </span>
+            <span className="text-sm text-text-primary">{opt.label}</span>
+          </label>
+        ))}
+      </div>
+      <span className="mt-1.5 block text-xs text-text-muted">
+        {open
+          ? 'Pick No if you do not want match reminders on WhatsApp. Your reminder button on the admin dashboard is greyed out once you pick No.'
+          : 'Reminders are off. The admin dashboard reminder button for you is greyed out. Pick Yes to switch them back on.'}
+      </span>
+    </Card>
+  )
+}
+
 export default function SubmitPortal({ initialState, initialAction, appBase }: Props) {
   const [state, setState] = useState<any>(initialState)
   const [panel, setPanel] = useState<Panel>(initialAction === 'backdoor' ? 'backdoor' : 'home')
@@ -359,29 +422,36 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       )}
 
       {panel === 'home' && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {menu.map((item) => {
-            const disabled = !!item.block
-            return (
-              <button
-                key={item.key}
-                type="button"
-                disabled={disabled}
-                onClick={() => setPanel(item.key)}
-                className={`rounded-2xl border p-4 text-left transition-colors ${
-                  disabled
-                    ? 'cursor-not-allowed border-border bg-bg-elevated/50 opacity-60'
-                    : 'border-border bg-bg-surface hover:border-accent hover:bg-bg-elevated'
-                }`}
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-sm font-black text-bg-surface">
-                  {item.num}
-                </span>
-                <span className="mt-2 block text-sm font-bold text-text-primary">{item.label}</span>
-                <span className="mt-0.5 block text-xs text-text-muted">{disabled ? item.block : item.sub}</span>
-              </button>
-            )
-          })}
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {menu.map((item) => {
+              const disabled = !!item.block
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setPanel(item.key)}
+                  className={`rounded-2xl border p-4 text-left transition-colors ${
+                    disabled
+                      ? 'cursor-not-allowed border-border bg-bg-elevated/50 opacity-60'
+                      : 'border-border bg-bg-surface hover:border-accent hover:bg-bg-elevated'
+                  }`}
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-sm font-black text-bg-surface">
+                    {item.num}
+                  </span>
+                  <span className="mt-2 block text-sm font-bold text-text-primary">{item.label}</span>
+                  <span className="mt-0.5 block text-xs text-text-muted">{disabled ? item.block : item.sub}</span>
+                </button>
+              )
+            })}
+          </div>
+          <ReminderPrefCard
+            open={state.viewer.openToReminders !== false}
+            busy={busy}
+            onPick={(yes) => send(formFor('reminderPref', { openToReminders: yes ? 'yes' : 'no' }))}
+          />
         </div>
       )}
 

@@ -80,6 +80,10 @@ export type Viewer = {
   teamIds: string[]
   side: 'home' | 'away' | null
   isAdmin: boolean
+  // Whether the manager still wants WhatsApp match reminders (profiles column,
+  // default true). Drives the portal's yes/no toggle and - through the same flag
+  // - the greying-out of their WhatsApp reminder buttons on the admin dashboard.
+  openToReminders: boolean
 }
 
 export function dateKeyOf(fixture: any): string {
@@ -149,7 +153,7 @@ export async function loadFixture(admin: any, code: string): Promise<any | null>
 export async function resolveViewer(admin: any, userId: string, fixture: any): Promise<Viewer> {
   const { data: profile } = await admin
     .from('profiles')
-    .select('username, role, phone')
+    .select('username, role, phone, open_to_reminders')
     .eq('id', userId)
     .maybeSingle()
   const { data: teams } = await admin
@@ -170,6 +174,7 @@ export async function resolveViewer(admin: any, userId: string, fixture: any): P
     teamIds,
     side,
     isAdmin: profile?.role === 'admin',
+    openToReminders: profile?.open_to_reminders !== false,
   }
 }
 
@@ -531,6 +536,7 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       username: viewer.username,
       side: viewer.side,
       isAdmin: viewer.isAdmin,
+      openToReminders: viewer.openToReminders,
     },
     rules: {
       resultBlock,

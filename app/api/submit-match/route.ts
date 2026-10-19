@@ -113,6 +113,8 @@ export async function POST(request: NextRequest) {
         return requestPostpone(admin, fixture, viewer, form, code)
       case 'postponeRespond':
         return respondToPostpone(admin, fixture, viewer, form, code)
+      case 'reminderPref':
+        return setReminderPref(admin, fixture, viewer, form)
       default:
         return error('Unknown action.')
     }
@@ -687,6 +689,45 @@ async function disputeBackdoor(admin: any, fixture: any, viewer: Viewer, form: F
     ok: true,
     title: 'Dispute submitted',
     message: 'The admin will compare your screenshot and explanation with the report already on file and get back to you.',
+  })
+}
+
+// — WhatsApp reminder preference —
+
+// The portal toggle ("I want to continue getting WhatsApp reminders", default
+// Yes). Stored on the manager's own profile row as open_to_reminders, the same
+// flag the admin dashboard already reads to grey out their reminder buttons
+// (see .opencode/context/admin-dashboard/manager-reminder-opt-out_2026-10-12.md),
+// so opting out from the portal takes effect on the dashboard straight away.
+// Only the viewer's own row is ever touched - never the opponent's.
+async function setReminderPref(admin: any, fixture: any, viewer: Viewer, form: FormData) {
+  const raw = String(form.get('openToReminders') ?? '').trim().toLowerCase()
+  if (raw !== 'yes' && raw !== 'no') return error('Pick Yes or No for WhatsApp reminders.')
+
+  const open = raw === 'yes'
+  const { error: updErr } = await admin
+    .from('profiles')
+    .update({ open_to_reminders: open })
+    .eq('id', viewer.userId)
+  if (updErr) {
+    console.error('[submit-match] reminder pref update failed:', updErr.message)
+    return error('Could not save your reminder preference. Try again.', 500)
+  }
+
+  await admin.from('audit_log').insert({
+    admin_id: viewer.userId,
+    action: 'portal_open_to_reminders',
+    target_type: 'profile',
+    target_id: viewer.userId,
+    details: { open, side: viewer.side, fixture_id: fixture.id },
+  })
+
+  return NextResponse.json({
+    ok: true,
+    title: open ? 'Reminders on' : 'Reminders off',
+    message: open
+      ? 'You will keep getting WhatsApp match reminders.'
+      : 'You will not get WhatsApp match reminders. The admin will still see your matches, but the reminder button for you is greyed out. You can switch this back on here any time.',
   })
 }
 
