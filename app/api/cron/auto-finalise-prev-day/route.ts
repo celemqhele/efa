@@ -9,14 +9,18 @@ import { getSastDateKey } from '@/lib/app-time'
 import { GRACE_DAYS, POSTPONE_RESPONSE_HOURS } from '@/lib/submit-match'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
-// Daily at 02:00 SAST (00:00 UTC): any match due on a previous matchday that is
-// still unplayed ('scheduled', no result) is finalised automatically —
+// Daily at 02:00 SAST (00:00 UTC): any match due on a PREVIOUS matchday that is
+// still unplayed ('scheduled', no result) is finalised automatically, so a game
+// nobody has submitted is never left dangling —
 //   * no backdoor application  -> confirmed 0-0 (both absent, no points)
 //   * backdoor application(s)  -> auto-approved (single claim: 3-0 to the
 //     claimant; both sides claimed: 0-0), mirroring the admin approve flow.
-// The cutoff sits one day further back than the matchday so the grace window
-// (match day + GRACE_DAYS) always gets its full day before anything is locked.
-// Passing ?dryRun=1 logs the intended outcome per fixture without writing.
+// It runs the MORNING AFTER the match day (was two days after) as an interim
+// placeholder: the grace window (match day + GRACE_DAYS) is still open, so the
+// managers can submit the real score and replace it, but the table and the next
+// round are no longer held up waiting for a game that may never be played.
+// Passing ?dryRun=1 logs the intended outcome per fixture without writing;
+// ?cutoff=YYYY-MM-DD overrides the overdue date for a manual catch-up run.
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('Authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -26,9 +30,24 @@ export async function GET(request: NextRequest) {
   const dryRun = new URL(request.url).searchParams.get('dryRun') === '1'
   const supabase = await createAdminClient()
 
-  // Overdue cutoff: at 02:00 SAST the fixtures due on or before (yesterday -
-  // GRACE_DAYS) are fully out of their submission window and safe to finalise.
-  const finaliseCutoff = getSastDateKey(new Date(), -(GRACE_DAYS + 1))
+  // Overdue cutoff: a fixture is finalised on the MORNING AFTER its match day,
+  // so an unplayed game becomes a confirmed 0-0 placeholder straight away
+  // instead of sitting 'scheduled' and holding up the table / the next round.
+  // The managers keep the rest of the grace day (match day + GRACE_DAYS) to
+  // submit the real score, which replaces the placeholder — the 0-0 void and an
+  // auto-approved backdoor are deliberately not "real" results (no finalised_by
+  // / screenshot), so submitResult still accepts a first-time score for them.
+  // `?cutoff=YYYY-MM-DD` overrides it for a manual catch-up run.
+  const cutoffParam = new URL(request.url).searchParams.get('cutoff')
+  const finaliseCutoff = /^\d{4}-\d{2}-\d{2}$/.test(cutoffParam ?? '')
+    ? (cutoffParam as string)
+    : getSastDateKey(new Date(), -GRACE_DAYS)
+
+  // The postponed-confirmed flag is dropped only once the MOVED day is a full
+  // grace day behind us: the agreed placeholder has already been scored, and
+  // the flag is what keeps the "postponed to ..." context on the fixture while
+  // the managers can still play it on the moved day.
+  const postponedClearCutoff = getSastDateKey(new Date(), -(GRACE_DAYS + 1))
 
   // Vacant placeholder team(s) are owned by sweep_vacant_slots (hourly) — skip
   // them so a vacancy resolves to its 0-3/3-0/0-0, never a "both absent" 0-0.
@@ -182,7 +201,7 @@ export async function GET(request: NextRequest) {
     .select('id, tournament_id, round_type, home_team_id, away_team_id')
     .eq('postponed_confirmed', true)
     .not('scheduled_date', 'is', null)
-    .lte('scheduled_date', finaliseCutoff)
+    .lte('scheduled_date', postponedClearCutoff)
 
   for (const fx of (movedPast ?? []) as any[]) {
     try {
