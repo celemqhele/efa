@@ -364,6 +364,17 @@ export async function POST(request: Request) {
     .eq('status', 'pending')
 
   // ── Forfeit balance tracking ─────────────────────────────────────────────
+  // Clear any balances this same fixture created before (a re-finalise or a
+  // correction) so one match can never leave two penalties on file for the same
+  // manager. Balances it CONSUMED are untouched - those belong to other fixtures.
+  if (home_forfeit || away_forfeit) {
+    const { error: clearErr } = await adminSupabase
+      .from('forfeit_balances')
+      .delete()
+      .eq('fixture_id', fixture_id)
+      .is('consumed_by_fixture_id', null)
+    if (clearErr) console.error('[finalise-result] clearing prior forfeit balances failed:', clearErr.message)
+  }
   if (home_forfeit || away_forfeit) {
     if (home_forfeit && homeTeam?.manager_id) {
       const note = `Forfeit: ${homeTeam?.name ?? 'Home'} vs ${awayTeam?.name ?? 'Away'} — ${body.home_score ?? 0}-${body.away_score ?? 0} (HT)`

@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { recalculateStandings } from '@/lib/standings-engine'
+import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -58,12 +59,29 @@ export async function POST(request: Request) {
       .update({ remaining: 1, consumed_by_fixture_id: null })
       .eq('consumed_by_fixture_id', fixture_id)
 
+    // 3c. Delete the carry-over balance this match CREATED (i.e. its own result
+    // was submitted as a forfeit). The reset removes the result, so the penalty
+    // it generated is no longer valid and must not keep punishing the manager in
+    // a later match. If the balance was already consumed by a following fixture,
+    // that result is trimmed back by the same number of goals here.
+    const voided = await voidBalancesCreatedBy(db, fixture_id)
+
     // 4. Update fixture status (a reset also releases a postponement lock, so the
     // fixture is treated as an ordinary scheduled game again)
     await db.from('fixtures').update({ status: 'scheduled', postponed_confirmed: false }).eq('id', fixture_id)
 
-    // 5. Recalculate standings for the tournament
+    // 5. Recalculate standings for the tournament, plus any other tournament
+    // whose result was trimmed because it had consumed this fixture's forfeit.
     const recalcResult = await recalculateStandings(fixture.tournament_id)
+    const extraRecalcs: { tournamentId: string; result: any }[] = []
+    for (const tid of voided.tournaments) {
+      if (!tid || tid === String(fixture.tournament_id)) continue
+      try {
+        extraRecalcs.push({ tournamentId: tid, result: await recalculateStandings(tid) })
+      } catch (e: any) {
+        console.error('[reset-fixture] extra standings recalc failed for tournament:', tid, e?.message)
+      }
+    }
 
     // 6. Audit log
     await db.from('audit_log').insert({
@@ -74,11 +92,19 @@ export async function POST(request: Request) {
       details: {
         tournament_id: fixture.tournament_id,
         previous_status: fixture.status,
+        forfeit_balances_voided: voided.voided,
+        forfeit_consumers_adjusted: voided.adjusted,
         recalc_result: recalcResult
       },
     })
 
-    return Response.json({ success: true, recalc: recalcResult })
+    return Response.json({
+      success: true,
+      recalc: recalcResult,
+      forfeit_balances_voided: voided.voided,
+      forfeit_consumers_adjusted: voided.adjusted,
+      extra_recalcs: extraRecalcs,
+    })
   } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 })
   }

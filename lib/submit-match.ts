@@ -253,7 +253,6 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
     .from('backdoor_submissions')
     .select('id, side_claimed, status, screenshot_url, submitter_phone, created_at, reviewed_at, reviewed_by, is_dispute, dispute_note')
     .eq('fixture_id', fixture.id)
-    .neq('status', 'expired')
     .order('created_at', { ascending: false })
 
   // Every actor behind the records shown on this page (the result's finaliser,
@@ -264,12 +263,27 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
     fixture.result?.finalised_by,
   ])
 
-  // Row-derived views used by the backdoor panel: the viewer's own live claim
-  // (so the panel can show a status card instead of the empty form again) and
-  // every report filed AGAINST the viewer's side (transparency + dispute entry).
-  const LIVE_BD = ['pending', 'approved', 'declined']
+  // Row-derived views used by the backdoor panel: the viewer's own claim (so the
+  // panel can show a status card instead of the empty form again) and every
+  // report filed AGAINST the viewer's side (transparency + dispute entry).
+  //
+  // A claim is shown for EVERY status, not just the live ones: once a claim left
+  // pending/approved/declined (void_game_played when a real score landed, or
+  // expired past the deadline) it used to vanish from the panel entirely, which
+  // read as "the system deleted my report". The panel now keeps the record and
+  // labels the outcome instead.
+  const VISIBLE_BD = ['pending', 'approved', 'declined', 'void_game_played', 'expired']
+  const visibleClaims = (backdoorRows ?? []).filter((b: any) => VISIBLE_BD.includes(b.status))
   const myBackdoorRow =
-    (backdoorRows ?? []).find((b: any) => LIVE_BD.includes(b.status) && isMineSubmission(b, viewer)) ?? null
+    visibleClaims.find((b: any) => isMineSubmission(b, viewer)) ??
+    // Fallback for a report filed from WhatsApp when the phone on the profile is
+    // missing/out of date, so the ownership check cannot confirm it. A manager
+    // always reports the OTHER side, so a claim pointing at the opposite side is
+    // theirs; a claim pointing at the viewer's own side is the one against them.
+    // Read-only: it only decides which card the panel shows.
+    (viewer.side
+      ? visibleClaims.find((b: any) => b.side_claimed && b.side_claimed !== viewer.side) ?? null
+      : null)
   const reportsAgainstMe = viewer.side
     ? (backdoorRows ?? []).filter(
         (b: any) =>
@@ -377,14 +391,17 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   }
 
   // 2. Backdoor
+  // A report stays open for as long as there is no REAL result on file. That
+  // covers the late case the managers kept hitting: the match was auto-finalised
+  // 0-0 (both absent) and the opponent only owns up to not playing afterwards.
+  // Those reports are no longer refused for being "past the deadline" - they are
+  // accepted, shown as Under review, and the 02:00 job approves them.
   let backdoorBlock: string | null = null
   if (viewer.side === null && !viewer.isAdmin) backdoorBlock = 'Only the two managers can report an opponent.'
   else if (isPlaceholder) {
     backdoorBlock = 'This match was postponed and is still to be played. Report the opponent once the new date has passed.'
-  } else if (deadlineBlock(dateKey)) {
-    backdoorBlock = 'This match is past its deadline, so the opponent can no longer be reported here.'
-  } else if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation') {
-    backdoorBlock = 'This match is no longer open for opponent-not-responding reports.'
+  } else if (isRealResult(fixture.result)) {
+    backdoorBlock = 'This match already has a real result on file, so the opponent can no longer be reported here.'
   }
 
   // 2b. Dispute — an APPEAL against a backdoor that has already been applied to

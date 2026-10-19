@@ -6128,6 +6128,14 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
       const forfManagerId = homeForfeit ? fixtureHome?.manager_id : fixtureAway?.manager_id
       const oppTeamId = homeForfeit ? fixture.away_team_id : fixture.home_team_id
       if (forfManagerId) {
+        // One penalty per match: clear balances this fixture created before, so a
+        // resubmitted/corrected forfeit cannot stack a second penalty. Balances it
+        // consumed belong to other fixtures and are left alone.
+        await supabase
+          .from('forfeit_balances')
+          .delete()
+          .eq('fixture_id', session.matched_fixture_id)
+          .is('consumed_by_fixture_id', null)
         await supabase.from('forfeit_balances').insert({
           fixture_id: session.matched_fixture_id,
           forfeiting_manager_id: forfManagerId,

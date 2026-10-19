@@ -133,6 +133,7 @@ tree as the first step.
 - `admin-dashboard/` — admin dashboard UI (tournaments widget button uniformization, postpone overlay)
 - `migration-history/` — Supabase schema_migrations tracking / migration bookkeeping
 - `forfeit-balances/` — forfeit balance carry-over (website "Use" button, WhatsApp auto-apply)
+- `auto-finalise/` — 02:00 auto-finalise cron (next-day 0-0 placeholder, catch-up cutoff, late/pending backdoor resolution)
 - `postgrest-embeds/` — PostgREST embed shape issues (unique constraints flipping embeds to one-to-one)
 - `knockout-generation/` — knockout bracket generation + progression wiring (advanceWinner, leg mirroring, tie-breaks)
 - `season-cup-flow/` — deferred cup creation after league end (start-tournament flow)

@@ -42,6 +42,16 @@ const BD_STATUS: Record<string, { label: string; tone: string }> = {
     label: 'Declined',
     tone: 'bg-feedback-error/15 text-feedback-error border-feedback-error/30',
   },
+  // Kept visible (not silently dropped) so a manager can always see what
+  // happened to the report they filed.
+  void_game_played: {
+    label: 'Replaced by result',
+    tone: 'bg-bg-elevated text-text-secondary border-border',
+  },
+  expired: {
+    label: 'Expired',
+    tone: 'bg-bg-elevated text-text-secondary border-border',
+  },
 }
 
 function Pill({ status, postponedConfirmed }: { status: string; postponedConfirmed: boolean }) {
@@ -461,6 +471,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           onSubmit={send}
           homeName={homeName}
           awayName={awayName}
+          side={state.viewer.side}
           block={state.rules.resultBlock}
           note={state.rules.resultNote}
           formFor={formFor}
@@ -559,6 +570,7 @@ function ResultPanel({
   onSubmit,
   homeName,
   awayName,
+  side,
   block,
   note,
   formFor,
@@ -567,6 +579,7 @@ function ResultPanel({
   onSubmit: (fd: FormData) => void
   homeName: string
   awayName: string
+  side: 'home' | 'away' | null
   block: string | null
   note: string | null
   formFor: (action: string, fields?: Record<string, string | File | null>) => FormData
@@ -575,7 +588,17 @@ function ResultPanel({
   const [home, setHome] = useState('')
   const [away, setAway] = useState('')
   const [forfeit, setForfeit] = useState('no')
+  const [givenWin, setGivenWin] = useState('no')
   const [noFileError, setNoFileError] = useState(false)
+
+  // "Did this player give you the win?" locks the score to a 3-0 walkover for the
+  // submitter: the score inputs show it read-only and the forfeit question is
+  // disabled (a walkover is never also a forfeit, so no +3 and no carry-over).
+  const walkover = givenWin === 'yes'
+  const walkHome = side === 'away' ? '0' : '3'
+  const walkAway = side === 'away' ? '3' : '0'
+  const shownHome = walkover ? walkHome : home
+  const shownAway = walkover ? walkAway : away
 
   return (
     <Card>
@@ -591,7 +614,15 @@ function ResultPanel({
             return
           }
           setNoFileError(false)
-          onSubmit(formFor('result', { homeScore: home, awayScore: away, screenshot: file, forfeit }))
+          onSubmit(
+            formFor('result', {
+              homeScore: shownHome,
+              awayScore: shownAway,
+              screenshot: file,
+              forfeit: walkover ? 'no' : forfeit,
+              givenWin,
+            })
+          )
         }}
       >
         <Field label="Result screenshot" hint="Upload the final score screen — it is kept as proof on this match.">
@@ -612,7 +643,7 @@ function ResultPanel({
         )}
 
         <div className="space-y-1.5">
-          <span className="text-xs font-bold uppercase tracking-wide text-text-muted">Mark as forfeit?</span>
+          <span className="text-xs font-bold uppercase tracking-wide text-text-muted">Did this player give you the win?</span>
           <div className="flex items-center gap-6">
             {[
               { value: 'no', label: 'No' },
@@ -624,11 +655,50 @@ function ResultPanel({
               >
                 <input
                   type="radio"
+                  name="result-given-win"
+                  value={opt.value}
+                  checked={givenWin === opt.value}
+                  onChange={() => setGivenWin(opt.value)}
+                  disabled={!!block || busy}
+                  className="sr-only"
+                />
+                <span
+                  className={`relative h-4 w-4 rounded-full border-2 transition-colors ${
+                    givenWin === opt.value ? 'border-text-primary' : 'border-border'
+                  }`}
+                >
+                  {givenWin === opt.value && (
+                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-text-primary" />
+                  )}
+                </span>
+                <span className="text-sm text-text-primary">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+          <span className="block text-xs text-text-muted">
+            Select <span className="font-semibold">Yes</span> if the opponent handed you the win — the score is recorded as a
+            3-0 win to you.
+          </span>
+        </div>
+
+        <div className={`space-y-1.5 ${walkover ? 'opacity-50' : ''}`}>
+          <span className="text-xs font-bold uppercase tracking-wide text-text-muted">Mark as forfeit?</span>
+          <div className="flex items-center gap-6">
+            {[
+              { value: 'no', label: 'No' },
+              { value: 'yes', label: 'Yes' },
+            ].map((opt) => (
+              <label
+                key={opt.value}
+                className={`inline-flex items-center gap-2 select-none ${block || busy || walkover ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+              >
+                <input
+                  type="radio"
                   name="result-forfeit"
                   value={opt.value}
                   checked={forfeit === opt.value}
                   onChange={() => setForfeit(opt.value)}
-                  disabled={!!block || busy}
+                  disabled={!!block || busy || walkover}
                   className="sr-only"
                 />
                 <span
@@ -645,7 +715,9 @@ function ResultPanel({
             ))}
           </div>
           <span className="block text-xs text-text-muted">
-            Select <span className="font-semibold">Yes</span> if the opponent didn&apos;t show or forfeited (+3 goals added to winner).
+            {walkover
+              ? 'Not needed — a walkover is recorded as a flat 3-0.'
+              : 'Select Yes if the opponent forfeited (+3 goals added to winner).'}
           </span>
         </div>
 
@@ -656,10 +728,10 @@ function ResultPanel({
               min={0}
               max={99}
               inputMode="numeric"
-              value={home}
+              value={shownHome}
               onChange={(e) => setHome(e.target.value)}
-              disabled={!!block || busy}
-              className={`${inputClass} text-center text-lg font-black tabular-nums`}
+              disabled={!!block || busy || walkover}
+              className={`${inputClass} text-center text-lg font-black tabular-nums ${walkover ? 'opacity-60' : ''}`}
               placeholder="0"
             />
           </Field>
@@ -669,16 +741,28 @@ function ResultPanel({
               min={0}
               max={99}
               inputMode="numeric"
-              value={away}
+              value={shownAway}
               onChange={(e) => setAway(e.target.value)}
-              disabled={!!block || busy}
-              className={`${inputClass} text-center text-lg font-black tabular-nums`}
+              disabled={!!block || busy || walkover}
+              className={`${inputClass} text-center text-lg font-black tabular-nums ${walkover ? 'opacity-60' : ''}`}
               placeholder="0"
             />
           </Field>
         </div>
 
-        <Button type="submit" variant="primary" isLoading={busy} disabled={busy || !!block || home === '' || away === ''} className="w-full">
+        {walkover && (
+          <p className="rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-text-primary">
+            Recorded as {walkHome}-{walkAway} walkover win to you. The score and forfeit controls stay locked.
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          variant="primary"
+          isLoading={busy}
+          disabled={busy || !!block || (!walkover && (home === '' || away === ''))}
+          className="w-full"
+        >
           Submit result
         </Button>
       </form>
@@ -814,12 +898,18 @@ function BackdoorPanel({
         ? 'Your dispute is with the admin. They will review both screenshots and get back to you.'
         : myBackdoor.status === 'approved'
           ? 'Your dispute was upheld — the 3-0 has been awarded to you instead.'
-          : 'Your dispute was declined — the backdoor result stands.'
+          : myBackdoor.status === 'declined'
+            ? 'Your dispute was declined — the backdoor result stands.'
+            : 'This dispute is closed — a result was submitted for the match, so it no longer applies.'
       : myBackdoor.status === 'pending'
         ? 'Your report is with the admin. They will review the screenshots and get back to you.'
         : myBackdoor.status === 'approved'
           ? 'Your report was approved. A 3-0 has been applied.'
-          : 'Your report was declined.'
+          : myBackdoor.status === 'declined'
+            ? 'Your report was declined.'
+            : myBackdoor.status === 'expired'
+              ? 'Your report expired before the admin reviewed it. You can file a new one while the match is still open.'
+              : 'Your report was closed because a result was submitted for this match.'
 
     return (
       <Card>
@@ -833,7 +923,7 @@ function BackdoorPanel({
         </div>
 
         <p className="mt-2 text-sm text-text-secondary">{outcomeLine}</p>
-        <p className="mt-1 text-xs text-text-muted">
+        <p className="mt-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-text-primary">
           Submitted{myBackdoor.submitterName ? ` by ${myBackdoor.submitterName}` : ''} {formatDateTime(myBackdoor.createdAt)}
           {myBackdoor.reviewedByName &&
             ` · ${myBackdoor.status === 'declined' ? 'declined' : 'approved'} by ${myBackdoor.reviewedByName}`}
@@ -841,7 +931,7 @@ function BackdoorPanel({
         </p>
 
         {myBackdoor.isDispute && myBackdoor.disputeNote && (
-          <p className="mt-2 rounded-xl border border-border bg-bg-base px-3 py-2 text-xs text-text-secondary">
+          <p className="mt-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-text-primary">
             Your explanation: {myBackdoor.disputeNote}
           </p>
         )}

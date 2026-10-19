@@ -57,7 +57,20 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Fixture not found' }, { status: 404 })
   }
 
-  if (['completed', 'confirmed', 'abandoned'].includes(fixture.status)) {
+  // A 'confirmed' fixture is normally finished and must not be moved. The
+  // exception is a result that nobody actually played: the automatic 0-0 for a
+  // no-show, an automatic 3-0 for a managerless club, or a backdoor decision.
+  // Those are placeholders (no finalised_by and no screenshot), and the admin
+  // needs to be able to send the match to a later date while the placeholder
+  // score stays in the table until it is really played.
+  const { data: existingResult } = await adminSupabase
+    .from('results')
+    .select('finalised_by, screenshot_url')
+    .eq('fixture_id', fixtureId)
+    .maybeSingle()
+  const hasRealResult =
+    !!existingResult && (!!(existingResult as any).finalised_by || !!(existingResult as any).screenshot_url)
+  if (['completed', 'abandoned'].includes(fixture.status) || (fixture.status === 'confirmed' && hasRealResult)) {
     return Response.json({ error: 'Cannot postpone a finished fixture' }, { status: 400 })
   }
 

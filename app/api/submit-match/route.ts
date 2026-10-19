@@ -128,12 +128,22 @@ export async function POST(request: NextRequest) {
 async function submitResult(admin: any, fixture: any, viewer: Viewer, form: FormData, code: string) {
   const dateKey = dateKeyOf(fixture)
   const todayKey = getSastDateKey()
-  const homeScore = parseScore(form.get('homeScore'))
-  const awayScore = parseScore(form.get('awayScore'))
+  const homeScoreRaw = parseScore(form.get('homeScore'))
+  const awayScoreRaw = parseScore(form.get('awayScore'))
   const shot = form.get('screenshot')
   const forfeit = String(form.get('forfeit') ?? '').trim()
+  // "Did this player give you the win?" - the portal locks the score to a 3-0
+  // walkover when the manager answers Yes, so the score fields may come through
+  // empty; the result is forced server-side either way.
+  const givenWin = String(form.get('givenWin') ?? '').trim() === 'yes'
 
-  if (homeScore === null || awayScore === null) return error('Type both scores as numbers (e.g. 2 and 1).')
+  if (!givenWin && (homeScoreRaw === null || awayScoreRaw === null)) {
+    return error('Type both scores as numbers (e.g. 2 and 1).')
+  }
+  // Coerced non-null: the walkover path ignores these entirely and overwrites
+  // them below, so blank inputs are safe there.
+  const homeScore = homeScoreRaw ?? 0
+  const awayScore = awayScoreRaw ?? 0
   if (!(shot instanceof File) || shot.size === 0) return error('Upload the result screenshot as proof.')
   if (shot.size > 8 * 1024 * 1024) return error('Screenshot is too large (max 8MB).')
 
@@ -207,8 +217,28 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   let isAbandoned = false
   let abandonedType: 'home' | 'away' | null = null
   const isForfeit = forfeit === 'yes' || forfeit === 'true'
+  // "Did this player give you the win?" - a straight walkover: 3-0 to the
+  // submitter, regardless of what was typed, and never a forfeit (so no +3 bonus
+  // and no carry-over penalty against the opponent). Mirrors the locked 3-0 the
+  // portal shows when the manager answers Yes.
+  if (givenWin && isForfeit) {
+    return error('A walkover is a flat 3-0, so it cannot also be marked as a forfeit.')
+  }
 
-  if (isForfeit) {
+  // Any balance this fixture created when it was previously submitted as a
+  // forfeit is stale once the result is being rewritten (a plain correction, a
+  // walkover, or another forfeit). Drop it first so resubmitting cannot stack
+  // duplicate carry-over penalties on the same match.
+  if (fixture.result && !fixture.postponed_confirmed) {
+    await admin.from('forfeit_balances').delete().eq('fixture_id', fixture.id)
+  }
+
+  if (givenWin) {
+    if (!viewer.side && !viewer.isAdmin) return error('Only the two managers can submit a result.')
+    finalHomeScore = viewer.side === 'away' ? 0 : 3
+    finalAwayScore = viewer.side === 'away' ? 3 : 0
+    overrideReason = 'opponent gave the win (walkover 3-0)'
+  } else if (isForfeit) {
     if (homeScore === awayScore) {
       return error('A forfeited match needs a clear loser — the scores cannot be level.')
     }
@@ -344,8 +374,8 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         admin,
         fixture.tournament_id,
         fixture.id,
-        homeScore,
-        awayScore,
+        finalHomeScore,
+        finalAwayScore,
         fixture.home_team_id ?? null,
         fixture.away_team_id ?? null
       )
@@ -355,14 +385,14 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   }
 
   await audit(admin, viewer.userId, 'portal_result_submitted', fixture.id, {
-    home_score: homeScore,
-    away_score: awayScore,
+    home_score: finalHomeScore,
+    away_score: finalAwayScore,
     is_replacement: isReplacing,
     why: overrideReason ?? 'first submission',
     side: viewer.side,
   })
 
-  const matchLabel = `${teamName(fixture.home_team)} ${homeScore}-${awayScore} ${teamName(fixture.away_team)}`
+  const matchLabel = `${teamName(fixture.home_team)} ${finalHomeScore}-${finalAwayScore} ${teamName(fixture.away_team)}`
   try {
     await notifyAllAdmins(admin, {
       type: 'match_result',
@@ -449,15 +479,16 @@ async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
   if (fixture.postponed_confirmed) {
     return error('This match was postponed and is still to be played. Report the opponent once the new date has passed.')
   }
-  if (deadlineBlock(dateKeyOf(fixture))) {
-    return error('This match is past its deadline, so the opponent can no longer be reported here.')
+  // A real result closes reports for good. Without one, a report is still
+  // accepted after the deadline: the fixture may have been auto-finalised 0-0
+  // (both absent) and the opponent only admits it later. The claim is held as
+  // Under review and the 02:00 auto-approve job resolves it.
+  if (isRealResult(fixture.result)) {
+    return error(
+      `This match already has a real result (${teamName(fixture.home_team)} ${fixture.result.home_score}-${fixture.result.away_score} ${teamName(fixture.away_team)}), so the opponent can no longer be reported here.`
+    )
   }
-  if (fixture.status !== 'scheduled' && fixture.status !== 'awaiting_confirmation') {
-    if (fixture.result) {
-      return error(
-        `This match already has a result (${teamName(fixture.home_team)} ${fixture.result.home_score}-${fixture.result.away_score} ${teamName(fixture.away_team)}).`
-      )
-    }
+  if (!['scheduled', 'awaiting_confirmation', 'confirmed'].includes(String(fixture.status))) {
     return error('This match is no longer open for opponent-not-responding reports.')
   }
 
@@ -504,6 +535,17 @@ async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
   if (insertErr) {
     console.error('[submit-match] backdoor insert failed:', insertErr.message)
     return error('Failed to submit. Try again.', 500)
+  }
+
+  // Report filed against an already auto-finalised placeholder (e.g. the 0-0 both
+  // teams absent). Move the fixture to Under review so it is obvious the claim is
+  // live; the placeholder score stays in the table until the 02:00 job approves
+  // the claim (or a real result replaces it).
+  if (fixture.result && !isRealResult(fixture.result) && !fixture.postponed_confirmed) {
+    await admin
+      .from('fixtures')
+      .update({ status: 'awaiting_confirmation' })
+      .eq('id', fixture.id)
   }
 
   try {
@@ -1054,10 +1096,27 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
 
   if (viewer.side === null) return error('Only the two managers can accept this.')
 
+  // A postponement normally writes a locked 3-0 for the acceptor. But when the
+  // match was ALREADY decided by a backdoor (a 3-0 walkover) or auto-finalised
+  // 0-0 (both absent), that score is the one that stands: postponing only moves
+  // the date, it does not rewrite the backdoor result. The placeholder keeps its
+  // score and follows the fixture to the new day, so the table is unchanged
+  // until the match is actually played.
+  const existingPlaceholder =
+    fixture.result && !isRealResult(fixture.result) && !fixture.postponed_confirmed ? fixture.result : null
+
   // The acceptor wins 3-0; the requester loses. Their side is the acceptor side.
   const acceptorSide = viewer.side
-  const homeScore = acceptorSide === 'home' ? 3 : 0
-  const awayScore = acceptorSide === 'away' ? 3 : 0
+  const homeScore = existingPlaceholder
+    ? Number(existingPlaceholder.home_score ?? 0)
+    : acceptorSide === 'home'
+      ? 3
+      : 0
+  const awayScore = existingPlaceholder
+    ? Number(existingPlaceholder.away_score ?? 0)
+    : acceptorSide === 'away'
+      ? 3
+      : 0
   const winner = acceptorSide === 'home' ? teamName(fixture.home_team) : teamName(fixture.away_team)
   const loser = acceptorSide === 'home' ? teamName(fixture.away_team) : teamName(fixture.home_team)
 
@@ -1069,13 +1128,16 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
 
   // Locked placeholder result. override_reason must NOT contain the words
   // 'absent' or 'both' - the standings trigger reads those as no-show flags.
+  // When the score came from a backdoor already on file, its note is preserved.
   const { error: resultErr } = await admin.from('results').upsert(
     {
       fixture_id: fixture.id,
       home_score: homeScore,
       away_score: awayScore,
-      finalised_by: viewer.userId,
-      override_reason: 'postponement agreed',
+      finalised_by: existingPlaceholder ? existingPlaceholder.finalised_by ?? null : viewer.userId,
+      override_reason: existingPlaceholder
+        ? existingPlaceholder.override_reason ?? 'backdoor result carried to the new date'
+        : 'postponement agreed',
       is_abandoned: false,
     },
     { onConflict: 'fixture_id' }
