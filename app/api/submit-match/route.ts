@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getSastDateKey } from '@/lib/app-time'
 import { recalculateStandings } from '@/lib/standings-engine'
@@ -6,9 +6,16 @@ import { insertNotificationsAndPush, notifyAllAdmins } from '@/lib/notify'
 import { notifyBackdoorSubmitted, notifyBackdoorDisputed } from '@/lib/backdoor-notify'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
-import { analyzeImageBuffer, matchStatsToDbColumns } from '@/lib/ocr'
-import { normalizeToLandscape } from '@/lib/whatsapp'
+import { matchStatsToDbColumns } from '@/lib/ocr'
+import { MAX_SHOTS, verifyScreenshots, type ShotImage, type VerifyResult } from '@/lib/screenshot-verify'
 import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
+
+// The result submission now runs the AI screenshot check (Gemini flash-lite,
+// 2 calls per attached screenshot) INSIDE the request, because the portal shows
+// a blocking "checking your screenshots" overlay until it answers. Default
+// function duration is not always enough for 4 screenshots — 60s covers the
+// worst case with headroom on the Hobby plan.
+export const maxDuration = 60
 
 function parseScore(value: FormDataEntryValue | null): number | null {
   if (value === null) return null
@@ -131,6 +138,10 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   const homeScoreRaw = parseScore(form.get('homeScore'))
   const awayScoreRaw = parseScore(form.get('awayScore'))
   const shot = form.get('screenshot')
+  // Optional extra screenshots: a manager who had to replay the game because
+  // of network drops / disconnections attaches those screens too, and the AI
+  // merges their stats into one set for the fixture page.
+  const extraShots = form.getAll('extraScreenshot').filter((f): f is File => f instanceof File && f.size > 0)
   const forfeit = String(form.get('forfeit') ?? '').trim()
   // "Did this player give you the win?" - the portal locks the score to a 3-0
   // walkover when the manager answers Yes, so the score fields may come through
@@ -146,6 +157,10 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   const awayScore = awayScoreRaw ?? 0
   if (!(shot instanceof File) || shot.size === 0) return error('Upload the result screenshot as proof.')
   if (shot.size > 8 * 1024 * 1024) return error('Screenshot is too large (max 8MB).')
+  if (extraShots.length > MAX_SHOTS - 1) {
+    return error(`You can attach up to ${MAX_SHOTS} screenshots in total (1 main + ${MAX_SHOTS - 1} extra).`)
+  }
+  if (extraShots.some((f) => f.size > 8 * 1024 * 1024)) return error('One of the extra screenshots is too large (max 8MB).')
 
   if (viewer.side === null && !viewer.isAdmin) return error('Only the two managers can submit a result.')
 
@@ -185,6 +200,39 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
       return error('This result has already been changed twice. Contact the admin to change it for you.')
     }
   }
+
+  // ── AI screenshot check (blocking) ───────────────────────────────────────────
+  // Runs BEFORE anything is written, so a declined submission leaves the result
+  // already on file completely untouched. The portal holds a full-screen
+  // "checking your screenshots" overlay while this call is in flight.
+  // Skipped for a walkover: there the proof is the opponent handing over the
+  // win, so there is no scoreline on screen to verify against.
+  let verification: VerifyResult | null = null
+  if (!givenWin) {
+    const shots: ShotImage[] = await Promise.all(
+      [shot as File, ...extraShots].map(async (f) => ({
+        buffer: Buffer.from(await f.arrayBuffer()),
+        mimeType: f.type || 'image/jpeg',
+      })),
+    )
+    verification = await verifyScreenshots(shots, homeScore, awayScore)
+    if (!verification.ok) {
+      // 422 + `declined` so the portal shows the red-X card (with what the AI
+      // read) instead of the generic error banner.
+      return NextResponse.json(
+        {
+          ok: false,
+          declined: true,
+          error: verification.reason,
+          ocrText: verification.ocrText,
+          seenScore: verification.seenScore,
+          screenshots: verification.images,
+        },
+        { status: 422 },
+      )
+    }
+  }
+
   // Any replacement of an already-on-file (non-placeholder) score wipes the old
   // result's stats + confirmations first so the corrected score is the only one
   // on file (mirrors restoreAndResubmit steps 1-2 in the bot).
@@ -200,6 +248,22 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   } catch (e) {
     console.error('[submit-match] result screenshot upload failed:', e)
     return error('Screenshot upload failed. Try again.', 500)
+  }
+
+  // Optional replay screenshots — kept as extra proof next to the main one.
+  let extraScreenshotUrls: string[] = []
+  if (extraShots.length > 0) {
+    try {
+      extraScreenshotUrls = await Promise.all(
+        extraShots.map((f, i) => {
+          const ext = (f.type === 'image/png' ? 'png' : f.name?.endsWith('.png') ? 'png' : 'jpg')
+          return uploadToBucket('match-screenshots', `result-${fixture.id}-x${i + 1}-${Date.now()}.${ext}`, f)
+        }),
+      )
+    } catch (e) {
+      console.error('[submit-match] extra screenshot upload failed:', e)
+      return error('One of the extra screenshots failed to upload. Try again.', 500)
+    }
   }
 
   const isReplacing = !!fixture.result
@@ -325,6 +389,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         home_score: finalHomeScore,
         away_score: finalAwayScore,
         screenshot_url: screenshotUrl,
+        extra_screenshot_urls: extraScreenshotUrls.length > 0 ? extraScreenshotUrls : null,
         finalised_by: viewer.userId,
         is_abandoned: isAbandoned,
         ...(abandonedType ? { abandoned_type: abandonedType } : {}),
@@ -404,49 +469,25 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
     console.error('[submit-match] admin notify failed:', e)
   }
 
-  // OCR the proof screenshot in the background (after the response) so the
-  // manager is not kept waiting. The typed score gates the stats: a screenshot
-  // showing the identical scoreline keeps stats as-is; a reversed scoreline
-  // (manager typed 2-3 but the screenshot reads 3-2) means the two sides are
-  // swapped on screen, so home/away stats are flipped to match the typed sides;
-  // any other mismatch means no stats are written at all.
-  const shotBuffer = Buffer.from(await shot.arrayBuffer())
-  const mimeType = shot.type || 'image/jpeg'
-  after(async () => {
+  // Match stats come straight out of the blocking verification pass: the AI has
+  // already merged the stat tables of every attached screenshot (closest /
+  // most complete first, so a replayed game still yields one full set) and
+  // aligned them to the TYPED sides — flipping when the screenshot shows the
+  // sides the other way round — so they are written inline here. No second OCR
+  // run. A walkover, or a check that had to fail open, simply writes no stats.
+  if (verification?.stats) {
     try {
-      const analysis = await analyzeImageBuffer(await normalizeToLandscape(shotBuffer), mimeType)
-      const ocrHome = analysis.homeScore
-      const ocrAway = analysis.awayScore
-      const ocrStats = analysis.matchStats
-      if (ocrHome == null || ocrAway == null || !ocrStats) return
-
-      let stats = ocrStats
-      if (ocrHome === homeScore && ocrAway === awayScore) {
-        // exact match — keep stats as read
-      } else if (ocrHome === awayScore && ocrAway === homeScore) {
-        // scoreline is swapped: flip every stat so home/away line up with the
-        // typed (manager) sides
-        stats = {}
-        for (const [key, val] of Object.entries(ocrStats)) {
-          stats[key] = { home: val.away, away: val.home }
-        }
-      } else {
-        // no match — no stats
-        return
+      const dbStats = matchStatsToDbColumns(verification.stats)
+      if (dbStats) {
+        // Wipe any previous stats for this result (e.g. a replaced placeholder)
+        await admin.from('match_stats').delete().eq('result_id', resultRow.id)
+        const { error: statsErr } = await admin.from('match_stats').insert({ result_id: resultRow.id, ...dbStats })
+        if (statsErr) console.error('[submit-match] match_stats insert failed:', statsErr.message)
       }
-
-      const dbStats = matchStatsToDbColumns(stats)
-      if (!dbStats) return
-
-      // Wipe any previous stats for this fixture (e.g. a replaced placeholder)
-      // then write the OCR result, mirroring the finalise-result flow.
-      await admin.from('match_stats').delete().eq('result_id', resultRow.id)
-      const { error: statsErr } = await admin.from('match_stats').insert({ result_id: resultRow.id, ...dbStats })
-      if (statsErr) console.error('[submit-match] background match_stats insert failed:', statsErr.message)
     } catch (e) {
-      console.error('[submit-match] background OCR failed:', e)
+      console.error('[submit-match] match_stats write failed:', e)
     }
-  })
+  }
 
   return NextResponse.json({
     ok: true,

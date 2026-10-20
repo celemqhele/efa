@@ -152,6 +152,21 @@ export default function Desktop({ data }: { data: any }) {
                 <h2 className="text-sm font-semibold text-text-primary tracking-wide uppercase">Match Screenshot</h2>
               </div>
               <img src={result.screenshot_url} alt="Match screenshot" className="w-full rounded-xl border border-border" />
+              {Array.isArray(result.extra_screenshot_urls) && result.extra_screenshot_urls.length > 0 && (
+                <div className="mt-3 space-y-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-text-muted">
+                    More screenshots from this match
+                  </p>
+                  {(result.extra_screenshot_urls as string[]).map((url, i) => (
+                    <div key={url}>
+                      <p className="mb-1 text-[11px] text-text-muted">
+                        {fixture?.home_team?.name} vs {fixture?.away_team?.name} — game {i + 2}
+                      </p>
+                      <img src={url} alt={`Match screenshot ${i + 2}`} className="w-full rounded-xl border border-border" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

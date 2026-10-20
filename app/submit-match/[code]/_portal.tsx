@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { Check } from 'lucide-react'
+import { Check, ImagePlus, Loader2, X, XCircle } from 'lucide-react'
+import { maybeCompressImage } from '@/lib/compress-image-client'
 
 type Panel = 'home' | 'result' | 'backdoor' | 'details' | 'postpone'
 
@@ -85,6 +86,111 @@ function Field({ label, children, hint }: { label: string; children: React.React
 const inputClass =
   'w-full rounded-xl border border-border bg-bg-base px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none'
 
+// How many proof screenshots a result may carry (1 required + up to 3 extra for
+// a game that had to be replayed). Mirrors MAX_SHOTS / MAX_RESULT_FILES on the
+// server (lib/screenshot-verify.ts, app/api/submit-match/route.ts).
+const MAX_RESULT_FILES = 4
+const MAX_EXTRA_FILES = MAX_RESULT_FILES - 1
+
+// Shared look for the file inputs so the main and the optional extras match.
+const fileInputClass =
+  'block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary'
+
+// ── AI screenshot check overlay ───────────────────────────────────────────────
+// Shown while the POST is in flight (the AI OCR + assessment runs inside the
+// request). Full screen and non-dismissable on purpose: the manager cannot
+// click away mid-check, which is also why the portal has no other spinner.
+function AiCheckOverlay() {
+  const steps = [
+    'Uploading your screenshots',
+    'Reading the score and the stat table',
+    'Checking the score against what you entered',
+  ]
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6">
+      <div className="w-full max-w-sm rounded-2xl bg-bg-surface border border-border p-6 shadow-2xl animate-scale-in">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center">
+            <span className="absolute inset-0 rounded-full bg-accent/25 animate-ping" />
+            <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-accent/15">
+              <Loader2 className="h-5 w-5 animate-spin text-accent" />
+            </span>
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-black text-text-primary">Checking your screenshots</p>
+            <p className="text-xs text-text-muted">This takes a few seconds. Please do not close this page.</p>
+          </div>
+        </div>
+        <ul className="mt-4 space-y-2">
+          {steps.map((s) => (
+            <li key={s} className="flex items-start gap-2 text-xs text-text-secondary">
+              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
+              {s}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+// ── Decline card ──────────────────────────────────────────────────────────────
+// Red X verdict from the AI check. Shows exactly what the AI read so a manager
+// who uploaded the wrong game (or typed the wrong score) can see why, plus the
+// per-screenshot breakdown.
+function VerificationDecline({ verdict, onDismiss }: { verdict: any; onDismiss: () => void }) {
+  const shots: any[] = Array.isArray(verdict?.screenshots) ? verdict.screenshots : []
+  return (
+    <div className="rounded-2xl border border-feedback-error/40 bg-feedback-error/10 p-4">
+      <div className="flex items-start gap-3">
+        <XCircle className="mt-0.5 h-6 w-6 shrink-0 text-feedback-error" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-black uppercase tracking-wide text-feedback-error">Submission declined</p>
+          <p className="mt-1 text-sm text-text-primary">
+            {verdict?.error ||
+              'This screenshot does not include a score, or it is too different from the score you entered.'}
+          </p>
+
+          {shots.length > 1 && (
+            <ul className="mt-2 space-y-1">
+              {shots.map((s) => (
+                <li key={s.index} className="flex items-start gap-2 text-xs text-text-secondary">
+                  {s.isScoreShot ? (
+                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-feedback-error" />
+                  ) : (
+                    <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-feedback-error" />
+                  )}
+                  <span>
+                    Screenshot {s.index}: {s.isScoreShot ? `score seen ${s.score?.home}-${s.score?.away}` : 'no score found'}
+                    {s.note ? ` (${s.note})` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {verdict?.ocrText && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-text-muted">
+                What the AI read
+              </summary>
+              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-bg-base p-2.5 text-[11px] leading-relaxed text-text-secondary">
+                {verdict.ocrText}
+              </pre>
+            </details>
+          )}
+
+          <div className="mt-3">
+            <Button variant="secondary" onClick={onDismiss} className="!px-3 !py-1.5 !text-xs">
+              Try again
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // WhatsApp reminder preference. Same visual control as the "Mark as forfeit?"
 // radio (see .opencode/context/submit-portal/portal-forfeit-radio-control_2026-10-11.md):
 // a heading, a Yes/No row of filled-dot circles, and a hint line. Default Yes;
@@ -152,7 +258,9 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
   const [state, setState] = useState<any>(initialState)
   const [panel, setPanel] = useState<Panel>(initialAction === 'backdoor' ? 'backdoor' : 'home')
   const [busy, setBusy] = useState(false)
+  const [checking, setChecking] = useState(false)
   const [error, setError] = useState('')
+  const [decline, setDecline] = useState<any>(null)
   const [done, setDone] = useState<Done | null>(null)
   const [copied, setCopied] = useState(false)
   const [confirmAccept, setConfirmAccept] = useState(false)
@@ -173,13 +281,26 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
     }
   }
 
-  async function send(form: FormData) {
+  async function send(form: FormData, opts: { aiCheck?: boolean } = {}) {
     setBusy(true)
     setError('')
+    setDecline(null)
+    // Full-screen, non-dismissable overlay while the AI reads the screenshots
+    // (the check runs inside this POST, so the request only returns once the
+    // score/stats verdict exists).
+    if (opts.aiCheck) setChecking(true)
     try {
       const res = await fetch('/api/submit-match', { method: 'POST', body: form })
       const data = await res.json().catch(() => ({ ok: false }))
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Something went wrong. Try again.')
+      if (!res.ok || !data.ok) {
+        // The AI check declined the screenshots: red X card, not the plain
+        // error banner, and the result on file is left untouched.
+        if (data.declined) {
+          setDecline(data)
+          return
+        }
+        throw new Error(data.error || 'Something went wrong. Try again.')
+      }
       setDone({ title: data.title, message: data.message, shareLink: data.shareLink, shareText: data.shareText })
       setCopied(false)
       setConfirmAccept(false)
@@ -188,6 +309,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong. Try again.')
     } finally {
+      setChecking(false)
       setBusy(false)
     }
   }
@@ -425,6 +547,8 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
         </Card>
       )}
 
+      {decline && <VerificationDecline verdict={decline} onDismiss={() => setDecline(null)} />}
+
       {error && (
         <div className="rounded-xl border border-feedback-error/40 bg-feedback-error/10 px-3 py-2.5 text-sm font-semibold text-feedback-error">
           {error}
@@ -475,6 +599,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           block={state.rules.resultBlock}
           note={state.rules.resultNote}
           formFor={formFor}
+          declined={!!decline}
         />
       )}
 
@@ -559,6 +684,8 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       )}
 
       <p className="text-center text-[11px] text-text-muted">{appBase.replace('https://', '')}</p>
+
+      {checking && <AiCheckOverlay />}
     </div>
   )
 }
@@ -574,17 +701,23 @@ function ResultPanel({
   block,
   note,
   formFor,
+  declined,
 }: {
   busy: boolean
-  onSubmit: (fd: FormData) => void
+  onSubmit: (fd: FormData, opts?: { aiCheck?: boolean }) => void
   homeName: string
   awayName: string
   side: 'home' | 'away' | null
   block: string | null
   note: string | null
   formFor: (action: string, fields?: Record<string, string | File | null>) => FormData
+  declined: boolean
 }) {
   const [file, setFile] = useState<File | null>(null)
+  // Optional extras: the same fixture played more than once because the
+  // connection dropped. Their stats are combined with the main screenshot's.
+  const [extras, setExtras] = useState<File[]>([])
+  const [uploading, setUploading] = useState(false)
   const [home, setHome] = useState('')
   const [away, setAway] = useState('')
   const [forfeit, setForfeit] = useState('no')
@@ -605,10 +738,17 @@ function ResultPanel({
       <h2 className="text-base font-black text-text-primary">1. Submit the result</h2>
       {block && <p className="mt-2 text-sm text-feedback-warning">{block}</p>}
       {note && <p className="mt-2 text-sm text-feedback-warning">{note}</p>}
+      {declined && (
+        <p className="mt-2 rounded-xl border border-feedback-error/40 bg-feedback-error/10 px-3 py-2 text-xs font-semibold text-feedback-error">
+          Your previous upload was declined. Upload the score screenshot again, or enter the score that is on the
+          screenshot.
+        </p>
+      )}
       <form
         className="mt-4 space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
+          if (uploading) return
           if (!file) {
             setNoFileError(true)
             return
@@ -619,9 +759,13 @@ function ResultPanel({
               homeScore: shownHome,
               awayScore: shownAway,
               screenshot: file,
+              // Repeats: the form key is set more than once so the server can
+              // read them all with form.getAll('extraScreenshot').
+              ...extras.reduce((acc, f, i) => ({ ...acc, [`extraScreenshot${i}`]: f }), {} as Record<string, File>),
               forfeit: walkover ? 'no' : forfeit,
               givenWin,
-            })
+            }),
+            { aiCheck: true }
           )
         }}
       >
@@ -629,18 +773,99 @@ function ResultPanel({
           <input
             type="file"
             accept="image/*"
-            disabled={!!block || busy}
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null)
+            disabled={!!block || busy || uploading}
+            onChange={async (e) => {
+              const picked = e.target.files?.[0] ?? null
               setNoFileError(false)
+              if (!picked) {
+                setFile(null)
+                return
+              }
+              // Shrink big phone screenshots before the POST: up to 4 files go
+              // in one request and the serverless body limit is small.
+              setUploading(true)
+              try {
+                setFile(await maybeCompressImage(picked))
+              } finally {
+                setUploading(false)
+              }
             }}
-            className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary"
+            className={fileInputClass}
           />
           {file && <span className="block truncate text-xs text-accent">{file.name}</span>}
+          {uploading && (
+            <span className="flex items-center gap-1.5 text-xs text-text-muted">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Preparing your screenshot…
+            </span>
+          )}
         </Field>
         {noFileError && (
           <p className="text-sm text-feedback-warning">Upload the result screenshot above first — it is kept as proof.</p>
         )}
+
+        {/* Optional repeats — network drops / disconnections mean the fixture had
+            to be played more than once. The AI merges the stats of every
+            screenshot into one full stat table for the fixture page. */}
+        <div className="rounded-xl border border-border bg-bg-base p-3">
+          <div className="flex items-start gap-2">
+            <ImagePlus className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
+            <div className="min-w-0">
+              <span className="block text-xs font-bold uppercase tracking-wide text-text-muted">
+                Did you play many times due to network or disconnections?
+              </span>
+              <span className="mt-0.5 block text-xs text-text-muted">
+                Optional — add up to {MAX_EXTRA_FILES} more screenshots of the games you replayed. The stats of all your
+                screenshots are combined into one full stat table.
+              </span>
+            </div>
+          </div>
+
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={!!block || busy || uploading}
+            onChange={async (e) => {
+              const picked = Array.from(e.target.files ?? []).slice(0, MAX_EXTRA_FILES)
+              e.target.value = ''
+              if (!picked.length) return
+              setUploading(true)
+              try {
+                const squashed = await Promise.all(picked.map((f) => maybeCompressImage(f)))
+                setExtras((prev) => [...prev, ...squashed].slice(0, MAX_EXTRA_FILES))
+              } finally {
+                setUploading(false)
+              }
+            }}
+            className={`mt-2 ${fileInputClass}`}
+          />
+
+          {uploading && (
+            <span className="mt-1.5 flex items-center gap-1.5 text-xs text-text-muted">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Preparing your screenshots…
+            </span>
+          )}
+
+          {extras.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {extras.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="min-w-0 truncate text-text-secondary">
+                    {i + 1}. {f.name}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setExtras((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-bold text-feedback-error hover:bg-feedback-error/10 disabled:opacity-50"
+                  >
+                    <X className="h-3.5 w-3.5" /> Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="space-y-1.5">
           <span className="text-xs font-bold uppercase tracking-wide text-text-muted">Did this player give you the win?</span>
@@ -760,7 +985,7 @@ function ResultPanel({
           type="submit"
           variant="primary"
           isLoading={busy}
-          disabled={busy || !!block || (!walkover && (home === '' || away === ''))}
+          disabled={busy || uploading || !!block || (!walkover && (home === '' || away === ''))}
           className="w-full"
         >
           Submit result
@@ -848,7 +1073,7 @@ function BackdoorPanel({
                 setDisputeFile(e.target.files?.[0] ?? null)
                 setDisputeFileError(false)
               }}
-              className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary"
+              className={fileInputClass}
             />
             {disputeFile && <span className="block truncate text-xs text-accent">{disputeFile.name}</span>}
           </Field>
@@ -1020,7 +1245,7 @@ function BackdoorPanel({
               setFile(e.target.files?.[0] ?? null)
               setNoFileError(false)
             }}
-            className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary"
+            className={fileInputClass}
           />
           {file && <span className="block truncate text-xs text-accent">{file.name}</span>}
         </Field>

@@ -169,6 +169,21 @@ export default function Mobile({ data }: { data: any }) {
           </summary>
           <div className="px-4 pb-4 border-t border-border pt-3">
             <img src={result.screenshot_url} alt="Match screenshot" className="w-full rounded-lg border border-border" />
+            {Array.isArray(result.extra_screenshot_urls) && result.extra_screenshot_urls.length > 0 && (
+              <div className="mt-3 space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-text-muted">
+                  More screenshots from this match
+                </p>
+                {(result.extra_screenshot_urls as string[]).map((url, i) => (
+                  <div key={url}>
+                    <p className="mb-1 text-[10px] text-text-muted">
+                      {home?.name} vs {away?.name} — game {i + 2}
+                    </p>
+                    <img src={url} alt={`Match screenshot ${i + 2}`} className="w-full rounded-lg border border-border" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </details>
       )}
