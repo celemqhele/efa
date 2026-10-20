@@ -41,9 +41,17 @@ Created a new EFA account **high_chief** with the South African mobile number `+
 
 ## Files
 
-- `scripts/create-high-chief-user.ts` — one-off user-creation script.
-- `scripts/assign-high-chief-durban-city.ts` — one-off assignment script.
+- `scripts/create-high-chief-user.ts` — one-off user-creation script (since recycled, see below).
+- `scripts/assign-high-chief-durban-city.ts` — one-off assignment script (since recycled, see below).
 
 ## Restore File Section
 
-No files deleted. Nothing moved to `.recycle/` for this change.
+Both scripts were one-offs that would never be reused (`high_chief` already exists and already manages Durban City, so re-running would fail the duplicate guards), so they were moved out of `scripts/` per the File Deletion Policy — following the `.recycle/scripts/` pattern established in `.opencode/context/housekeeping/recycled-2026-10-20-scratch-scripts_2026-10-20.md`. Nothing was permanently deleted.
+
+| Original Path | Purpose | Recycle Bin Path |
+|---|---|---|
+| `scripts/create-high-chief-user.ts` | Created the `high_chief` auth user + profile with the default password and phone `27795276855` | `.recycle/scripts/create-high-chief-user_2026-10-20.ts` |
+| `scripts/assign-high-chief-durban-city.ts` | Resolved `high_chief` by username and ran `assignManagerToClub()` to assign Durban City, reclaiming its 3 vacant seats | `.recycle/scripts/assign-high-chief-durban-city_2026-10-20.ts` |
+
+To restore a file, move it back and drop the date suffix, e.g.
+`Move-Item .recycle\scripts\create-high-chief-user_2026-10-20.ts scripts\create-high-chief-user.ts`.
