@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Check, ImagePlus, Loader2, X, XCircle } from 'lucide-react'
 import { maybeCompressImage } from '@/lib/compress-image-client'
@@ -92,6 +92,15 @@ const inputClass =
 const MAX_RESULT_FILES = 4
 const MAX_EXTRA_FILES = MAX_RESULT_FILES - 1
 
+// The AI check overlay is held on screen for at least this long so the manager
+// always sees the steps run, even when the POST answers immediately (a decline
+// from a cached read, or an instant network failure).
+const MIN_CHECK_MS = 3000
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 // Shared look for the file inputs so the main and the optional extras match.
 const fileInputClass =
   'block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary'
@@ -100,7 +109,9 @@ const fileInputClass =
 // Shown while the POST is in flight (the AI OCR + assessment runs inside the
 // request). Full screen and non-dismissable on purpose: the manager cannot
 // click away mid-check, which is also why the portal has no other spinner.
-function AiCheckOverlay() {
+// Props drive a 3-step progress bar so the overlay visibly advances instead of
+// sitting on a frozen spinner while Gemini works.
+function AiCheckOverlay({ step }: { step: number }) {
   const steps = [
     'Uploading your screenshots',
     'Reading the score and the stat table',
@@ -122,9 +133,22 @@ function AiCheckOverlay() {
           </div>
         </div>
         <ul className="mt-4 space-y-2">
-          {steps.map((s) => (
-            <li key={s} className="flex items-start gap-2 text-xs text-text-secondary">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
+          {steps.map((s, i) => (
+            <li
+              key={s}
+              className={`flex items-start gap-2 text-xs transition-colors ${
+                i < step ? 'text-text-primary' : i === step ? 'text-text-secondary' : 'text-text-muted/60'
+              }`}
+            >
+              {i < step ? (
+                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-feedback-success" />
+              ) : (
+                <span
+                  className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${
+                    i === step ? 'bg-accent animate-pulse' : 'bg-border'
+                  }`}
+                />
+              )}
               {s}
             </li>
           ))}
@@ -259,6 +283,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
   const [panel, setPanel] = useState<Panel>(initialAction === 'backdoor' ? 'backdoor' : 'home')
   const [busy, setBusy] = useState(false)
   const [checking, setChecking] = useState(false)
+  const [checkStep, setCheckStep] = useState(0)
   const [error, setError] = useState('')
   const [decline, setDecline] = useState<any>(null)
   const [done, setDone] = useState<Done | null>(null)
@@ -289,6 +314,10 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
     // (the check runs inside this POST, so the request only returns once the
     // score/stats verdict exists).
     if (opts.aiCheck) setChecking(true)
+    // Guarantee the check overlay is visible for a beat even when the POST comes
+    // back instantly (or fails instantly): the manager should always see the
+    // steps run instead of a card flashing in and out.
+    const minOverlay = opts.aiCheck ? wait(MIN_CHECK_MS) : Promise.resolve()
     try {
       const res = await fetch('/api/submit-match', { method: 'POST', body: form })
       const data = await res.json().catch(() => ({ ok: false }))
@@ -296,6 +325,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
         // The AI check declined the screenshots: red X card, not the plain
         // error banner, and the result on file is left untouched.
         if (data.declined) {
+          await minOverlay
           setDecline(data)
           return
         }
@@ -305,14 +335,43 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       setCopied(false)
       setConfirmAccept(false)
       setPanel('home')
-      await refresh()
+      await Promise.all([minOverlay, refresh()])
     } catch (e: any) {
-      setError(e.message ?? 'Something went wrong. Try again.')
+      // A bare "Failed to fetch" is the browser's own TypeError: the request
+      // never reached the server, almost always because the body was too large
+      // (the platform rejects an oversized upload before Next.js sees it). Say
+      // that in plain words instead of leaking the JavaScript message.
+      const raw = e?.message ?? ''
+      const netFail = e instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(raw)
+      await minOverlay
+      setError(
+        netFail
+          ? 'Could not send your screenshots. Check your connection and try again. If it keeps failing, upload fewer screenshots at a time.'
+          : raw || 'Something went wrong. Try again.',
+      )
     } finally {
       setChecking(false)
       setBusy(false)
     }
   }
+
+  // Walk the overlay's three step lines over MIN_CHECK_MS so the wait reads as
+  // progress rather than a frozen spinner, then hold on the last step until the
+  // request actually returns. The overlay itself is dismissed by send()'s
+  // finally, so it can never outlive the request.
+  useEffect(() => {
+    if (!checking) {
+      setCheckStep(0)
+      return
+    }
+    setCheckStep(0)
+    const perStep = MIN_CHECK_MS / 3
+    const timers = [
+      setTimeout(() => setCheckStep(1), perStep),
+      setTimeout(() => setCheckStep(2), perStep * 2),
+    ]
+    return () => timers.forEach(clearTimeout)
+  }, [checking])
 
   function formFor(action: string, fields: Record<string, string | File | null> = {}) {
     const fd = new FormData()
@@ -685,7 +744,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
 
       <p className="text-center text-[11px] text-text-muted">{appBase.replace('https://', '')}</p>
 
-      {checking && <AiCheckOverlay />}
+      {checking && <AiCheckOverlay step={checkStep} />}
     </div>
   )
 }
@@ -716,6 +775,9 @@ function ResultPanel({
   const [file, setFile] = useState<File | null>(null)
   // Optional extras: the same fixture played more than once because the
   // connection dropped. Their stats are combined with the main screenshot's.
+  // Gated behind an explicit Yes/No toggle (default No) so the extra upload
+  // widget only appears when the manager says they replayed the game.
+  const [playedMany, setPlayedMany] = useState('no')
   const [extras, setExtras] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [home, setHome] = useState('')
@@ -803,69 +865,119 @@ function ResultPanel({
           <p className="text-sm text-feedback-warning">Upload the result screenshot above first — it is kept as proof.</p>
         )}
 
-        {/* Optional repeats — network drops / disconnections mean the fixture had
-            to be played more than once. The AI merges the stats of every
-            screenshot into one full stat table for the fixture page. */}
-        <div className="rounded-xl border border-border bg-bg-base p-3">
-          <div className="flex items-start gap-2">
-            <ImagePlus className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
-            <div className="min-w-0">
-              <span className="block text-xs font-bold uppercase tracking-wide text-text-muted">
-                Did you play many times due to network or disconnections?
-              </span>
-              <span className="mt-0.5 block text-xs text-text-muted">
-                Optional — add up to {MAX_EXTRA_FILES} more screenshots of the games you replayed. The stats of all your
-                screenshots are combined into one full stat table.
-              </span>
-            </div>
+        {/* Replay screenshots are opt-in: the Yes/No toggle keeps the extra
+            upload widget hidden unless the manager says the fixture had to be
+            played more than once. Same radio control as the forfeit/walkover
+            questions (see
+            .opencode/context/submit-portal/portal-forfeit-radio-control_2026-10-11.md). */}
+        <div className="space-y-1.5">
+          <span className="text-xs font-bold uppercase tracking-wide text-text-muted">
+            Did you play many times due to network or disconnections?
+          </span>
+          <div className="flex items-center gap-6">
+            {[
+              { value: 'no', label: 'No' },
+              { value: 'yes', label: 'Yes' },
+            ].map((opt) => (
+              <label
+                key={opt.value}
+                className={`inline-flex items-center gap-2 select-none ${block || busy ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+              >
+                <input
+                  type="radio"
+                  name="result-played-many"
+                  value={opt.value}
+                  checked={playedMany === opt.value}
+                  onChange={() => {
+                    setPlayedMany(opt.value)
+                    // Dropping back to No also drops any picked replays, so the
+                    // POST never carries screenshots the manager just said do
+                    // not exist.
+                    if (opt.value === 'no') setExtras([])
+                  }}
+                  disabled={!!block || busy}
+                  className="sr-only"
+                />
+                <span
+                  className={`relative h-4 w-4 rounded-full border-2 transition-colors ${
+                    playedMany === opt.value ? 'border-text-primary' : 'border-border'
+                  }`}
+                >
+                  {playedMany === opt.value && (
+                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-text-primary" />
+                  )}
+                </span>
+                <span className="text-sm text-text-primary">{opt.label}</span>
+              </label>
+            ))}
           </div>
-
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            disabled={!!block || busy || uploading}
-            onChange={async (e) => {
-              const picked = Array.from(e.target.files ?? []).slice(0, MAX_EXTRA_FILES)
-              e.target.value = ''
-              if (!picked.length) return
-              setUploading(true)
-              try {
-                const squashed = await Promise.all(picked.map((f) => maybeCompressImage(f)))
-                setExtras((prev) => [...prev, ...squashed].slice(0, MAX_EXTRA_FILES))
-              } finally {
-                setUploading(false)
-              }
-            }}
-            className={`mt-2 ${fileInputClass}`}
-          />
-
-          {uploading && (
-            <span className="mt-1.5 flex items-center gap-1.5 text-xs text-text-muted">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Preparing your screenshots…
-            </span>
-          )}
-
-          {extras.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {extras.map((f, i) => (
-                <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 text-xs">
-                  <span className="min-w-0 truncate text-text-secondary">
-                    {i + 1}. {f.name}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setExtras((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-bold text-feedback-error hover:bg-feedback-error/10 disabled:opacity-50"
-                  >
-                    <X className="h-3.5 w-3.5" /> Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <span className="block text-xs text-text-muted">
+            Select <span className="font-semibold">Yes</span> if you had to replay this game — you can then add up to{' '}
+            {MAX_EXTRA_FILES} more screenshots and their stats are combined into one full stat table.
+          </span>
         </div>
+
+        {playedMany === 'yes' && (
+          <div className="rounded-xl border border-border bg-bg-base p-3">
+            <div className="flex items-start gap-2">
+              <ImagePlus className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
+              <div className="min-w-0">
+                <span className="block text-xs font-bold uppercase tracking-wide text-text-muted">
+                  Add your other game screenshots
+                </span>
+                <span className="mt-0.5 block text-xs text-text-muted">
+                  Up to {MAX_EXTRA_FILES} more. The stats of all your screenshots are combined into one full stat table.
+                </span>
+              </div>
+            </div>
+
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={!!block || busy || uploading}
+              onChange={async (e) => {
+                const picked = Array.from(e.target.files ?? []).slice(0, MAX_EXTRA_FILES)
+                e.target.value = ''
+                if (!picked.length) return
+                setUploading(true)
+                try {
+                  const squashed = await Promise.all(picked.map((f) => maybeCompressImage(f)))
+                  setExtras((prev) => [...prev, ...squashed].slice(0, MAX_EXTRA_FILES))
+                } finally {
+                  setUploading(false)
+                }
+              }}
+              className={`mt-2 ${fileInputClass}`}
+            />
+
+            {uploading && (
+              <span className="mt-1.5 flex items-center gap-1.5 text-xs text-text-muted">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Preparing your screenshots…
+              </span>
+            )}
+
+            {extras.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {extras.map((f, i) => (
+                  <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="min-w-0 truncate text-text-secondary">
+                      {i + 1}. {f.name}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setExtras((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-bold text-feedback-error hover:bg-feedback-error/10 disabled:opacity-50"
+                    >
+                      <X className="h-3.5 w-3.5" /> Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <span className="text-xs font-bold uppercase tracking-wide text-text-muted">Did this player give you the win?</span>

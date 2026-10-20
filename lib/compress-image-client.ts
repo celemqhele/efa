@@ -1,25 +1,38 @@
 // Client-side screenshot compression for the submit-match portal.
 //
-// The result form now accepts up to 4 screenshots (1 required + 3 for games
-// that had to be replayed because of network drops). A phone's PNG screenshots
-// are 3-8MB each, so four of them in one POST is far over the serverless body
-// limit. Anything over `maxBytes` is downscaled to `maxEdge` on its long edge
-// and re-encoded as JPEG at `quality` — still perfectly readable for both the
-// AI check and the proof archive. Small files are passed through untouched so
-// the proof keeps its original bytes.
+// The result form accepts up to 4 screenshots (1 required + 3 for games that
+// had to be replayed because of network drops). A phone's PNG screenshots are
+// 3-8MB each, and a Route Handler on Vercel rejects a request body over ~4.5MB
+// BEFORE Next.js ever sees it — the browser then reports the bare "Failed to
+// fetch" the portal used to show. So every picked file has to land in a small
+// per-file budget: `MAX_BYTES` (1.2MB), which keeps 4 files comfortably under
+// the platform cap.
 //
-// Browser only (Canvas + createImageBitmap). Never throws: if the format or
-// the browser cannot handle it, the original File is returned.
+// The encoder steps down through a short ladder (edge 1600 then 1280, quality
+// 0.8 then 0.7) and returns the first result that fits. A screenshot is proof
+// plus AI-OCR input, so 1280px / q0.7 is still plenty readable; the goal is
+// never to lose a submission to the body limit. Files already small enough pass
+// through byte-identical so the proof keeps its original bytes.
+//
+// Browser only (Canvas + createImageBitmap). Never throws: if the format or the
+// browser cannot handle it, the original File is returned.
 
-const DEFAULT_MAX_BYTES = 1_000_000 // 1MB
-const DEFAULT_MAX_EDGE = 1920
-const DEFAULT_QUALITY = 0.9
+const DEFAULT_MAX_BYTES = 1_200_000 // 1.2MB — 4 of these stay under the platform body cap
+const DEFAULT_MAX_EDGE = 1600
+const DEFAULT_QUALITY = 0.8
+
+// (edge, quality) attempts, largest/cleanest first.
+const LADDER: Array<{ edge: number; quality: number }> = [
+  { edge: DEFAULT_MAX_EDGE, quality: DEFAULT_QUALITY },
+  { edge: DEFAULT_MAX_EDGE, quality: 0.7 },
+  { edge: 1280, quality: 0.75 },
+  { edge: 1280, quality: 0.65 },
+  { edge: 1080, quality: 0.6 },
+]
 
 export async function maybeCompressImage(
   file: File,
   maxBytes = DEFAULT_MAX_BYTES,
-  maxEdge = DEFAULT_MAX_EDGE,
-  quality = DEFAULT_QUALITY,
 ): Promise<File> {
   if (!file || !file.type.startsWith('image/')) return file
   if (file.size <= maxBytes) return file
@@ -28,24 +41,34 @@ export async function maybeCompressImage(
   let bitmap: ImageBitmap | null = null
   try {
     bitmap = await createImageBitmap(file)
-    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
-    const w = Math.max(1, Math.round(bitmap.width * scale))
-    const h = Math.max(1, Math.round(bitmap.height * scale))
 
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return file
-    ctx.drawImage(bitmap, 0, 0, w, h)
+    let best: File | null = null
+    for (const { edge, quality } of LADDER) {
+      const scale = Math.min(1, edge / Math.max(bitmap.width, bitmap.height))
+      const w = Math.max(1, Math.round(bitmap.width * scale))
+      const h = Math.max(1, Math.round(bitmap.height * scale))
 
-    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
-    if (!blob || blob.size === 0) return file
-    // Only worth it if it actually shrank.
-    if (blob.size >= file.size) return file
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) break
+      ctx.drawImage(bitmap, 0, 0, w, h)
 
-    const name = file.name.replace(/\.[^.]+$/, '') + '.jpg'
-    return new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() })
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+      if (blob && blob.size > 0) {
+        const name = file.name.replace(/\.[^.]+$/, '') + '.jpg'
+        const candidate = new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() })
+        // Keep the smallest produced so far, and stop as soon as one fits the
+        // budget (later rungs only get smaller, so this is the best quality that
+        // satisfies the size cap).
+        if (!best || candidate.size < best.size) best = candidate
+        if (candidate.size <= maxBytes) break
+      }
+    }
+
+    if (!best || best.size >= file.size) return file
+    return best
   } catch (e) {
     console.warn('[portal] screenshot compression skipped:', e)
     return file
