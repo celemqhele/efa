@@ -32,6 +32,7 @@ not collide with future scratch runs.
 |---|---|---|
 | `scripts/_tmp-cron-dryrun.ts` | Ran `app/api/cron/auto-finalise-prev-day` in-process with `?dryRun=1` (temp local `CRON_SECRET`) to verify Pass 1/Pass 2 counts | `.recycle/scripts/_tmp-cron-dryrun_2026-10-20.ts` |
 | `scripts/_tmp-portal-backdoor-render.ts` | SSR-rendered `/submit-match/[code]` with `initialAction: 'backdoor'` to confirm `void_game_played` / `pending` claims render a status card and accent note | `.recycle/scripts/_tmp-portal-backdoor-render_2026-10-20.ts` |
+| `scripts/_tmp-reminder-postpone-preview.ts` | Re-ran the match-reminder fixture query against production and printed the composed body per reminder type, to confirm only the postponement fixture gets the new note | `.recycle/scripts/_tmp-reminder-postpone-preview_2026-10-20.ts` |
 
 To restore, move either file back and drop the date suffix, e.g.
 `Move-Item .recycle\scripts\_tmp-cron-dryrun_2026-10-20.ts scripts\_tmp-cron-dryrun.ts`.

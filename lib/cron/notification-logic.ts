@@ -13,7 +13,17 @@ interface FixtureRow {
   away_team_id: string
   away_team_name: string
   away_manager_id: string | null
+  postponed_confirmed: boolean
 }
+
+// Shown on every reminder for a fixture that was postponed and still has to be
+// played. `is_postponed` cannot be used for this: the normal result-submission
+// path sets it too, so it is true on almost every finished fixture. The reliable
+// marker is `postponed_confirmed`, which is only set on a postponed fixture whose
+// agreed score is already in the standings while the game itself is still to be
+// played on the moved date.
+const POSTPONEMENT_NOTE =
+  'Please note this is a postponement game, Please play the game to avoid penalties'
 
 interface ManagerFixtures {
   userId: string
@@ -42,6 +52,7 @@ export async function runNotificationCron(
     .select(`
       id,
       status,
+      postponed_confirmed,
       home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id),
       away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id)
     `)
@@ -68,6 +79,7 @@ export async function runNotificationCron(
       away_team_id: at?.id ?? '',
       away_team_name: at?.name ?? '?',
       away_manager_id: at?.manager_id ?? null,
+      postponed_confirmed: f.postponed_confirmed === true,
     }
   })
 
@@ -119,6 +131,12 @@ export async function runNotificationCron(
           ? `${list} is still pending! Play now to avoid an automatic loss.`
           : `${count} fixtures still pending! Play now to avoid an automatic loss.`
         break
+    }
+
+    // A postponed game whose agreed score is already in the standings still has
+    // to be played, so every reminder for it carries the postponement note.
+    if (mf.fixtures.some((f) => f.postponed_confirmed)) {
+      body = `${body}\n\n${POSTPONEMENT_NOTE}`
     }
 
     inserts.push({
