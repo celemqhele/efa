@@ -233,7 +233,7 @@ function ReminderPrefCard({
   const current = open ? 'yes' : 'no'
   return (
     <Card>
-      <span className="text-xs font-bold uppercase tracking-wide text-text-muted">
+      <span className="text-sm font-black uppercase tracking-wide text-accent">
         I want to continue getting WhatsApp reminders
       </span>
       <div className="mt-2 flex items-center gap-6">
@@ -258,11 +258,11 @@ function ReminderPrefCard({
             />
             <span
               className={`relative h-4 w-4 rounded-full border-2 transition-colors ${
-                current === opt.value ? 'border-text-primary' : 'border-border'
+                current === opt.value ? 'border-accent' : 'border-border'
               }`}
             >
               {current === opt.value && (
-                <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-text-primary" />
+                <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent" />
               )}
             </span>
             <span className="text-sm text-text-primary">{opt.label}</span>
@@ -871,7 +871,7 @@ function ResultPanel({
             questions (see
             .opencode/context/submit-portal/portal-forfeit-radio-control_2026-10-11.md). */}
         <div className="space-y-1.5">
-          <span className="text-xs font-bold uppercase tracking-wide text-text-muted">
+          <span className="text-sm font-black uppercase tracking-wide text-accent">
             Did you play many times due to network or disconnections?
           </span>
           <div className="flex items-center gap-6">
@@ -900,11 +900,11 @@ function ResultPanel({
                 />
                 <span
                   className={`relative h-4 w-4 rounded-full border-2 transition-colors ${
-                    playedMany === opt.value ? 'border-text-primary' : 'border-border'
+                    playedMany === opt.value ? 'border-accent' : 'border-border'
                   }`}
                 >
                   {playedMany === opt.value && (
-                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-text-primary" />
+                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent" />
                   )}
                 </span>
                 <span className="text-sm text-text-primary">{opt.label}</span>
@@ -980,7 +980,7 @@ function ResultPanel({
         )}
 
         <div className="space-y-1.5">
-          <span className="text-xs font-bold uppercase tracking-wide text-text-muted">Did this player give you the win?</span>
+          <span className="text-sm font-black uppercase tracking-wide text-accent">Did this player give you the win?</span>
           <div className="flex items-center gap-6">
             {[
               { value: 'no', label: 'No' },
@@ -1001,11 +1001,11 @@ function ResultPanel({
                 />
                 <span
                   className={`relative h-4 w-4 rounded-full border-2 transition-colors ${
-                    givenWin === opt.value ? 'border-text-primary' : 'border-border'
+                    givenWin === opt.value ? 'border-accent' : 'border-border'
                   }`}
                 >
                   {givenWin === opt.value && (
-                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-text-primary" />
+                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent" />
                   )}
                 </span>
                 <span className="text-sm text-text-primary">{opt.label}</span>
@@ -1019,7 +1019,7 @@ function ResultPanel({
         </div>
 
         <div className={`space-y-1.5 ${walkover ? 'opacity-50' : ''}`}>
-          <span className="text-xs font-bold uppercase tracking-wide text-text-muted">Mark as forfeit?</span>
+          <span className="text-sm font-black uppercase tracking-wide text-accent">Mark as forfeit?</span>
           <div className="flex items-center gap-6">
             {[
               { value: 'no', label: 'No' },
@@ -1040,11 +1040,11 @@ function ResultPanel({
                 />
                 <span
                   className={`relative h-4 w-4 rounded-full border-2 transition-colors ${
-                    forfeit === opt.value ? 'border-text-primary' : 'border-border'
+                    forfeit === opt.value ? 'border-accent' : 'border-border'
                   }`}
                 >
                   {forfeit === opt.value && (
-                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-text-primary" />
+                    <span className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent" />
                   )}
                 </span>
                 <span className="text-sm text-text-primary">{opt.label}</span>
