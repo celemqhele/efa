@@ -63,7 +63,13 @@ export default function Mobile({ data }: { data: any }) {
     }
 
     if (authData.user) {
-      await supabase.from('profiles').insert({ id: authData.user.id, username })
+      // The user picked this password themselves at sign-up, so there is no
+      // temporary password to replace: without this the profiles column default
+      // (must_change_password = true) would demand a change and then reject the
+      // password they just chose. Also covers the trigger-created row case.
+      await supabase
+        .from('profiles')
+        .upsert({ id: authData.user.id, username, must_change_password: false })
     }
 
     window.location.href = '/profile'

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ChangePasswordModal from '@/components/ui/ChangePasswordModal'
 
@@ -24,6 +24,9 @@ import ChangePasswordModal from '@/components/ui/ChangePasswordModal'
 export default function FirstLoginPasswordPrompt() {
   const [mustChange, setMustChange] = useState(false)
   const [email, setEmail] = useState('')
+  // Password just changed: any check that was already in flight read the flag
+  // as it was *before* the change and would re-open the prompt. Ignore those.
+  const clearedAt = useRef(0)
 
   useEffect(() => {
     const supabase = createClient()
@@ -39,6 +42,7 @@ export default function FirstLoginPasswordPrompt() {
         supabase.rpc('password_is_default'),
       ])
       if (!active) return
+      if (Date.now() - clearedAt.current < 10_000) return
       const flagged = !!(profileRes.data as { must_change_password?: boolean } | null)
         ?.must_change_password
       setMustChange(flagged || defaultRes.data === true)
@@ -50,17 +54,27 @@ export default function FirstLoginPasswordPrompt() {
       if (data.session?.user) check(data.session.user.id, data.session.user.email ?? undefined)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return
-      if (session?.user) {
-        // Defer: awaiting Supabase calls *inside* this callback can deadlock
-        // (the callback runs while GoTrue holds its lock). setTimeout(0) hands
-        // the work back to a normal tick.
-        const { id, email: userEmail } = session.user
-        setTimeout(() => { if (active) check(id, userEmail ?? undefined) }, 0)
-      } else {
-        setMustChange(false)
+      // Only genuine sign-ins need the check. USER_UPDATED fires from our own
+      // password change and used to re-open the prompt with a pre-change read;
+      // TOKEN_REFRESHED would only re-run the same query for nothing.
+      if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') {
+        if (!session?.user) {
+          setMustChange(false)
+          setEmail('')
+        }
+        return
       }
+      if (!session?.user) {
+        setMustChange(false)
+        return
+      }
+      // Defer: awaiting Supabase calls *inside* this callback can deadlock
+      // (the callback runs while GoTrue holds its lock). setTimeout(0) hands
+      // the work back to a normal tick.
+      const { id, email: userEmail } = session.user
+      setTimeout(() => { if (active) check(id, userEmail ?? undefined) }, 0)
     })
 
     return () => {
@@ -75,8 +89,12 @@ export default function FirstLoginPasswordPrompt() {
     <ChangePasswordModal
       userEmail={email}
       required
+      skipCurrentPassword
       onClose={() => {}}
-      onSuccess={() => setMustChange(false)}
+      onSuccess={() => {
+        clearedAt.current = Date.now()
+        setMustChange(false)
+      }}
     />
   )
 }
