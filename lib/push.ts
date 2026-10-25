@@ -34,6 +34,27 @@ function describeError(err: any) {
   }
 }
 
+// A push service that never answers must not hold a serverless request open.
+// Notifications are sent AFTER the result has already been written in the
+// submit portal, so an unbounded push used to spend whatever seconds were left
+// and turn a successful save into a platform timeout (error on screen, result
+// on file). Each send is capped; a timeout only skips that one device.
+const PUSH_TIMEOUT_MS = 5_000
+
+async function sendWithTimeout<T>(promise: Promise<T>, ms = PUSH_TIMEOUT_MS): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`push service timed out after ${ms}ms`)), ms)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 export async function sendPushToUser(
   subscriptions: { endpoint: string; p256dh: string; auth: string }[],
   payload: PushPayload
@@ -45,12 +66,14 @@ export async function sendPushToUser(
   })
   const results = await Promise.allSettled(
     subscriptions.map((row) =>
-      webpush.sendNotification(
-        {
-          endpoint: row.endpoint,
-          keys: { p256dh: row.p256dh, auth: row.auth },
-        },
-        JSON.stringify(payload)
+      sendWithTimeout(
+        webpush.sendNotification(
+          {
+            endpoint: row.endpoint,
+            keys: { p256dh: row.p256dh, auth: row.auth },
+          },
+          JSON.stringify(payload)
+        )
       )
     )
   )
@@ -96,9 +119,11 @@ export async function sendPushToUsers(
 
   const results = await Promise.allSettled(
     subs.map((row) =>
-      webpush.sendNotification(
-        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-        JSON.stringify(payload)
+      sendWithTimeout(
+        webpush.sendNotification(
+          { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+          JSON.stringify(payload)
+        )
       )
     )
   )

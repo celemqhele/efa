@@ -296,14 +296,18 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
   const opponentName =
     state.viewer.side === 'home' ? awayName : state.viewer.side === 'away' ? homeName : 'Opponent'
 
-  async function refresh() {
+  async function refresh(): Promise<any | null> {
     try {
       const res = await fetch(`/api/submit-match?code=${encodeURIComponent(state.code)}`)
       const data = await res.json()
-      if (res.ok && data.ok) setState(data)
+      if (res.ok && data.ok) {
+        setState(data)
+        return data
+      }
     } catch {
       /* keep the last known state */
     }
+    return null
   }
 
   async function send(form: FormData, opts: { aiCheck?: boolean } = {}) {
@@ -314,22 +318,41 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
     // (the check runs inside this POST, so the request only returns once the
     // score/stats verdict exists).
     if (opts.aiCheck) setChecking(true)
+    // What the match looked like before this POST. Used after a lost response
+    // to tell "the save landed but the reply never arrived" apart from a
+    // submission that genuinely failed.
+    const before = state.result
+      ? {
+          screenshotUrl: state.result.screenshotUrl ?? null,
+          home: state.result.homeScore,
+          away: state.result.awayScore,
+        }
+      : null
     // Guarantee the check overlay is visible for a beat even when the POST comes
     // back instantly (or fails instantly): the manager should always see the
     // steps run instead of a card flashing in and out.
     const minOverlay = opts.aiCheck ? wait(MIN_CHECK_MS) : Promise.resolve()
+    // Set when the reply is a gateway timeout rather than our JSON: that path
+    // needs its own wording (and must not leak "Unexpected end of JSON input").
+    let gateError = ''
     try {
       const res = await fetch('/api/submit-match', { method: 'POST', body: form })
-      const data = await res.json().catch(() => ({ ok: false }))
-      if (!res.ok || !data.ok) {
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data || !data.ok) {
         // The AI check declined the screenshots: red X card, not the plain
         // error banner, and the result on file is left untouched.
-        if (data.declined) {
+        if (data?.declined) {
           await minOverlay
           setDecline(data)
           return
         }
-        throw new Error(data.error || 'Something went wrong. Try again.')
+        // 502/504 answer with the platform's HTML page, not our JSON, so there
+        // is no server message to show.
+        if (res.status === 502 || res.status === 504) {
+          gateError =
+            'The screenshot check took too long to answer and the connection closed. Give it a moment and check this match again — only upload again if no result is showing.'
+        }
+        throw new Error(gateError || data?.error || 'Something went wrong. Try again.')
       }
       setDone({ title: data.title, message: data.message, shareLink: data.shareLink, shareText: data.shareText })
       setCopied(false)
@@ -344,10 +367,36 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       const raw = e?.message ?? ''
       const netFail = e instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(raw)
       await minOverlay
+      // A gateway timeout / dropped connection can happen AFTER the server has
+      // already written the result, so read the portal back before claiming
+      // failure. If the match now holds a different result than it did when the
+      // manager pressed submit, the submission landed: show the success panel
+      // instead of an error that contradicts what is on the match page.
+      const fresh = await refresh()
+      const after = fresh?.result
+      const landed =
+        !!after &&
+        (!before ||
+          after.screenshotUrl !== before.screenshotUrl ||
+          after.homeScore !== before.home ||
+          after.awayScore !== before.away)
+      if (after && landed) {
+        setDone({
+          title: 'Result saved',
+          message: `${homeName} ${after.homeScore}-${after.awayScore} ${awayName}. The reply did not reach your browser, but the result is on file and the match page is up to date.`,
+          shareLink: `${appBase}/submit-match/${state.code}`,
+          shareText: `My result for ${homeName} vs ${awayName} is in. Confirm it here:`,
+        })
+        setCopied(false)
+        setConfirmAccept(false)
+        setPanel('home')
+        return
+      }
       setError(
-        netFail
-          ? 'Could not send your screenshots. Check your connection and try again. If it keeps failing, upload fewer screenshots at a time.'
-          : raw || 'Something went wrong. Try again.',
+        gateError ||
+          (netFail
+            ? 'Could not send your screenshots. Check your connection and try again. If it keeps failing, upload fewer screenshots at a time.'
+            : raw || 'Something went wrong. Try again.'),
       )
     } finally {
       setChecking(false)
@@ -816,19 +865,19 @@ function ResultPanel({
             return
           }
           setNoFileError(false)
-          onSubmit(
-            formFor('result', {
-              homeScore: shownHome,
-              awayScore: shownAway,
-              screenshot: file,
-              // Repeats: the form key is set more than once so the server can
-              // read them all with form.getAll('extraScreenshot').
-              ...extras.reduce((acc, f, i) => ({ ...acc, [`extraScreenshot${i}`]: f }), {} as Record<string, File>),
-              forfeit: walkover ? 'no' : forfeit,
-              givenWin,
-            }),
-            { aiCheck: true }
-          )
+          // Repeat the SAME key for every extra: the server reads them with
+          // form.getAll('extraScreenshot'). A suffixed key (extraScreenshot0)
+          // or a set() would be invisible to getAll and silently drop the
+          // replay screenshots.
+          const fd = formFor('result', {
+            homeScore: shownHome,
+            awayScore: shownAway,
+            screenshot: file,
+            forfeit: walkover ? 'no' : forfeit,
+            givenWin,
+          })
+          for (const extra of extras) fd.append('extraScreenshot', extra)
+          onSubmit(fd, { aiCheck: true })
         }}
       >
         <Field label="Result screenshot" hint="Upload the final score screen — it is kept as proof on this match.">

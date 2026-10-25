@@ -30,6 +30,18 @@ const GOAL_TOLERANCE = 1
 // Most screenshots a manager attaches (1 required + up to 3 for replays).
 export const MAX_SHOTS = 4
 
+// Hard bounds on the AI side of the check. The route runs inside a 60s
+// serverless function while the portal blocks on the POST, so a stalled Gemini
+// response (its 503 "high demand" replies can leave the connection hanging)
+// must never eat that whole window: without these caps the request hit the
+// platform limit and died as a 504 while the manager watched the "Checking
+// your screenshots" overlay. Each attempt is capped, and the whole check shares
+// one budget so it always answers (fail open) with time left to write the
+// result.
+const CALL_TIMEOUT_MS = 10_000
+const VERIFY_BUDGET_MS = 30_000
+const MIN_ATTEMPT_MS = 1_500
+
 export type ShotImage = { buffer: Buffer; mimeType: string }
 
 type VisionRead = {
@@ -90,33 +102,70 @@ function stripFences(text: string): string {
   return m ? m[1] : t
 }
 
-// One Gemini flash-lite call (JSON mode) with a single retry on rate limit —
-// the free tier is what we are running on, and a 429 must not become a decline.
-async function callGemini(parts: any[]): Promise<any> {
+// One Gemini flash-lite call attempt, hard-capped in time. The abort signal
+// covers the body read as well as the connect: a socket that opens but never
+// answers is exactly what wedged the portal POST before.
+type GeminiAttempt = { ok: true; json: any } | { ok: false; status: number; text: string }
+
+async function geminiAttempt(parts: any[], timeoutMs: number): Promise<GeminiAttempt> {
   const key = process.env.GEMINI_API_KEY
   if (!key) throw new Error('GEMINI_API_KEY is not set')
 
-  const send = () =>
-    fetch(`${GEMINI_API}?key=${key}`, {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${GEMINI_API}?key=${key}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts }],
         generationConfig: { responseMimeType: 'application/json' },
       }),
+      signal: controller.signal,
     })
+    const raw = await res.text()
+    if (!res.ok) return { ok: false, status: res.status, text: raw.slice(0, 200) }
 
-  let res = await send()
-  if (res.status === 429 || res.status === 503) {
-    await sleep(1500)
-    res = await send()
+    const json = JSON.parse(raw)
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) throw new Error('Empty Gemini response')
+    return { ok: true, json: JSON.parse(stripFences(text)) }
+  } finally {
+    clearTimeout(timer)
   }
-  if (!res.ok) throw new Error(`Gemini failed (${res.status}): ${(await res.text()).slice(0, 200)}`)
+}
 
-  const json = await res.json()
-  const text = json.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error('Empty Gemini response')
-  return JSON.parse(stripFences(text))
+// One Gemini call (JSON mode), with a single retry on rate limit — the free
+// tier is what we are running on, and a 429 must not become a decline. Both
+// attempts are clamped to whatever is left of the shared verification budget,
+// so this can never outlive the request.
+async function callGemini(parts: any[], deadline: number): Promise<any> {
+  const attempt = () => {
+    const left = Math.min(CALL_TIMEOUT_MS, deadline - Date.now())
+    if (left < MIN_ATTEMPT_MS) throw new Error('Gemini check ran out of time')
+    return geminiAttempt(parts, left)
+  }
+
+  let out: GeminiAttempt
+  try {
+    out = await attempt()
+  } catch (e) {
+    if (e instanceof Error && (e.name === 'AbortError' || /aborted/i.test(e.message))) {
+      throw new Error('Gemini check timed out')
+    }
+    throw e
+  }
+
+  if (!out.ok && (out.status === 429 || out.status === 503)) {
+    const left = deadline - Date.now()
+    if (left > MIN_ATTEMPT_MS + 500) {
+      await sleep(Math.max(0, Math.min(1200, left - MIN_ATTEMPT_MS)))
+      out = await attempt()
+    }
+  }
+  if (!out.ok) throw new Error(`Gemini failed (${out.status}): ${out.text}`)
+
+  return out.json
 }
 
 const VISION_PROMPT = `You are reading a screenshot from the mobile game eFootball (a football/soccer match game).
@@ -185,7 +234,7 @@ ${ocrText || '(no text could be read)'}
 
 // ── Step 1: OCR + extraction ────────────────────────────────────────────────
 
-async function readScreenshot(img: ShotImage): Promise<VisionRead> {
+async function readScreenshot(img: ShotImage, deadline: number): Promise<VisionRead> {
   const empty: VisionRead = {
     ocrText: '', homeTeam: null, awayTeam: null, homeScore: null, awayScore: null,
     stats: null, failed: true,
@@ -194,7 +243,7 @@ async function readScreenshot(img: ShotImage): Promise<VisionRead> {
     const json = await callGemini([
       { text: VISION_PROMPT },
       { inlineData: { mimeType: img.mimeType || 'image/jpeg', data: img.buffer.toString('base64') } },
-    ])
+    ], deadline)
 
     const stats: Record<string, { home: number; away: number }> = {}
     if (json.stats && typeof json.stats === 'object') {
@@ -229,6 +278,7 @@ async function assessScreenshot(
   read: VisionRead,
   typedHome: number,
   typedAway: number,
+  deadline: number,
 ): Promise<Assessment> {
   const typed = `${typedHome}-${typedAway}`
   const visionScore =
@@ -237,7 +287,7 @@ async function assessScreenshot(
     const json = await callGemini([
       { text: ASSESS_PROMPT(read.ocrText, visionScore, typed) },
       { inlineData: { mimeType: img.mimeType || 'image/jpeg', data: img.buffer.toString('base64') } },
-    ])
+    ], deadline)
     return {
       ok: json.ok !== false,
       hasScore: json.hasScore === true || json.ok !== false,
@@ -275,13 +325,19 @@ export async function verifyScreenshots(
   typedAway: number,
 ): Promise<VerifyResult> {
   const startedAt = Date.now()
+  // Shared deadline for every Gemini call in this check (see VERIFY_BUDGET_MS):
+  // past it, an unreadable screenshot is simply skipped and the submission goes
+  // through, instead of the platform killing the request.
+  const deadline = startedAt + VERIFY_BUDGET_MS
 
   // Wave 1: OCR every screenshot (parallel, capped by how many were attached).
-  const reads = await Promise.all(images.map(readScreenshot))
+  const reads = await Promise.all(images.map((img) => readScreenshot(img, deadline)))
 
   // Wave 2: the assessment task for each readable screenshot.
   const assessments = await Promise.all(
-    reads.map((read, i) => (read.failed ? Promise.resolve(null) : assessScreenshot(images[i], read, typedHome, typedAway))),
+    reads.map((read, i) =>
+      read.failed ? Promise.resolve(null) : assessScreenshot(images[i], read, typedHome, typedAway, deadline),
+    ),
   )
 
   const ocrText =
