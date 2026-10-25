@@ -79,17 +79,25 @@ async function checkAndAutoSack(
   await db.from('teams').update({ manager_id: null }).in('id', allClubIds)
 
   // Record sack time for the 1-week reassignment cooldown
-  await db.from('profiles').update({ sacked_at: new Date().toISOString() }).eq('id', sackUserId)
+  const sackNow = new Date().toISOString()
+  await db.from('profiles').update({ sacked_at: sackNow }).eq('id', sackUserId)
+
+  // Seal the tenure BEFORE the automatic forfeits, otherwise the open tenure
+  // owns every future-dated 3-0 the sack books and the auto-sacked manager is
+  // charged with matches played after they left. Same-day forfeits stay theirs.
+  await db
+    .from('manager_tenures' as any)
+    .update({ ended_at: sackNow })
+    .in('team_id', allClubIds)
+    .is('ended_at', null)
 
   // The club keeps its identity: its seats drop ownership (no "Vacant"
   // relabel) and its remaining fixtures auto-forfeit 3-0.
   const { forfeits } = await forfeitUnmanagedClubSlots(db, allClubIds)
 
-  await db
-    .from('manager_tenures' as any)
-    .update({ ended_at: new Date().toISOString() })
-    .in('team_id', allClubIds)
-    .is('ended_at', null)
+  // Rebuild the sacked manager's record from the corrected attribution rule.
+  const { error: recalcErr } = await db.rpc('recalc_manager_stats', { p_manager_id: sackUserId })
+  if (recalcErr) console.error('[finalise-result] recalc manager stats failed:', recalcErr.message)
 
   await insertNotificationsAndPush(db, {
     user_id: sackUserId,

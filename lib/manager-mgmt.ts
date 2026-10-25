@@ -9,6 +9,15 @@ import {
 
 type Db = any
 
+// Rebuild stored tenure W/D/L through the SQL helper that owns the attribution
+// rule (`recalc_tenure_stats`, exposed via `recalc_manager_stats`). Every flow
+// that closes a tenure or books automatic forfeits calls it so the manager card
+// and the match page cannot disagree about who owns a result.
+async function recalcTenureStats(db: Db, managerId?: string | null): Promise<void> {
+  const { error } = await db.rpc('recalc_manager_stats', { p_manager_id: managerId ?? null })
+  if (error) console.error('[manager-mgmt] recalc manager stats failed:', error.message)
+}
+
 // A manager with nothing to manage. `sackedAt` is carried so a picker can route
 // the selection through the cooldown override step before writing anything.
 export type MgmtManagerOption = { id: string; username: string; sackedAt: string | null }
@@ -283,9 +292,17 @@ export async function sackManagerFromClub(
   const { error: updateErr } = await db.from('teams').update({ manager_id: null }).in('id', allClubIds)
   if (updateErr) return { ok: false, code: 'ERROR', message: updateErr.message }
 
+  // Seal the tenure BEFORE the automatic forfeits are booked. If the tenure were
+  // still open, the result trigger would credit every future-dated 3-0 to the
+  // manager who has just been sacked (they would own forfeits for matches played
+  // weeks later). Closing first leaves same-day forfeits with them - which is
+  // right, they were in charge when the club went unmanaged - and nobody owns the
+  // later ones. See `recalc_tenure_stats` in migration 105.
+  await db.from('manager_tenures').update({ ended_at: now }).in('team_id', allClubIds).is('ended_at', null)
+
   const { forfeits } = await forfeitUnmanagedClubSlots(db, allClubIds)
 
-  await db.from('manager_tenures').update({ ended_at: now }).in('team_id', allClubIds).is('ended_at', null)
+  await recalcTenureStats(db, sackUserId)
 
   try {
     await insertNotificationsAndPush(db, {
@@ -568,8 +585,10 @@ export async function promoteManagerToClub(
   await db.from('manager_tenures').update({ ended_at: now }).in('team_id', oldClubIds).is('ended_at', null)
 
   // 2. The vacated club's remaining fixtures forfeit so the div-2 seat does not
-  //    linger as an unowned-but-scoring side.
+  //    linger as an unowned-but-scoring side. The tenure was sealed first, so the
+  //    promotion does not load future 3-0s onto the manager's record.
   const { forfeits } = await forfeitUnmanagedClubSlots(db, oldClubIds)
+  await recalcTenureStats(db, userId)
 
   // 3. Bind the manager to the destination club (reclaims its vacant seats).
   const assign = await assignManagerToClub(db, { teamId: toTeamId, userId, adminId, override })

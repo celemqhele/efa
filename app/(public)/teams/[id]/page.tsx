@@ -256,7 +256,7 @@ export default async function TeamProfilePage({ params }: PageProps) {
       for (const tenure of (tenures ?? [])) {
         let query = supabase
           .from('fixtures')
-          .select('id, home_team_id, scheduled_date')
+          .select('id, home_team_id, scheduled_date, result:results(updated_at, created_at, finalised_by)')
           .or(`home_team_id.eq.${tenure.team_id},away_team_id.eq.${tenure.team_id}`)
           .in('status', VALID_STATUSES)
           .gte('scheduled_date', tenure.started_at)
@@ -268,7 +268,20 @@ export default async function TeamProfilePage({ params }: PageProps) {
         }
 
         const { data } = await query
-        if (data) mgrFixtures.push(...data)
+        if (data) {
+          // Skip system results (auto forfeits/placeholders) stamped before this
+          // tenure began: they are never this manager's matches, and counting
+          // them skewed the form/states notes. Mirrors recalc_tenure_stats.
+          mgrFixtures.push(
+            ...data.filter((f: any) => {
+              const r = Array.isArray(f.result) ? f.result[0] : f.result
+              if (!r) return true
+              if (r.finalised_by) return true
+              const decidedAt = r.updated_at ?? r.created_at
+              return !decidedAt || new Date(decidedAt).getTime() >= new Date(tenure.started_at).getTime()
+            })
+          )
+        }
       }
 
       const seen = new Set<string>()

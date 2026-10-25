@@ -133,9 +133,14 @@ export default async function ResultDetailPage({ params }: Props) {
 
   // Attribute each side to the manager who was in charge on the match date, so
   // a sacked/replaced manager keeps their own results (see lib/match-manager).
+  // decidedAt keeps a forfeit stamped before a same-day replacement from being
+  // credited to the new manager; systemResult marks the auto forfeits so a
+  // pre-stamped one is never back-attributed to a later manager.
+  const decidedAt = result.updated_at ?? result.created_at ?? null
+  const systemResult = !result.finalised_by
   const [homeMatchManager, awayMatchManager] = await resolveMatchManagers(supabase, [
-    { teamId: home?.id ?? null, matchDate: fixture?.scheduled_date ?? null },
-    { teamId: away?.id ?? null, matchDate: fixture?.scheduled_date ?? null },
+    { teamId: home?.id ?? null, matchDate: fixture?.scheduled_date ?? null, decidedAt, systemResult },
+    { teamId: away?.id ?? null, matchDate: fixture?.scheduled_date ?? null, decidedAt, systemResult },
   ])
 
   // Sibling fixture for 2-leg aggregate display

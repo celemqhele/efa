@@ -282,9 +282,16 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   // Who was actually in charge on this match's date (keeps a sacked manager's
   // name on the games they played). Permissions, matchroom and score
   // confirmations keep using the CURRENT manager above.
+  //
+  // decidedAt = when the current result was recorded. An automatic forfeit can
+  // be stamped hours before a same-day replacement is assigned; without this the
+  // newcomer would be shown as the loser of a match they never played.
+  // systemResult marks results nobody submitted (auto forfeits/placeholders).
+  const decidedAt = result?.updated_at ?? result?.created_at ?? null
+  const systemResult = result ? !result.finalised_by : false
   const [homeMatchManager, awayMatchManager] = await resolveMatchManagers(supabase, [
-    { teamId: fixture.home_team_id, matchDate: fixture.scheduled_date },
-    { teamId: fixture.away_team_id, matchDate: fixture.scheduled_date },
+    { teamId: fixture.home_team_id, matchDate: fixture.scheduled_date, decidedAt, systemResult },
+    { teamId: fixture.away_team_id, matchDate: fixture.scheduled_date, decidedAt, systemResult },
   ])
 
   const isHomeManager = user?.id && homeManager?.id === user.id

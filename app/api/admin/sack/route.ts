@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { insertNotificationsAndPush } from '@/lib/notify'
 import { forfeitUnmanagedClubSlots } from '@/lib/slot-utils'
+import { recalculateManagerStats } from '@/lib/manager-stats-engine'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -45,41 +46,16 @@ export async function POST(request: Request) {
   await adminSupabase.from('profiles').update({ sacked_at: now }).eq('id', sackedUserId)
 
   // ── Seal the active tenure ────────────────────────────────────────────────
-  const { data: tenure } = await adminSupabase
+  // Sealed for every sibling row, and sealed BEFORE the automatic forfeits below:
+  // an open tenure would otherwise claim the future-dated 3-0s and hand the
+  // sacked manager losses for matches played after they left. W/D/L are rebuilt
+  // from the corrected attribution rule at the end instead of being calculated
+  // here (the old date-only sum disagreed with the SQL trigger).
+  await adminSupabase
     .from('manager_tenures' as any)
-    .select('id, started_at')
-    .eq('team_id', team_id)
+    .update({ ended_at: now })
+    .in('team_id', allClubIds)
     .is('ended_at', null)
-    .maybeSingle() as any
-
-  if (tenure) {
-    // Calculate W/D/L from fixtures played during this tenure
-    const { data: fixtures } = await adminSupabase
-      .from('fixtures')
-      .select('id, home_team_id, away_team_id, result:results(home_score, away_score)')
-      .or(`home_team_id.eq.${team_id},away_team_id.eq.${team_id}`)
-      .gte('scheduled_date', tenure.started_at)
-      .in('status', ['confirmed', 'abandoned_home', 'abandoned_away', 'abandoned_both'])
-
-    let wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0
-    for (const f of (fixtures ?? []) as any[]) {
-      const r = Array.isArray(f.result) ? f.result[0] : f.result
-      if (!r) continue
-      const isHome = f.home_team_id === team_id
-      const myScore = isHome ? r.home_score : r.away_score
-      const theirScore = isHome ? r.away_score : r.home_score
-      goals_for += myScore
-      goals_against += theirScore
-      if (myScore > theirScore) wins++
-      else if (myScore === theirScore) draws++
-      else losses++
-    }
-
-    await adminSupabase
-      .from('manager_tenures' as any)
-      .update({ ended_at: now, wins, draws, losses, goals_for, goals_against })
-      .eq('id', tenure.id)
-  }
 
   // ── Release the team ──────────────────────────────────────────────────────
   const { error: updateError } = await adminSupabase
@@ -92,6 +68,12 @@ export async function POST(request: Request) {
   // The club keeps its identity: its seats drop ownership (no "Vacant"
   // relabel) and its remaining fixtures auto-forfeit 3-0.
   const { forfeits } = await forfeitUnmanagedClubSlots(adminSupabase, allClubIds)
+
+  // Rebuild the sacked manager's record now that the forfeits exist: same-day
+  // forfeits stay on their card, later ones land on nobody.
+  await recalculateManagerStats(sackedUserId).catch((e) =>
+    console.error('[admin/sack] recalc manager stats failed:', e)
+  )
 
   // Notify sacked manager (in-app + push)
   await insertNotificationsAndPush(adminSupabase, {
