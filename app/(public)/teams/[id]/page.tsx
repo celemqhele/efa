@@ -5,6 +5,8 @@ import { getTeamDNAFromDB, buildTeamStatsMixed } from '@/lib/dna-engine'
 import type { DNAProfile, PersonalizedDescription } from '@/lib/dna-engine'
 import { detectTeamStates } from '@/lib/team-states'
 import type { TeamState } from '@/lib/team-states'
+import { getSastDateKey } from '@/lib/app-time'
+import { isSystemResult } from '@/lib/match-manager'
 import { generateManagerNotes } from '@/lib/manager-notes'
 import type { ManagerNote } from '@/lib/manager-notes'
 import Shell from './_shell'
@@ -254,29 +256,33 @@ export default async function TeamProfilePage({ params }: PageProps) {
       const VALID_STATUSES = ['confirmed', 'abandoned_home', 'abandoned_away', 'abandoned_both']
 
       for (const tenure of (tenures ?? [])) {
+        // scheduled_date is a DATE holding the SAST matchday, so compare it to
+        // SAST day keys (a UTC-midnight compare shifts the boundary by 2 hours).
+        const startDayKey = getSastDateKey(new Date(tenure.started_at))
         let query = supabase
           .from('fixtures')
-          .select('id, home_team_id, scheduled_date, result:results(updated_at, created_at, finalised_by)')
+          .select('id, home_team_id, scheduled_date, result:results(updated_at, created_at, finalised_by, override_reason)')
           .or(`home_team_id.eq.${tenure.team_id},away_team_id.eq.${tenure.team_id}`)
           .in('status', VALID_STATUSES)
-          .gte('scheduled_date', tenure.started_at)
+          .gte('scheduled_date', startDayKey)
           .order('scheduled_date', { ascending: false })
           .limit(10)
 
         if (tenure.ended_at) {
-          query = query.lte('scheduled_date', tenure.ended_at)
+          query = query.lte('scheduled_date', getSastDateKey(new Date(tenure.ended_at)))
         }
 
         const { data } = await query
         if (data) {
-          // Skip system results (auto forfeits/placeholders) stamped before this
-          // tenure began: they are never this manager's matches, and counting
-          // them skewed the form/states notes. Mirrors recalc_tenure_stats.
+          // Skip system results (auto forfeits/placeholders and the agreed
+          // postponement 3-0) stamped before this tenure began: they are never
+          // this manager's matches, and counting them skewed the form/states
+          // notes. Mirrors recalc_tenure_stats.
           mgrFixtures.push(
             ...data.filter((f: any) => {
               const r = Array.isArray(f.result) ? f.result[0] : f.result
               if (!r) return true
-              if (r.finalised_by) return true
+              if (!isSystemResult(r)) return true
               const decidedAt = r.updated_at ?? r.created_at
               return !decidedAt || new Date(decidedAt).getTime() >= new Date(tenure.started_at).getTime()
             })

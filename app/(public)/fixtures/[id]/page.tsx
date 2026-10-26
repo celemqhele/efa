@@ -7,7 +7,7 @@ import { getTeamDNAFromDB } from '@/lib/dna-engine'
 import { getSiblingMatchday, computeAggregate, flipAggregate } from '@/lib/aggregate'
 import { parseForfeitAdjusted } from '@/lib/forfeit-note'
 import { gracePeriodEnded } from '@/lib/submit-match'
-import { resolveMatchManagers } from '@/lib/match-manager'
+import { resolveMatchManagers, isSystemResult } from '@/lib/match-manager'
 import { ogMeta, formatMatchday, roundLabel } from '@/lib/og'
 import Shell from './_shell'
 
@@ -286,9 +286,10 @@ export default async function FixtureDetailPage({ params }: PageProps) {
   // decidedAt = when the current result was recorded. An automatic forfeit can
   // be stamped hours before a same-day replacement is assigned; without this the
   // newcomer would be shown as the loser of a match they never played.
-  // systemResult marks results nobody submitted (auto forfeits/placeholders).
+  // systemResult marks results nobody submitted (auto forfeits/placeholders and
+  // the agreed-postponement 3-0, whose finalised_by is the acceptor's id).
   const decidedAt = result?.updated_at ?? result?.created_at ?? null
-  const systemResult = result ? !result.finalised_by : false
+  const systemResult = isSystemResult(result)
   const [homeMatchManager, awayMatchManager] = await resolveMatchManagers(supabase, [
     { teamId: fixture.home_team_id, matchDate: fixture.scheduled_date, decidedAt, systemResult },
     { teamId: fixture.away_team_id, matchDate: fixture.scheduled_date, decidedAt, systemResult },

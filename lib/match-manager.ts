@@ -18,13 +18,38 @@ interface SideRef {
   // (managerless/vacant forfeits, auto 0-0 placeholders) rather than a person.
   // Those never fall back to match-day attribution when they were stamped before
   // the fixture's day; human results do, because a pre-entered (early/backdoor)
-  // score says nothing about who played.
+  // score says nothing about who played. An agreed-postponement placeholder also
+  // counts as a system result even though `finalised_by` holds the acceptor's
+  // id - see isSystemResult() below.
   systemResult?: boolean
 }
 
 const EMPTY: MatchManager = { id: null, username: null }
 
 const DAY_MS = 24 * 60 * 60 * 1000
+
+// SAST = UTC+2 year-round (no DST), so a fixed offset is exact. `scheduled_date`
+// is a DATE holding the matchday managers see, and that day starts at SAST
+// midnight (22:00Z the day before), never at UTC midnight - see lib/app-time.ts.
+const SAST_OFFSET_MS = 2 * 60 * 60 * 1000
+
+/**
+ * The agreed 3-0 written when an opponent accepts a postponement keeps the
+ * ACCEPTOR's id in `results.finalised_by` (see app/api/submit-match/route.ts), so
+ * `finalised_by` alone can't tell it apart from a scored result. It is a system
+ * placeholder: it must never be back-dated onto a manager appointed after it was
+ * stamped (mirrors recalc_tenure_stats() in SQL).
+ */
+export function isPostponementPlaceholder(result: any): boolean {
+  return String(result?.override_reason ?? '') === 'postponement agreed'
+}
+
+/** True for results no manager played out: system forfeits/placeholders and the
+ *  agreed-postponement 3-0. */
+export function isSystemResult(result: any): boolean {
+  if (!result) return false
+  return !result.finalised_by || isPostponementPlaceholder(result)
+}
 
 // Resolve, for each side of a match, the manager who was in charge of that team
 // on the match date — from the club's `manager_tenures` intervals rather than
@@ -35,7 +60,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // show the empty "—"/"NO MANAGER" placeholder.
 //
 // A tenure covers a date when it started on or before the match day and has not
-// ended by the start of that day (same-day sack/start still counts). When the
+// ended by the start of that day (same-day sack/start still counts). The day runs
+// from SAST midnight to SAST midnight (22:00Z to 22:00Z), matching the DATE's
+// meaning for managers and recalc_tenure_stats(). When the
 // caller also passes `decidedAt` (the moment the result was recorded), the
 // tenure must additionally have started before that moment: a same-day handover
 // is split by time, so the automatic forfeit booked against the club before the
@@ -79,7 +106,7 @@ export async function resolveMatchManagers(db: Db, sides: SideRef[]): Promise<Ma
       return open ? { id: open.manager_id ?? null, username: open.manager_username ?? null } : EMPTY
     }
 
-    const dayStart = Date.parse(`${dateKey}T00:00:00.000Z`)
+    const dayStart = Date.parse(`${dateKey}T00:00:00.000Z`) - SAST_OFFSET_MS
     if (Number.isNaN(dayStart)) return EMPTY
     const dayEnd = dayStart + DAY_MS
 
