@@ -1200,6 +1200,11 @@ async function respondToPostpone(admin: any, fixture: any, viewer: Viewer, form:
       is_postponed: true,
       postponed_from: fixture.scheduled_date,
       scheduled_date: newDate,
+      // The deadline travels with the moved match day (14:00 SAST), like every
+      // other fixture. Leaving the original one behind meant the portal kept the
+      // OLD deadline: reminders named the wrong day and, once the postponed flag
+      // cleared, the placeholder locked as "past its deadline" from the start.
+      deadline: `${newDate}T12:00:00Z`,
     })
     .eq('id', fixture.id)
   if (fixErr) {
