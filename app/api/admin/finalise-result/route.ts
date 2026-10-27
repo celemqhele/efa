@@ -9,6 +9,8 @@ import type { Database } from '@/lib/supabase/types'
 import { insertNotificationsAndPush, notifyAllAdmins } from '@/lib/notify'
 import { notifyAdminsOfResult } from '@/lib/backdoor-notify'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
+import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
+import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
 
 type MatchStatsInsert = Database['public']['Tables']['match_stats']['Insert']
 
@@ -41,6 +43,11 @@ async function checkAndAutoSack(
     if (!reason.includes('absent')) return false
     if (reason.includes('both')) return true
     const isHome = f.home_team_id === teamId
+    // Prefer the recorded absent side: a carry-over balance can move the score
+    // away from the textbook 0-3/3-0, so the score alone is not reliable.
+    if (result.abandoned_type === 'home' || result.abandoned_type === 'away') {
+      return result.abandoned_type === (isHome ? 'home' : 'away')
+    }
     return isHome
       ? result.home_score === 0 && result.away_score === 3
       : result.home_score === 3 && result.away_score === 0
@@ -224,7 +231,16 @@ export async function POST(request: Request) {
   const away_forfeit = body.away_forfeit ?? false
   
   const is_abandoned = home_forfeit || away_forfeit
-  const abandoned_type = (home_forfeit && away_forfeit) ? 'both' : home_forfeit ? 'home' : away_forfeit ? 'away' : null
+  // `abandoned_type` records which side was absent/abandoned. Absences set it
+  // too (with is_abandoned = false) so the standings logic can still tell who
+  // was absent after a carry-over balance changes the scoreline.
+  const abandoned_type = (home_forfeit && away_forfeit) ? 'both'
+    : home_forfeit ? 'home'
+    : away_forfeit ? 'away'
+    : (home_absent && away_absent) ? 'both'
+    : home_absent ? 'home'
+    : away_absent ? 'away'
+    : null
 
   const bothAbsent = home_absent && away_absent
 
@@ -287,13 +303,49 @@ export async function POST(request: Request) {
   const homeTeam = Array.isArray(fixture.home_team) ? fixture.home_team[0] : fixture.home_team
   const awayTeam = Array.isArray(fixture.away_team) ? fixture.away_team[0] : fixture.away_team
 
-  const effectiveOverrideReason = bothAbsent
-    ? 'Both teams absent — result void (0–0, no points)'
-    : home_absent
-    ? `${(homeTeam as any)?.name ?? 'Home team'} absent — forfeit (0–3)`
-    : away_absent
-    ? `${(awayTeam as any)?.name ?? 'Away team'} absent — forfeit (3–0)`
-    : (override_reason ?? null)
+  // A previous forfeit on this fixture must not survive a re-finalise that no
+  // longer records a forfeit: void the balance it created (trimming any later
+  // match that already consumed it) before the new result is written.
+  const voidedTournaments: string[] = []
+  try {
+    const voided = await voidBalancesCreatedBy(adminSupabase, fixture_id)
+    for (const adj of voided.adjusted) {
+      if (adj.tournamentId) voidedTournaments.push(adj.tournamentId)
+    }
+  } catch (e) {
+    console.error('[finalise-result] voiding stale forfeit balances failed:', e)
+  }
+
+  // Absence results absorb carry-over forfeit balances exactly like a played
+  // match, on top of the 0-3/3-0 base. A double no-show is a VOID (no winner, no
+  // scoreline), so it must not consume the balance — the penalty stays pending
+  // for that manager's next real match. Balances the admin already applied by
+  // hand ("Use forfeit balance") are skipped to avoid double-counting.
+  let carryNoteLines: string[] = []
+  if (!bothAbsent && (home_absent || away_absent)) {
+    const carry = await applyCarryOverBalances(adminSupabase, {
+      fixtureId: fixture_id,
+      homeManagerId: (homeTeam as any)?.manager_id ?? null,
+      awayManagerId: (awayTeam as any)?.manager_id ?? null,
+      homeTeamName: (homeTeam as any)?.name ?? 'Home',
+      awayTeamName: (awayTeam as any)?.name ?? 'Away',
+      excludeBalanceIds: used_forfeit_balance_ids,
+    }, home_score, away_score)
+    home_score = carry.homeScore
+    away_score = carry.awayScore
+    carryNoteLines = carry.noteLines
+  }
+
+  const effectiveOverrideReason = [
+    bothAbsent
+      ? 'Both teams absent — result void (0–0, no points)'
+      : home_absent
+      ? `${(homeTeam as any)?.name ?? 'Home team'} absent — forfeit (0–3)`
+      : away_absent
+      ? `${(awayTeam as any)?.name ?? 'Away team'} absent — forfeit (3–0)`
+      : (override_reason ?? null),
+    ...carryNoteLines,
+  ].filter(Boolean).join('\n') || null
 
   // ── Upsert result (handles re-submissions without duplicate key error) ──────
   const { data: result, error: resultError } = await adminSupabase
@@ -372,17 +424,10 @@ export async function POST(request: Request) {
     .eq('status', 'pending')
 
   // ── Forfeit balance tracking ─────────────────────────────────────────────
-  // Clear any balances this same fixture created before (a re-finalise or a
-  // correction) so one match can never leave two penalties on file for the same
-  // manager. Balances it CONSUMED are untouched - those belong to other fixtures.
-  if (home_forfeit || away_forfeit) {
-    const { error: clearErr } = await adminSupabase
-      .from('forfeit_balances')
-      .delete()
-      .eq('fixture_id', fixture_id)
-      .is('consumed_by_fixture_id', null)
-    if (clearErr) console.error('[finalise-result] clearing prior forfeit balances failed:', clearErr.message)
-  }
+  // Any balance this fixture created earlier was already voided above (and its
+  // effect on a later consumer undone), so one match can never leave two
+  // penalties on file for the same manager. Balances it merely CONSUMED belong
+  // to other fixtures and are only re-opened by the apply helper.
   if (home_forfeit || away_forfeit) {
     if (home_forfeit && homeTeam?.manager_id) {
       const note = `Forfeit: ${homeTeam?.name ?? 'Home'} vs ${awayTeam?.name ?? 'Away'} — ${body.home_score ?? 0}-${body.away_score ?? 0} (HT)`
@@ -552,6 +597,17 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     console.error('[finalise-result] progression error:', err)
+  }
+
+  // A voided balance may have trimmed a later result that had consumed it; that
+  // UPDATE re-fired the standings trigger, so rebuild those tournaments from
+  // their results to make the trimmed scores the source of truth.
+  for (const tid of new Set(voidedTournaments)) {
+    try {
+      await recalculateStandings(tid)
+    } catch (e) {
+      console.error('[finalise-result] standings recalc after void failed:', tid, e)
+    }
   }
 
   // ── Notifications ─────────────────────────────────────────────────────────

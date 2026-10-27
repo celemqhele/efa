@@ -3,6 +3,7 @@ import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { notifyBackdoorDecision } from '@/lib/backdoor-notify'
 import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
+import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 export async function POST(request: Request) {
@@ -64,6 +65,20 @@ export async function POST(request: Request) {
     }
   }
 
+  // A backdoor approval overwrites whatever was on file. If that older result was
+  // a forfeit, the balance it created must not survive the rewrite: void it first
+  // (and undo its effect on a later match that already consumed it). This is what
+  // clears a stale forfeit when the replacement submission is not a forfeit.
+  const voidedTournaments: string[] = []
+  try {
+    const voided = await voidBalancesCreatedBy(db, fixtureId)
+    for (const adj of voided.adjusted) {
+      if (adj.tournamentId) voidedTournaments.push(adj.tournamentId)
+    }
+  } catch (e) {
+    console.error('[backdoor-approve] voiding stale forfeit balances failed:', e)
+  }
+
   // Absorb carry-over forfeit balances for either manager (the same scores a
   // normally played match would take on), then record one citation line each.
   const carry = await applyCarryOverBalances(db, {
@@ -97,7 +112,11 @@ export async function POST(request: Request) {
     home_score: homeScore,
     away_score: awayScore,
     finalised_by: user.id,
-    ...(overrideReason ? { override_reason: overrideReason } : {}),
+    // Always written so a backdoor walkover replacing a forfeit clears the old
+    // abandonment markers instead of leaving a half-forfeit result behind.
+    is_abandoned: false,
+    abandoned_type: null,
+    override_reason: overrideReason,
   }, { onConflict: 'fixture_id' })
   if (resErr) return Response.json({ error: resErr.message }, { status: 500 })
 
@@ -136,6 +155,14 @@ export async function POST(request: Request) {
 
   if (fixture.tournament_id) {
     try { await recalculateStandings(fixture.tournament_id) } catch (e) {}
+  }
+
+  // A voided balance may have trimmed a later result that had consumed it; that
+  // UPDATE re-fired the standings trigger, so rebuild those tournaments from
+  // their results so the trimmed scores are the source of truth.
+  for (const tid of new Set(voidedTournaments)) {
+    if (tid === String(fixture.tournament_id)) continue
+    try { await recalculateStandings(tid) } catch (e) {}
   }
 
   if (

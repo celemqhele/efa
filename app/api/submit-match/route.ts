@@ -8,6 +8,8 @@ import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { matchStatsToDbColumns } from '@/lib/ocr'
 import { MAX_SHOTS, verifyScreenshots, type ShotImage, type VerifyResult } from '@/lib/screenshot-verify'
+import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
+import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
 import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 // The result submission now runs the AI screenshot check (Gemini flash-lite,
@@ -291,17 +293,45 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
 
   // Any balance this fixture created when it was previously submitted as a
   // forfeit is stale once the result is being rewritten (a plain correction, a
-  // walkover, or another forfeit). Drop it first so resubmitting cannot stack
-  // duplicate carry-over penalties on the same match.
+  // walkover, or another forfeit). Void it first - including undoing its effect
+  // on a later match that already consumed it - so resubmitting cannot stack
+  // duplicate carry-over penalties. When the new submission is not a forfeit,
+  // this is what clears the old forfeit completely.
   if (fixture.result && !fixture.postponed_confirmed) {
-    await admin.from('forfeit_balances').delete().eq('fixture_id', fixture.id)
+    try {
+      const voided = await voidBalancesCreatedBy(admin, fixture.id)
+      for (const tid of voided.tournaments) {
+        if (!tid || tid === String(fixture.tournament_id)) continue
+        try {
+          await recalculateStandings(tid)
+        } catch (e) {
+          console.error('[submit-match] standings recalc after void failed:', e)
+        }
+      }
+    } catch (e) {
+      console.error('[submit-match] voiding stale forfeit balances failed:', e)
+    }
+  }
+
+  const carryContext = {
+    fixtureId: fixture.id,
+    homeManagerId: fixture.home_team?.manager_id ?? null,
+    awayManagerId: fixture.away_team?.manager_id ?? null,
+    homeTeamName: teamName(fixture.home_team),
+    awayTeamName: teamName(fixture.away_team),
   }
 
   if (givenWin) {
     if (!viewer.side && !viewer.isAdmin) return error('Only the two managers can submit a result.')
     finalHomeScore = viewer.side === 'away' ? 0 : 3
     finalAwayScore = viewer.side === 'away' ? 3 : 0
-    overrideReason = 'opponent gave the win (walkover 3-0)'
+    // A walkover is still a played fixture as far as carry-over penalties go:
+    // either manager's pending forfeit balance is added to the OPPONENT'S side,
+    // so a 3-0 walkover can become 5-3 when the given-win side owes a 5-0.
+    const carry = await applyCarryOverBalances(admin, carryContext, finalHomeScore, finalAwayScore)
+    finalHomeScore = carry.homeScore
+    finalAwayScore = carry.awayScore
+    overrideReason = ['opponent gave the win (walkover 3-0)', ...carry.noteLines].join('\n')
   } else if (isForfeit) {
     if (homeScore === awayScore) {
       return error('A forfeited match needs a clear loser — the scores cannot be level.')
@@ -330,46 +360,15 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         half_time_note: `Forfeit: ${finalHomeScore}-${finalAwayScore} (adjusted from ${origHome}-${origAway})`,
       })
     }
-  } else if (!isFuture && fixture.home_team_id && fixture.away_team_id) {
-    // Re-submitting this match (e.g. correcting the score) must keep the
-    // carry-over balances its previous result applied. Re-open any balance this
-    // fixture already consumed so it is counted again in the loop below.
-    await admin
-      .from('forfeit_balances')
-      .update({ remaining: 1, consumed_by_fixture_id: null })
-      .eq('consumed_by_fixture_id', fixture.id)
-
-    const managerIds = [fixture.home_team?.manager_id, fixture.away_team?.manager_id].filter(Boolean)
-    if (managerIds.length > 0) {
-      const { data: balances } = await admin
-        .from('forfeit_balances')
-        .select('id, forfeiting_score, opponent_score, forfeiting_manager_id, opponent_team_id, fixture_id')
-        .in('forfeiting_manager_id', managerIds)
-        .gt('remaining', 0)
-
-      if (balances && balances.length > 0) {
-        const hName = teamName(fixture.home_team)
-        const aName = teamName(fixture.away_team)
-        // Every applied balance gets its own `forfeit_note:` line so all source
-        // matches are cited on the result/fixture page, not just the last one.
-        const forfeitNotes: string[] = []
-        for (const bal of balances) {
-          const forfeitingIsHome = bal.forfeiting_manager_id === fixture.home_team?.manager_id
-          const oppScore = bal.opponent_score ?? 0
-          if (forfeitingIsHome) {
-            finalAwayScore += oppScore
-          } else {
-            finalHomeScore += oppScore
-          }
-          await admin.from('forfeit_balances').update({ remaining: 0, consumed_by_fixture_id: fixture.id }).eq('id', bal.id)
-
-          const forfeiterTeam = forfeitingIsHome ? hName : aName
-          const winnerTeam = forfeitingIsHome ? aName : hName
-          const noteSentence = `${forfeiterTeam} forfeited a match that ended in ${bal.opponent_score}-${bal.forfeiting_score}, so this ${homeScore}-${awayScore} win became ${finalHomeScore}-${finalAwayScore} in favour of ${winnerTeam}.`
-          forfeitNotes.push(`forfeit_note:${bal.fixture_id}:${noteSentence}`)
-        }
-        if (forfeitNotes.length > 0) overrideReason = forfeitNotes.join('\n')
-      }
+  } else if (fixture.home_team_id && fixture.away_team_id) {
+    // A normal (or corrected) result still absorbs every pending carry-over
+    // balance either manager owns. The helper also re-opens any balance this
+    // fixture consumed on a previous submission so it is counted exactly once.
+    const carry = await applyCarryOverBalances(admin, carryContext, finalHomeScore, finalAwayScore)
+    finalHomeScore = carry.homeScore
+    finalAwayScore = carry.awayScore
+    if (carry.noteLines.length > 0) {
+      overrideReason = [overrideReason, ...carry.noteLines].filter(Boolean).join('\n')
     }
   }
 
@@ -392,8 +391,11 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         extra_screenshot_urls: extraScreenshotUrls.length > 0 ? extraScreenshotUrls : null,
         finalised_by: viewer.userId,
         is_abandoned: isAbandoned,
-        ...(abandonedType ? { abandoned_type: abandonedType } : {}),
-        ...(overrideReason ? { override_reason: overrideReason } : {}),
+        // Always written (null when not a forfeit) so a correction that drops
+        // the forfeit clears the old abandonment markers instead of leaving a
+        // half-forfeit result behind.
+        abandoned_type: abandonedType,
+        override_reason: overrideReason,
       },
       { onConflict: 'fixture_id' }
     )

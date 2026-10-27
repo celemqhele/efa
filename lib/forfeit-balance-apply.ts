@@ -8,9 +8,12 @@
 // score is discarded. So a forfeited 7-2 starts the aggregate at 7-0 (opponent 7,
 // forfeiter 0), not 7-2.
 //
-// Used by the backdoor application writers (admin approve route + auto-finalise
-// cron) so a backdoor decision (3-0 single claim or 0-0 both claim) absorbs the
-// same carried-over scores a normally played match would.
+// Used by every result writer that must honour the carry-over rule: the played
+// match and walkover paths (portal + WhatsApp), backdoor decisions (admin route,
+// WhatsApp approval, auto-finalise cron) and absence results (admin absent
+// toggles, vacant-slot and managerless-club auto-forfeits). A double no-show
+// void deliberately skips it: no winner, no scoreline, so the penalty stays
+// pending for that manager's next real meeting.
 
 export interface CarryOverContext {
   fixtureId: string
@@ -18,6 +21,10 @@ export interface CarryOverContext {
   awayManagerId: string | null
   homeTeamName: string
   awayTeamName: string
+  // Balances the caller already applied by hand (e.g. the admin submit page's
+  // "Use forfeit balance" button). They are skipped here so the score is not
+  // counted twice, but the caller is still responsible for consuming them.
+  excludeBalanceIds?: string[]
 }
 
 export interface CarryOverResult {
@@ -57,6 +64,7 @@ export async function applyCarryOverBalances(
     .gt('remaining', 0)
 
   for (const bal of (balances ?? []) as any[]) {
+    if (ctx.excludeBalanceIds?.includes(bal.id)) continue
     const forfeitingIsHome = bal.forfeiting_manager_id === ctx.homeManagerId
     const oppScore = bal.opponent_score ?? 0
     if (forfeitingIsHome) {

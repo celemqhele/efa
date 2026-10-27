@@ -116,6 +116,26 @@ export async function resolveTournamentGdLeader(
       continue
     }
 
+    // Single absence: the standings engine ignores the absent side's score and
+    // credits the present side with the recorded winner score, so mirror that
+    // (a carried-over forfeit balance can move the scoreline off 0-3/3-0).
+    if (reason.includes('absent') && res.is_abandoned !== true) {
+      const markedHome = res.abandoned_type === 'home'
+      const markedAway = res.abandoned_type === 'away'
+      const homeAbsent = markedHome || (res.abandoned_type == null && res.home_score === 0 && res.away_score === 3)
+      const awayAbsent = markedAway || (res.abandoned_type == null && res.home_score === 3 && res.away_score === 0)
+      if (homeAbsent) {
+        add(f.home_team_id, -3)
+        add(f.away_team_id, res.away_score ?? 3)
+        continue
+      }
+      if (awayAbsent) {
+        add(f.home_team_id, res.home_score ?? 3)
+        add(f.away_team_id, -3)
+        continue
+      }
+    }
+
     const homeScore = res.home_score ?? 0
     const awayScore = res.away_score ?? 0
     add(f.home_team_id, homeScore - awayScore)

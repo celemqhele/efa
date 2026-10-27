@@ -837,7 +837,9 @@ function ResultPanel({
 
   // "Did this player give you the win?" locks the score to a 3-0 walkover for the
   // submitter: the score inputs show it read-only and the forfeit question is
-  // disabled (a walkover is never also a forfeit, so no +3 and no carry-over).
+  // disabled (a walkover is never also a forfeit, so no +3 bonus). A pending
+  // carry-over balance is still applied on top BY THE SERVER (it can turn the
+  // 3-0 into e.g. 5-3), so the shown score is the base score only.
   const walkover = givenWin === 'yes'
   const walkHome = side === 'away' ? '0' : '3'
   const walkAway = side === 'away' ? '3' : '0'

@@ -15,9 +15,13 @@ interface Props {
   managerName: string
   balances: ForfeitBalanceItem[]
   onUse: (balanceId: string) => void
+  // True when the server applies this balance for the admin (absence results do
+  // it automatically), so the manual "Use" action is disabled to avoid counting
+  // the same conceded score twice.
+  autoApplied?: boolean
 }
 
-export default function ForfeitBalanceBadge({ managerId, balances, onUse }: Props) {
+export default function ForfeitBalanceBadge({ managerId, balances, onUse, autoApplied = false }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -64,13 +68,18 @@ export default function ForfeitBalanceBadge({ managerId, balances, onUse }: Prop
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); onUse(b.id) }}
-                disabled={b.remaining <= 0}
+                disabled={b.remaining <= 0 || autoApplied}
                 className="shrink-0 px-2 py-0.5 rounded bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-semibold hover:bg-orange-500/30 transition-colors disabled:opacity-40"
               >
                 Use
               </button>
             </div>
           ))}
+          {autoApplied && (
+            <p className="text-[10px] text-text-muted">
+              Applied automatically to this absence result.
+            </p>
+          )}
         </div>
       )}
     </div>

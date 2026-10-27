@@ -112,6 +112,21 @@ export function emptyStandingsRow(teamId: string, team: any, groupName?: string 
   }
 }
 
+// Which side was absent. Newer absence results record the side on
+// `abandoned_type` (without is_abandoned) because a carried-over forfeit score
+// can push the scoreline away from the textbook 0-3/3-0, making the score
+// ambiguous. Legacy rows only have the score, so fall back to that.
+function absenceSides(res: any, isAbsent: boolean) {
+  const markedHome = res.abandoned_type === 'home'
+  const markedAway = res.abandoned_type === 'away'
+  const scoreHomeAbsent = res.home_score === 0 && res.away_score === 3
+  const scoreAwayAbsent = res.home_score === 3 && res.away_score === 0
+  return {
+    homeAbsent: isAbsent && (markedHome || (res.abandoned_type == null && scoreHomeAbsent)),
+    awayAbsent: isAbsent && (markedAway || (res.abandoned_type == null && scoreAwayAbsent)),
+  }
+}
+
 export function applyResultToRow(
   homeRow: any, awayRow: any,
   homeScore: number, awayScore: number,
@@ -167,8 +182,11 @@ export function applyResultToRow(
   }
 
   if (homeAbsent) {
+    // Winner is credited with the ACTUAL score: a carried-over forfeit balance
+    // can lift it above the textbook 3 (e.g. 0-8), and the standings must match
+    // the recorded result.
     awayRow.wins++
-    awayRow.goals_for += 3
+    awayRow.goals_for += awayScore
     awayRow.points += 3
     homeRow.absent++
     homeRow.gd_penalty -= 3
@@ -177,7 +195,7 @@ export function applyResultToRow(
 
   if (awayAbsent) {
     homeRow.wins++
-    homeRow.goals_for += 3
+    homeRow.goals_for += homeScore
     homeRow.points += 3
     awayRow.absent++
     awayRow.gd_penalty -= 3
@@ -251,8 +269,9 @@ export async function buildLiveStandings(supabase: SupabaseClient, tournamentId:
       const homeForfeit = res.is_abandoned === true && (res.abandoned_type === 'home' || res.abandoned_type === 'both')
       const awayForfeit = res.is_abandoned === true && (res.abandoned_type === 'away' || res.abandoned_type === 'both')
       const bothForfeit = res.is_abandoned === true && res.abandoned_type === 'both'
-      const homeAbsent = isAbsent && (res.home_score === 0 && res.away_score === 3) && !homeForfeit
-      const awayAbsent = isAbsent && (res.home_score === 3 && res.away_score === 0) && !awayForfeit
+      const { homeAbsent: sideHomeAbsent, awayAbsent: sideAwayAbsent } = absenceSides(res, isAbsent)
+      const homeAbsent = sideHomeAbsent && !homeForfeit
+      const awayAbsent = sideAwayAbsent && !awayForfeit
 
       const effectiveHomeScore = bothForfeit ? 0 : (res.home_score ?? 0)
       const effectiveAwayScore = bothForfeit ? 0 : (res.away_score ?? 0)
@@ -319,8 +338,9 @@ export async function buildLiveStandings(supabase: SupabaseClient, tournamentId:
       const homeForfeit = res.is_abandoned === true && (res.abandoned_type === 'home' || res.abandoned_type === 'both')
       const awayForfeit = res.is_abandoned === true && (res.abandoned_type === 'away' || res.abandoned_type === 'both')
       const bothForfeit = res.is_abandoned === true && res.abandoned_type === 'both'
-      const homeAbsent = isAbsent && (res.home_score === 0 && res.away_score === 3) && !homeForfeit
-      const awayAbsent = isAbsent && (res.home_score === 3 && res.away_score === 0) && !awayForfeit
+      const { homeAbsent: sideHomeAbsent, awayAbsent: sideAwayAbsent } = absenceSides(res, isAbsent)
+      const homeAbsent = sideHomeAbsent && !homeForfeit
+      const awayAbsent = sideAwayAbsent && !awayForfeit
 
       const effectiveHomeScore = bothForfeit ? 0 : (res.home_score ?? 0)
       const effectiveAwayScore = bothForfeit ? 0 : (res.away_score ?? 0)

@@ -70,6 +70,19 @@ function emptyGroupStandingRow(tournamentId: string, groupName: string, particip
   }
 }
 
+// Which side was absent. Newer absence results record the side on
+// `abandoned_type` (without is_abandoned) because a carried-over forfeit score
+// can move the scoreline away from the textbook 0-3/3-0. Legacy rows only have
+// the score, so fall back to that.
+function absenceSides(result: { home_score: number; away_score: number; abandoned_type?: string | null }, isAbsent: boolean) {
+  const markedHome = result.abandoned_type === 'home'
+  const markedAway = result.abandoned_type === 'away'
+  return {
+    homeAbsent: isAbsent && (markedHome || (result.abandoned_type == null && result.home_score === 0 && result.away_score === 3)),
+    awayAbsent: isAbsent && (markedAway || (result.abandoned_type == null && result.home_score === 3 && result.away_score === 0)),
+  }
+}
+
 function applyResult(
   homeRow: any, awayRow: any,
   homeScore: number, awayScore: number,
@@ -138,9 +151,11 @@ function applyResult(
   }
 
   if (homeAbsent) {
-    // Home absent: away wins 3-0, home gets absent++ and -3GD
+    // Home absent: away wins, credited with the ACTUAL score (a carried-over
+    // forfeit balance can lift it above the textbook 3), home gets absent++ and
+    // -3GD.
     awayRow.wins++
-    awayRow.goals_for += 3
+    awayRow.goals_for += awayScore
     awayRow.points += 3
     if ('form' in awayRow) awayRow.form = (awayRow.form + 'W').slice(-5)
     if ('unbeaten_run' in awayRow) awayRow.unbeaten_run++
@@ -151,9 +166,11 @@ function applyResult(
   }
 
   if (awayAbsent) {
-    // Away absent: home wins 3-0, away gets absent++ and -3GD
+    // Away absent: home wins, credited with the ACTUAL score (a carried-over
+    // forfeit balance can lift it above the textbook 3), away gets absent++ and
+    // -3GD.
     homeRow.wins++
-    homeRow.goals_for += 3
+    homeRow.goals_for += homeScore
     homeRow.points += 3
     if ('form' in homeRow) homeRow.form = (homeRow.form + 'W').slice(-5)
     if ('unbeaten_run' in homeRow) homeRow.unbeaten_run++
@@ -368,8 +385,9 @@ export async function recalculateStandings(tournamentId: string) {
       const awayForfeit = result.is_abandoned === true && result.abandoned_type === 'away'
       const bothForfeit = result.is_abandoned === true && result.abandoned_type === 'both'
 
-      const homeAbsent = isAbsent && (homeScore === 0 && awayScore === 3) && !homeForfeit && !bothForfeit
-      const awayAbsent = isAbsent && (homeScore === 3 && awayScore === 0) && !awayForfeit && !bothForfeit
+      const { homeAbsent: sideHomeAbsent, awayAbsent: sideAwayAbsent } = absenceSides(result, isAbsent)
+      const homeAbsent = sideHomeAbsent && !homeForfeit && !bothForfeit
+      const awayAbsent = sideAwayAbsent && !awayForfeit && !bothForfeit
 
       const effectiveHomeScore = bothForfeit ? 0 : homeScore
       const effectiveAwayScore = bothForfeit ? 0 : awayScore
@@ -436,8 +454,9 @@ export async function recalculateStandings(tournamentId: string) {
       const awayForfeit = result.is_abandoned === true && result.abandoned_type === 'away'
       const bothForfeit = result.is_abandoned === true && result.abandoned_type === 'both'
 
-      const homeAbsent = isAbsent && (homeScore === 0 && awayScore === 3) && !homeForfeit && !bothForfeit
-      const awayAbsent = isAbsent && (homeScore === 3 && awayScore === 0) && !awayForfeit && !bothForfeit
+      const { homeAbsent: sideHomeAbsent, awayAbsent: sideAwayAbsent } = absenceSides(result, isAbsent)
+      const homeAbsent = sideHomeAbsent && !homeForfeit && !bothForfeit
+      const awayAbsent = sideAwayAbsent && !awayForfeit && !bothForfeit
 
       const effectiveHomeScore = bothForfeit ? 0 : homeScore
       const effectiveAwayScore = bothForfeit ? 0 : awayScore

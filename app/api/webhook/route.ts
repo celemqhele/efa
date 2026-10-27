@@ -34,6 +34,8 @@ import {
 import { recalculateStandings } from '@/lib/standings-engine'
 import { advanceWinner } from '@/lib/tournament-progression'
 import { getSastDateKey } from '@/lib/app-time'
+import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
+import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
 
 // ─── Date range helper: Last Sunday to Next Sunday (inclusive) ─────────────────────
 function getSundayRange(): { start: string; end: string } {
@@ -1239,11 +1241,41 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
   // Detect if this is an override of an already-confirmed backdoor result
   const { data: existingFix } = await supabase
     .from('fixtures')
-    .select('id, status, postponed_confirmed, tournament_id, round_type, home_team_id, away_team_id, results!results_fixture_id_fkey(home_score, away_score)')
+    .select('id, status, postponed_confirmed, tournament_id, round_type, home_team_id, away_team_id, results!results_fixture_id_fkey(home_score, away_score), home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id), away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id)')
     .eq('id', session.matched_fixture_id)
     .single()
   const existingResult = existingFix ? (Array.isArray(existingFix.results) ? existingFix.results[0] : existingFix.results) : null
   const isOverride = !!existingFix && !!existingResult && (existingFix.status === 'confirmed' || existingFix.status === 'confirmed_pending' || existingFix.status === 'awaiting_confirmation' || existingFix.status === 'completed')
+
+  const backdoorHomeTeam: any = existingFix ? (Array.isArray((existingFix as any).home_team) ? (existingFix as any).home_team[0] : (existingFix as any).home_team) : null
+  const backdoorAwayTeam: any = existingFix ? (Array.isArray((existingFix as any).away_team) ? (existingFix as any).away_team[0] : (existingFix as any).away_team) : null
+
+  // Rewriting an existing result drops any forfeit balance that result created,
+  // including its effect on a later match that already consumed it.
+  if (existingResult) {
+    try {
+      const voided = await voidBalancesCreatedBy(supabase, session.matched_fixture_id)
+      for (const tid of new Set(voided.adjusted.map((a) => a.tournamentId).filter(Boolean) as string[])) {
+        if (tid === String(existingFix?.tournament_id)) continue
+        try { await recalculateStandings(tid) } catch (e) {}
+      }
+    } catch (e) {
+      console.error('[webhook] voiding stale forfeit balances failed:', e)
+    }
+  }
+
+  // A walkover still absorbs pending carry-over balances for either manager: the
+  // given-win side's balance is added to the OPPONENT'S score, so 0-3 can become
+  // 5-3 when the side taking the win owes a 5-0.
+  const carry = await applyCarryOverBalances(supabase, {
+    fixtureId: session.matched_fixture_id,
+    homeManagerId: backdoorHomeTeam?.manager_id ?? null,
+    awayManagerId: backdoorAwayTeam?.manager_id ?? null,
+    homeTeamName: backdoorHomeTeam?.name ?? 'Home',
+    awayTeamName: backdoorAwayTeam?.name ?? 'Away',
+  }, homeScore, awayScore)
+  homeScore = carry.homeScore
+  awayScore = carry.awayScore
 
   await supabase.from('result_confirmations').insert({
     fixture_id: session.matched_fixture_id,
@@ -1257,7 +1289,9 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
     home_score: homeScore,
     away_score: awayScore,
     ...(adminUserId ? { finalised_by: adminUserId } : {}),
-    ...(isOverride ? { override_reason: 'backdoor override' } : {}),
+    is_abandoned: false,
+    abandoned_type: null,
+    override_reason: [isOverride ? 'backdoor override' : null, ...carry.noteLines].filter(Boolean).join('\n') || null,
   }, { onConflict: 'fixture_id' })
 
   await supabase.from('fixtures').update({ status: 'confirmed' }).eq('id', session.matched_fixture_id)
@@ -1290,9 +1324,11 @@ async function handleBackdoorSide(from: string, text: string, phoneNumberId: str
     .single()
   const h = fixtureTeamName(fx, 'home')
   const a = fixtureTeamName(fx, 'away')
-  const winner = homeScore === 3 ? h : a
+  const winner = homeScore > awayScore ? h : awayScore > homeScore ? a : null
   const title = 'Backdoor win submitted'
-  const body = `${winner} won ${homeScore}-${awayScore} vs ${winner === h ? a : h}`
+  const body = winner
+    ? `${winner} won ${homeScore}-${awayScore} vs ${winner === h ? a : h}`
+    : `${h} ${homeScore}-${awayScore} ${a}`
   if (adminUserId) {
     await supabase.from('notifications').insert({
       user_id: adminUserId,
@@ -2735,6 +2771,10 @@ async function handleBackdoorAdminReview(from: string, text: string, session: Se
 async function handleBackdoorAdminDecision(from: string, text: string, session: SessionData, phoneNumberId: string) {
   const pendingIds: string[] = session.backdoor_fixture_ids || []
   const fixtureId = session.matched_fixture_id
+  if (!fixtureId) {
+    await sendTextMessage(from, 'This review expired. Type MENU to start again.', phoneNumberId)
+    return
+  }
 
   // Resolve which claims this reply covers. A bare approve/decline applies to the
   // whole match, which is only unambiguous while a single claim is pending.
@@ -2789,6 +2829,37 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
     // Call finalise-result logic
     const adminUserId = await getAdminUserId(supabase)
 
+    const { data: decisionFixture } = await supabase
+      .from('fixtures')
+      .select('home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id), away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id)')
+      .eq('id', fixtureId)
+      .single()
+    const decisionHome: any = decisionFixture ? (Array.isArray((decisionFixture as any).home_team) ? (decisionFixture as any).home_team[0] : (decisionFixture as any).home_team) : null
+    const decisionAway: any = decisionFixture ? (Array.isArray((decisionFixture as any).away_team) ? (decisionFixture as any).away_team[0] : (decisionFixture as any).away_team) : null
+
+    // Approving overwrites any older result on this fixture: drop the forfeit
+    // balance that result created (and undo it on a later consumer).
+    try {
+      const voided = await voidBalancesCreatedBy(supabase, fixtureId)
+      for (const tid of new Set(voided.adjusted.map((a) => a.tournamentId).filter(Boolean) as string[])) {
+        try { await recalculateStandings(tid) } catch (e) {}
+      }
+    } catch (e) {
+      console.error('[backdoor] voiding stale forfeit balances failed:', e)
+    }
+
+    // A backdoor walkover absorbs pending carry-over balances just like a played
+    // match: the given-win side's balance is added to the OPPONENT'S score.
+    const carry = await applyCarryOverBalances(supabase, {
+      fixtureId,
+      homeManagerId: decisionHome?.manager_id ?? null,
+      awayManagerId: decisionAway?.manager_id ?? null,
+      homeTeamName: decisionHome?.name ?? 'Home',
+      awayTeamName: decisionAway?.name ?? 'Away',
+    }, homeScore, awayScore)
+    homeScore = carry.homeScore
+    awayScore = carry.awayScore
+
     // result_confirmations is UNIQUE (fixture_id, submitted_by): the same admin
     // can approve twice on one fixture (report first, then an upheld dispute),
     // so upsert to keep the second decision off the constraint.
@@ -2804,6 +2875,9 @@ async function handleBackdoorAdminDecision(from: string, text: string, session: 
       home_score: homeScore,
       away_score: awayScore,
       finalised_by: adminUserId,
+      is_abandoned: false,
+      abandoned_type: null,
+      override_reason: carry.noteLines.join('\n') || null,
     }, { onConflict: 'fixture_id' })
 
     await supabase.from('fixtures').update({ status: 'confirmed' }).eq('id', fixtureId)
@@ -6028,7 +6102,21 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
   // Forfeit balance aggregate: check if either team's manager has active forfeit balances.
   // The forfeit score always carries over to the next meeting between the same two teams (per the rules),
   // regardless of who is currently winning. Skip when this is a forfeit confirm — handleForfeitYes already applied the +3.
+  const forfeitReasonLines: string[] = []
   if (!isForfeitConfirm && fixture?.home_team_id && fixture?.away_team_id) {
+    // A normal result replacing an older forfeit on this fixture drops the
+    // balance that forfeit created (and undoes its effect on a later match that
+    // already consumed it), otherwise the stale penalty keeps living on.
+    try {
+      const voided = await voidBalancesCreatedBy(supabase, session.matched_fixture_id)
+      for (const tid of new Set(voided.adjusted.map((a) => a.tournamentId).filter(Boolean) as string[])) {
+        if (tid === String(fixture.tournament_id)) continue
+        try { await recalculateStandings(tid) } catch (e) {}
+      }
+    } catch (e) {
+      console.error('[webhook] voiding stale forfeit balances failed:', e)
+    }
+
     // Re-submitting this match (resetAndResubmit deletes the old result then
     // calls this again) must keep the carry-over balances the previous result
     // applied. Re-open any balance this fixture already consumed so it is
@@ -6042,7 +6130,7 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
     if (managerIds.length > 0) {
       const { data: balances } = await supabase
         .from('forfeit_balances')
-        .select('id, forfeiting_score, opponent_score, forfeiting_manager_id, opponent_team_id, forfeiting_manager:profiles!forfeit_balances_forfeiting_manager_id_fkey(username), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
+        .select('id, fixture_id, forfeiting_score, opponent_score, forfeiting_manager_id, opponent_team_id, forfeiting_manager:profiles!forfeit_balances_forfeiting_manager_id_fkey(username), opponent_team:teams!forfeit_balances_opponent_team_id_fkey(name)')
         .in('forfeiting_manager_id', managerIds)
         .gt('remaining', 0)
 
@@ -6075,6 +6163,10 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
           } else {
             forfeitNoteParts.push(`Your opponent (${forfeitTeamName}) forfeited their last game against ${oppName}`)
           }
+          const winnerName = forfeitingIsHome ? aName : hName
+          forfeitReasonLines.push(
+            `forfeit_note:${bal.fixture_id}:${forfeitTeamName} forfeited a match that ended in ${bal.opponent_score}-${bal.forfeiting_score}, so this result became ${homeScore}-${awayScore} in favour of ${winnerName}.`
+          )
         }
         const reasonText = forfeitNoteParts.join('; ')
         forfeitBalanceNote = `\n\n${reasonText}.\nScore: ${hName} ${homeScore}-${awayScore} ${aName}.`
@@ -6102,6 +6194,11 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
       home_score: homeScore,
       away_score: awayScore,
       ...(adminUserId ? { finalised_by: adminUserId } : {}),
+      // Always written so a correction that is no longer a forfeit clears the
+      // old abandonment markers and any stale absence reason.
+      is_abandoned: false,
+      abandoned_type: null,
+      override_reason: forfeitReasonLines.join('\n') || null,
     }, { onConflict: 'fixture_id' })
     .select('id')
     .maybeSingle()
@@ -6128,14 +6225,19 @@ async function writeResultToDb(from: string, session: SessionData, supabase: any
       const forfManagerId = homeForfeit ? fixtureHome?.manager_id : fixtureAway?.manager_id
       const oppTeamId = homeForfeit ? fixture.away_team_id : fixture.home_team_id
       if (forfManagerId) {
-        // One penalty per match: clear balances this fixture created before, so a
+        // One penalty per match: void balances this fixture created before, so a
         // resubmitted/corrected forfeit cannot stack a second penalty. Balances it
-        // consumed belong to other fixtures and are left alone.
-        await supabase
-          .from('forfeit_balances')
-          .delete()
-          .eq('fixture_id', session.matched_fixture_id)
-          .is('consumed_by_fixture_id', null)
+        // consumed belong to other fixtures and are left alone. A balance already
+        // consumed by a later match is un-applied from that result too.
+        try {
+          const voided = await voidBalancesCreatedBy(supabase, session.matched_fixture_id)
+          for (const tid of new Set(voided.adjusted.map((a) => a.tournamentId).filter(Boolean) as string[])) {
+            if (tid === String(fixture.tournament_id)) continue
+            try { await recalculateStandings(tid) } catch (e) {}
+          }
+        } catch (e) {
+          console.error('[webhook] voiding prior forfeit balance failed:', e)
+        }
         await supabase.from('forfeit_balances').insert({
           fixture_id: session.matched_fixture_id,
           forfeiting_manager_id: forfManagerId,

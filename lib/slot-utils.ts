@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
+import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
 
 type SupabaseClientLike = any
 
@@ -228,7 +229,7 @@ export async function vacateUserSlots(
   for (const slot of slotRows) {
     const { data: fixtures } = await db
       .from('fixtures')
-      .select('id, home_participant_id, away_participant_id, home_team_id, away_team_id, results(finalised_by)')
+      .select('id, home_participant_id, away_participant_id, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id), away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id), results(finalised_by)')
       .or(`home_participant_id.eq.${slot.id},away_participant_id.eq.${slot.id}`)
       .in('status', autoStatuses)
       .not('scheduled_date', 'is', null)
@@ -238,6 +239,8 @@ export async function vacateUserSlots(
       const res = Array.isArray(fx.results) ? fx.results[0] : fx.results
       if (res && res.finalised_by) continue
 
+      const homeTeamRow = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
+      const awayTeamRow = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
       const homeVacant = fx.home_team_id === vacantTeamId
       const awayVacant = fx.away_team_id === vacantTeamId
       let homeScore: number
@@ -257,6 +260,22 @@ export async function vacateUserSlots(
         reason = 'Vacant slot absent — automatic 3-0'
       }
 
+      // Carry-over balances for the side that is still present still apply to a
+      // vacant-seat walkover (only the opponent's conceded score is added). A
+      // both-vacant fixture is a VOID, so no balance is consumed there.
+      if (!(homeVacant && awayVacant)) {
+        const carry = await applyCarryOverBalances(db, {
+          fixtureId: fx.id,
+          homeManagerId: homeVacant ? userId : (homeTeamRow?.manager_id ?? null),
+          awayManagerId: awayVacant ? userId : (awayTeamRow?.manager_id ?? null),
+          homeTeamName: homeTeamRow?.name ?? 'Home',
+          awayTeamName: awayTeamRow?.name ?? 'Away',
+        }, homeScore, awayScore)
+        homeScore = carry.homeScore
+        awayScore = carry.awayScore
+        if (carry.noteLines.length > 0) reason = [reason, ...carry.noteLines].join('\n')
+      }
+
       await db
         .from('results')
         .upsert(
@@ -268,7 +287,9 @@ export async function vacateUserSlots(
             screenshot_url: null,
             override_reason: reason,
             is_abandoned: false,
-            abandoned_type: null,
+            // Records WHICH side was absent so the standings stay correct even
+            // when a carried-over score moves the result off 0-3/3-0.
+            abandoned_type: homeVacant && awayVacant ? 'both' : homeVacant ? 'home' : 'away',
             pen_home_score: null,
             pen_away_score: null,
           },
@@ -370,7 +391,7 @@ export async function forfeitUnmanagedClubSlots(
   const { data: fixtures } = await db
     .from('fixtures')
     .select(
-      'id, tournament_id, round_type, scheduled_date, status, home_participant_id, away_participant_id, home_team_id, away_team_id, results(finalised_by, home_score, away_score)'
+      'id, tournament_id, round_type, scheduled_date, status, home_participant_id, away_participant_id, home_team_id, away_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id), away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id), results(finalised_by, home_score, away_score)'
     )
     .or(seatIds.map((id) => `home_participant_id.eq.${id},away_participant_id.eq.${id}`).join(','))
     .in('status', autoStatuses)
@@ -388,13 +409,17 @@ export async function forfeitUnmanagedClubSlots(
     if (fx.away_participant_id) involvedIds.add(fx.away_participant_id)
   }
   const managedSides = new Set<string>()
+  const seatOwner: Record<string, string> = {}
   if (involvedIds.size > 0) {
     const { data: ownedSeats } = await db
       .from('tournament_participants')
-      .select('id')
+      .select('id, user_id')
       .in('id', [...involvedIds])
       .not('user_id', 'is', null)
-    for (const row of (ownedSeats ?? []) as { id: string }[]) managedSides.add(row.id)
+    for (const row of (ownedSeats ?? []) as { id: string; user_id: string | null }[]) {
+      managedSides.add(row.id)
+      if (row.user_id) seatOwner[row.id] = row.user_id
+    }
   }
 
   let forfeits = 0
@@ -410,6 +435,8 @@ export async function forfeitUnmanagedClubSlots(
 
     const homeManagerless = !managedSides.has(fx.home_participant_id)
     const awayManagerless = !managedSides.has(fx.away_participant_id)
+    const homeTeamRow = Array.isArray(fx.home_team) ? fx.home_team[0] : fx.home_team
+    const awayTeamRow = Array.isArray(fx.away_team) ? fx.away_team[0] : fx.away_team
 
     let homeScore: number
     let awayScore: number
@@ -430,6 +457,22 @@ export async function forfeitUnmanagedClubSlots(
       continue
     }
 
+    // The present side's pending carry-over balance still applies to the
+    // auto-forfeit (a managerless side holds no balance). A both-managerless
+    // fixture is a VOID, so nothing is consumed.
+    if (!(homeManagerless && awayManagerless)) {
+      const carry = await applyCarryOverBalances(db, {
+        fixtureId: fx.id,
+        homeManagerId: homeManagerless ? null : (seatOwner[fx.home_participant_id] ?? homeTeamRow?.manager_id ?? null),
+        awayManagerId: awayManagerless ? null : (seatOwner[fx.away_participant_id] ?? awayTeamRow?.manager_id ?? null),
+        homeTeamName: homeTeamRow?.name ?? 'Home',
+        awayTeamName: awayTeamRow?.name ?? 'Away',
+      }, homeScore, awayScore)
+      homeScore = carry.homeScore
+      awayScore = carry.awayScore
+      if (carry.noteLines.length > 0) reason = [reason, ...carry.noteLines].join('\n')
+    }
+
     await db.from('results').upsert(
       {
         fixture_id: fx.id,
@@ -439,7 +482,9 @@ export async function forfeitUnmanagedClubSlots(
         screenshot_url: null,
         override_reason: reason,
         is_abandoned: false,
-        abandoned_type: null,
+        // Records WHICH side was absent so the standings stay correct even when
+        // a carried-over score moves the result off 0-3/3-0.
+        abandoned_type: homeManagerless && awayManagerless ? 'both' : homeManagerless ? 'home' : 'away',
         pen_home_score: null,
         pen_away_score: null,
       },
@@ -892,6 +937,13 @@ export async function clearAutoForfeitResults(
     .map((r: any) => r.fixture_id)
 
   if (autoFixtureIds.length === 0) return 0
+
+  // The auto-forfeits being withdrawn may have consumed carry-over balances;
+  // release them so a real result written later still takes the penalty.
+  await db
+    .from('forfeit_balances')
+    .update({ remaining: 1, consumed_by_fixture_id: null })
+    .in('consumed_by_fixture_id', autoFixtureIds)
 
   await db.from('results').delete().in('fixture_id', autoFixtureIds)
 

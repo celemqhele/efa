@@ -347,17 +347,23 @@ function teamManagerId(t: any): string | null {
 // No pending backdoor -> confirmed 0-0 void (both absent, no points).
 async function finaliseZeroZero(supabase: any, fx: any, dryRun: boolean) {
   const label = `${teamName(fx.home_team) ?? 'Home'} 0-0 ${teamName(fx.away_team) ?? 'Away'}`
-  const overrideReason = 'Both teams absent — auto-finalised (0-0, no points)'
 
   if (dryRun) {
     console.log('[auto-finalise][dry-run] 0-0 ->', fx.id, label)
     return { homeScore: 0, awayScore: 0 }
   }
 
+  // A double no-show is a VOID: no winner, no scoreline, so no carry-over
+  // balance is consumed here. The penalty stays pending and is applied to that
+  // manager's next real meeting instead of being swallowed by an empty game.
+  const homeScore = 0
+  const awayScore = 0
+  const overrideReason = 'Both teams absent — auto-finalised (0-0, no points)'
+
   await supabase.from('result_confirmations').insert({
     fixture_id: fx.id,
-    home_score: 0,
-    away_score: 0,
+    home_score: homeScore,
+    away_score: awayScore,
     submitted_by: null,
   })
 
@@ -366,8 +372,8 @@ async function finaliseZeroZero(supabase: any, fx: any, dryRun: boolean) {
     .upsert(
       {
         fixture_id: fx.id,
-        home_score: 0,
-        away_score: 0,
+        home_score: homeScore,
+        away_score: awayScore,
         is_abandoned: false,
         finalised_by: null,
         override_reason: overrideReason,
@@ -395,8 +401,8 @@ async function finaliseZeroZero(supabase: any, fx: any, dryRun: boolean) {
         user_id,
         type: 'result_confirmed',
         title: 'Result Confirmed',
-        body: label,
-        data: { fixture_id: fx.id, home_score: '0', away_score: '0' },
+        body: `${teamName(fx.home_team) ?? 'Home'} ${homeScore}-${awayScore} ${teamName(fx.away_team) ?? 'Away'}`,
+        data: { fixture_id: fx.id, home_score: String(homeScore), away_score: String(awayScore) },
       }))
     )
   }
@@ -407,8 +413,8 @@ async function finaliseZeroZero(supabase: any, fx: any, dryRun: boolean) {
     target_type: 'fixture',
     target_id: fx.id,
     details: {
-      home_score: 0,
-      away_score: 0,
+      home_score: homeScore,
+      away_score: awayScore,
       result_id: result?.id,
       home_absent: true,
       away_absent: true,
@@ -416,7 +422,7 @@ async function finaliseZeroZero(supabase: any, fx: any, dryRun: boolean) {
     },
   })
 
-  return { homeScore: 0, awayScore: 0 }
+  return { homeScore, awayScore }
 }
 
 // Pending backdoor(s) -> auto-approve in the submitter's favour, mirroring
@@ -471,6 +477,11 @@ async function autoApprove(supabase: any, fx: any, submissions: any[], dryRun: b
         home_score: homeScore,
         away_score: awayScore,
         finalised_by: null,
+        // A backdoor approval is a walkover, never a forfeit: clear the old
+        // abandonment markers so a replaced placeholder/forfeit cannot keep
+        // scoring as one.
+        is_abandoned: false,
+        abandoned_type: null,
         // Always write the reason, even when there is no carry-over note: the
         // approval replaces a placeholder whose reason may say 'Both teams
         // absent'. The standings trigger reads that text, so leaving it behind

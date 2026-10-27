@@ -158,6 +158,9 @@ export default function ResultSubmitClient({
 
   async function handleUseForfeitBalance(balanceId: string) {
     if (!selectedFixture) return
+    // Absence results get balances applied by the server, so a manual click here
+    // would count the same conceded score twice.
+    if (homeAbsent || awayAbsent) return
     const balance = forfeitBalances.find((b: any) => b.id === balanceId)
     if (!balance || usedBalanceIds.includes(balanceId)) return
 
@@ -724,6 +727,7 @@ export default function ResultSubmitClient({
                         managerName={selectedFixture.home_team?.name ?? ''}
                         balances={forfeitBalances}
                         onUse={handleUseForfeitBalance}
+                        autoApplied={homeAbsent || awayAbsent}
                       />
                     </div>
                     <p className="text-text-primary text-xs font-bold mt-1 max-w-[64px] sm:max-w-[80px] truncate mx-auto">{selectedFixture.home_team?.name}</p>
@@ -749,6 +753,7 @@ export default function ResultSubmitClient({
                         managerName={selectedFixture.away_team?.name ?? ''}
                         balances={forfeitBalances}
                         onUse={handleUseForfeitBalance}
+                        autoApplied={homeAbsent || awayAbsent}
                       />
                     </div>
                     <p className="text-text-primary text-xs font-bold mt-1 max-w-[64px] sm:max-w-[80px] truncate mx-auto">{selectedFixture.away_team?.name}</p>
