@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/types'
 import { resolveUserClubId } from '@/lib/slot-utils'
+import { calendarDaysFor, inferCalendarKey, readSeasonCalendar, type CalendarKey } from '@/lib/season-calendar'
 
 type TournamentType = Database['public']['Tables']['tournaments']['Insert']['type']
 
@@ -155,10 +156,34 @@ export async function POST(request: Request) {
     resolvedSeasonId = newSeason.id
   }
 
+  // Attach the season calendar window for this competition family (CAF,
+  // Nedbank, MTN8, internationals). Cup fixtures are then packed onto these
+  // days by generate-fixtures, which is what keeps the leagues paused.
+  const calendarKey: CalendarKey | null =
+    (customSettings?.calendar_key as CalendarKey | undefined) ?? inferCalendarKey(name)
+
+  let calendarDays: string[] = []
+  if (resolvedSeasonId && calendarKey) {
+    const { data: seasonRow } = await db('seasons')
+      .select('settings')
+      .eq('id', resolvedSeasonId)
+      .maybeSingle()
+    const seasonCalendar = readSeasonCalendar(seasonRow?.settings)
+    calendarDays = calendarDaysFor(seasonCalendar, calendarKey)
+  }
+
   const settings = {
     ...(start_date ? { start_date } : {}),
     ...(end_date ? { end_date } : {}),
     ...customSettings,
+    ...(calendarKey ? { calendar_key: calendarKey } : {}),
+    ...(calendarDays.length > 0
+      ? {
+          calendar_days: calendarDays,
+          start_date: calendarDays[0],
+          end_date: calendarDays[calendarDays.length - 1],
+        }
+      : {}),
   }
 
   const { data: tournament, error: tournamentError } = await db('tournaments')

@@ -66,6 +66,7 @@ function fetchMatchCode(fixtureId: string): Promise<string | null> {
 // kept, so the recipient still has everything they need to act.
 function buildReminder(params: {
   username: string | null | undefined
+  side: 'home' | 'away'
   homeTeam: string
   awayTeam: string
   opponentPhone: string | null | undefined
@@ -73,7 +74,7 @@ function buildReminder(params: {
   postpone?: { role: 'requester' | 'reviewer'; newDateLabel: string | null } | null
   backdoor?: { role: 'submitter' | 'reported'; screenshotUrl: string | null } | null
 }): string {
-  const { username, homeTeam, awayTeam, opponentPhone, submitLink, postpone, backdoor } = params
+  const { username, side, homeTeam, awayTeam, opponentPhone, submitLink, postpone, backdoor } = params
   const name = username ?? 'there'
   const theirNumber = formatPhoneDisplay(opponentPhone) || 'not available'
   const lines = [
@@ -101,7 +102,15 @@ function buildReminder(params: {
     )
   }
   lines.push(`📞 *MESSAGE YOUR OPPONENT: ${theirNumber}*`)
-  lines.push(`✅ *Submit for this match: ${submitLink}*`)
+  // Last line is the one action this side owes the match, so neither manager
+  // has to work out who hosts: the home team opens the room, the away team asks
+  // for the room code. The single portal link stays on the same line so there is
+  // still exactly one CTA.
+  lines.push(
+    side === 'home'
+      ? `🏟️ *HOME TEAM: CREATE THE MATCHROOM in eFootball, then send the room code to your opponent. Submit here: ${submitLink}*`
+      : `🔑 *AWAY TEAM: ASK YOUR OPPONENT FOR THE MATCHROOM CODE, then join their room. Submit here: ${submitLink}*`
+  )
   return lines.join('\n')
 }
 
@@ -231,6 +240,7 @@ export default function DashboardFixtureActions({
 
   const homeMsg = buildReminder({
     username: homeManagerName,
+    side: 'home',
     homeTeam: homeTeamName,
     awayTeam: awayTeamName,
     opponentPhone: awayManagerPhone,
@@ -240,6 +250,7 @@ export default function DashboardFixtureActions({
   })
   const awayMsg = buildReminder({
     username: awayManagerName,
+    side: 'away',
     homeTeam: homeTeamName,
     awayTeam: awayTeamName,
     opponentPhone: homeManagerPhone,

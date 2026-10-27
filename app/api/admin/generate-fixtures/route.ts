@@ -77,6 +77,19 @@ export async function POST(request: Request) {
   const teamsPerGroup = settings?.teams_per_group
   const numRounds = settings?.num_rounds ?? 2
 
+  // Season calendar: a league replays its stored round dates, a cup is packed
+  // onto its window days only, so the leagues stay paused while it plays.
+  const roundDates: string[] | undefined = Array.isArray(settings?.round_dates)
+    ? (settings.round_dates as string[])
+    : undefined
+  const allowedDates: string[] | undefined = Array.isArray(settings?.calendar_days)
+    ? (settings.calendar_days as string[])
+    : undefined
+  const slotOpts = {
+    ...(roundDates && roundDates.length > 0 ? { roundDates } : {}),
+    ...(allowedDates && allowedDates.length > 0 ? { allowedDates } : {}),
+  }
+
   const { data: existingFixtures } = await adminSupabase
     .from('fixtures')
     .select('id')
@@ -128,7 +141,7 @@ export async function POST(request: Request) {
         if (gsErr) console.error('Failed to init group standings:', gsErr.message)
       }
 
-      generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date, tournament_id)
+      generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date, tournament_id, slotOpts)
     } else if (numGroups && teamsPerGroup) {
       const shuffledTeamIds = [...teamIds].sort(() => Math.random() - 0.5)
       const groups: Record<string, string[]> = {}
@@ -170,12 +183,12 @@ export async function POST(request: Request) {
         .upsert(groupStandingRows, { onConflict: 'tournament_id,group_name,participant_id' })
       if (gsErr) console.error('Failed to init group standings:', gsErr.message)
 
-      generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date, tournament_id)
+      generated = await generateGroupFixtures(adminSupabase, groups, numRounds, start_date, tournament_id, slotOpts)
     } else {
-      generated = await generateLeagueFixtures(adminSupabase, teamIds, tournament_id, numRounds, start_date)
+      generated = await generateLeagueFixtures(adminSupabase, teamIds, tournament_id, numRounds, start_date, slotOpts)
     }
   } else {
-    generated = await generateLeagueFixtures(adminSupabase, teamIds, tournament_id, numRounds, start_date)
+    generated = await generateLeagueFixtures(adminSupabase, teamIds, tournament_id, numRounds, start_date, slotOpts)
   }
 
   if (generated.length === 0) {

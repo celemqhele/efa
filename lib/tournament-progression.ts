@@ -206,19 +206,19 @@ async function assignKnockoutDates(
 
   const today = format(new Date(), 'yyyy-MM-dd')
 
+  const { data: tRow } = await db
+    .from('tournaments')
+    .select('settings')
+    .eq('id', tournamentId)
+    .maybeSingle()
+  const tSettings = (tRow?.settings as any) ?? {}
+
   // A tournament with no group stage (a straight knockout such as the Nedbank
   // Cup) is anchored to its own settings.start_date so its bracket can be
   // scheduled after the leagues rather than from today.
-  let tournamentStart: string | null = null
-  if (!lastGroupRow) {
-    const { data: tRow } = await db
-      .from('tournaments')
-      .select('settings')
-      .eq('id', tournamentId)
-      .maybeSingle()
-    const sd = (tRow?.settings as any)?.start_date
-    if (sd) tournamentStart = String(sd).slice(0, 10)
-  }
+  const tournamentStart: string | null = tSettings.start_date
+    ? String(tSettings.start_date).slice(0, 10)
+    : null
 
   const afterDate: string = lastGroupRow?.scheduled_date
     ? String(lastGroupRow.scheduled_date).slice(0, 10)
@@ -226,6 +226,21 @@ async function assignKnockoutDates(
 
   const candidateDate = format(addDays(parseISO(afterDate), 1), 'yyyy-MM-dd')
   const baseStartDate = candidateDate > today ? candidateDate : today
+
+  // Season calendar: this competition owns a set of window days (the league is
+  // paused on them). Knockout rounds are packed onto those days first; only if
+  // the window is too small do we spill onto the days that follow it.
+  const calendarDays: string[] = Array.isArray(tSettings.calendar_days)
+    ? [...(tSettings.calendar_days as string[])].sort()
+    : []
+  const preferred = calendarDays.filter((d) => d >= baseStartDate)
+  const candidateDates: string[] = [...preferred]
+  if (preferred.length > 0) {
+    const last = preferred[preferred.length - 1]
+    for (let i = 1; i <= 180; i++) {
+      candidateDates.push(format(addDays(parseISO(last), i), 'yyyy-MM-dd'))
+    }
+  }
 
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
   const runDayCount: Record<string, number> = {}
@@ -240,6 +255,13 @@ async function assignKnockoutDates(
   let lastKey = ''
 
   const dates: string[] = []
+  // Walk the candidate list monotonically. Without a calendar window this is
+  // just a day-by-day scan from `baseStartDate`, i.e. the old behaviour.
+  let cursor = 0
+  const candidateAt = (index: number): string =>
+    candidateDates.length > 0
+      ? candidateDates[index]
+      : format(addDays(parseISO(baseStartDate), index), 'yyyy-MM-dd')
 
   for (const fx of fixtures) {
     const stageOffset = ROUND_STAGE_OFFSET[fx.round_type] ?? 0
@@ -257,14 +279,15 @@ async function assignKnockoutDates(
     lastKey = key
 
     const earliest = roundDate > minDate ? roundDate : minDate
-    let currentDate = parseISO(earliest)
+    // Skip candidates that sit before the earliest allowed day.
+    while (candidateAt(cursor) < earliest) cursor++
     let assigned = false
 
     for (let safety = 0; safety < 730; safety++) {
-      const dateStr = format(currentDate, 'yyyy-MM-dd')
+      const dateStr = candidateAt(cursor)
 
       if ((runDayCount[dateStr] ?? 0) >= KO_DAILY_CAP) {
-        currentDate = addDays(currentDate, 1)
+        cursor++
         continue
       }
 
@@ -291,7 +314,7 @@ async function assignKnockoutDates(
         break
       }
 
-      currentDate = addDays(currentDate, 1)
+      cursor++
     }
 
     if (!assigned) {

@@ -131,6 +131,7 @@ export interface Database {
           start_date: string | null
           end_date: string | null
           created_at: string
+          settings: Json
         }
         Insert: {
           id?: string
@@ -140,6 +141,7 @@ export interface Database {
           start_date?: string | null
           end_date?: string | null
           created_at?: string
+          settings?: Json
         }
         Update: {
           id?: string
@@ -149,6 +151,7 @@ export interface Database {
           start_date?: string | null
           end_date?: string | null
           created_at?: string
+          settings?: Json
         }
         Relationships: []
       }

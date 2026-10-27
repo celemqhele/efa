@@ -426,9 +426,15 @@ function StartPhaseDialog({
   const [activeDiv, setActiveDiv] = useState<1 | 2>(1)
   const [d1UserIds, setD1UserIds] = useState<string[]>(users.slice(0, 16).map((u) => u.id))
   const [d2UserIds, setD2UserIds] = useState<string[]>(users.slice(16, 32).map((u) => u.id))
+  const [preset, setPreset] = useState<'compact' | 'standard' | 'full'>('full')
 
   const activeUserIds = activeDiv === 1 ? d1UserIds : d2UserIds
   const otherUserIds = activeDiv === 1 ? d2UserIds : d1UserIds
+  const presets: Array<{ id: 'compact' | 'standard' | 'full'; label: string; desc: string }> = [
+    { id: 'compact', label: 'Compact', desc: 'League + international breaks only' },
+    { id: 'standard', label: 'Standard', desc: 'League, internationals & one window per cup' },
+    { id: 'full', label: 'Full (recommended)', desc: 'Full domestic + continental calendar' },
+  ]
 
   function setActiveUserIds(ids: string[]) {
     if (activeDiv === 1) setD1UserIds(ids)
@@ -461,10 +467,11 @@ function StartPhaseDialog({
 
   const endDate = (() => {
     if (!startDate) return ''
-    const counts = divCounts()
-    const days = Math.max(7, Math.ceil(counts.total / 15))
+    const rounds = Math.max(d1UserIds.length > 1 ? d1UserIds.length - 1 : 0, d2UserIds.length > 1 ? d2UserIds.length - 1 : 0)
+    if (rounds === 0) return ''
+    const breakDays = preset === 'compact' ? 4 : preset === 'standard' ? 12 : 19
     const d = new Date(startDate)
-    d.setDate(d.getDate() + days)
+    d.setDate(d.getDate() + rounds + breakDays - 1)
     return d.toISOString().split('T')[0]
   })()
 
@@ -478,6 +485,7 @@ function StartPhaseDialog({
         body: JSON.stringify({
           season_name: seasonName,
           start_date: startDate,
+          preset,
           division1_users: d1UserIds,
           division2_users: d2UserIds,
         }),
@@ -566,12 +574,32 @@ function StartPhaseDialog({
                   />
                 </div>
               </div>
+              <div>
+                <label className="form-label">Season Calendar Preset</label>
+                <div className="grid grid-cols-3 gap-space-2">
+                  {presets.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setPreset(p.id)}
+                      className={`rounded-lg border p-space-2 text-left transition-colors ${
+                        preset === p.id
+                          ? 'border-gold/60 bg-gold/5'
+                          : 'border-border hover:border-border-strong'
+                      }`}
+                    >
+                      <p className="text-xs font-semibold text-text-primary">{p.label}</p>
+                      <p className="text-[10px] text-text-muted mt-space-1">{p.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <Card className="p-space-4 text-xs text-text-muted space-y-space-1">
                 <p className="font-medium text-text-primary">What gets generated:</p>
                 <ul className="list-disc list-inside space-y-space-1 mt-space-1">
                   <li>Premier League fixtures for your selected participants</li>
-                  <li>15 fixtures per weekday, 30 per weekend day</li>
-                  <li>UCL &amp; Europa start later — from the final league standings</li>
+                  <li>Leagues alternate home/away with max 2 consecutive same-venue games</li>
+                  <li>Cups play in league-break windows (leagues paused on those days)</li>
                 </ul>
               </Card>
             </div>

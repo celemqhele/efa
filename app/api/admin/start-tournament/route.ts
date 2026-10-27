@@ -3,6 +3,7 @@ import { generateGroupFixtures } from '@/lib/fixture-generator'
 import { drawGroups } from '@/lib/tournament-draw'
 import { sortStandingsRows } from '@/lib/standings-core'
 import { stampFixtureParticipants } from '@/lib/slot-utils'
+import { calendarDaysFor, readSeasonCalendar, type CalendarKey } from '@/lib/season-calendar'
 
 const CUP_TYPES = ['tournament_club', 'tournament_international'] as const
 
@@ -164,6 +165,15 @@ export async function POST(request: Request) {
     if (nextDayStr > scheduleStart) scheduleStart = nextDayStr
   }
 
+  // Season calendar: if this cup family owns a window, play inside it instead
+  // of after the league, so the leagues are paused while the cup runs.
+  const { data: seasonRow } = await db('seasons').select('settings').eq('id', season_id).maybeSingle()
+  const seasonCalendar = readSeasonCalendar(seasonRow?.settings)
+  const calendarKey: CalendarKey | null = type === 'tournament_international' ? 'international' : null
+  const allWindowDays = calendarDaysFor(seasonCalendar, calendarKey)
+  const windowDays = allWindowDays.filter((d) => d >= scheduleStart)
+  if (windowDays.length > 0) scheduleStart = windowDays[0]
+
   // Create the tournament
   const { data: tournament } = await db('tournaments')
     .insert({
@@ -177,6 +187,13 @@ export async function POST(request: Request) {
         num_groups,
         num_rounds: 2,
         qualifiers_per_group,
+        ...(calendarKey ? { calendar_key: calendarKey } : {}),
+        ...(windowDays.length > 0
+          ? {
+              calendar_days: windowDays,
+              end_date: windowDays[windowDays.length - 1],
+            }
+          : {}),
       },
     })
     .select('id')

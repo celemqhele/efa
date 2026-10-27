@@ -65,6 +65,12 @@ export interface SlotOptions {
   weeklyMatches?: number
   // Total matches allowed on any single calendar day (default DAILY_MATCH_CAP).
   dailyMatchCap?: number
+  // Season-calendar mode: one date per league round. When set, league rounds are
+  // placed on these days instead of being spread by the weekly scheduler.
+  roundDates?: string[]
+  // Season-calendar mode for cups: the only days this competition may use.
+  // Cup fixtures are packed onto these days so the leagues stay paused.
+  allowedDates?: string[]
 }
 
 /**
@@ -136,8 +142,13 @@ export async function assignFixtureSlots(
       let placed = true
       while (placed && queue.length > 0) {
         placed = false
+        // Never jump ahead to a later leg while any fixture of the current leg
+        // is still unplaced: the queue is leg-ordered and scanning past the
+        // leading leg let leg-2 games land before leg 1 had finished.
+        const leadLeg = queue[0].leg ?? 1
         for (let i = 0; i < queue.length; i++) {
           const fx = queue[i]
+          if ((fx.leg ?? 1) > leadLeg) break
           if (dayCount[dateStr] >= dailyMatchCap) break
           if (dayTeams[dateStr].has(fx.home_team_id) || dayTeams[dateStr].has(fx.away_team_id)) continue
           if ((weekCount.get(fx.home_team_id) ?? 0) >= (target.get(fx.home_team_id) ?? 0)) continue
