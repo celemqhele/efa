@@ -15,6 +15,7 @@ const nextConfig = {
   outputFileTracingIncludes: {
     '/api/webhook': ['./node_modules/tesseract.js-core/*.wasm'],
     '/api/admin/parse-screenshot': ['./node_modules/tesseract.js-core/*.wasm'],
+    '/api/submit-match': ['./node_modules/tesseract.js-core/*.wasm', './assets/ocr/*.traineddata', './assets/ocr/*.wasm.js'],
   },
   // `app/api/og` builds team-crest URLs at runtime and fetches them over HTTP,
   // so nothing there reads public/logos off disk. Next.js traces at folder level

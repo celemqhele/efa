@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Check, ImagePlus, Loader2, X, XCircle } from 'lucide-react'
-import { maybeCompressImage } from '@/lib/compress-image-client'
+import { MAX_FILE_BYTES, TOTAL_PAYLOAD_BUDGET, fitScreenshots, maybeCompressImage, type FitResult } from '@/lib/compress-image-client'
 
 type Panel = 'home' | 'result' | 'backdoor' | 'details' | 'postpone'
 
@@ -87,10 +87,38 @@ const inputClass =
   'w-full rounded-xl border border-border bg-bg-base px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none'
 
 // How many proof screenshots a result may carry (1 required + up to 3 extra for
-// a game that had to be replayed). Mirrors MAX_SHOTS / MAX_RESULT_FILES on the
-// server (lib/screenshot-verify.ts, app/api/submit-match/route.ts).
+// a game that had to be replayed). Mirrors MAX_SHOTS on the server
+// (lib/score-verify.ts, app/api/submit-match/route.ts).
 const MAX_RESULT_FILES = 4
 const MAX_EXTRA_FILES = MAX_RESULT_FILES - 1
+
+function describeSize(bytes: number) {
+  return `${(bytes / 1_048_576).toFixed(1)}MB`
+}
+
+// A dropped upload throws a bare TypeError from fetch. One automatic retry is
+// safe here: a request that never reached the server wrote nothing, and if the
+// first attempt DID land, the retry is caught by the existing "is the result
+// already on file?" re-read in send(). Mobile connections drop single uploads
+// often enough that this alone fixes a chunk of the "could not send" reports.
+function isNetworkFailure(e: unknown) {
+  const raw = (e as any)?.message ?? ''
+  return e instanceof TypeError || /failed to fetch|networkerror|load failed|network error/i.test(raw)
+}
+
+async function postScreenshots(url: string, form: FormData, attempts = 2) {
+  let lastError: unknown = null
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fetch(url, { method: 'POST', body: form })
+    } catch (e) {
+      lastError = e
+      if (!isNetworkFailure(e) || attempt === attempts) break
+      await wait(1200)
+    }
+  }
+  throw lastError
+}
 
 // The AI check overlay is held on screen for at least this long so the manager
 // always sees the steps run, even when the POST answers immediately (a decline
@@ -106,15 +134,15 @@ const fileInputClass =
   'block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary'
 
 // ── AI screenshot check overlay ───────────────────────────────────────────────
-// Shown while the POST is in flight (the AI OCR + assessment runs inside the
-// request). Full screen and non-dismissable on purpose: the manager cannot
+// Shown while the POST is in flight (the server reads each screenshot with
+// the local tesseract engine). Full screen and non-dismissable on purpose.
 // click away mid-check, which is also why the portal has no other spinner.
 // Props drive a 3-step progress bar so the overlay visibly advances instead of
 // sitting on a frozen spinner while Gemini works.
-function AiCheckOverlay({ step }: { step: number }) {
+function AiCheckOverlay({ step, detail }: { step: number; detail?: string }) {
   const steps = [
     'Uploading your screenshots',
-    'Reading the score and the stat table',
+    'Reading the score from the image',
     'Checking the score against what you entered',
   ]
   return (
@@ -153,15 +181,16 @@ function AiCheckOverlay({ step }: { step: number }) {
             </li>
           ))}
         </ul>
+        {detail && <p className="mt-3 text-xs text-text-muted">{detail}</p>}
       </div>
     </div>
   )
 }
 
 // ── Decline card ──────────────────────────────────────────────────────────────
-// Red X verdict from the AI check. Shows exactly what the AI read so a manager
-// who uploaded the wrong game (or typed the wrong score) can see why, plus the
-// per-screenshot breakdown.
+// Red X verdict from the score check. Shows exactly what the local reader
+// found so a manager who uploaded the wrong game (or typed the wrong score)
+// can see why.
 function VerificationDecline({ verdict, onDismiss }: { verdict: any; onDismiss: () => void }) {
   const shots: any[] = Array.isArray(verdict?.screenshots) ? verdict.screenshots : []
   return (
@@ -196,7 +225,7 @@ function VerificationDecline({ verdict, onDismiss }: { verdict: any; onDismiss: 
           {verdict?.ocrText && (
             <details className="mt-3">
               <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-text-muted">
-                What the AI read
+                What we read
               </summary>
               <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-bg-base p-2.5 text-[11px] leading-relaxed text-text-secondary">
                 {verdict.ocrText}
@@ -284,6 +313,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
   const [busy, setBusy] = useState(false)
   const [checking, setChecking] = useState(false)
   const [checkStep, setCheckStep] = useState(0)
+  const [checkDetail, setCheckDetail] = useState('')
   const [error, setError] = useState('')
   const [decline, setDecline] = useState<any>(null)
   const [done, setDone] = useState<Done | null>(null)
@@ -336,7 +366,29 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
     // needs its own wording (and must not leak "Unexpected end of JSON input").
     let gateError = ''
     try {
-      const res = await fetch('/api/submit-match', { method: 'POST', body: form })
+      // Show what is actually going up. A 4-screenshot submission is a few MB
+      // over a phone connection, and a silent spinner for 30s is where managers
+      // start tapping Submit again.
+      if (opts.aiCheck) {
+        const shots = [...form.getAll('screenshot'), ...form.getAll('extraScreenshot')].filter(
+          (f): f is File => typeof f !== 'string',
+        )
+        const bytes = shots.reduce((n, f) => n + f.size, 0)
+        setCheckDetail(
+          `Sending ${shots.length} screenshot${shots.length === 1 ? '' : 's'} (${describeSize(bytes)}). Keep this page open.`,
+        )
+      }
+      const res = await postScreenshots('/api/submit-match', form)
+      // An oversized body is rejected by the platform edge before the route
+      // runs, and the reply is plain text, not JSON. Saying "network" here is
+      // what made managers retry the same upload forever.
+      if (res.status === 413) {
+        await minOverlay
+        setError(
+          'Those screenshots are too big to send together. Remove one or two of the extra screenshots and submit again, or take the screenshot again at a lower resolution.',
+        )
+        return
+      }
       const data = await res.json().catch(() => null)
       if (!res.ok || !data || !data.ok) {
         // The AI check declined the screenshots: red X card, not the plain
@@ -360,12 +412,12 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       setPanel('home')
       await Promise.all([minOverlay, refresh()])
     } catch (e: any) {
-      // A bare "Failed to fetch" is the browser's own TypeError: the request
-      // never reached the server, almost always because the body was too large
-      // (the platform rejects an oversized upload before Next.js sees it). Say
-      // that in plain words instead of leaking the JavaScript message.
+      // A bare "Failed to fetch" is the browser's own TypeError, so the request
+      // never reached the server. The common causes are a dropped mobile
+      // connection and an upload the platform refused before the route ran, so
+      // say what happened and what to do next instead of blaming "the network".
       const raw = e?.message ?? ''
-      const netFail = e instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(raw)
+      const netFail = isNetworkFailure(e)
       await minOverlay
       // A gateway timeout / dropped connection can happen AFTER the server has
       // already written the result, so read the portal back before claiming
@@ -395,11 +447,12 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       setError(
         gateError ||
           (netFail
-            ? 'Could not send your screenshots. Check your connection and try again. If it keeps failing, upload fewer screenshots at a time.'
+            ? 'Could not send your screenshots. The upload stopped before it reached the server, so nothing was lost. Submit again; if it keeps happening, remove one extra screenshot or use a stronger connection.'
             : raw || 'Something went wrong. Try again.'),
       )
     } finally {
       setChecking(false)
+      setCheckDetail('')
       setBusy(false)
     }
   }
@@ -793,7 +846,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
 
       <p className="text-center text-[11px] text-text-muted">{appBase.replace('https://', '')}</p>
 
-      {checking && <AiCheckOverlay step={checkStep} />}
+      {checking && <AiCheckOverlay step={checkStep} detail={checkDetail} />}
     </div>
   )
 }
@@ -829,11 +882,16 @@ function ResultPanel({
   const [playedMany, setPlayedMany] = useState('no')
   const [extras, setExtras] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
+  // Fitting the whole set into the shared upload budget happens at submit
+  // (the files were compressed one by one when picked), so it gets its own
+  // flag: the inputs must not accept changes while the set is being re-encoded.
+  const [fitting, setFitting] = useState(false)
   const [home, setHome] = useState('')
   const [away, setAway] = useState('')
   const [forfeit, setForfeit] = useState('no')
   const [givenWin, setGivenWin] = useState('no')
   const [noFileError, setNoFileError] = useState(false)
+  const [sizeError, setSizeError] = useState('')
 
   // "Did this player give you the win?" locks the score to a 3-0 walkover for the
   // submitter: the score inputs show it read-only and the forfeit question is
@@ -859,14 +917,34 @@ function ResultPanel({
       )}
       <form
         className="mt-4 space-y-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault()
-          if (uploading) return
+          if (uploading || fitting) return
           if (!file) {
             setNoFileError(true)
             return
           }
           setNoFileError(false)
+          setSizeError('')
+          // Compress the WHOLE set together, not each file against its own cap:
+          // four files that each pass "1.1MB" are still 4.4MB in one request,
+          // and the platform rejects that before the route runs.
+          setFitting(true)
+          let fitted: FitResult
+          try {
+            fitted = await fitScreenshots([file, ...extras])
+          } finally {
+            setFitting(false)
+          }
+          if (fitted.tooBig.length > 0) {
+            setSizeError(
+              `These screenshots are still too big to send together (${describeSize(fitted.bytes)}). The upload has to stay under ${describeSize(TOTAL_PAYLOAD_BUDGET)}. Remove ${
+                fitted.tooBig.length === 1 ? 'one extra screenshot' : 'some extra screenshots'
+              } and submit again, or take the result screenshot again at a lower resolution.`,
+            )
+            return
+          }
+          const [mainFile, ...extraFiles] = fitted.files
           // Repeat the SAME key for every extra: the server reads them with
           // form.getAll('extraScreenshot'). A suffixed key (extraScreenshot0)
           // or a set() would be invisible to getAll and silently drop the
@@ -874,11 +952,11 @@ function ResultPanel({
           const fd = formFor('result', {
             homeScore: shownHome,
             awayScore: shownAway,
-            screenshot: file,
+            screenshot: mainFile,
             forfeit: walkover ? 'no' : forfeit,
             givenWin,
           })
-          for (const extra of extras) fd.append('extraScreenshot', extra)
+          for (const extra of extraFiles) fd.append('extraScreenshot', extra)
           onSubmit(fd, { aiCheck: true })
         }}
       >
@@ -898,7 +976,7 @@ function ResultPanel({
               // in one request and the serverless body limit is small.
               setUploading(true)
               try {
-                setFile(await maybeCompressImage(picked))
+                setFile(await maybeCompressImage(picked, MAX_FILE_BYTES))
               } finally {
                 setUploading(false)
               }
@@ -914,6 +992,11 @@ function ResultPanel({
         </Field>
         {noFileError && (
           <p className="text-sm text-feedback-warning">Upload the result screenshot above first — it is kept as proof.</p>
+        )}
+        {sizeError && (
+          <p className="rounded-xl border border-feedback-warning/40 bg-feedback-warning/10 px-3 py-2 text-sm text-feedback-warning">
+            {sizeError}
+          </p>
         )}
 
         {/* Replay screenshots are opt-in: the Yes/No toggle keeps the extra
@@ -993,7 +1076,7 @@ function ResultPanel({
                 if (!picked.length) return
                 setUploading(true)
                 try {
-                  const squashed = await Promise.all(picked.map((f) => maybeCompressImage(f)))
+                  const squashed = await Promise.all(picked.map((f) => maybeCompressImage(f, MAX_FILE_BYTES)))
                   setExtras((prev) => [...prev, ...squashed].slice(0, MAX_EXTRA_FILES))
                 } finally {
                   setUploading(false)
@@ -1147,8 +1230,8 @@ function ResultPanel({
         <Button
           type="submit"
           variant="primary"
-          isLoading={busy}
-          disabled={busy || uploading || !!block || (!walkover && (home === '' || away === ''))}
+          isLoading={busy || fitting}
+          disabled={busy || fitting || uploading || !!block || (!walkover && (home === '' || away === ''))}
           className="w-full"
         >
           Submit result

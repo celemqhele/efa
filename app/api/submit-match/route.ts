@@ -6,8 +6,8 @@ import { insertNotificationsAndPush, notifyAllAdmins } from '@/lib/notify'
 import { notifyBackdoorSubmitted, notifyBackdoorDisputed } from '@/lib/backdoor-notify'
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
-import { matchStatsToDbColumns } from '@/lib/ocr'
-import { MAX_SHOTS, verifyScreenshots, type ShotImage, type VerifyResult } from '@/lib/screenshot-verify'
+
+import { verifyScores, MAX_SHOTS, type ShotImage, type VerifyResult } from '@/lib/score-verify'
 import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
 import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
 import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
@@ -17,7 +17,7 @@ import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE
 // a blocking "checking your screenshots" overlay until it answers. Default
 // function duration is not always enough for 4 screenshots — 60s covers the
 // worst case with headroom on the Hobby plan.
-export const maxDuration = 60
+export const maxDuration = 30
 
 function parseScore(value: FormDataEntryValue | null): number | null {
   if (value === null) return null
@@ -203,12 +203,10 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
     }
   }
 
-  // ── AI screenshot check (blocking) ───────────────────────────────────────────
-  // Runs BEFORE anything is written, so a declined submission leaves the result
-  // already on file completely untouched. The portal holds a full-screen
-  // "checking your screenshots" overlay while this call is in flight.
-  // Skipped for a walkover: there the proof is the opponent handing over the
-  // win, so there is no scoreline on screen to verify against.
+  // ── Deterministic score check (tesseract, no AI / no network) ──────────────
+  // The portal holds a full-screen overlay while the server reads the top band
+  // of each screenshot with the local English tesseract model (bundled at
+  // assets/ocr/). A 30-second cap is plenty; cold starts load the model once.
   let verification: VerifyResult | null = null
   if (!givenWin) {
     const shots: ShotImage[] = await Promise.all(
@@ -217,10 +215,8 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         mimeType: f.type || 'image/jpeg',
       })),
     )
-    verification = await verifyScreenshots(shots, homeScore, awayScore)
+    verification = await verifyScores(shots, homeScore, awayScore)
     if (!verification.ok) {
-      // 422 + `declined` so the portal shows the red-X card (with what the AI
-      // read) instead of the generic error banner.
       return NextResponse.json(
         {
           ok: false,
@@ -233,6 +229,10 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         { status: 422 },
       )
     }
+    // A confirmed mismatch (manager saw a different score and chose to submit
+    // anyway) arrives as `ok: false, needsConfirm: true`. The second POST
+    // includes `confirmMismatch: true`; the portal then submits again with the
+    // same form and the result is accepted.
   }
 
   // Any replacement of an already-on-file (non-placeholder) score wipes the old
@@ -471,25 +471,8 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
     console.error('[submit-match] admin notify failed:', e)
   }
 
-  // Match stats come straight out of the blocking verification pass: the AI has
-  // already merged the stat tables of every attached screenshot (closest /
-  // most complete first, so a replayed game still yields one full set) and
-  // aligned them to the TYPED sides — flipping when the screenshot shows the
-  // sides the other way round — so they are written inline here. No second OCR
-  // run. A walkover, or a check that had to fail open, simply writes no stats.
-  if (verification?.stats) {
-    try {
-      const dbStats = matchStatsToDbColumns(verification.stats)
-      if (dbStats) {
-        // Wipe any previous stats for this result (e.g. a replaced placeholder)
-        await admin.from('match_stats').delete().eq('result_id', resultRow.id)
-        const { error: statsErr } = await admin.from('match_stats').insert({ result_id: resultRow.id, ...dbStats })
-        if (statsErr) console.error('[submit-match] match_stats insert failed:', statsErr.message)
-      }
-    } catch (e) {
-      console.error('[submit-match] match_stats write failed:', e)
-    }
-  }
+  // Stats writing removed: the score-check is score-only; existing match_stats
+  // rows (from the bot or previous submissions) stay untouched.
 
   return NextResponse.json({
     ok: true,
