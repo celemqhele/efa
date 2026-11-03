@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { Check, ImagePlus, Loader2, X, XCircle } from 'lucide-react'
+import { Check, ImagePlus, Loader2, X } from 'lucide-react'
 import { MAX_FILE_BYTES, TOTAL_PAYLOAD_BUDGET, fitScreenshots, maybeCompressImage, type FitResult } from '@/lib/compress-image-client'
 
 type Panel = 'home' | 'result' | 'backdoor' | 'details' | 'postpone'
@@ -88,7 +88,7 @@ const inputClass =
 
 // How many proof screenshots a result may carry (1 required + up to 3 extra for
 // a game that had to be replayed). Mirrors MAX_SHOTS on the server
-// (lib/score-verify.ts, app/api/submit-match/route.ts).
+// (app/api/submit-match/route.ts).
 const MAX_RESULT_FILES = 4
 const MAX_EXTRA_FILES = MAX_RESULT_FILES - 1
 
@@ -120,11 +120,6 @@ async function postScreenshots(url: string, form: FormData, attempts = 2) {
   throw lastError
 }
 
-// The AI check overlay is held on screen for at least this long so the manager
-// always sees the steps run, even when the POST answers immediately (a decline
-// from a cached read, or an instant network failure).
-const MIN_CHECK_MS = 3000
-
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -132,117 +127,6 @@ function wait(ms: number) {
 // Shared look for the file inputs so the main and the optional extras match.
 const fileInputClass =
   'block w-full text-sm text-text-secondary file:mr-3 file:rounded-xl file:border-0 file:bg-bg-elevated file:px-4 file:py-2 file:text-xs file:font-bold file:text-text-primary'
-
-// ── AI screenshot check overlay ───────────────────────────────────────────────
-// Shown while the POST is in flight (the server reads each screenshot with
-// the local tesseract engine). Full screen and non-dismissable on purpose.
-// click away mid-check, which is also why the portal has no other spinner.
-// Props drive a 3-step progress bar so the overlay visibly advances instead of
-// sitting on a frozen spinner while Gemini works.
-function AiCheckOverlay({ step, detail }: { step: number; detail?: string }) {
-  const steps = [
-    'Uploading your screenshots',
-    'Reading the score from the image',
-    'Checking the score against what you entered',
-  ]
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6">
-      <div className="w-full max-w-sm rounded-2xl bg-bg-surface border border-border p-6 shadow-2xl animate-scale-in">
-        <div className="flex items-center gap-3">
-          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center">
-            <span className="absolute inset-0 rounded-full bg-accent/25 animate-ping" />
-            <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-accent/15">
-              <Loader2 className="h-5 w-5 animate-spin text-accent" />
-            </span>
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-black text-text-primary">Checking your screenshots</p>
-            <p className="text-xs text-text-muted">This takes a few seconds. Please do not close this page.</p>
-          </div>
-        </div>
-        <ul className="mt-4 space-y-2">
-          {steps.map((s, i) => (
-            <li
-              key={s}
-              className={`flex items-start gap-2 text-xs transition-colors ${
-                i < step ? 'text-text-primary' : i === step ? 'text-text-secondary' : 'text-text-muted/60'
-              }`}
-            >
-              {i < step ? (
-                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-feedback-success" />
-              ) : (
-                <span
-                  className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${
-                    i === step ? 'bg-accent animate-pulse' : 'bg-border'
-                  }`}
-                />
-              )}
-              {s}
-            </li>
-          ))}
-        </ul>
-        {detail && <p className="mt-3 text-xs text-text-muted">{detail}</p>}
-      </div>
-    </div>
-  )
-}
-
-// ── Decline card ──────────────────────────────────────────────────────────────
-// Red X verdict from the score check. Shows exactly what the local reader
-// found so a manager who uploaded the wrong game (or typed the wrong score)
-// can see why.
-function VerificationDecline({ verdict, onDismiss }: { verdict: any; onDismiss: () => void }) {
-  const shots: any[] = Array.isArray(verdict?.screenshots) ? verdict.screenshots : []
-  return (
-    <div className="rounded-2xl border border-feedback-error/40 bg-feedback-error/10 p-4">
-      <div className="flex items-start gap-3">
-        <XCircle className="mt-0.5 h-6 w-6 shrink-0 text-feedback-error" />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-black uppercase tracking-wide text-feedback-error">Submission declined</p>
-          <p className="mt-1 text-sm text-text-primary">
-            {verdict?.error ||
-              'This screenshot does not include a score, or it is too different from the score you entered.'}
-          </p>
-
-          {shots.length > 1 && (
-            <ul className="mt-2 space-y-1">
-              {shots.map((s) => (
-                <li key={s.index} className="flex items-start gap-2 text-xs text-text-secondary">
-                  {s.isScoreShot ? (
-                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-feedback-error" />
-                  ) : (
-                    <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-feedback-error" />
-                  )}
-                  <span>
-                    Screenshot {s.index}: {s.isScoreShot ? `score seen ${s.score?.home}-${s.score?.away}` : 'no score found'}
-                    {s.note ? ` (${s.note})` : ''}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {verdict?.ocrText && (
-            <details className="mt-3">
-              <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-text-muted">
-                What we read
-              </summary>
-              <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-bg-base p-2.5 text-[11px] leading-relaxed text-text-secondary">
-                {verdict.ocrText}
-              </pre>
-            </details>
-          )}
-
-          <div className="mt-3">
-            <Button variant="secondary" onClick={onDismiss} className="!px-3 !py-1.5 !text-xs">
-              Try again
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // WhatsApp reminder preference. Same visual control as the "Mark as forfeit?"
 // radio (see .opencode/context/submit-portal/portal-forfeit-radio-control_2026-10-11.md):
@@ -311,11 +195,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
   const [state, setState] = useState<any>(initialState)
   const [panel, setPanel] = useState<Panel>(initialAction === 'backdoor' ? 'backdoor' : 'home')
   const [busy, setBusy] = useState(false)
-  const [checking, setChecking] = useState(false)
-  const [checkStep, setCheckStep] = useState(0)
-  const [checkDetail, setCheckDetail] = useState('')
   const [error, setError] = useState('')
-  const [decline, setDecline] = useState<any>(null)
   const [done, setDone] = useState<Done | null>(null)
   const [copied, setCopied] = useState(false)
   const [confirmAccept, setConfirmAccept] = useState(false)
@@ -340,14 +220,9 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
     return null
   }
 
-  async function send(form: FormData, opts: { aiCheck?: boolean } = {}) {
+  async function send(form: FormData) {
     setBusy(true)
     setError('')
-    setDecline(null)
-    // Full-screen, non-dismissable overlay while the AI reads the screenshots
-    // (the check runs inside this POST, so the request only returns once the
-    // score/stats verdict exists).
-    if (opts.aiCheck) setChecking(true)
     // What the match looked like before this POST. Used after a lost response
     // to tell "the save landed but the reply never arrived" apart from a
     // submission that genuinely failed.
@@ -358,32 +233,15 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           away: state.result.awayScore,
         }
       : null
-    // Guarantee the check overlay is visible for a beat even when the POST comes
-    // back instantly (or fails instantly): the manager should always see the
-    // steps run instead of a card flashing in and out.
-    const minOverlay = opts.aiCheck ? wait(MIN_CHECK_MS) : Promise.resolve()
     // Set when the reply is a gateway timeout rather than our JSON: that path
     // needs its own wording (and must not leak "Unexpected end of JSON input").
     let gateError = ''
     try {
-      // Show what is actually going up. A 4-screenshot submission is a few MB
-      // over a phone connection, and a silent spinner for 30s is where managers
-      // start tapping Submit again.
-      if (opts.aiCheck) {
-        const shots = [...form.getAll('screenshot'), ...form.getAll('extraScreenshot')].filter(
-          (f): f is File => typeof f !== 'string',
-        )
-        const bytes = shots.reduce((n, f) => n + f.size, 0)
-        setCheckDetail(
-          `Sending ${shots.length} screenshot${shots.length === 1 ? '' : 's'} (${describeSize(bytes)}). Keep this page open.`,
-        )
-      }
       const res = await postScreenshots('/api/submit-match', form)
       // An oversized body is rejected by the platform edge before the route
       // runs, and the reply is plain text, not JSON. Saying "network" here is
       // what made managers retry the same upload forever.
       if (res.status === 413) {
-        await minOverlay
         setError(
           'Those screenshots are too big to send together. Remove one or two of the extra screenshots and submit again, or take the screenshot again at a lower resolution.',
         )
@@ -391,18 +249,11 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       }
       const data = await res.json().catch(() => null)
       if (!res.ok || !data || !data.ok) {
-        // The AI check declined the screenshots: red X card, not the plain
-        // error banner, and the result on file is left untouched.
-        if (data?.declined) {
-          await minOverlay
-          setDecline(data)
-          return
-        }
         // 502/504 answer with the platform's HTML page, not our JSON, so there
         // is no server message to show.
         if (res.status === 502 || res.status === 504) {
           gateError =
-            'The screenshot check took too long to answer and the connection closed. Give it a moment and check this match again — only upload again if no result is showing.'
+            'The submission took too long to answer and the connection closed. Give it a moment and check this match again — only upload again if no result is showing.'
         }
         throw new Error(gateError || data?.error || 'Something went wrong. Try again.')
       }
@@ -410,7 +261,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       setCopied(false)
       setConfirmAccept(false)
       setPanel('home')
-      await Promise.all([minOverlay, refresh()])
+      await refresh()
     } catch (e: any) {
       // A bare "Failed to fetch" is the browser's own TypeError, so the request
       // never reached the server. The common causes are a dropped mobile
@@ -418,7 +269,6 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       // say what happened and what to do next instead of blaming "the network".
       const raw = e?.message ?? ''
       const netFail = isNetworkFailure(e)
-      await minOverlay
       // A gateway timeout / dropped connection can happen AFTER the server has
       // already written the result, so read the portal back before claiming
       // failure. If the match now holds a different result than it did when the
@@ -451,29 +301,9 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
             : raw || 'Something went wrong. Try again.'),
       )
     } finally {
-      setChecking(false)
-      setCheckDetail('')
       setBusy(false)
     }
   }
-
-  // Walk the overlay's three step lines over MIN_CHECK_MS so the wait reads as
-  // progress rather than a frozen spinner, then hold on the last step until the
-  // request actually returns. The overlay itself is dismissed by send()'s
-  // finally, so it can never outlive the request.
-  useEffect(() => {
-    if (!checking) {
-      setCheckStep(0)
-      return
-    }
-    setCheckStep(0)
-    const perStep = MIN_CHECK_MS / 3
-    const timers = [
-      setTimeout(() => setCheckStep(1), perStep),
-      setTimeout(() => setCheckStep(2), perStep * 2),
-    ]
-    return () => timers.forEach(clearTimeout)
-  }, [checking])
 
   function formFor(action: string, fields: Record<string, string | File | null> = {}) {
     const fd = new FormData()
@@ -708,8 +538,6 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
         </Card>
       )}
 
-      {decline && <VerificationDecline verdict={decline} onDismiss={() => setDecline(null)} />}
-
       {error && (
         <div className="rounded-xl border border-feedback-error/40 bg-feedback-error/10 px-3 py-2.5 text-sm font-semibold text-feedback-error">
           {error}
@@ -760,7 +588,6 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           block={state.rules.resultBlock}
           note={state.rules.resultNote}
           formFor={formFor}
-          declined={!!decline}
         />
       )}
 
@@ -845,8 +672,6 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
       )}
 
       <p className="text-center text-[11px] text-text-muted">{appBase.replace('https://', '')}</p>
-
-      {checking && <AiCheckOverlay step={checkStep} detail={checkDetail} />}
     </div>
   )
 }
@@ -862,17 +687,15 @@ function ResultPanel({
   block,
   note,
   formFor,
-  declined,
 }: {
   busy: boolean
-  onSubmit: (fd: FormData, opts?: { aiCheck?: boolean }) => void
+  onSubmit: (fd: FormData) => void
   homeName: string
   awayName: string
   side: 'home' | 'away' | null
   block: string | null
   note: string | null
   formFor: (action: string, fields?: Record<string, string | File | null>) => FormData
-  declined: boolean
 }) {
   const [file, setFile] = useState<File | null>(null)
   // Optional extras: the same fixture played more than once because the
@@ -909,12 +732,6 @@ function ResultPanel({
       <h2 className="text-base font-black text-text-primary">1. Submit the result</h2>
       {block && <p className="mt-2 text-sm text-feedback-warning">{block}</p>}
       {note && <p className="mt-2 text-sm text-feedback-warning">{note}</p>}
-      {declined && (
-        <p className="mt-2 rounded-xl border border-feedback-error/40 bg-feedback-error/10 px-3 py-2 text-xs font-semibold text-feedback-error">
-          Your previous upload was declined. Upload the score screenshot again, or enter the score that is on the
-          screenshot.
-        </p>
-      )}
       <form
         className="mt-4 space-y-4"
         onSubmit={async (e) => {
@@ -957,7 +774,7 @@ function ResultPanel({
             givenWin,
           })
           for (const extra of extraFiles) fd.append('extraScreenshot', extra)
-          onSubmit(fd, { aiCheck: true })
+          onSubmit(fd)
         }}
       >
         <Field label="Result screenshot" hint="Upload the final score screen — it is kept as proof on this match.">

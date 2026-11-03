@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getSastDateKey } from '@/lib/app-time'
 import { recalculateStandings } from '@/lib/standings-engine'
@@ -7,17 +7,17 @@ import { notifyBackdoorSubmitted, notifyBackdoorDisputed } from '@/lib/backdoor-
 import { KO_ROUNDS } from '@/lib/tournament-rounds'
 import { advanceWinner } from '@/lib/tournament-progression'
 
-import { verifyScores, MAX_SHOTS, type ShotImage, type VerifyResult } from '@/lib/score-verify'
+import { readPortalStats } from '@/lib/portal-stats'
 import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
 import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
 import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
-// The result submission now runs the AI screenshot check (Gemini flash-lite,
-// 2 calls per attached screenshot) INSIDE the request, because the portal shows
-// a blocking "checking your screenshots" overlay until it answers. Default
-// function duration is not always enough for 4 screenshots — 60s covers the
-// worst case with headroom on the Hobby plan.
-export const maxDuration = 30
+// Most screenshots a manager attaches (1 required + up to 3 replays).
+const MAX_SHOTS = 4
+
+// Stats OCR runs in `after()`, so this is only the ceiling for the background
+// read. The result is saved and the response returned before it starts.
+export const maxDuration = 60
 
 function parseScore(value: FormDataEntryValue | null): number | null {
   if (value === null) return null
@@ -141,8 +141,9 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   const awayScoreRaw = parseScore(form.get('awayScore'))
   const shot = form.get('screenshot')
   // Optional extra screenshots: a manager who had to replay the game because
-  // of network drops / disconnections attaches those screens too, and the AI
-  // merges their stats into one set for the fixture page.
+  // of network drops / disconnections attaches those screens too, and the
+  // background stats read merges their stat rows into one set for the fixture
+  // page.
   const extraShots = form.getAll('extraScreenshot').filter((f): f is File => f instanceof File && f.size > 0)
   const forfeit = String(form.get('forfeit') ?? '').trim()
   // "Did this player give you the win?" - the portal locks the score to a 3-0
@@ -203,37 +204,10 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
     }
   }
 
-  // ── Deterministic score check (tesseract, no AI / no network) ──────────────
-  // The portal holds a full-screen overlay while the server reads the top band
-  // of each screenshot with the local English tesseract model (bundled at
-  // assets/ocr/). A 30-second cap is plenty; cold starts load the model once.
-  let verification: VerifyResult | null = null
-  if (!givenWin) {
-    const shots: ShotImage[] = await Promise.all(
-      [shot as File, ...extraShots].map(async (f) => ({
-        buffer: Buffer.from(await f.arrayBuffer()),
-        mimeType: f.type || 'image/jpeg',
-      })),
-    )
-    verification = await verifyScores(shots, homeScore, awayScore)
-    if (!verification.ok) {
-      return NextResponse.json(
-        {
-          ok: false,
-          declined: true,
-          error: verification.reason,
-          ocrText: verification.ocrText,
-          seenScore: verification.seenScore,
-          screenshots: verification.images,
-        },
-        { status: 422 },
-      )
-    }
-    // A confirmed mismatch (manager saw a different score and chose to submit
-    // anyway) arrives as `ok: false, needsConfirm: true`. The second POST
-    // includes `confirmMismatch: true`; the portal then submits again with the
-    // same form and the result is accepted.
-  }
+  // ── No score verification ──────────────────────────────────────────────────
+  // Screenshots are proof only. The result is saved exactly as the manager typed
+  // it; stats are read from the screenshots AFTER the response (see the
+  // `after()` block below) and can never decline or delay a submission.
 
   // Any replacement of an already-on-file (non-placeholder) score wipes the old
   // result's stats + confirmations first so the corrected score is the only one
@@ -471,8 +445,45 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
     console.error('[submit-match] admin notify failed:', e)
   }
 
-  // Stats writing removed: the score-check is score-only; existing match_stats
-  // rows (from the bot or previous submissions) stay untouched.
+  // ── Match stats from the proof screenshot (background) ────────────────────
+  // The submission is already saved, so this can never block or fail it. The
+  // OCR read only fills `match_stats` and only when the scoreline it read agrees
+  // with the typed score (straight or reversed, for a screenshot taken from the
+  // opponent's side) — a different game never writes stats onto this fixture.
+  // A walkover has no played score, so it is skipped entirely.
+  if (!givenWin && fixture.home_team_id && fixture.away_team_id) {
+    try {
+      const shotBuffers = await Promise.all(
+        [shot as File, ...extraShots].map(async (f) => ({
+          buffer: Buffer.from(await f.arrayBuffer()),
+          mimeType: f.type || 'image/jpeg',
+        })),
+      )
+      const resultId = resultRow.id
+      after(async () => {
+        try {
+          const stats = await readPortalStats(shotBuffers, homeScore, awayScore)
+          if (!stats) {
+            console.log('[submit-match] no stats written: screenshot score did not match the typed score')
+            return
+          }
+          await admin.from('match_stats').delete().eq('result_id', resultId)
+          const { error: statsErr } = await admin
+            .from('match_stats')
+            .insert({ result_id: resultId, ...stats })
+          if (statsErr) {
+            console.error('[submit-match] match_stats insert failed:', statsErr.message)
+            return
+          }
+          console.log('[submit-match] match_stats written for result:', resultId)
+        } catch (e) {
+          console.error('[submit-match] background stats OCR failed:', e)
+        }
+      })
+    } catch (e) {
+      console.error('[submit-match] could not read screenshots for stats:', e)
+    }
+  }
 
   return NextResponse.json({
     ok: true,
