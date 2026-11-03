@@ -574,16 +574,13 @@ async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
     return error('Failed to submit. Try again.', 500)
   }
 
-  // Report filed against an already auto-finalised placeholder (e.g. the 0-0 both
-  // teams absent). Move the fixture to Under review so it is obvious the claim is
-  // live; the placeholder score stays in the table until the 02:00 job approves
-  // the claim (or a real result replaces it).
-  if (fixture.result && !isRealResult(fixture.result) && !fixture.postponed_confirmed) {
-    await admin
-      .from('fixtures')
-      .update({ status: 'awaiting_confirmation' })
-      .eq('id', fixture.id)
-  }
+  // The report itself is the "under review" marker (it shows as Under review in
+  // this portal and in the admin queue). Do NOT touch fixtures.status here: a
+  // report used to flip an already-settled fixture to 'awaiting_confirmation',
+  // which makes a game with a score on file read as unsubmitted in the due strip
+  // and the fixtures tables, and nothing restored 'confirmed' when the claim was
+  // declined, cancelled or expired - it stuck forever. The 02:00 auto-finalise
+  // job still approves/voids the claim against the placeholder result.
 
   try {
     await notifyBackdoorSubmitted(admin, {

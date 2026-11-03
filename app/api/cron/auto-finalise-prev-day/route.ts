@@ -140,6 +140,7 @@ export async function GET(request: NextRequest) {
     postponedCleared: 0,
     skippedPendingRequest: 0,
     expiredPendingRequest: 0,
+    stuckAwaitingHealed: 0,
   }
   const tournamentIds = new Set<string>()
   const advances: { fx: any; homeScore: number; awayScore: number }[] = []
@@ -180,21 +181,39 @@ export async function GET(request: NextRequest) {
   // Every pending claim whose match is due is resolved here, no matter when it
   // was filed: a non-real result (or none) approves the backdoor, while a real
   // result on file voids the superseded claim instead of overwriting it.
+  //
+  // The fixture list is driven by the OPEN CLAIMS, not by every settled fixture:
+  // the previous query pulled all confirmed/awaiting_confirmation fixtures older
+  // than the cutoff and filtered them in JS, but the Supabase/PostgREST response
+  // is capped (1000 rows by default on this project) while 2015 fixtures match.
+  // Late claims whose fixture fell outside that page were therefore NEVER
+  // resolved - which is exactly what left a 29 October game reading "awaiting
+  // confirmation" for days after its not-responding report was filed.
   const skippedSet2 = new Set(skippedPendingRequest)
-  const { data: lateFixtures } = await supabase
-    .from('fixtures')
-    .select(`
-      id, tournament_id, round_type, status, scheduled_date,
-      home_team_id, away_team_id,
-      backdoor_submissions(id, status, side_claimed),
-      results!results_fixture_id_fkey(fixture_id, home_score, away_score, finalised_by, screenshot_url, override_reason),
-      home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id)
-    `)
-    .not('scheduled_date', 'is', null)
-    .lte('scheduled_date', finaliseCutoff)
-    .in('status', ['confirmed', 'awaiting_confirmation'])
-    .not('postponed_confirmed', 'is', true)
+  const { data: pendingClaimRows } = await supabase
+    .from('backdoor_submissions')
+    .select('fixture_id')
+    .eq('status', 'pending')
+  const pendingClaimFixtureIds = [
+    ...new Set(((pendingClaimRows ?? []) as any[]).map((c) => String(c.fixture_id))),
+  ]
+  const { data: lateFixtures } = pendingClaimFixtureIds.length
+    ? await supabase
+        .from('fixtures')
+        .select(`
+          id, tournament_id, round_type, status, scheduled_date,
+          home_team_id, away_team_id,
+          backdoor_submissions(id, status, side_claimed),
+          results!results_fixture_id_fkey(fixture_id, home_score, away_score, finalised_by, screenshot_url, override_reason),
+          home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id),
+          away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id)
+        `)
+        .in('id', pendingClaimFixtureIds)
+        .not('scheduled_date', 'is', null)
+        .lte('scheduled_date', finaliseCutoff)
+        .in('status', ['confirmed', 'awaiting_confirmation'])
+        .not('postponed_confirmed', 'is', true)
+    : { data: [] }
 
   for (const fx of (lateFixtures ?? []) as any[]) {
     if (skippedSet2.has(String(fx.id))) continue
@@ -248,6 +267,48 @@ export async function GET(request: NextRequest) {
     } catch (e) {
       stats.failed += 1
       console.error('[auto-finalise] late backdoor approve failed:', fx.id, e)
+    }
+  }
+
+  // ── Pass 3: heal fixtures stuck at 'awaiting_confirmation' ─────────────────
+  // A not-responding report used to flip an already-settled fixture to
+  // 'awaiting_confirmation' as an "under review" marker (see submitBackdoor in
+  // app/api/submit-match/route.ts), and nothing ever put it back when the claim
+  // was declined, cancelled or expired. The fixture then had a score on file but
+  // still read "awaiting confirmation" in the due strip and the fixtures tables
+  // - the game looked unsubmitted forever. Any settled fixture that has no claim
+  // left open is restored to 'confirmed' here (its result already counted).
+  const { data: stuckAwaiting } = await supabase
+    .from('fixtures')
+    .select(`
+      id,
+      backdoor_submissions(id, status),
+      results!results_fixture_id_fkey(fixture_id)
+    `)
+    .eq('status', 'awaiting_confirmation')
+    .not('scheduled_date', 'is', null)
+    .lte('scheduled_date', finaliseCutoff)
+
+  for (const fx of (stuckAwaiting ?? []) as any[]) {
+    if (skippedSet2.has(String(fx.id))) continue
+    const claims = (fx.backdoor_submissions ?? []) as any[]
+    if (claims.some((c) => c.status === 'pending')) continue
+    const hasResult = Array.isArray(fx.results) ? fx.results.length > 0 : !!fx.results
+    if (!hasResult) continue
+    if (dryRun) {
+      console.log('[auto-finalise][dry-run] awaiting_confirmation -> confirmed', fx.id)
+      stats.stuckAwaitingHealed += 1
+      continue
+    }
+    const { error: healErr } = await supabase
+      .from('fixtures')
+      .update({ status: 'confirmed' })
+      .eq('id', fx.id)
+    if (healErr) {
+      stats.failed += 1
+      console.error('[auto-finalise] awaiting_confirmation heal failed:', fx.id, healErr.message)
+    } else {
+      stats.stuckAwaitingHealed += 1
     }
   }
 
