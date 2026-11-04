@@ -760,7 +760,7 @@ function ResultPanel({
           // Knockout draw requires penalty scores
           if (requiresPenalties && !walkover && home !== '' && away !== '' && home === away) {
             if (!penHome || !penAway) {
-              setSizeError('This knockout match ended in a draw — enter the penalty scores before submitting.')
+              setSizeError('This knockout match ended in a draw â€” enter the penalty scores before submitting.')
               return
             }
           }
@@ -1067,7 +1067,7 @@ function ResultPanel({
         {requiresPenalties && !walkover && home !== '' && away !== '' && home === away && (
           <div className="mt-2 rounded-xl border border-accent/40 bg-accent/10 p-3">
             <p className="mb-2 text-xs font-bold text-text-primary">
-              Draw — enter penalty scores to decide the winner:
+              Draw â€” enter penalty scores to decide the winner:
             </p>
             <div className="grid grid-cols-2 gap-3">
               <Field label={homeName + ' pens'}>
