@@ -13,6 +13,9 @@ interface Props {
   postponedConfirmed?: boolean
   homeTeamName?: string
   awayTeamName?: string
+  tournamentName?: string | null
+  roundType?: string | null
+  leg?: number | null
   homeManagerName?: string | null
   homeManagerPhone?: string | null
   homeManagerOpenToReminders?: boolean
@@ -69,17 +72,20 @@ function buildReminder(params: {
   side: 'home' | 'away'
   homeTeam: string
   awayTeam: string
+  tournamentName?: string | null
+  leg?: number | null
   opponentPhone: string | null | undefined
   submitLink: string
   postpone?: { role: 'requester' | 'reviewer'; newDateLabel: string | null } | null
   backdoor?: { role: 'submitter' | 'reported'; screenshotUrl: string | null } | null
 }): string {
-  const { username, side, homeTeam, awayTeam, opponentPhone, submitLink, postpone, backdoor } = params
+  const { username, side, homeTeam, awayTeam, tournamentName, leg, opponentPhone, submitLink, postpone, backdoor } = params
   const name = username ?? 'there'
   const theirNumber = formatPhoneDisplay(opponentPhone) || 'not available'
   const lines = [
     `👋 Hi ${name}`,
-    `⚽ ${homeTeam} vs ${awayTeam}`,
+    ...(tournamentName ? [`🏆 ${tournamentName}`] : []),
+    `⚽ ${homeTeam} vs ${awayTeam}${leg && leg > 1 ? ` (Leg ${leg})` : ''}`,
   ]
   if (postpone?.role === 'requester') {
     lines.push(
@@ -120,6 +126,9 @@ export default function DashboardFixtureActions({
   postponedConfirmed = false,
   homeTeamName = '',
   awayTeamName = '',
+  tournamentName = null,
+  roundType = null,
+  leg = null,
   homeManagerName,
   homeManagerPhone,
   homeManagerOpenToReminders = true,
@@ -243,6 +252,8 @@ export default function DashboardFixtureActions({
     side: 'home',
     homeTeam: homeTeamName,
     awayTeam: awayTeamName,
+    tournamentName,
+    leg,
     opponentPhone: awayManagerPhone,
     submitLink: reminderLink,
     postpone: postponeForSide('home'),
@@ -253,6 +264,8 @@ export default function DashboardFixtureActions({
     side: 'away',
     homeTeam: homeTeamName,
     awayTeam: awayTeamName,
+    tournamentName,
+    leg,
     opponentPhone: homeManagerPhone,
     submitLink: reminderLink,
     postpone: postponeForSide('away'),

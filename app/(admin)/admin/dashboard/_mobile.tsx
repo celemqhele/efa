@@ -88,6 +88,8 @@ function FixtureDueCard({ fx }: { fx: any }) {
           postponedConfirmed={!!fx.postponed_confirmed}
           homeTeamName={cleanTeamName(fx.home_team?.name) ?? ''}
           awayTeamName={cleanTeamName(fx.away_team?.name) ?? ''}
+          tournamentName={fx.tournament?.name ?? null}
+          leg={fx.leg ?? null}
           homeManagerName={fx.home_team?.manager?.username}
           homeManagerPhone={fx.home_team?.manager?.phone}
           homeManagerOpenToReminders={fx.home_team?.manager?.open_to_reminders !== false}

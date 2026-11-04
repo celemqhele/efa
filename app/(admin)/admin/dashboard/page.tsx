@@ -72,7 +72,8 @@ export default async function AdminDashboardPage() {
   const { data: dueFixtures } = await (supabase as any)
     .from('fixtures')
     .select(`
-      id, matchday, status, scheduled_date, postponed_confirmed,
+      id, matchday, status, scheduled_date, postponed_confirmed, round_type, leg,
+      tournament:tournaments(id, name, type),
       home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone, open_to_reminders)),
       away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone, open_to_reminders))
     `)
