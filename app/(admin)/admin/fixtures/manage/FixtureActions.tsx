@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { notify } from '@/lib/notifications'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 interface Props {
   fixtureId: string
   currentDate: string | null
   status: string
+  roundType?: string | null
   // Postponement accepted: status reads 'confirmed' (agreed 3-0 already counted)
   // but the game is still to be played on its moved date, so it keeps its Submit
   // button and loses its Postpone button.
@@ -21,6 +23,7 @@ export default function FixtureActions({
   fixtureId,
   currentDate,
   status,
+  roundType = null,
   postponedConfirmed = false,
   homeTeamId,
   homeTeamName,
@@ -49,6 +52,9 @@ export default function FixtureActions({
   const [resetLoading, setResetLoading] = useState(false)
 
   const isFinished = ['completed', 'confirmed', 'confirmed_pending', 'abandoned'].includes(status)
+  // Knockout ties are do-or-die: a moved date would leave the next round without
+  // a winner, so the postpone actions are greyed out for every cup round.
+  const isKnockout = [...KO_ROUNDS, 'super_cup'].includes(String(roundType ?? ''))
 
   // ── Single postpone handler ────────────────────────────────────────────────
   async function handlePostpone(e: React.FormEvent) {
@@ -144,22 +150,30 @@ export default function FixtureActions({
       <div className="flex items-center gap-2 flex-wrap">
         {!isFinished && !postponedConfirmed && (
           <button
+            disabled={isKnockout}
+            title={isKnockout ? 'Knockout games cannot be postponed' : undefined}
             onClick={() => {
               setShowPostpone(!showPostpone)
               setShowBatch(false)
             }}
-            className="btn-outline text-xs px-2.5 min-h-[44px] flex-1 min-w-[8.5rem] inline-flex items-center justify-center"
+            className={`btn-outline text-xs px-2.5 min-h-[44px] flex-1 min-w-[8.5rem] inline-flex items-center justify-center ${
+              isKnockout ? 'cursor-not-allowed opacity-40' : ''
+            }`}
           >
             Postpone
           </button>
         )}
         {!isFinished && !postponedConfirmed && (
           <button
+            disabled={isKnockout}
+            title={isKnockout ? 'Knockout games cannot be postponed' : undefined}
             onClick={() => {
               setShowBatch(!showBatch)
               setShowPostpone(false)
             }}
-            className="btn-outline text-xs px-2.5 min-h-[44px] flex-1 min-w-[8.5rem] inline-flex items-center justify-center"
+            className={`btn-outline text-xs px-2.5 min-h-[44px] flex-1 min-w-[8.5rem] inline-flex items-center justify-center ${
+              isKnockout ? 'cursor-not-allowed opacity-40' : ''
+            }`}
           >
             Batch Postpone
           </button>

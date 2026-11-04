@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { getSastDateKey } from '@/lib/app-time'
+import { KO_ROUNDS } from '@/lib/tournament-rounds'
 
 // ─── Web submission portal (shared state) ─────────────────────────────────────
 // Used by the page (app/submit-match/[code]/page.tsx) for the first render and
@@ -72,6 +73,16 @@ export function isRealResult(result: any): boolean {
   return !!result && (!!result.finalised_by || !!result.screenshot_url)
 }
 
+// Knockout rounds are do-or-die: a moved date would leave the bracket feeding a
+// round that has no winner, so postponements are closed for every cup round
+// (including the Super Cup). League and group fixtures are the only postponable
+// games.
+const NON_POSTPONABLE_ROUND_TYPES = new Set([...KO_ROUNDS, 'super_cup'])
+
+export function isKnockoutFixture(fixture: any): boolean {
+  return NON_POSTPONABLE_ROUND_TYPES.has(String(fixture?.round_type ?? ''))
+}
+
 export type Viewer = {
   userId: string
   username: string | null
@@ -138,7 +149,7 @@ export async function loadFixture(admin: any, code: string): Promise<any | null>
   const { data: fixture } = await admin
     .from('fixtures')
     .select(`
-      id, tournament_id, round_type, status, scheduled_date, postponed_from,
+      id, tournament_id, round_type, leg, status, scheduled_date, postponed_from,
       is_postponed, postponed_confirmed, whatsapp_reset_count, home_team_id, away_team_id,
       home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id),
       away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id),
@@ -248,6 +259,25 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   const dateKey = dateKeyOf(fixture)
   const todayKey = getSastDateKey()
   const isPlaceholder = !!fixture.postponed_confirmed
+
+  // Knockout draw requires penalty scores (single-leg: leg 1; two-leg: leg 2)
+  let requiresPenalties = false
+  if (isKnockoutFixture(fixture)) {
+    const { data: leg2 } = await admin
+      .from('fixtures')
+      .select('id')
+      .eq('tournament_id', fixture.tournament_id)
+      .eq('round_type', fixture.round_type)
+      .eq('leg', 2)
+      .limit(1)
+      .maybeSingle()
+    const isTwoLeg = !!leg2
+    if (isTwoLeg) {
+      requiresPenalties = (fixture.leg ?? 1) === 2
+    } else {
+      requiresPenalties = true
+    }
+  }
 
   const { data: backdoorRows } = await admin
     .from('backdoor_submissions')
@@ -375,6 +405,8 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   let postponeBlock: string | null = null
   if (viewer.side === null && !viewer.isAdmin) postponeBlock = 'Only the two managers can request a postponement.'
   else if (isPlaceholder) postponeBlock = 'This match was already postponed. The postpone option is closed.'
+  else if (isKnockoutFixture(fixture))
+    postponeBlock = 'Knockout games cannot be postponed. Play the match or report the opponent.'
   else {
     const dlBlock = deadlineBlock(dateKey)
     if (dlBlock) postponeBlock = 'This match is past its deadline, so it can no longer be postponed.'
@@ -490,6 +522,7 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       postponedConfirmed: !!fixture.postponed_confirmed,
       tournament: teamName(fixture.tournament),
       roundType: fixture.round_type ?? null,
+      leg: fixture.leg ?? null,
       home: homeSide(fixture),
       away: awaySide(fixture),
     },
@@ -565,6 +598,8 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       // True once the grace period (match day + 1) has lapsed — no more
       // changes, reports or postponements for managers.
       graceEnded: gracePeriodEnded(dateKey),
+      // Knockout draw requires penalty scores before submission.
+      requiresPenalties,
       canPostpone: !postponeBlock,
       canRequest: !pendingRequest && !postponeBlock,
       canRespond: !!respondTo && !postponeExpired,

@@ -417,9 +417,14 @@ async function finaliseZeroZero(supabase: any, fx: any, dryRun: boolean) {
   // A double no-show is a VOID: no winner, no scoreline, so no carry-over
   // balance is consumed here. The penalty stays pending and is applied to that
   // manager's next real meeting instead of being swallowed by an empty game.
-  const homeScore = 0
+  // Knockout ties cannot end in a draw: a both-absent no-show defaults to a
+  // 1-0 home win so the bracket has a winner to advance.
+  const isKnockout = KO_ROUNDS.includes(fx.round_type ?? '')
+  const homeScore = isKnockout ? 1 : 0
   const awayScore = 0
-  const overrideReason = 'Both teams absent — auto-finalised (0-0, no points)'
+  const overrideReason = isKnockout
+    ? 'Both teams absent — auto-finalised (1-0 home win, knockout default)'
+    : 'Both teams absent — auto-finalised (0-0, no points)' 
 
   await supabase.from('result_confirmations').insert({
     fixture_id: fx.id,

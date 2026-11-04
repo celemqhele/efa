@@ -243,6 +243,7 @@ export default function Desktop({ data }: { data: any }) {
                                 fixtureId={fx.id}
                                 currentDate={fx.scheduled_date}
                                 status={fx.status}
+                                roundType={fx.round_type}
                                 postponedConfirmed={!!fx.postponed_confirmed}
                                 homeTeamId={homeTeam?.id ?? ''}
                                 homeTeamName={cleanTeamName(homeTeam?.name) ?? ''}

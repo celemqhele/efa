@@ -10,7 +10,7 @@ import { advanceWinner } from '@/lib/tournament-progression'
 import { readPortalStats } from '@/lib/portal-stats'
 import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
 import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
-import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
+import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isKnockoutFixture, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 // Most screenshots a manager attaches (1 required + up to 3 replays).
 const MAX_SHOTS = 4
@@ -139,6 +139,8 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   const todayKey = getSastDateKey()
   const homeScoreRaw = parseScore(form.get('homeScore'))
   const awayScoreRaw = parseScore(form.get('awayScore'))
+  const penHomeRaw = parseScore(form.get('penHomeScore'))
+  const penAwayRaw = parseScore(form.get('penAwayScore'))
   const shot = form.get('screenshot')
   // Optional extra screenshots: a manager who had to replay the game because
   // of network drops / disconnections attaches those screens too, and the
@@ -370,6 +372,8 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         // half-forfeit result behind.
         abandoned_type: abandonedType,
         override_reason: overrideReason,
+        ...(penHomeRaw !== null ? { pen_home_score: penHomeRaw } : {}),
+        ...(penAwayRaw !== null ? { pen_away_score: penAwayRaw } : {}),
       },
       { onConflict: 'fixture_id' }
     )
@@ -855,6 +859,7 @@ async function requestPostpone(admin: any, fixture: any, viewer: Viewer, form: F
   const reason = String(form.get('reason') ?? '').trim()
 
   if (viewer.side === null) return error('Only the two managers can request a postponement.')
+  if (isKnockoutFixture(fixture)) return error('Knockout games cannot be postponed. Play the match or report the opponent.')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return error('Pick a new date.')
   if (reason.length < 3) return error('Give a short reason for the postponement.')
   if (reason.length > 300) return error('Reason is too long (max 300 characters).')

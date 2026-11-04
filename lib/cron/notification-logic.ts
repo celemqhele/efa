@@ -14,6 +14,8 @@ interface FixtureRow {
   away_team_name: string
   away_manager_id: string | null
   postponed_confirmed: boolean
+  tournament_name: string | null
+  leg: number | null
 }
 
 // Shown on every reminder for a fixture that was postponed and still has to be
@@ -37,7 +39,13 @@ function getSastDateString(offsetDays = 0): string {
 
 function getFixtureList(managerFixtures: ManagerFixtures): string {
   return managerFixtures.fixtures
-    .map((f) => `${f.home_team_name} vs ${f.away_team_name}`)
+    .map((f) => {
+      const parts: string[] = []
+      if (f.tournament_name) parts.push(f.tournament_name)
+      if (f.leg) parts.push(`Leg ${f.leg}`)
+      parts.push(`${f.home_team_name} vs ${f.away_team_name}`)
+      return parts.join(' — ')
+    })
     .join(', ')
 }
 
@@ -53,8 +61,10 @@ export async function runNotificationCron(
       id,
       status,
       postponed_confirmed,
+      leg,
       home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id),
-      away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id)
+      away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id),
+      tournament:tournaments(name)
     `)
     .eq('scheduled_date', targetDate)
     // Postponed-confirmed fixtures carry status 'confirmed' (the agreed 3-0 is
@@ -70,6 +80,7 @@ export async function runNotificationCron(
   const flatFixtures: FixtureRow[] = (fixtures ?? []).map((f: any) => {
     const ht = Array.isArray(f.home_team) ? f.home_team[0] : f.home_team
     const at = Array.isArray(f.away_team) ? f.away_team[0] : f.away_team
+    const tn = Array.isArray(f.tournament) ? f.tournament[0] : f.tournament
     return {
       id: f.id,
       status: f.status,
@@ -80,6 +91,8 @@ export async function runNotificationCron(
       away_team_name: at?.name ?? '?',
       away_manager_id: at?.manager_id ?? null,
       postponed_confirmed: f.postponed_confirmed === true,
+      tournament_name: tn?.name ?? null,
+      leg: f.leg ?? null,
     }
   })
 

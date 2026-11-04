@@ -380,7 +380,12 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
               {homeName} <span className="text-text-muted">vs</span> {awayName}
             </h1>
             <p className="mt-1 text-xs text-text-muted">
-              {[fx.tournament, fx.scheduledDate ? formatDate(fx.scheduledDate) : null, fx.roundType]
+              {[
+                fx.tournament,
+                fx.leg ? `Leg ${fx.leg}` : null,
+                fx.scheduledDate ? formatDate(fx.scheduledDate) : null,
+                fx.roundType,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
@@ -588,6 +593,9 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           block={state.rules.resultBlock}
           note={state.rules.resultNote}
           formFor={formFor}
+          roundType={fx.roundType}
+          leg={fx.leg}
+          requiresPenalties={!!state.rules.requiresPenalties}
         />
       )}
 
@@ -687,6 +695,9 @@ function ResultPanel({
   block,
   note,
   formFor,
+  roundType,
+  leg,
+  requiresPenalties,
 }: {
   busy: boolean
   onSubmit: (fd: FormData) => void
@@ -696,6 +707,9 @@ function ResultPanel({
   block: string | null
   note: string | null
   formFor: (action: string, fields?: Record<string, string | File | null>) => FormData
+  roundType: string | null
+  leg: number | null
+  requiresPenalties: boolean
 }) {
   const [file, setFile] = useState<File | null>(null)
   // Optional extras: the same fixture played more than once because the
@@ -713,6 +727,8 @@ function ResultPanel({
   const [away, setAway] = useState('')
   const [forfeit, setForfeit] = useState('no')
   const [givenWin, setGivenWin] = useState('no')
+  const [penHome, setPenHome] = useState('')
+  const [penAway, setPenAway] = useState('')
   const [noFileError, setNoFileError] = useState(false)
   const [sizeError, setSizeError] = useState('')
 
@@ -740,6 +756,13 @@ function ResultPanel({
           if (!file) {
             setNoFileError(true)
             return
+          }
+          // Knockout draw requires penalty scores
+          if (requiresPenalties && !walkover && home !== '' && away !== '' && home === away) {
+            if (!penHome || !penAway) {
+              setSizeError('This knockout match ended in a draw � enter the penalty scores before submitting.')
+              return
+            }
           }
           setNoFileError(false)
           setSizeError('')
@@ -772,6 +795,9 @@ function ResultPanel({
             screenshot: mainFile,
             forfeit: walkover ? 'no' : forfeit,
             givenWin,
+            ...(requiresPenalties && shownHome === shownAway && penHome && penAway
+              ? { penHomeScore: penHome, penAwayScore: penAway }
+              : {}),
           })
           for (const extra of extraFiles) fd.append('extraScreenshot', extra)
           onSubmit(fd)
@@ -1037,6 +1063,42 @@ function ResultPanel({
             />
           </Field>
         </div>
+
+        {requiresPenalties && !walkover && home !== '' && away !== '' && home === away && (
+          <div className="mt-2 rounded-xl border border-accent/40 bg-accent/10 p-3">
+            <p className="mb-2 text-xs font-bold text-text-primary">
+              Draw � enter penalty scores to decide the winner:
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={homeName + ' pens'}>
+                <input
+                  type="number"
+                  min={0}
+                  max={99}
+                  inputMode="numeric"
+                  value={penHome}
+                  onChange={(e) => setPenHome(e.target.value)}
+                  disabled={!!block || busy}
+                  className={`${inputClass} text-center text-lg font-black tabular-nums`}
+                  placeholder="0"
+                />
+              </Field>
+              <Field label={awayName + ' pens'}>
+                <input
+                  type="number"
+                  min={0}
+                  max={99}
+                  inputMode="numeric"
+                  value={penAway}
+                  onChange={(e) => setPenAway(e.target.value)}
+                  disabled={!!block || busy}
+                  className={`${inputClass} text-center text-lg font-black tabular-nums`}
+                  placeholder="0"
+                />
+              </Field>
+            </div>
+          </div>
+        )}
 
         {walkover && (
           <p className="rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-text-primary">
@@ -1406,6 +1468,7 @@ function DetailsPanel({ state }: { state: any }) {
   const fx = state.fixture
   const rows: [string, string][] = [
     ['Tournament', fx.tournament],
+    ['Leg', fx.leg ? `Leg ${fx.leg}` : '—'],
     ['Round', fx.roundType ?? '—'],
     ['Match date', fx.scheduledDate ? formatDate(fx.scheduledDate) : '—'],
     ...(fx.postponedFrom ? ([['Postponed from', formatDate(fx.postponedFrom)]] as [string, string][]) : []),
