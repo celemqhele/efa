@@ -1,5 +1,6 @@
 import React from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { getSastDateKey } from '@/lib/app-time'
 import ExportButton from './ExportButton'
 import ExportControls from './ExportControls'
 import { Card } from '@/components/ui/Card'
@@ -356,7 +357,7 @@ export default async function ExportPage({ searchParams }: Props) {
   const queryErrors: string[] = []
   if (tournamentsError) queryErrors.push(tournamentsError.message)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getSastDateKey()
   const selectedDate = sp.date ?? today
   const formattedDate = formatDate(selectedDate)
 

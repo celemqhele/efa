@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { getSastDateKey } from '@/lib/app-time'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
@@ -15,7 +16,7 @@ export default function FixtureScheduler({ tournamentId, unscheduledCount }: { t
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         tournamentId, 
-        startDate: new Date().toISOString().slice(0, 10) 
+        startDate: getSastDateKey() 
       })
     })
     const data = await res.json()

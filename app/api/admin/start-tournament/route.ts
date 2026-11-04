@@ -3,6 +3,7 @@ import { generateGroupFixtures } from '@/lib/fixture-generator'
 import { drawGroups } from '@/lib/tournament-draw'
 import { sortStandingsRows } from '@/lib/standings-core'
 import { stampFixtureParticipants } from '@/lib/slot-utils'
+import { getSastDateKey } from '@/lib/app-time'
 import { calendarDaysFor, readSeasonCalendar, type CalendarKey } from '@/lib/season-calendar'
 
 const CUP_TYPES = ['tournament_club', 'tournament_international'] as const
@@ -156,7 +157,7 @@ export async function POST(request: Request) {
     .limit(1)
     .maybeSingle()
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getSastDateKey()
   let scheduleStart = today
   if (lastLeagueFixture?.scheduled_date) {
     const nextDay = new Date(lastLeagueFixture.scheduled_date)

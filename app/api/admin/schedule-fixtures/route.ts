@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { addDays, format, subDays } from 'date-fns'
+import { getSastDateKey } from '@/lib/app-time'
 
 const CUP_WEEKLY_SLOT_BUDGET = 56
 
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
 
   const isClub = tournament?.type === 'tournament_club' || tournament?.type === 'tournament_international'
   const weeklySlotBudget = isClub ? CUP_WEEKLY_SLOT_BUDGET : undefined
-  const startDate = format(new Date(), 'yyyy-MM-dd')
+  const startDate = getSastDateKey()
   const slotCache: Record<string, { globalUsed: number; teamUsed: Record<string, number> }> = {}
   const assignments: Array<{ home_team_id: string; away_team_id: string; scheduled_date: string }> = []
   let successCount = 0

@@ -32,7 +32,15 @@ export default function FixtureActions({
 }: Props) {
   // ── Single postpone state ──────────────────────────────────────────────────
   const [showPostpone, setShowPostpone] = useState(false)
-  const [newDate, setNewDate] = useState(currentDate ? currentDate.slice(0, 16) : '')
+  const [newDate, setNewDate] = useState(() => {
+    if (!currentDate) return ''
+    // `currentDate` may be a date-only string (YYYY-MM-DD) from the DB.
+    // A `datetime-local` input needs a full `YYYY-MM-DDTHH:MM` value; an
+    // incomplete value makes the browser fall back to "today", which is what
+    // made every fixture look like it was scheduled for today.
+    if (currentDate.includes('T')) return currentDate.slice(0, 16)
+    return `${currentDate}T00:00`
+  })
   const [postponeLoading, setPostponeLoading] = useState(false)
   const [postponeError, setPostponeError] = useState('')
   const [postponeSuccess, setPostponeSuccess] = useState(false)
