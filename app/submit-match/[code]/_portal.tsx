@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Check, ImagePlus, Loader2, X } from 'lucide-react'
-import { MAX_FILE_BYTES, TOTAL_PAYLOAD_BUDGET, fitScreenshots, maybeCompressImage, type FitResult } from '@/lib/compress-image-client'
+import { maybeCompressImage, MAX_FILE_BYTES } from '@/lib/compress-image-client'
+import { uploadScreenshotToStorage } from '@/lib/upload-screenshot-client'
 
 type Panel = 'home' | 'result' | 'backdoor' | 'details' | 'postpone'
 
@@ -587,6 +588,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
         <ResultPanel
           busy={busy}
           onSubmit={send}
+          fixtureId={state.fixture.id}
           homeName={homeName}
           awayName={awayName}
           side={state.viewer.side}
@@ -689,6 +691,7 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
 function ResultPanel({
   busy,
   onSubmit,
+  fixtureId,
   homeName,
   awayName,
   side,
@@ -701,6 +704,7 @@ function ResultPanel({
 }: {
   busy: boolean
   onSubmit: (fd: FormData) => void
+  fixtureId: string
   homeName: string
   awayName: string
   side: 'home' | 'away' | null
@@ -722,7 +726,7 @@ function ResultPanel({
   // Fitting the whole set into the shared upload budget happens at submit
   // (the files were compressed one by one when picked), so it gets its own
   // flag: the inputs must not accept changes while the set is being re-encoded.
-  const [fitting, setFitting] = useState(false)
+
   const [home, setHome] = useState('')
   const [away, setAway] = useState('')
   const [forfeit, setForfeit] = useState('no')
@@ -752,7 +756,7 @@ function ResultPanel({
         className="mt-4 space-y-4"
         onSubmit={async (e) => {
           e.preventDefault()
-          if (uploading || fitting) return
+          if (uploading) return
           if (!file) {
             setNoFileError(true)
             return
@@ -766,41 +770,31 @@ function ResultPanel({
           }
           setNoFileError(false)
           setSizeError('')
-          // Compress the WHOLE set together, not each file against its own cap:
-          // four files that each pass "1.1MB" are still 4.4MB in one request,
-          // and the platform rejects that before the route runs.
-          setFitting(true)
-          let fitted: FitResult
+          // Upload the bytes straight to Supabase Storage (no Vercel body cap),
+          // then send only the storage paths to our route.
+          setUploading(true)
           try {
-            fitted = await fitScreenshots([file, ...extras])
-          } finally {
-            setFitting(false)
-          }
-          if (fitted.tooBig.length > 0) {
-            setSizeError(
-              `These screenshots are still too big to send together (${describeSize(fitted.bytes)}). The upload has to stay under ${describeSize(TOTAL_PAYLOAD_BUDGET)}. Remove ${
-                fitted.tooBig.length === 1 ? 'one extra screenshot' : 'some extra screenshots'
-              } and submit again, or take the result screenshot again at a lower resolution.`,
+            const mainPath = await uploadScreenshotToStorage('match-screenshots', file, `result-${fixtureId}`)
+            const extraPaths = await Promise.all(
+              extras.map((f) => uploadScreenshotToStorage('match-screenshots', f, `result-${fixtureId}`)),
             )
-            return
+            const fd = formFor('result', {
+              homeScore: shownHome,
+              awayScore: shownAway,
+              screenshotPath: mainPath,
+              forfeit: walkover ? 'no' : forfeit,
+              givenWin,
+              ...(requiresPenalties && shownHome === shownAway && penHome && penAway
+                ? { penHomeScore: penHome, penAwayScore: penAway }
+                : {}),
+            })
+            for (const p of extraPaths) fd.append('extraScreenshotPath', p)
+            onSubmit(fd)
+          } catch (err: any) {
+            setSizeError(`Could not upload your screenshot: ${err?.message ?? 'try again'}.`)
+          } finally {
+            setUploading(false)
           }
-          const [mainFile, ...extraFiles] = fitted.files
-          // Repeat the SAME key for every extra: the server reads them with
-          // form.getAll('extraScreenshot'). A suffixed key (extraScreenshot0)
-          // or a set() would be invisible to getAll and silently drop the
-          // replay screenshots.
-          const fd = formFor('result', {
-            homeScore: shownHome,
-            awayScore: shownAway,
-            screenshot: mainFile,
-            forfeit: walkover ? 'no' : forfeit,
-            givenWin,
-            ...(requiresPenalties && shownHome === shownAway && penHome && penAway
-              ? { penHomeScore: penHome, penAwayScore: penAway }
-              : {}),
-          })
-          for (const extra of extraFiles) fd.append('extraScreenshot', extra)
-          onSubmit(fd)
         }}
       >
         <Field label="Result screenshot" hint="Upload the final score screen — it is kept as proof on this match.">
@@ -1109,8 +1103,8 @@ function ResultPanel({
         <Button
           type="submit"
           variant="primary"
-          isLoading={busy || fitting}
-          disabled={busy || fitting || uploading || !!block || (!walkover && (home === '' || away === ''))}
+          isLoading={busy || uploading}
+          disabled={busy || uploading || !!block || (!walkover && (home === '' || away === ''))}
           className="w-full"
         >
           Submit result
@@ -1154,6 +1148,8 @@ function BackdoorPanel({
   const [disputeFile, setDisputeFile] = useState<File | null>(null)
   const [explanation, setExplanation] = useState('')
   const [disputeFileError, setDisputeFileError] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   const reports = reportsAgainstMe ?? []
 
@@ -1179,14 +1175,22 @@ function BackdoorPanel({
 
         <form
           className="mt-4 space-y-4"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault()
             if (!disputeFile) {
               setDisputeFileError(true)
               return
             }
             setDisputeFileError(false)
-            onSubmit(formFor('backdoorDispute', { screenshot: disputeFile, explanation }))
+            setUploading(true)
+            try {
+              const path = await uploadScreenshotToStorage('backdoor-screenshots', disputeFile, `dispute-${fixture.id}`)
+              onSubmit(formFor('backdoorDispute', { screenshotPath: path, explanation }))
+            } catch (err: any) {
+              setDisputeFileError(true)
+            } finally {
+              setUploading(false)
+            }
           }}
         >
           <Field label="Your screenshot" hint="Proof that the report against you is wrong.">
@@ -1222,8 +1226,8 @@ function BackdoorPanel({
             <Button
               type="submit"
               variant="primary"
-              isLoading={busy}
-              disabled={busy || !disputeFile || explanation.trim().length < 5}
+              isLoading={busy || uploading}
+              disabled={busy || uploading || !disputeFile || explanation.trim().length < 5}
             >
               Submit dispute
             </Button>
@@ -1338,14 +1342,22 @@ function BackdoorPanel({
       {block && <p className="mt-2 text-sm text-feedback-warning">{block}</p>}
       <form
         className="mt-4 space-y-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault()
           if (!file) {
             setNoFileError(true)
             return
           }
           setNoFileError(false)
-          onSubmit(formFor('backdoor', { side, screenshot: file }))
+          setUploading(true)
+          try {
+            const path = await uploadScreenshotToStorage('backdoor-screenshots', file, `backdoor-${fixture.id}`)
+            onSubmit(formFor('backdoor', { side, screenshotPath: path }))
+          } catch (err: any) {
+            setUploadError(err?.message ?? 'Upload failed')
+          } finally {
+            setUploading(false)
+          }
         }}
       >
         {viewer.side ? (
@@ -1377,8 +1389,11 @@ function BackdoorPanel({
         {noFileError && (
           <p className="text-sm text-feedback-warning">Upload the proof screenshot above first.</p>
         )}
+        {uploadError && (
+          <p className="text-sm text-feedback-error">{uploadError}</p>
+        )}
 
-        <Button type="submit" variant="primary" isLoading={busy} disabled={busy || !!block} className="w-full">
+        <Button type="submit" variant="primary" isLoading={busy || uploading} disabled={busy || uploading || !!block} className="w-full">
           Submit report
         </Button>
       </form>

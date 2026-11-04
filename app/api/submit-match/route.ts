@@ -10,7 +10,7 @@ import { advanceWinner } from '@/lib/tournament-progression'
 import { readPortalStats } from '@/lib/portal-stats'
 import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
 import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
-import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isKnockoutFixture, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, windowBlock, type Viewer } from '@/lib/submit-match'
+import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isKnockoutFixture, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, signedUrlForPath, downloadFromBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 // Most screenshots a manager attaches (1 required + up to 3 replays).
 const MAX_SHOTS = 4
@@ -141,12 +141,14 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   const awayScoreRaw = parseScore(form.get('awayScore'))
   const penHomeRaw = parseScore(form.get('penHomeScore'))
   const penAwayRaw = parseScore(form.get('penAwayScore'))
-  const shot = form.get('screenshot')
-  // Optional extra screenshots: a manager who had to replay the game because
-  // of network drops / disconnections attaches those screens too, and the
-  // background stats read merges their stat rows into one set for the fixture
-  // page.
-  const extraShots = form.getAll('extraScreenshot').filter((f): f is File => f instanceof File && f.size > 0)
+  // Screenshots are uploaded directly to Supabase Storage by the client (to stay
+  // under Vercel's request-body cap); this route only receives their storage
+  // paths and turns them into signed URLs.
+  const shotPath = String(form.get('screenshotPath') ?? '').trim()
+  const extraShotPaths = form
+    .getAll('extraScreenshotPath')
+    .map((v) => String(v ?? '').trim())
+    .filter(Boolean)
   const forfeit = String(form.get('forfeit') ?? '').trim()
   // "Did this player give you the win?" - the portal locks the score to a 3-0
   // walkover when the manager answers Yes, so the score fields may come through
@@ -160,12 +162,10 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   // them below, so blank inputs are safe there.
   const homeScore = homeScoreRaw ?? 0
   const awayScore = awayScoreRaw ?? 0
-  if (!(shot instanceof File) || shot.size === 0) return error('Upload the result screenshot as proof.')
-  if (shot.size > 8 * 1024 * 1024) return error('Screenshot is too large (max 8MB).')
-  if (extraShots.length > MAX_SHOTS - 1) {
+  if (!shotPath) return error('Upload the result screenshot as proof.')
+  if (extraShotPaths.length > MAX_SHOTS - 1) {
     return error(`You can attach up to ${MAX_SHOTS} screenshots in total (1 main + ${MAX_SHOTS - 1} extra).`)
   }
-  if (extraShots.some((f) => f.size > 8 * 1024 * 1024)) return error('One of the extra screenshots is too large (max 8MB).')
 
   if (viewer.side === null && !viewer.isAdmin) return error('Only the two managers can submit a result.')
 
@@ -221,25 +221,21 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
 
   let screenshotUrl: string
   try {
-    const ext = (shot.type === 'image/png' ? 'png' : shot.name?.endsWith('.png') ? 'png' : 'jpg')
-    screenshotUrl = await uploadToBucket('match-screenshots', `result-${fixture.id}-${Date.now()}.${ext}`, shot)
+    screenshotUrl = await signedUrlForPath('match-screenshots', shotPath)
   } catch (e) {
-    console.error('[submit-match] result screenshot upload failed:', e)
+    console.error('[submit-match] result screenshot sign failed:', e)
     return error('Screenshot upload failed. Try again.', 500)
   }
 
   // Optional replay screenshots — kept as extra proof next to the main one.
   let extraScreenshotUrls: string[] = []
-  if (extraShots.length > 0) {
+  if (extraShotPaths.length > 0) {
     try {
       extraScreenshotUrls = await Promise.all(
-        extraShots.map((f, i) => {
-          const ext = (f.type === 'image/png' ? 'png' : f.name?.endsWith('.png') ? 'png' : 'jpg')
-          return uploadToBucket('match-screenshots', `result-${fixture.id}-x${i + 1}-${Date.now()}.${ext}`, f)
-        }),
+        extraShotPaths.map((p) => signedUrlForPath('match-screenshots', p)),
       )
     } catch (e) {
-      console.error('[submit-match] extra screenshot upload failed:', e)
+      console.error('[submit-match] extra screenshot sign failed:', e)
       return error('One of the extra screenshots failed to upload. Try again.', 500)
     }
   }
@@ -457,14 +453,20 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
   // A walkover has no played score, so it is skipped entirely.
   if (!givenWin && fixture.home_team_id && fixture.away_team_id) {
     try {
-      const shotBuffers = await Promise.all(
-        [shot as File, ...extraShots].map(async (f) => ({
-          buffer: Buffer.from(await f.arrayBuffer()),
-          mimeType: f.type || 'image/jpeg',
-        })),
+      const downloaded = await Promise.all(
+        [shotPath, ...extraShotPaths].map(async (p) => {
+          const buf = await downloadFromBucket('match-screenshots', p)
+          if (!buf) return null
+          return {
+            buffer: buf,
+            mimeType: p.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg',
+          }
+        }),
       )
+      const shotBuffers = downloaded.filter((b): b is { buffer: Buffer; mimeType: string } => !!b)
       const resultId = resultRow.id
-      after(async () => {
+      if (shotBuffers.length > 0) {
+        after(async () => {
         try {
           const stats = await readPortalStats(shotBuffers, homeScore, awayScore)
           if (!stats) {
@@ -484,6 +486,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
           console.error('[submit-match] background stats OCR failed:', e)
         }
       })
+      }
     } catch (e) {
       console.error('[submit-match] could not read screenshots for stats:', e)
     }
@@ -504,11 +507,10 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
 
 async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: FormData, code: string) {
   const side = String(form.get('side') ?? '')
-  const shot = form.get('screenshot')
+  const shotPath = String(form.get('screenshotPath') ?? '').trim()
 
   if (side !== 'home' && side !== 'away') return error('Say which team is not responding.')
-  if (!(shot instanceof File) || shot.size === 0) return error('Upload the screenshot showing no response.')
-  if (shot.size > 8 * 1024 * 1024) return error('Screenshot is too large (max 8MB).')
+  if (!shotPath) return error('Upload the screenshot showing no response.')
   if (viewer.side === null && !viewer.isAdmin) return error('Only the two managers can report an opponent.')
 
   // A manager always reports their opponent: the side is pinned server-side so
@@ -550,9 +552,9 @@ async function submitBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
 
   let screenshotUrl: string
   try {
-    screenshotUrl = await uploadToBucket('backdoor-screenshots', `portal-${Date.now()}.jpg`, shot)
+    screenshotUrl = await signedUrlForPath('backdoor-screenshots', shotPath)
   } catch (e) {
-    console.error('[submit-match] backdoor screenshot upload failed:', e)
+    console.error('[submit-match] backdoor screenshot sign failed:', e)
     return error('Screenshot upload failed. Try again.', 500)
   }
 
@@ -653,12 +655,11 @@ async function cancelBackdoor(admin: any, fixture: any, viewer: Viewer, form: Fo
 }
 
 async function disputeBackdoor(admin: any, fixture: any, viewer: Viewer, form: FormData, code: string) {
-  const shot = form.get('screenshot')
+  const shotPath = String(form.get('screenshotPath') ?? '').trim()
   const note = String(form.get('explanation') ?? '').trim()
 
   if (viewer.side === null) return error('Only the two managers can dispute a report.')
-  if (!(shot instanceof File) || shot.size === 0) return error('Upload a screenshot to support your dispute.')
-  if (shot.size > 8 * 1024 * 1024) return error('Screenshot is too large (max 8MB).')
+  if (!shotPath) return error('Upload a screenshot to support your dispute.')
   if (note.length < 5) return error('Explain why the report is wrong (at least 5 characters).')
   if (note.length > 500) return error('Explanation is too long (max 500 characters).')
   if (fixture.postponed_confirmed) {
@@ -692,9 +693,9 @@ async function disputeBackdoor(admin: any, fixture: any, viewer: Viewer, form: F
 
   let screenshotUrl: string
   try {
-    screenshotUrl = await uploadToBucket('backdoor-screenshots', `dispute-${Date.now()}.jpg`, shot)
+    screenshotUrl = await signedUrlForPath('backdoor-screenshots', shotPath)
   } catch (e) {
-    console.error('[submit-match] dispute screenshot upload failed:', e)
+    console.error('[submit-match] dispute screenshot sign failed:', e)
     return error('Screenshot upload failed. Try again.', 500)
   }
 

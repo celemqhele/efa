@@ -202,6 +202,29 @@ export async function uploadToBucket(bucket: string, fileName: string, file: Fil
   return data.signedUrl as string
 }
 
+// Turn a storage path (uploaded directly by the client) into a long-lived signed
+// URL for display. Used by the portal now that uploads go straight to Supabase
+// Storage instead of through this route's body.
+export async function signedUrlForPath(bucket: string, path: string): Promise<string> {
+  const admin = await createAdminClient()
+  const { data, error } = await admin.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 365)
+  if (error || !data?.signedUrl) throw error || new Error('failed to sign url')
+  return data.signedUrl as string
+}
+
+// Download a directly-uploaded screenshot back into a Buffer, for the background
+// stats OCR. Returns null on any failure so OCR stays best-effort.
+export async function downloadFromBucket(bucket: string, path: string): Promise<Buffer | null> {
+  try {
+    const admin = await createAdminClient()
+    const { data, error } = await admin.storage.from(bucket).download(path)
+    if (error || !data) return null
+    return Buffer.from(await data.arrayBuffer())
+  } catch {
+    return null
+  }
+}
+
 export function isMineSubmission(row: any, viewer: Viewer): boolean {
   if (viewer.phone && row.submitter_phone) {
     const a = String(row.submitter_phone).replace(/\D/g, '')
