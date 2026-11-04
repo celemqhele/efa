@@ -85,7 +85,7 @@ function buildReminder(params: {
   const lines = [
     `👋 Hi ${name}`,
     ...(tournamentName ? [`🏆 ${tournamentName}`] : []),
-    `⚽ ${homeTeam} vs ${awayTeam}${leg && leg > 1 ? ` (Leg ${leg})` : ''}`,
+    `⚽ ${homeTeam} vs ${awayTeam}${leg != null ? ` (Leg ${leg})` : ''}`,
   ]
   if (postpone?.role === 'requester') {
     lines.push(
