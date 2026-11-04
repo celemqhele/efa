@@ -1,6 +1,6 @@
 import { defaultCache } from '@serwist/next/worker'
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
-import { Serwist } from 'serwist'
+import { NetworkOnly, Serwist } from 'serwist'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -15,7 +15,13 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  // Supabase (storage uploads/downloads, auth, data) must never be cached or
+  // subjected to the default cross-origin 10s network timeout — large screenshot
+  // uploads would otherwise be aborted by the service worker ("Failed to fetch").
+  runtimeCaching: [
+    { matcher: /^https:\/\/.*\.supabase\.co\/.*/i, handler: new NetworkOnly() },
+    ...defaultCache,
+  ],
 })
 
 serwist.addEventListeners()
