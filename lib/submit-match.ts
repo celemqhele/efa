@@ -149,7 +149,7 @@ export async function loadFixture(admin: any, code: string): Promise<any | null>
   const { data: fixture } = await admin
     .from('fixtures')
     .select(`
-      id, tournament_id, round_type, leg, status, scheduled_date, postponed_from,
+      id, tournament_id, round_type, leg, matchday, status, scheduled_date, postponed_from,
       is_postponed, postponed_confirmed, whatsapp_reset_count, home_team_id, away_team_id,
       home_team:teams!fixtures_home_team_id_fkey(id, name, manager_id),
       away_team:teams!fixtures_away_team_id_fkey(id, name, manager_id),
@@ -159,6 +159,28 @@ export async function loadFixture(admin: any, code: string): Promise<any | null>
     .eq('id', codeRow.fixture_id)
     .single()
   return fixture ?? null
+}
+
+// Leg-1 score for a two-legged knockout tie. The portal needs it to tell
+// whether a drawn SECOND leg actually needs a shootout: a 4-4 leg 2 with a
+// clear aggregate winner (say 3-0 from leg 1) must not ask for penalties.
+// Leg 2 always sits 10 matchdays after leg 1 for the rounds that have two legs.
+export async function loadLeg1Result(
+  admin: any,
+  fixture: any
+): Promise<{ home: number; away: number } | null> {
+  if ((fixture?.leg ?? 1) !== 2 || !fixture?.matchday) return null
+  const { data } = await admin
+    .from('fixtures')
+    .select('id, result:results(home_score, away_score)')
+    .eq('tournament_id', fixture.tournament_id)
+    .eq('round_type', fixture.round_type)
+    .eq('leg', 1)
+    .eq('matchday', fixture.matchday - 10)
+    .maybeSingle()
+  const result = Array.isArray(data?.result) ? data.result[0] : data?.result
+  if (!result) return null
+  return { home: result.home_score ?? 0, away: result.away_score ?? 0 }
 }
 
 export async function resolveViewer(admin: any, userId: string, fixture: any): Promise<Viewer> {
@@ -283,8 +305,13 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
   const todayKey = getSastDateKey()
   const isPlaceholder = !!fixture.postponed_confirmed
 
-  // Knockout draw requires penalty scores (single-leg: leg 1; two-leg: leg 2)
-  let requiresPenalties = false
+  // Knockout draws may need penalty scores (single-leg: leg 1; two-leg: leg 2).
+  // `penaltiesPossible` only says the competition CAN go to a shootout; whether
+  // this tie actually needs one depends on the aggregate, which the portal
+  // computes from `leg1Result` plus the typed score. A drawn leg 2 with a clear
+  // aggregate winner must not show or require penalties.
+  let penaltiesPossible = false
+  let leg1Result: { home: number; away: number } | null = null
   if (isKnockoutFixture(fixture)) {
     const { data: leg2 } = await admin
       .from('fixtures')
@@ -296,9 +323,10 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       .maybeSingle()
     const isTwoLeg = !!leg2
     if (isTwoLeg) {
-      requiresPenalties = (fixture.leg ?? 1) === 2
+      penaltiesPossible = (fixture.leg ?? 1) === 2
+      if (penaltiesPossible) leg1Result = await loadLeg1Result(admin, fixture)
     } else {
-      requiresPenalties = true
+      penaltiesPossible = true
     }
   }
 
@@ -621,8 +649,10 @@ export async function buildState(admin: any, fixture: any, viewer: Viewer, code:
       // True once the grace period (match day + 1) has lapsed — no more
       // changes, reports or postponements for managers.
       graceEnded: gracePeriodEnded(dateKey),
-      // Knockout draw requires penalty scores before submission.
-      requiresPenalties,
+      // Penalties are possible on this fixture (knockout leg that can be
+      // decided by a shootout), but only a level aggregate needs them.
+      penaltiesPossible,
+      leg1Result,
       canPostpone: !postponeBlock,
       canRequest: !pendingRequest && !postponeBlock,
       canRespond: !!respondTo && !postponeExpired,

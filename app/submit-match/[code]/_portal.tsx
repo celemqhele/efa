@@ -597,7 +597,8 @@ export default function SubmitPortal({ initialState, initialAction, appBase }: P
           formFor={formFor}
           roundType={fx.roundType}
           leg={fx.leg}
-          requiresPenalties={!!state.rules.requiresPenalties}
+          penaltiesPossible={!!state.rules.penaltiesPossible}
+          leg1Result={state.rules.leg1Result ?? null}
         />
       )}
 
@@ -700,7 +701,8 @@ function ResultPanel({
   formFor,
   roundType,
   leg,
-  requiresPenalties,
+  penaltiesPossible,
+  leg1Result,
 }: {
   busy: boolean
   onSubmit: (fd: FormData) => void
@@ -713,7 +715,9 @@ function ResultPanel({
   formFor: (action: string, fields?: Record<string, string | File | null>) => FormData
   roundType: string | null
   leg: number | null
-  requiresPenalties: boolean
+  penaltiesPossible: boolean
+  // Leg-1 score for a two-legged tie, so the panel can work out the aggregate.
+  leg1Result: { home: number; away: number } | null
 }) {
   const [file, setFile] = useState<File | null>(null)
   // Optional extras: the same fixture played more than once because the
@@ -747,6 +751,20 @@ function ResultPanel({
   const shownHome = walkover ? walkHome : home
   const shownAway = walkover ? walkAway : away
 
+  // Two-legged ties are decided on AGGREGATE, not on the leg-2 score alone.
+  // The leg-2 home side played leg 1 away, so leg 1's home score pairs with this
+  // leg's AWAY score (and vice versa). Penalties are only needed when the whole
+  // tie is level: a 4-4 leg 2 after a 3-0 first leg is a clear aggregate win.
+  const scoresReady = home !== '' && away !== ''
+  const aggregateHome = leg1Result
+    ? leg1Result.home + (Number(shownAway) || 0)
+    : Number(shownHome) || 0
+  const aggregateAway = leg1Result
+    ? leg1Result.away + (Number(shownHome) || 0)
+    : Number(shownAway) || 0
+  const tieLevel = scoresReady && aggregateHome === aggregateAway
+  const needsPenalties = penaltiesPossible && !walkover && tieLevel
+
   return (
     <Card>
       <h2 className="text-base font-black text-text-primary">1. Submit the result</h2>
@@ -761,10 +779,10 @@ function ResultPanel({
             setNoFileError(true)
             return
           }
-          // Knockout draw requires penalty scores
-          if (requiresPenalties && !walkover && home !== '' && away !== '' && home === away) {
+          // Knockout tie level on aggregate requires penalty scores
+          if (needsPenalties) {
             if (!penHome || !penAway) {
-              setSizeError('This knockout match ended in a draw — enter the penalty scores before submitting.')
+              setSizeError('This knockout tie is level on aggregate — enter the penalty scores before submitting.')
               return
             }
           }
@@ -784,7 +802,7 @@ function ResultPanel({
               screenshotPath: mainPath,
               forfeit: walkover ? 'no' : forfeit,
               givenWin,
-              ...(requiresPenalties && shownHome === shownAway && penHome && penAway
+              ...(needsPenalties && penHome && penAway
                 ? { penHomeScore: penHome, penAwayScore: penAway }
                 : {}),
             })
@@ -1058,10 +1076,23 @@ function ResultPanel({
           </Field>
         </div>
 
-        {requiresPenalties && !walkover && home !== '' && away !== '' && home === away && (
+        {leg1Result && scoresReady && (
+          <p
+            className={`mt-2 rounded-xl border px-3 py-2 text-xs font-semibold ${
+              tieLevel
+                ? 'border-accent/40 bg-accent/10 text-text-primary'
+                : 'border-border bg-bg-base text-text-secondary'
+            }`}
+          >
+            Aggregate: {awayName} {aggregateHome} - {aggregateAway} {homeName}
+            {tieLevel ? ' · level, penalties will decide it' : ' · decided on aggregate, no penalties'}
+          </p>
+        )}
+
+        {needsPenalties && (
           <div className="mt-2 rounded-xl border border-accent/40 bg-accent/10 p-3">
             <p className="mb-2 text-xs font-bold text-text-primary">
-              Draw — enter penalty scores to decide the winner:
+              Aggregate level — enter penalty scores to decide the winner:
             </p>
             <div className="grid grid-cols-2 gap-3">
               <Field label={homeName + ' pens'}>

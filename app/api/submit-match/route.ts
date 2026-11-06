@@ -10,7 +10,7 @@ import { advanceWinner } from '@/lib/tournament-progression'
 import { readPortalStats } from '@/lib/portal-stats'
 import { applyCarryOverBalances } from '@/lib/forfeit-balance-apply'
 import { voidBalancesCreatedBy } from '@/lib/forfeit-balance-revert'
-import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isKnockoutFixture, isMineSubmission, isRealResult, labelDate, loadFixture, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, signedUrlForPath, downloadFromBucket, windowBlock, type Viewer } from '@/lib/submit-match'
+import { APP_BASE, MAX_POSTPONE_DAYS, POSTPONE_COOLDOWN_HOURS, POSTPONE_RESPONSE_HOURS, buildState, dateKeyOf, deadlineBlock, homeSide, awaySide, isKnockoutFixture, isMineSubmission, isRealResult, labelDate, loadFixture, loadLeg1Result, postponeRequestIsLive, resolveViewer, teamName, uploadToBucket, signedUrlForPath, downloadFromBucket, windowBlock, type Viewer } from '@/lib/submit-match'
 
 // Most screenshots a manager attaches (1 required + up to 3 replays).
 const MAX_SHOTS = 4
@@ -344,6 +344,16 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
     }
   }
 
+  // Penalties decide a knockout tie only when the AGGREGATE is level. A 4-4
+  // second leg after a 3-0 first leg is a clear aggregate win, so any shootout
+  // values are dropped rather than stored (and old ones are cleared when a
+  // correction makes the tie non-level).
+  const leg1 = await loadLeg1Result(admin, fixture)
+  const tieLevel = leg1
+    ? leg1.home + finalAwayScore === leg1.away + finalHomeScore
+    : finalHomeScore === finalAwayScore
+  const storePens = isKnockoutFixture(fixture) && !givenWin && !isForfeit && tieLevel
+
   // Confirmation row (mirrors writeResultToDb) so the fixture page's "both
   // managers submitted" panel sees this score too.
   const { error: confErr } = await admin.from('result_confirmations').upsert(
@@ -368,8 +378,7 @@ async function submitResult(admin: any, fixture: any, viewer: Viewer, form: Form
         // half-forfeit result behind.
         abandoned_type: abandonedType,
         override_reason: overrideReason,
-        ...(penHomeRaw !== null ? { pen_home_score: penHomeRaw } : {}),
-        ...(penAwayRaw !== null ? { pen_away_score: penAwayRaw } : {}),
+        ...(storePens ? { pen_home_score: penHomeRaw, pen_away_score: penAwayRaw } : { pen_home_score: null, pen_away_score: null }),
       },
       { onConflict: 'fixture_id' }
     )
