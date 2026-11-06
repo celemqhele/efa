@@ -65,7 +65,8 @@ function roundSuffix(roundType?: string | null, leg?: number | null, twoLegRound
 // option 1 = submit the result, ?action=backdoor = report the opponent.
 const AI_BOT_DIGITS = '27818209406'
 const FALLBACK_REMINDER_LINK = `https://wa.me/${AI_BOT_DIGITS}?text=Hi`
-const PORTAL_BASE = 'https://efa-fxyk.vercel.app/submit-match'
+const APP_BASE = 'https://efa-fxyk.vercel.app'
+const PORTAL_BASE = `${APP_BASE}/submit-match`
 
 // Same-process cache so admin fixtures pages don't refetch codes per render.
 const matchCodeCache = new Map<string, Promise<string | null>>()
@@ -106,7 +107,7 @@ function buildReminder(params: {
   opponentPhone: string | null | undefined
   submitLink: string
   postpone?: { role: 'requester' | 'reviewer'; newDateLabel: string | null } | null
-  backdoor?: { role: 'submitter' | 'reported'; screenshotUrl: string | null } | null
+  backdoor?: { role: 'submitter' | 'reported'; screenshotLink: string | null } | null
 }): string {
   const { username, side, homeTeam, awayTeam, tournamentName, roundType, leg, twoLegRound, opponentPhone, submitLink, postpone, backdoor } = params
   const name = username ?? 'there'
@@ -137,8 +138,8 @@ function buildReminder(params: {
   } else if (backdoor?.role === 'reported') {
     lines.push(`❗ *Your opponent reported you as not responding for this match.*`)
     lines.push(
-      backdoor.screenshotUrl
-        ? `📸 *View their screenshot: ${backdoor.screenshotUrl}*`
+      backdoor.screenshotLink
+        ? `📸 *View their screenshot: ${backdoor.screenshotLink}*`
         : `📸 Open the match to view their screenshot: ${submitLink}`
     )
   }
@@ -277,9 +278,18 @@ export default function DashboardFixtureActions({
   }
   function backdoorForSide(side: 'home' | 'away') {
     const againstMe = backdoorReports.find((r) => r.reportedSide === side)
-    if (againstMe) return { role: 'reported' as const, screenshotUrl: againstMe.screenshotUrl }
+    if (againstMe) {
+      return {
+        role: 'reported' as const,
+        // Short code link that redirects to the proof image. The raw signed
+        // Storage URL is ~300 characters in a WhatsApp message.
+        screenshotLink: matchCode
+          ? `${APP_BASE}/${matchCode}/backdoor?side=${side}`
+          : againstMe.screenshotUrl,
+      }
+    }
     const mine = backdoorReports.find((r) => r.reportedSide !== side)
-    if (mine) return { role: 'submitter' as const, screenshotUrl: null }
+    if (mine) return { role: 'submitter' as const, screenshotLink: null }
     return null
   }
 
