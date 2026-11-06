@@ -16,6 +16,9 @@ interface Props {
   tournamentName?: string | null
   roundType?: string | null
   leg?: number | null
+  // True only when this knockout round actually has a second leg in the DB.
+  // Single-leg ties name the round instead of printing "Leg 1".
+  twoLegRound?: boolean
   homeManagerName?: string | null
   homeManagerPhone?: string | null
   homeManagerOpenToReminders?: boolean
@@ -31,6 +34,30 @@ interface Props {
 }
 
 const POSTPONE_POPOVER_W = 300
+
+// Compact round names for the reminder line. League/group fixtures are absent
+// on purpose: their `leg` column is a season half, not a tie leg, so they must
+// not produce a "Leg N" suffix.
+const REMINDER_ROUND_LABELS: Record<string, string> = {
+  r32: 'Round of 32',
+  r16: 'Round of 16',
+  qf: 'QF',
+  sf: 'SF',
+  final: 'Final',
+  third: 'Third-place play-off',
+  super_cup: 'Super Cup',
+}
+
+// Suffix for the matchup line. Two-legged ties keep the leg number; single-leg
+// knockout ties show the round only, because "(Leg 1)" reads as though a second
+// leg is still to come.
+function roundSuffix(roundType?: string | null, leg?: number | null, twoLegRound?: boolean): string {
+  if (!roundType) return ''
+  const label = REMINDER_ROUND_LABELS[roundType]
+  if (!label) return ''
+  if (twoLegRound) return ` (${label} Leg ${leg ?? 1})`
+  return ` (${label})`
+}
 
 // Fallback reminder target when the fixture has no match code yet: plain "Hi"
 // opens the bot's welcome menu. With a code the two links below go straight to
@@ -73,20 +100,28 @@ function buildReminder(params: {
   homeTeam: string
   awayTeam: string
   tournamentName?: string | null
+  roundType?: string | null
   leg?: number | null
+  twoLegRound?: boolean
   opponentPhone: string | null | undefined
   submitLink: string
   postpone?: { role: 'requester' | 'reviewer'; newDateLabel: string | null } | null
   backdoor?: { role: 'submitter' | 'reported'; screenshotUrl: string | null } | null
 }): string {
-  const { username, side, homeTeam, awayTeam, tournamentName, leg, opponentPhone, submitLink, postpone, backdoor } = params
+  const { username, side, homeTeam, awayTeam, tournamentName, roundType, leg, twoLegRound, opponentPhone, submitLink, postpone, backdoor } = params
   const name = username ?? 'there'
   const theirNumber = formatPhoneDisplay(opponentPhone) || 'not available'
   const lines = [
     `👋 Hi ${name}`,
     ...(tournamentName ? [`🏆 ${tournamentName}`] : []),
-    `⚽ ${homeTeam} vs ${awayTeam}${leg != null ? ` (Leg ${leg})` : ''}`,
+    `⚽ ${homeTeam} vs ${awayTeam}${roundSuffix(roundType, leg, twoLegRound)}`,
   ]
+  // Knockout games must have the eFootball extra-time and penalty settings on,
+  // otherwise a level game cannot be settled. Caps + bold because this is the
+  // one rule managers keep forgetting before kick-off.
+  if (roundType && REMINDER_ROUND_LABELS[roundType]) {
+    lines.push(`⚠️ *DON'T FORGET TO TURN ON EXTRA TIME AND PENALTIES.*`)
+  }
   if (postpone?.role === 'requester') {
     lines.push(
       `⏳ *Your postponement request is being processed.* Waiting for your opponent to accept${postpone.newDateLabel ? ` (asked for ${postpone.newDateLabel})` : ''}.`
@@ -129,6 +164,7 @@ export default function DashboardFixtureActions({
   tournamentName = null,
   roundType = null,
   leg = null,
+  twoLegRound = false,
   homeManagerName,
   homeManagerPhone,
   homeManagerOpenToReminders = true,
@@ -253,7 +289,9 @@ export default function DashboardFixtureActions({
     homeTeam: homeTeamName,
     awayTeam: awayTeamName,
     tournamentName,
+    roundType,
     leg,
+    twoLegRound,
     opponentPhone: awayManagerPhone,
     submitLink: reminderLink,
     postpone: postponeForSide('home'),
@@ -265,7 +303,9 @@ export default function DashboardFixtureActions({
     homeTeam: homeTeamName,
     awayTeam: awayTeamName,
     tournamentName,
+    roundType,
     leg,
+    twoLegRound,
     opponentPhone: homeManagerPhone,
     submitLink: reminderLink,
     postpone: postponeForSide('away'),

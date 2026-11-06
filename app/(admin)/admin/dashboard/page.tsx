@@ -46,12 +46,17 @@ export default async function AdminDashboardPage() {
   const { data: fixtures } = tournamentIds.length
     ? await supabase
         .from('fixtures')
-        .select('tournament_id, status, round_type')
+        .select('tournament_id, status, round_type, leg')
         .in('tournament_id', tournamentIds)
     : { data: [] }
   const fixtureCounts: Record<string, number> = {}
   const completedCounts: Record<string, number> = {}
   const koCounts: Record<string, number> = {}
+  // A knockout round is two-legged only when a leg-2 fixture exists for that
+  // tournament + round. Rounds without one are single-match ties, so the
+  // reminder must name the round (QF, SF, Round of 16...) and never say
+  // "Leg 1" — otherwise managers expect a second leg that does not exist.
+  const twoLegRounds = new Set<string>()
   for (const f of (fixtures ?? []) as any[]) {
     fixtureCounts[f.tournament_id] = (fixtureCounts[f.tournament_id] ?? 0) + 1
     if (f.status === 'confirmed' && !f.postponed_confirmed) {
@@ -59,6 +64,9 @@ export default async function AdminDashboardPage() {
     }
     if (KO_ROUNDS.includes(f.round_type)) {
       koCounts[f.tournament_id] = (koCounts[f.tournament_id] ?? 0) + 1
+    }
+    if (Number(f.leg) >= 2 && f.round_type) {
+      twoLegRounds.add(`${f.tournament_id}:${f.round_type}`)
     }
   }
 
@@ -72,7 +80,7 @@ export default async function AdminDashboardPage() {
   const { data: dueFixtures } = await (supabase as any)
     .from('fixtures')
     .select(`
-      id, matchday, status, scheduled_date, postponed_confirmed, round_type, leg,
+      id, matchday, status, scheduled_date, postponed_confirmed, round_type, leg, tournament_id,
       tournament:tournaments(id, name, type),
       home_team:teams!fixtures_home_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone, open_to_reminders)),
       away_team:teams!fixtures_away_team_id_fkey(id, name, logo_league_folder, logo_team_slug, manager:profiles!teams_manager_id_fkey(id, username, phone, open_to_reminders))
@@ -110,6 +118,7 @@ export default async function AdminDashboardPage() {
   }
 
   for (const fx of (dueFixtures ?? []) as any[]) {
+    fx._twoLeg = twoLegRounds.has(`${fx.tournament_id}:${fx.round_type}`)
     const homeManagerId = fx.home_team?.manager?.id ?? null
     const postpone = postponeMap.get(fx.id)
     fx._postpone = postpone

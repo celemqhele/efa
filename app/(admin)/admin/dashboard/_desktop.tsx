@@ -313,7 +313,9 @@ export default function Desktop({ data }: { data: any }) {
                             homeTeamName={cleanTeamName(fx.home_team?.name) ?? ''}
                             awayTeamName={cleanTeamName(fx.away_team?.name) ?? ''}
                             tournamentName={fx.tournament?.name ?? null}
+                            roundType={fx.round_type ?? null}
                             leg={fx.leg ?? null}
+                            twoLegRound={!!fx._twoLeg}
                             homeManagerName={fx.home_team?.manager?.username}
                             homeManagerPhone={fx.home_team?.manager?.phone}
                             homeManagerOpenToReminders={fx.home_team?.manager?.open_to_reminders !== false}
