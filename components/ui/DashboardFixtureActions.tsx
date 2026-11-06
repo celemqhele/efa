@@ -119,8 +119,12 @@ function buildReminder(params: {
   ]
   // Knockout games must have the eFootball extra-time and penalty settings on,
   // otherwise a level game cannot be settled. Caps + bold because this is the
-  // one rule managers keep forgetting before kick-off.
-  if (roundType && REMINDER_ROUND_LABELS[roundType]) {
+  // one rule managers keep forgetting before kick-off. Two-legged ties only
+  // need it on leg 2 (a shootout belongs to the deciding leg); single-leg ties
+  // need it on their only game.
+  const isKnockoutRound = !!(roundType && REMINDER_ROUND_LABELS[roundType])
+  const decidesOnPens = !twoLegRound || (leg ?? 1) === 2
+  if (isKnockoutRound && decidesOnPens) {
     lines.push(`⚠️ *DON'T FORGET TO TURN ON EXTRA TIME AND PENALTIES.*`)
   }
   if (postpone?.role === 'requester') {
